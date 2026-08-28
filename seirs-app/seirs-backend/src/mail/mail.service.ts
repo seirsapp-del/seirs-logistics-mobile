@@ -243,6 +243,44 @@ export class MailService {
     return this.send(to, fallbackSubject, fallbackHtml);
   }
 
+  /**
+   * Send one account-and-security notice.
+   *
+   * One method rather than sixteen near-identical ones, because every
+   * notice in this category has the same shape: a seeded key, a handful
+   * of already-safe variables, and a branded shell. What differs is
+   * only the copy, and that lives in the template catalogue where an
+   * admin can rewrite it without a deploy.
+   *
+   * The caller is responsible for masking before it gets here. Nothing
+   * in this method knows which of its variables is sensitive, so it
+   * cannot save a caller that passes a full account number.
+   *
+   * Throws on a transport failure, like every other send. Callers in
+   * AccountSecurityService catch it: a password change must not fail
+   * because Resend is down.
+   */
+  async sendAccountSecurityEmail(
+    key: string,
+    to: string,
+    vars: Record<string, string>,
+  ): Promise<void> {
+    // Built-in copy with the REAL values, so an install whose
+    // email_templates table has not been seeded yet still sends a
+    // correct notice rather than one full of placeholders.
+    const seeded = this.templates.renderSeed(key, vars);
+    if (!seeded) {
+      throw new BadRequestException(`No template named '${key}'.`);
+    }
+    await this.deliverWithOverride(
+      key,
+      vars,
+      to,
+      seeded.subject,
+      baseTemplate(seeded.bodyHtml),
+    );
+  }
+
   private async send(to: string, subject: string, html: string) {
     // Default from-address uses Resend's onboarding domain so it works
     // out of the box without any DNS verification. Override with MAIL_FROM

@@ -44,6 +44,13 @@ const SAMPLE_VARS: Record<string, string> = {
   expiresOn:    '31 December 2026',
   lastYear:     '2026',
   thisYear:     '2027',
+  when:         '28 August 2026 at 09:41 WAT',
+  device:       'Android phone (Chrome)',
+  unlockAt:     '10:02 WAT',
+  bank:         'GTBank',
+  last4:        '4417',
+  documentName: 'Driver licence',
+  deletionDate: '27 September 2026',
 };
 
 
@@ -85,6 +92,152 @@ const SEASONAL_TEMPLATES: TemplateSeed[] = [
     subject:  '{{headline}}',
     bodyHtml: `<p>Hi {{name}},</p><p>{{message}}</p>`,
     vars:     ['name', 'headline', 'message'],
+  },
+];
+
+
+/**
+ * Account and security notices (2026-08-28).
+ *
+ * The catalogue above is entirely about packages, chats and money
+ * moving. Nothing covered the account itself, so the events that mean
+ * somebody is INSIDE an account went out with no email at all: only a
+ * push, which is worthless when the phone is in the wrong hands or
+ * flat.
+ *
+ * Every one of these is a security record. The copy rules they all
+ * follow:
+ *   - say what happened and WHEN, in Lagos time
+ *   - always close with what to do if it was not them
+ *   - never echo the secret that changed. No new email address, no
+ *     password fragment, no full NUBAN. Bank accounts are named by
+ *     their last four digits only: enough for the real owner to
+ *     recognise, useless to somebody reading over a shoulder
+ *   - never promise a time an action will be reviewed or reversed by
+ *
+ * They are seeded like everything else so the founder can rewrite the
+ * wording from the Email Templates screen without a deploy.
+ */
+const SECURITY_TEMPLATES: TemplateSeed[] = [
+  {
+    key:      'security_password_changed',
+    name:     'Security - Password changed',
+    subject:  'Your SEIRS password was changed',
+    bodyHtml: `<p>Hi {{name}},</p><p>The password on your SEIRS account was changed on <b>{{when}}</b>.</p><p>If this was you, nothing further is needed.</p><p><b>If this was not you, contact support straight away</b> and use "Forgot password" to take the account back.</p>`,
+    vars:     ['name', 'when'],
+  },
+  /**
+   * Two templates, because the two readers need different things.
+   *
+   * Neither names an address. Sending the new address to the new
+   * address is confirmation-by-echo: it tells whoever just captured the
+   * account that the capture worked, and it puts the owner's
+   * replacement address in writing in a mailbox that may not be theirs.
+   */
+  {
+    key:      'security_email_changed_old',
+    name:     'Security - Email changed (notice to old address)',
+    subject:  'The email on your SEIRS account was changed',
+    bodyHtml: `<p>Hi {{name}},</p><p>On <b>{{when}}</b> the sign-in email for your SEIRS account was changed to a different address. Account emails will stop arriving here.</p><p><b>If you did not do this, contact support now</b> from this address. Quote this message so we can confirm you held the account first.</p>`,
+    vars:     ['name', 'when'],
+  },
+  {
+    key:      'security_email_changed_new',
+    name:     'Security - Email changed (notice to new address)',
+    subject:  'This address now signs in to a SEIRS account',
+    bodyHtml: `<p>Hi {{name}},</p><p>On <b>{{when}}</b> this address was set as the sign-in email for a SEIRS account.</p><p>If you were not expecting this, do not sign in, and contact support. Someone may have typed your address by mistake, or used it on purpose.</p>`,
+    vars:     ['name', 'when'],
+  },
+  {
+    key:      'security_new_device',
+    name:     'Security - New device sign-in',
+    subject:  'New sign-in to your SEIRS account',
+    bodyHtml: `<p>Hi {{name}},</p><p>Your SEIRS account was signed in to from a device we have not seen before: <b>{{device}}</b>, on <b>{{when}}</b>.</p><p>If this was you, you can ignore this.</p><p><b>If it was not, change your password now</b> and contact support.</p>`,
+    vars:     ['name', 'device', 'when'],
+  },
+  {
+    key:      'security_account_locked',
+    name:     'Security - Account locked after failed sign-ins',
+    subject:  'Your SEIRS account was locked',
+    bodyHtml: `<p>Hi {{name}},</p><p>There were too many failed sign-in attempts on your SEIRS account, so we locked it at <b>{{when}}</b>. It unlocks by itself at <b>{{unlockAt}}</b>.</p><p>If that was you mistyping, wait and try again.</p><p><b>If it was not you, somebody is guessing your password.</b> Change it as soon as the lock lifts, and contact support.</p>`,
+    vars:     ['name', 'when', 'unlockAt'],
+  },
+  {
+    key:      'security_bank_change_requested',
+    name:     'Security - Payout account change requested',
+    subject:  'A payout account change was requested on your SEIRS account',
+    bodyHtml: `<p>Hi {{name}},</p><p>On <b>{{when}}</b> someone asked to send your SEIRS payouts to {{bank}}, account ending <b>{{last4}}</b>. It is with our team for review, and your money still goes to your current account until then.</p><p><b>If you did not ask for this, contact support now.</b> Say that a payout change should be refused.</p>`,
+    vars:     ['name', 'when', 'bank', 'last4'],
+  },
+  {
+    key:      'security_bank_change_approved',
+    name:     'Security - Payout account change approved',
+    subject:  'Your SEIRS payout account was changed',
+    bodyHtml: `<p>Hi {{name}},</p><p>As of <b>{{when}}</b> your SEIRS payouts go to {{bank}}, account ending <b>{{last4}}</b>.</p><p><b>If you did not request this change, contact support immediately.</b> Your earnings are being sent somewhere you did not choose.</p>`,
+    vars:     ['name', 'when', 'bank', 'last4'],
+  },
+  {
+    key:      'security_bank_change_rejected',
+    name:     'Security - Payout account change declined',
+    subject:  'Your SEIRS payout account change was not approved',
+    bodyHtml: `<p>Hi {{name}},</p><p>On <b>{{when}}</b> the request to send your payouts to {{bank}}, account ending <b>{{last4}}</b>, was not approved. Your existing payout account is unchanged and your earnings are untouched.</p><p>Contact support if you expected this to go through, or if you did not make the request at all.</p>`,
+    vars:     ['name', 'when', 'bank', 'last4'],
+  },
+  {
+    key:      'account_suspended',
+    name:     'Account - Suspended',
+    subject:  'Your SEIRS account has been suspended',
+    bodyHtml: `<p>Hi {{name}},</p><p>Your SEIRS account was suspended on <b>{{when}}</b> and you will not be able to sign in.</p><p>Reason given: <b>{{reason}}</b></p><p>If you believe this is a mistake, reply to support with your SEIRS ID and we will look at it again.</p>`,
+    vars:     ['name', 'when', 'reason'],
+  },
+  {
+    key:      'account_reactivated',
+    name:     'Account - Reactivated',
+    subject:  'Your SEIRS account is active again',
+    bodyHtml: `<p>Hi {{name}},</p><p>Your SEIRS account was reactivated on <b>{{when}}</b>. You can sign in and carry on as normal.</p><p>If you cannot get in, use "Forgot password" first, then contact support.</p>`,
+    vars:     ['name', 'when'],
+  },
+  {
+    key:      'identity_verification_approved',
+    name:     'Identity - Verification approved',
+    subject:  'Your SEIRS identity is verified',
+    bodyHtml: `<p>Hi {{name}},</p><p>Your ID was approved on <b>{{when}}</b>. Your account now carries the verified badge and the higher limits that come with it.</p><p>If you did not submit an ID, contact support: someone else used your account to do it.</p>`,
+    vars:     ['name', 'when'],
+  },
+  {
+    key:      'identity_verification_rejected',
+    name:     'Identity - Verification rejected',
+    subject:  'We could not verify your SEIRS ID',
+    bodyHtml: `<p>Hi {{name}},</p><p>The ID you submitted was reviewed on <b>{{when}}</b> and we could not approve it.</p><p>Reason: <b>{{reason}}</b></p><p>You can submit again from Profile inside the app. Your account keeps working in the meantime.</p>`,
+    vars:     ['name', 'when', 'reason'],
+  },
+  {
+    key:      'driver_document_approved',
+    name:     'Driver - KYC document approved',
+    subject:  'A document on your SEIRS driver account was approved',
+    bodyHtml: `<p>Hi {{name}},</p><p>Your <b>{{documentName}}</b> was approved on <b>{{when}}</b>.</p><p>Open the driver app to see what is still outstanding, if anything.</p>`,
+    vars:     ['name', 'documentName', 'when'],
+  },
+  {
+    key:      'driver_document_rejected',
+    name:     'Driver - KYC document rejected',
+    subject:  'A document on your SEIRS driver account needs re-uploading',
+    bodyHtml: `<p>Hi {{name}},</p><p>Your <b>{{documentName}}</b> was reviewed on <b>{{when}}</b> and could not be accepted.</p><p>Reason: <b>{{reason}}</b></p><p>Upload a replacement from the driver app and it goes back in the queue.</p>`,
+    vars:     ['name', 'documentName', 'when', 'reason'],
+  },
+  {
+    key:      'account_deletion_scheduled',
+    name:     'Account - Deletion scheduled',
+    subject:  'Your SEIRS account is scheduled for deletion',
+    bodyHtml: `<p>Hi {{name}},</p><p>We received a request on <b>{{when}}</b> to delete your SEIRS account. It is scheduled for <b>{{deletionDate}}</b>, and after that it cannot be recovered.</p><p>You can stop it any time before then: sign in and tap Cancel Deletion.</p><p><b>If you did not ask for this, sign in now, cancel it, and change your password.</b></p>`,
+    vars:     ['name', 'when', 'deletionDate'],
+  },
+  {
+    key:      'account_deletion_cancelled',
+    name:     'Account - Deletion cancelled',
+    subject:  'Your SEIRS account will not be deleted',
+    bodyHtml: `<p>Hi {{name}},</p><p>The scheduled deletion of your SEIRS account was cancelled on <b>{{when}}</b>. Nothing was removed and your account is fully active.</p><p>If you did not cancel it yourself, contact support and change your password.</p>`,
+    vars:     ['name', 'when'],
   },
 ];
 
@@ -190,8 +343,12 @@ export const SEED_TEMPLATES: TemplateSeed[] = [
   },
 ];
 
-/** Everything the editor lists: triggered templates plus seasonal ones. */
-export const ALL_TEMPLATES: TemplateSeed[] = [...SEED_TEMPLATES, ...SEASONAL_TEMPLATES];
+/** Everything the editor lists: triggered, security, and seasonal. */
+export const ALL_TEMPLATES: TemplateSeed[] = [
+  ...SEED_TEMPLATES,
+  ...SECURITY_TEMPLATES,
+  ...SEASONAL_TEMPLATES,
+];
 
 @Injectable()
 export class EmailTemplatesService implements OnModuleInit {
@@ -275,6 +432,27 @@ export class EmailTemplatesService implements OnModuleInit {
     return {
       subject:  this.interpolate(seed.subject,  sample),
       bodyHtml: this.interpolate(seed.bodyHtml, sample),
+    };
+  }
+
+  /**
+   * The built-in copy for a key, filled with REAL values.
+   *
+   * seedBodyFor() above does the same with sample values, which is what
+   * a test send wants and exactly what a live send must not do. A
+   * security email that goes out before anyone has seeded or edited the
+   * template still has to name the real bank and the real timestamp, so
+   * the fallback path needs its own renderer.
+   */
+  renderSeed(
+    key: string,
+    vars: Record<string, string | number>,
+  ): { subject: string; bodyHtml: string } | null {
+    const seed = ALL_TEMPLATES.find(t => t.key === key);
+    if (!seed) return null;
+    return {
+      subject:  this.interpolate(seed.subject,  vars),
+      bodyHtml: this.interpolate(seed.bodyHtml, vars),
     };
   }
 

@@ -50,6 +50,9 @@ import { TelemetryModule } from './telemetry/telemetry.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { TravelBuddyModule } from './travel-buddy/travel-buddy.module';
+import { ExportsModule } from './exports/exports.module';
+import { ZonesModule } from './zones/zones.module';
+import { LaunchModule } from './launch/launch.module';
 
 @Module({
   imports: [
@@ -138,6 +141,21 @@ import { TravelBuddyModule } from './travel-buddy/travel-buddy.module';
     AddressesModule,
     MaintenanceModule,
     TravelBuddyModule,
+
+    // SEIRS Zones. Replaces the three inert half-forms (hotspot circles,
+    // restricted sub-zones, geopolitical overrides) with one model that
+    // can also CLOSE an area, which none of them could.
+    ZonesModule,
+
+    // Launch reset (super-admin only). Its own module so the one
+    // operation that deletes accounts in bulk is guarded and reviewed
+    // on its own rather than hidden among the admin endpoints.
+    LaunchModule,
+
+    // Admin CSV exports. Its own module because every route in it is
+    // bulk data leaving the building, so the permission gate and the
+    // audit trail belong in one reviewable place.
+    ExportsModule,
   ],
   providers: [
     /**

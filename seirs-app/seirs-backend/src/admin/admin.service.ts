@@ -42,6 +42,23 @@ export interface SearchHit {
 
 @Injectable()
 export class AdminService {
+  /**
+   * Set by AdminModule after construction, not injected.
+   *
+   * AdminService cannot take NotificationsService in its constructor:
+   * that creates a module cycle through DeliveriesModule, which is why
+   * manual assignment still does not notify the rider. The same house
+   * pattern TravelBuddyModule uses for paymentsServiceRef gets the
+   * account-and-security notices out of here without widening the
+   * dependency graph.
+   *
+   * Suspension and reactivation are exactly the events a person must be
+   * told about: an account going quiet with no explanation is
+   * indistinguishable from the app being broken, and support then spends
+   * the call establishing what the notice would have said.
+   */
+  accountSecurityRef?: any;
+
   private readonly logger = new Logger(AdminService.name);
 
   constructor(
@@ -1247,7 +1264,27 @@ export class AdminService {
   }
 
   async updateUser(id: string, data: Partial<User>) {
+    /**
+     * Reactivation is the only field change here worth telling somebody
+     * about, and it is worth telling them a lot: an account coming back
+     * silently means they discover it by trying again some days later,
+     * if they bother. Read the previous value first, so the notice fires
+     * on the TRANSITION rather than on every save that happens to carry
+     * isActive: true.
+     */
+    const before = data.isActive === true
+      ? await this.usersRepo.findOne({ where: { id }, select: ['id', 'isActive'] })
+      : null;
+
     await this.usersRepo.update(id, data);
+
+    if (before && before.isActive === false) {
+      try {
+        await this.accountSecurityRef?.accountReactivated?.(id);
+      } catch (e: any) {
+        this.logger.warn(`Reactivated ${id} but could not notify: ${e?.message ?? e}`);
+      }
+    }
     return this.usersRepo.findOne({ where: { id } });
   }
 
@@ -2172,9 +2209,18 @@ export class AdminService {
     return this.usersRepo.findOne({ where: { id } });
   }
 
-  async suspendUser(id: string, requester: any, ip?: string) {
+  async suspendUser(id: string, requester: any, ip?: string, reason?: string) {
     await this.usersRepo.update(id, { isActive: false });
-    await this.logAudit(requester, 'suspend', `user:${id}`, {}, ip);
+    await this.logAudit(requester, 'suspend', `user:${id}`, { reason: reason ?? null }, ip);
+    // Never let a failed notice block the suspension: the safety action
+    // is the point, and telling them is the courtesy that follows it.
+    try {
+      await this.accountSecurityRef?.accountSuspended?.(
+        id, reason ?? 'Your account has been suspended by SEIRS support.',
+      );
+    } catch (e: any) {
+      this.logger.warn(`Suspended ${id} but could not notify: ${e?.message ?? e}`);
+    }
     return { message: 'User suspended.' };
   }
 
@@ -2232,6 +2278,126 @@ export class AdminService {
   // Offboard execution. Runs the standard suspend, but only after the
   // footprint check passes (or the caller explicitly forces). Logs who
   // offboarded whom + the reason for compliance review later.
+  /**
+   * Bring an offboarded colleague back, WITHOUT giving them their old
+   * powers back.
+   *
+   * The admins page has shipped a "Reactivate Account" button for some
+   * time and the route behind it was never built, so it 404s. Adding it
+   * naively would be worse than leaving it broken: offboarding
+   * deliberately wipes adminRole and roleId, precisely so that
+   * reinstatement grants nothing on its own. The founder named the
+   * vector on 2026-08-13: "an attacker vector could just focus on
+   * reinstating a user, and if the user already have certain
+   * permissions." Reactivating a former colleague looks far more
+   * innocent in a log than granting somebody super_admin.
+   *
+   * So this restores the login and nothing else. Whoever comes back can
+   * sign in and see nothing until a super admin deliberately re-grants a
+   * role, which is a decision that gets noticed. The audit entry records
+   * that no role was restored, so the second half of the rehire is
+   * visible by its absence.
+   */
+  async reactivateAdmin(adminUserId: string, requester: any, ip?: string) {
+    const target = await this.usersRepo.findOne({
+      where:  { id: adminUserId },
+      select: ['id', 'name', 'email', 'isActive', 'adminRole', 'roleId'],
+    });
+    if (!target) throw new NotFoundException('Admin not found');
+    if (target.isActive) {
+      return { message: 'That account is already active.', roleRestored: false };
+    }
+
+    await this.usersRepo.update(adminUserId, {
+      isActive:           true,
+      deactivatedAt:      null as any,
+      deactivationReason: null as any,
+      // adminRole and roleId are deliberately NOT touched. See above.
+    });
+
+    await this.logAudit(requester, 'reactivate_admin', `user:${adminUserId}`, {
+      email:        target.email,
+      roleRestored: false,
+      // Null here is the point: it says out loud that the account came
+      // back with no powers, so a later grant is a separate, visible act.
+      currentRole:  target.adminRole ?? null,
+    }, ip);
+
+    try {
+      await this.accountSecurityRef?.accountReactivated?.(adminUserId);
+    } catch (e: any) {
+      this.logger.warn(`Reactivated admin ${adminUserId} but could not notify: ${e?.message ?? e}`);
+    }
+
+    return {
+      message: target.adminRole
+        ? 'Account reactivated.'
+        : 'Account reactivated with no role. Grant one before they can do anything.',
+      roleRestored: false,
+      hasRole: !!target.adminRole,
+    };
+  }
+
+  /**
+   * Force a password reset on a staff account.
+   *
+   * The button existed and the route did not. This does not set a
+   * password or return one: it invalidates the current one and starts
+   * the normal reset flow, so no plaintext credential is ever created,
+   * logged, or read over a phone by whoever pressed the button.
+   */
+  async resetAdminPassword(adminUserId: string, requester: any, ip?: string) {
+    const target = await this.usersRepo.findOne({
+      where:  { id: adminUserId },
+      select: ['id', 'name', 'email'],
+    });
+    if (!target?.email) throw new NotFoundException('Admin not found');
+
+    /**
+     * Invalidate the current password AND issue a reset in one step.
+     *
+     * Invalidating alone would lock somebody out with no way back, and
+     * issuing a link alone leaves the old password working while a
+     * laptop is missing, which is the case this button exists for. Both,
+     * in that order.
+     *
+     * No plaintext credential is created, returned or logged, so nobody
+     * has to read a password down a phone line.
+     */
+    // bcryptjs, already imported at the top of this file. The package is
+    // bcryptjs and not bcrypt: reaching for the wrong one compiles in an
+    // editor and fails at build.
+    const { randomBytes, randomUUID } = await import('crypto');
+    const unusable = await bcrypt.hash(randomBytes(32).toString('hex'), 12);
+    const token = randomUUID();
+    const expiry = new Date(Date.now() + 60 * 60 * 1000);
+
+    await this.usersRepo.update(adminUserId, {
+      password:            unusable,
+      passwordResetToken:  token,
+      passwordResetExpiry: expiry,
+    } as any);
+
+    await this.logAudit(requester, 'reset_admin_password', `user:${adminUserId}`, {
+      email: target.email,
+      // The token is deliberately absent: an audit row a reader can use
+      // to take over the account is not an audit row.
+      expiresAt: expiry.toISOString(),
+    }, ip);
+
+    try {
+      await this.mailService.sendPasswordReset(
+        target.email, target.name ?? 'there', token, 'admin',
+      );
+    } catch (e: any) {
+      this.logger.warn(`Password invalidated for ${adminUserId} but the reset email failed: ${e?.message ?? e}`);
+    }
+
+    return {
+      message: 'Their password no longer works. A reset link has been emailed to them.',
+    };
+  }
+
   async offboardAdmin(
     adminUserId: string,
     requester: any,

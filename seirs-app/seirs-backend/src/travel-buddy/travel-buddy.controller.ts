@@ -165,4 +165,45 @@ export class TravelBuddyController {
   dropReview(@Query('limit') limit?: string) {
     return this.travelBuddy.dropReviewQueue(Number(limit ?? 50));
   }
+
+  /**
+   * Declared trips, each with its stop count and how many seats are
+   * actually sold. legacyTwoCity flags a declaration made before the stop
+   * model, whose seats are still priced across the whole route.
+   */
+  @UseGuards(AdminGuard)
+  @Get('admin/trips')
+  adminTrips(@Query('limit') limit?: string) {
+    return this.travelBuddy.adminTrips(Number(limit ?? 50));
+  }
+
+  /** Every seat booking, filterable by status. */
+  @UseGuards(AdminGuard)
+  @Get('admin/bookings')
+  adminBookings(@Query('status') status?: string, @Query('limit') limit?: string) {
+    return this.travelBuddy.adminBookings(status, Number(limit ?? 100));
+  }
+
+  /**
+   * Forfeited fares with their evidence trail: the wait, the rider's
+   * position, every attempt to reach the passenger, the departure. A
+   * forfeited fare gets disputed, and support needs all of it in one
+   * place rather than one person's word against another.
+   */
+  @UseGuards(AdminGuard)
+  @Get('admin/no-shows')
+  adminNoShows(@Query('limit') limit?: string) {
+    return this.travelBuddy.adminNoShows(Number(limit ?? 50));
+  }
+
+  /**
+   * Seats a rider agreed to carry that nobody has paid for. They do not
+   * block capacity by design, so this is the only place an operator can
+   * see a rider being messed about.
+   */
+  @UseGuards(AdminGuard)
+  @Get('admin/pending-payments')
+  adminPendingPayments(@Query('limit') limit?: string) {
+    return this.travelBuddy.adminPendingPayments(Number(limit ?? 50));
+  }
 }

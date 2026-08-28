@@ -11,6 +11,7 @@ import { LessThan, Repository } from 'typeorm';
 import { IdentityVerification, VerificationStatus } from './user-verification.entity';
 import { SubmitIdentityDto } from './dto/submit-verification.dto';
 import { User } from '../users/user.entity';
+import { AccountSecurityService } from '../notifications/account-security.service';
 
 const SUBMIT_COOLDOWN_MS = 60 * 60 * 1000;   // 1 hour between submissions (anti-spam)
 
@@ -31,6 +32,7 @@ export class UserVerificationService {
     private readonly repo: Repository<IdentityVerification>,
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    private readonly security: AccountSecurityService,
   ) {}
 
   // ── User self-service ─────────────────────────────────────────────────
@@ -156,6 +158,18 @@ export class UserVerificationService {
       identityDocType:    row.documentType,
     });
 
+    /**
+     * Tell them. Approval was logged for us and announced to nobody.
+     *
+     * The person waited days for a human to look at their ID, and the
+     * only way to find out the answer was to keep reopening the verify
+     * screen. Doubling as a security notice: an approval nobody
+     * submitted means somebody else uploaded a document from inside
+     * this account.
+     */
+    this.security.identityVerificationResolved(row.userId, true)
+      .catch(e => this.logger.warn(`identity-approved notice failed for ${row.userId}: ${e?.message ?? e}`));
+
     this.logger.log(`Identity approved for user ${row.userId} (${row.documentType}) by admin ${adminUserId}`);
     return this.adminGetOne(id);
   }
@@ -171,6 +185,11 @@ export class UserVerificationService {
     row.rejectionReason  = reason;
     row.adminNote        = adminNote ?? row.adminNote;
     await this.repo.save(row);
+
+    // The reason travels with it: a rejection with no cause sends the
+    // person back to upload the same unreadable photo again.
+    this.security.identityVerificationResolved(row.userId, false, reason)
+      .catch(e => this.logger.warn(`identity-rejected notice failed for ${row.userId}: ${e?.message ?? e}`));
 
     this.logger.log(`Identity rejected for user ${row.userId} by admin ${adminUserId}: ${reason}`);
     return this.adminGetOne(id);
@@ -201,6 +220,13 @@ export class UserVerificationService {
       identityVerifiedAt: null,
       identityDocType:    null,
     });
+
+    // A revoke silently strips the badge and the limits that came with
+    // it, so from the account holder's side it is indistinguishable
+    // from the app breaking. Reuses the rejected notice: same outcome
+    // for them, same next step.
+    this.security.identityVerificationResolved(row.userId, false, reason)
+      .catch(e => this.logger.warn(`identity-revoked notice failed for ${row.userId}: ${e?.message ?? e}`));
 
     this.logger.warn(`Identity REVOKED for user ${row.userId} by admin ${adminUserId}: ${reason}`);
     return this.adminGetOne(id);

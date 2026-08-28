@@ -34,7 +34,8 @@ export interface PriceBreakdown {
     dwellOver:      number;     // wait fees if any
     categorySurcharge: number;
     timeSurcharges: { night: number; peak: number; weekend: number };
-    zoneSurcharges: { interState: number; longDistance: number; overnight: number; restricted: number };
+    /** `zonePolicy` is the SEIRS Zones line, summed across pickup and drop-off. */
+    zoneSurcharges: { interState: number; longDistance: number; overnight: number; restricted: number; zonePolicy?: number };
     discounts:      { bulk: number; recurring: number; loyalty: number; welcome: number };
     vatBase:        number;     // pre-VAT subtotal
     vat:            number;
@@ -45,6 +46,12 @@ export interface PriceBreakdown {
     /** % of declared value above the card threshold; deters false declarations. */
     highValuePremium: number;
     total:          number;     // final customer pays
+    /**
+     * Every zone that moved this quote, named, with the reason the admin
+     * wrote. Empty when nothing did. This is what makes a zone surcharge
+     * a disclosure rather than a silent uplift.
+     */
+    zoneNotices?: ZoneEngineNotice[];
   };
 
   // Driver-facing line items
@@ -169,6 +176,55 @@ export interface PricingInput {
  * Merged regional overrides - baseline ↘ geopolitical zone ↘ state.
  * State-level wins over zone-level.
  */
+/**
+ * The zone engine, as a port rather than an import.
+ *
+ * PricingModule must not depend on ZonesModule: ZonesModule already
+ * needs PricingService in order to wire itself in, and importing back
+ * the other way would close the circle. ZonesModule sets `zoneEngine` on
+ * this service from its own onModuleInit, the same trick DriversModule
+ * uses to hand the drivers service its push channel. Until it does,
+ * every method here behaves exactly as it did before zones existed.
+ */
+export interface ZoneEngineRefusal {
+  zoneId:   string;
+  zoneName: string;
+  status:   string;
+  reason:   string;
+  end:      string;
+  vehicleType?: string;
+}
+
+export interface ZoneEngineNotice {
+  zoneId:   string;
+  zoneName: string;
+  reason:   string;
+  end:      string;
+  surchargePct: number;
+  rateMultiplier?: number;
+}
+
+export interface ZoneEngineDecision {
+  refusal: ZoneEngineRefusal | null;
+  rateMultiplier: number | null;
+  fuelPriceOverride: { petrolNgn?: number; dieselNgn?: number } | null;
+  surchargePct: number;
+  notices: ZoneEngineNotice[];
+}
+
+export interface ZoneEnginePort {
+  evaluate(input: {
+    pickup:   { coords?: { latitude: number; longitude: number } | null; stateCode?: string | null };
+    dropoff?: { coords?: { latitude: number; longitude: number } | null; stateCode?: string | null } | null;
+    vehicleType?: string | null;
+    at?: Date | null;
+  }): Promise<ZoneEngineDecision>;
+}
+
+const NO_ZONE_DECISION: ZoneEngineDecision = {
+  refusal: null, rateMultiplier: null, fuelPriceOverride: null, surchargePct: 0, notices: [],
+};
+
 interface ResolvedRegion {
   rateMultiplier:   number;
   fuelPrices?:      { petrolNgn?: number; dieselNgn?: number };
@@ -181,6 +237,12 @@ interface ResolvedRegion {
 @Injectable()
 export class PricingService implements OnModuleInit {
   private readonly logger = new Logger(PricingService.name);
+
+  /**
+   * Set by ZonesModule at boot. Left undefined the engine is unchanged,
+   * which is what keeps this safe to deploy ahead of the zones table.
+   */
+  zoneEngine?: ZoneEnginePort;
 
   constructor(
     @InjectRepository(RateCard)
@@ -447,6 +509,118 @@ export class PricingService implements OnModuleInit {
   }
 
   /**
+   * SEIRS Zones, evaluated at BOTH ends, before any money is calculated.
+   *
+   * THE TRAP THIS CLOSES: resolveRegion above is called twice in this
+   * file and both calls pass the PICKUP, so the destination's region has
+   * never existed as a concept anywhere in pricing. Blocking a drop-off
+   * was therefore not a data change, it needed this plumbing. Everything
+   * a zone decision needs about the far end is passed here explicitly.
+   *
+   * `at` is the SCHEDULED time when there is one, not now. A 7pm pickup
+   * inside a 6pm curfew has to fail at 2pm, while the sender can still
+   * do something about it, rather than at 7pm when they cannot.
+   *
+   * Throws on refusal, which is the point: a closed area never produces
+   * a price, so there is nothing to display, cache, pin or replay.
+   */
+  private async evaluateZones(opts: {
+    vehicleType?: string;
+    scheduledAt?: Date;
+    pickupCoords?:  { latitude: number; longitude: number } | null;
+    dropoffCoords?: { latitude: number; longitude: number } | null;
+    pickupStateCode?:  string | null;
+    dropoffStateCode?: string | null;
+  }): Promise<ZoneEngineDecision> {
+    // A fresh copy, because notices escape into the breakdown the caller
+    // owns and a shared array handed to two quotes at once is a bug.
+    if (!this.zoneEngine) return { ...NO_ZONE_DECISION, notices: [] };
+
+    /**
+     * No location, no zone. A zone is a shape that has to CONTAIN a
+     * point, so a quote carrying neither coordinates nor a state code at
+     * either end cannot match one, whatever is published. Short-circuit
+     * rather than query: this path is the health probe's canned quote
+     * and the address-only bulk-upload rows, and neither should pay for
+     * a lookup whose answer is already known.
+     */
+    const hasAnyPoint = !!(opts.pickupCoords || opts.pickupStateCode
+      || opts.dropoffCoords || opts.dropoffStateCode);
+    if (!hasAnyPoint) return { ...NO_ZONE_DECISION, notices: [] };
+
+    /**
+     * A FUTURE scheduledAt is the instant to judge. A PAST one is not.
+     *
+     * scheduledAt carries two different things in this codebase. On a
+     * genuinely scheduled booking it is the future pickup time, and that
+     * is the moment a curfew has to be tested against. But a pinned
+     * send-now booking replays the pin's pricedAt, which is up to ten
+     * minutes in the PAST, purely so the time surcharges match the
+     * number the sender was shown.
+     *
+     * Judging a zone against that past instant would sell a booking into
+     * an area closed nine minutes ago, and the founder's rule is that
+     * new bookings stop immediately. So a past timestamp falls back to
+     * now: the pinned PRICE is honoured, the pinned permission is not.
+     */
+    const scheduled = opts.scheduledAt;
+    const at = scheduled && scheduled.getTime() > Date.now() ? scheduled : new Date();
+
+    const hasDropoff = !!opts.dropoffCoords || !!opts.dropoffStateCode;
+    const decision = await this.zoneEngine.evaluate({
+      pickup: {
+        coords:    opts.pickupCoords ?? null,
+        stateCode: opts.pickupStateCode ?? null,
+      },
+      dropoff: hasDropoff
+        ? { coords: opts.dropoffCoords ?? null, stateCode: opts.dropoffStateCode ?? null }
+        : null,
+      vehicleType: opts.vehicleType ?? null,
+      at,
+    });
+
+    if (decision.refusal) {
+      const r = decision.refusal;
+      /**
+       * A structured refusal, so an app can point at the right address
+       * field instead of showing a red bar over the whole form. `message`
+       * stays a plain sentence because every existing client already
+       * renders that field and none of them know about this one yet.
+       */
+      throw new BadRequestException({
+        statusCode: 400,
+        error:      'ZoneBlocked',
+        message:    r.reason,
+        zone: {
+          id: r.zoneId, name: r.zoneName, status: r.status,
+          end: r.end, ...(r.vehicleType ? { vehicleType: r.vehicleType } : {}),
+        },
+      });
+    }
+
+    return decision;
+  }
+
+  /**
+   * Layer the zone's effects over the rate card's own region block.
+   *
+   * The zone WINS where both speak, for the same reason a hotspot circle
+   * already beats its state today: the tighter, more recent, more
+   * deliberate call is the one that was meant. In practice nothing is
+   * displaced yet, because `regions` on the live card is null, which is
+   * the defect that made all three old forms inert in the first place.
+   */
+  private applyZoneEffects(region: ResolvedRegion, decision: ZoneEngineDecision): ResolvedRegion {
+    if (!decision) return region;
+    const merged: ResolvedRegion = { ...region };
+    if (decision.rateMultiplier != null) merged.rateMultiplier = decision.rateMultiplier;
+    if (decision.fuelPriceOverride) {
+      merged.fuelPrices = { ...(region.fuelPrices ?? {}), ...decision.fuelPriceOverride };
+    }
+    return merged;
+  }
+
+  /**
    * State-aware zone-surcharge tier. New in v2 - falls back to v1 flags
    * (input.isInterState / input.isLongDistance / input.isRestrictedZone)
    * when neither coords nor explicit state codes are provided.
@@ -591,6 +765,16 @@ export class PricingService implements OnModuleInit {
     /** 'none' | 'small' | 'large'. Small rides free; large pays the class fee. */
     luggage?: string;
   }) {
+    // Zones gate a ride exactly as they gate a parcel. A person is not
+    // safer than a package in a closed area, and a curfew that stopped
+    // deliveries while still selling rides would be no curfew at all.
+    const zoneDecision = await this.evaluateZones({
+      vehicleType:   input.vehicleType,
+      scheduledAt:   input.scheduledAt,
+      pickupCoords:  input.pickupCoords,
+      dropoffCoords: input.dropoffCoords,
+    });
+
     const card = await this.getActiveRateCard();
     if (!(PricingService.RIDE_VEHICLES as readonly string[]).includes(input.vehicleType)) {
       throw new BadRequestException(`'${input.vehicleType}' is not a ride vehicle.`);
@@ -601,7 +785,10 @@ export class PricingService implements OnModuleInit {
     const km = await this.flooredKm(input.km, input.pickupCoords, input.dropoffCoords);
     const pickupState  = input.pickupCoords  ? detectStateFromCoords(input.pickupCoords.latitude,  input.pickupCoords.longitude)  : null;
     const dropoffState = input.dropoffCoords ? detectStateFromCoords(input.dropoffCoords.latitude, input.dropoffCoords.longitude) : null;
-    const region = this.resolveRegion(card, pickupState, input.pickupCoords ?? null);
+    const region = this.applyZoneEffects(
+      this.resolveRegion(card, pickupState, input.pickupCoords ?? null),
+      zoneDecision,
+    );
     const mult = region.rateMultiplier;
 
     const fuelPrice = r.fuelType === 'petrol'
@@ -632,6 +819,9 @@ export class PricingService implements OnModuleInit {
     const tierSur       = subtotalPreZone * zr.pct;
     const restrictedSur = subtotalPreZone * (zr.restrictedPct / 100);
     const overnightSur  = zr.flat;
+    // Summed across both ends, capped by the catalogue, and disclosed
+    // through zoneNotices below. Never a silent uplift.
+    const zonePolicySur = subtotalPreZone * (Number(zoneDecision.surchargePct) / 100);
 
     /**
      * Luggage (founder 2026-08-23). Small = free everywhere. Large =
@@ -655,7 +845,7 @@ export class PricingService implements OnModuleInit {
       region.serviceFeeRideOverride ?? (card as any).serviceFees?.rideNgn ?? 0,
     ));
 
-    const vatBase = subtotalPreZone + tierSur + restrictedSur + overnightSur + serviceFee + luggageFee;
+    const vatBase = subtotalPreZone + tierSur + restrictedSur + overnightSur + zonePolicySur + serviceFee + luggageFee;
     const vat     = vatBase * Number(card.vatRate);
     const total   = Math.round((vatBase + vat) * 100) / 100;
 
@@ -680,8 +870,9 @@ export class PricingService implements OnModuleInit {
         base: Math.round(base), distanceLabour: Math.round(distanceLabour), distanceFuel: Math.round(distanceFuel),
         timeSurcharges: { night: Math.round(nightSur), peak: Math.round(peakSur), weekend: Math.round(weekendSur) },
         nightSurcharge: Math.round(nightSur),
-        zoneSurcharges: { tier: Math.round(tierSur), restricted: Math.round(restrictedSur), overnight: Math.round(overnightSur) },
+        zoneSurcharges: { tier: Math.round(tierSur), restricted: Math.round(restrictedSur), overnight: Math.round(overnightSur), zonePolicy: Math.round(zonePolicySur) },
         serviceFee, luggageFee, vatBase: Math.round(vatBase), vat: Math.round(vat), total,
+        zoneNotices: zoneDecision.notices,
       },
       driver: { total: driverTotal },
       seirsNet: Math.round((vatBase - driverTotal + serviceFee) * 100) / 100,
@@ -812,6 +1003,23 @@ export class PricingService implements OnModuleInit {
   }
 
   async computePrice(input: PricingInput): Promise<PriceBreakdown> {
+    /**
+     * ZONES FIRST, before the card, the category or a single naira.
+     *
+     * If either end is closed, or the pickup is no_pickup, or the drop is
+     * no_dropoff, or the vehicle is banned at either end, this throws
+     * here and nothing downstream ever runs. A closed area must not
+     * produce a number that could be shown, pinned or replayed later.
+     */
+    const zoneDecision = await this.evaluateZones({
+      vehicleType:      input.vehicleType,
+      scheduledAt:      input.scheduledAt,
+      pickupCoords:     input.pickupCoords,
+      dropoffCoords:    input.dropoffCoords,
+      pickupStateCode:  input.pickupStateCode,
+      dropoffStateCode: input.dropoffStateCode,
+    });
+
     const card = await this.getActiveRateCard();
     const category = await this.getCategoryByCode(input.categoryCode);
 
@@ -889,7 +1097,13 @@ export class PricingService implements OnModuleInit {
       input.dropoffStateCode ??
       (input.dropoffCoords ? detectStateFromCoords(input.dropoffCoords.latitude, input.dropoffCoords.longitude) : null);
 
-    const region = this.resolveRegion(card, pickupState, input.pickupCoords ?? null);
+    // Zone effects sit on top of whatever the card's own region block
+    // says: multiplier and fuel override from the PICKUP zone, exactly
+    // where resolveRegion already reads them from.
+    const region = this.applyZoneEffects(
+      this.resolveRegion(card, pickupState, input.pickupCoords ?? null),
+      zoneDecision,
+    );
     const mult   = region.rateMultiplier;
     const fuelKm = this.fuelPerKm(card, input.vehicleType, region);
 
@@ -1014,8 +1228,20 @@ export class PricingService implements OnModuleInit {
     const interStateSur   = labelOfTier && labelOfTier.startsWith('interState') ? tierSur : 0;
     const longDistanceSur = labelOfTier === 'crossZone' || labelOfTier === 'intraStateLongHaul' ? tierSur : 0;
 
+    /**
+     * The zone surcharge, summed across BOTH ends and capped by the
+     * catalogue before it reaches here. A job that starts in one
+     * difficult area and finishes in another is two lots of difficulty,
+     * which is precisely what the pickup-only engine could not express.
+     *
+     * Every naira of it is disclosed: `zoneNotices` below names the zone
+     * and carries its reason, because an uplift the sender cannot see
+     * the cause of is indistinguishable from a scam.
+     */
+    const zonePolicySur = subtotalPreZone * (Number(zoneDecision.surchargePct) / 100);
+
     const subtotalPreDiscount =
-      subtotalPreZone + interStateSur + longDistanceSur + overnightSur + restrictedSur;
+      subtotalPreZone + interStateSur + longDistanceSur + overnightSur + restrictedSur + zonePolicySur;
 
     const d = card.discounts;
     const bulkDisc      = input.isBulk      ? subtotalPreDiscount * (d.bulkUploadOffPercent / 100) : 0;
@@ -1154,9 +1380,10 @@ export class PricingService implements OnModuleInit {
         base, distanceLabour, distanceFuel, stopBonuses, dwellOver,
         categorySurcharge,
         timeSurcharges: { night: nightSur, peak: peakSur, weekend: weekendSur },
-        zoneSurcharges: { interState: interStateSur, longDistance: longDistanceSur, overnight: overnightSur, restricted: restrictedSur },
+        zoneSurcharges: { interState: interStateSur, longDistance: longDistanceSur, overnight: overnightSur, restricted: restrictedSur, zonePolicy: zonePolicySur },
         discounts:      { bulk: bulkDisc, recurring: recurringDisc, loyalty: loyaltyDisc, welcome: welcomeDisc },
         vatBase: subtotalVatBase, vat, serviceFee, partnerHandling, highValuePremium, total,
+        zoneNotices: zoneDecision.notices,
       },
       driver: {
         base: dBase, distanceLabour: dDistanceLabour, distanceFuel: dDistanceFuel,

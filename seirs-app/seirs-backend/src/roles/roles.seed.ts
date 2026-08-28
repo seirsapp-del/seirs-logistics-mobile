@@ -164,6 +164,24 @@ export const PERMISSION_CATALOGUE: Array<{ section: string; items: Array<{ slug:
     { slug: 'dev-usage',    label: 'Platform Stats' },
     { slug: 'dev-docs',     label: 'Developer Docs' },
   ]},
+  // Data exports (2026-08-28). Two slugs rather than one because the two
+  // kinds of file carry different risk: the money files are what an
+  // accountant reconciles, the operational files are a whole customer or
+  // driver table in a single click. An export is the easiest way for a
+  // customer list to walk out of the building, so neither is implied by
+  // simply holding the matching PAGE: being able to look a customer up
+  // is not the same decision as being able to download all of them.
+  //
+  // Deliberately NOT added to any built-in role in SYSTEM_ROLES above,
+  // and not reconciled onto any existing role either. Granting bulk
+  // data egress is a founder decision, not a default that arrives with a
+  // deploy, so only a '*' holder has these until a super admin ticks
+  // them here. This is why they are in the catalogue: without a row here
+  // a permission cannot be granted by any means.
+  { section: 'DATA EXPORTS', items: [
+    { slug: 'exports-finance',     label: 'Export money data (payouts, earnings, payments, deliveries)' },
+    { slug: 'exports-operational', label: 'Export operational data (drivers, customers, tickets)' },
+  ]},
   { section: 'SETTINGS', items: [
     { slug: 'audit-log', label: 'Audit Log' },
     { slug: 'roles',     label: 'Role Management' },

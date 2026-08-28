@@ -4,6 +4,8 @@ import { IsNull, Repository } from 'typeorm';
 import { AccountIdPrefix, generateUuidAccountId } from '../common/utils/auth-codes';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { AccountSecurityService } from '../notifications/account-security.service';
 import { DemoDataService } from './demo-data.service';
 import { MoneyResetService } from './money-reset.service';
 import { FeesModule } from '../fees/fees.module';
@@ -35,6 +37,7 @@ import { StoreDropoff } from '../partner-store/store-dropoff.entity';
 
 @Module({
   imports: [
+    NotificationsModule,
     SupportModule,
     TypeOrmModule.forFeature([
       User, ArchivedUser, Driver, Delivery, FraudFlag,
@@ -58,7 +61,11 @@ import { StoreDropoff } from '../partner-store/store-dropoff.entity';
 export class AdminModule implements OnModuleInit {
   private readonly logger = new Logger(AdminModule.name);
 
-  constructor(@InjectRepository(User) private readonly usersRepo: Repository<User>) {}
+  constructor(
+    @InjectRepository(User) private readonly usersRepo: Repository<User>,
+    private readonly adminService: AdminService,
+    private readonly accountSecurity: AccountSecurityService,
+  ) {}
 
   /**
    * Backfill ADM- SEIRS IDs for staff created before 2026-08-13, when
@@ -70,6 +77,16 @@ export class AdminModule implements OnModuleInit {
    * backup or a fresh environment self-heals the same way.
    */
   async onModuleInit() {
+    /**
+     * Hand AdminService the security notifier after construction.
+     *
+     * It cannot be a constructor dependency: that creates a module cycle
+     * through DeliveriesModule. Same pattern TravelBuddyModule uses for
+     * paymentsServiceRef, and it is what lets a suspended person actually
+     * be told they were suspended.
+     */
+    this.adminService.accountSecurityRef = this.accountSecurity;
+
     /**
      * Account-deletion columns production never got.
      *

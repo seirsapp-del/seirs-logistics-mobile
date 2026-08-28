@@ -9,7 +9,7 @@ import {
   Ticket, Lightbulb, FileText, Percent, BarChart2, BarChart3, FileBarChart, Inbox,
   UserCog, ScrollText, Settings, LogOut, ChevronLeft, ChevronRight,
   Activity, Send, MoonStar, Mail, Code2, BookOpen,
-  Globe, List, Trash2, CircleDot,
+  Globe, List, Trash2, Download, CircleDot, Rocket,
 } from 'lucide-react';
 import { canAccess, canAccessFromUser, isSuperAdmin, isSuperAdminFromUser, isNavItemVisible, ROLE_COLORS, ROLE_LABELS, NAV_SECTIONS } from '@/lib/rbac';
 import type { AdminRoleType } from '@/lib/rbac';
@@ -33,7 +33,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: 
   Ticket, Lightbulb, FileText, Percent, BarChart2, BarChart3, FileBarChart, Inbox,
   UserCog, ScrollText, Settings,
   Activity, Send, MoonStar, Mail, Code2, BookOpen,
-  Globe, List, Trash2,
+  Globe, List, Trash2, Download, Rocket,
 };
 
 // Anything unmapped still gets a bullet, so it reads as a link and lines

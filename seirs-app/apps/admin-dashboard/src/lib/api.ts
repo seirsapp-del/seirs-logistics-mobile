@@ -1,4 +1,5 @@
 ﻿import { getToken, touchActivity } from './auth';
+import type { LaunchResetReport } from './launch-reset-types';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 
@@ -169,7 +170,11 @@ export const adminApi = {
     updateRole:    (id: string, adminRole: string) =>
       req<any>(`/admin/admins/${id}/role`, { method: 'PATCH', body: JSON.stringify({ adminRole }) }),
     resetPassword: (id: string)                => req<any>(`/admin/admins/${id}/reset-password`, { method: 'POST' }),
-    deactivate:    (id: string)                => req<any>(`/admin/admins/${id}/deactivate`, { method: 'PATCH' }),
+    // deactivate was removed 2026-08-28. It called a route that never
+    // existed, nothing in the UI used it, and building it would have
+    // been the wrong shape: a plain deactivate leaves adminRole intact,
+    // which is precisely the dormant-super-admin vector offboardAdmin
+    // wipes the role to prevent. Offboarding is the supported path.
     reactivate:    (id: string)                => req<any>(`/admin/admins/${id}/reactivate`, { method: 'PATCH' }),
     setupTOTP:     (id: string)                => req<any>(`/admin/admins/${id}/totp/setup`, { method: 'POST' }),
     confirmTOTP:   (id: string, code: string)  =>
@@ -295,6 +300,25 @@ export const adminApi = {
     update: (data: any)  => req<any>('/admin/pricing', { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
+  /**
+   * SEIRS Zones. One model for "inside this area, pricing behaves
+   * differently", including the case none of the three old half-forms
+   * could express: the area is CLOSED.
+   */
+  zones: {
+    list:        ()            => req<any[]>('/admin/zones'),
+    options:     ()            => req<any>('/admin/zones/options'),
+    permissions: ()            => req<{ canClose: boolean; canPrice: boolean }>('/admin/zones/permissions'),
+    getOne:      (id: string)  => req<any>('/admin/zones/' + id),
+    create:      (body: any)   => req<any>('/admin/zones', { method: 'POST', body: JSON.stringify(body) }),
+    update:      (id: string, body: any) =>
+      req<any>('/admin/zones/' + id, { method: 'PATCH', body: JSON.stringify(body) }),
+    setPublished: (id: string, published: boolean) =>
+      req<any>('/admin/zones/' + id + '/publish', { method: 'POST', body: JSON.stringify({ published }) }),
+    deleteOne:   (id: string)  => req<any>('/admin/zones/' + id, { method: 'DELETE' }),
+    preview:     (body: any)   => req<any>('/admin/zones/preview', { method: 'POST', body: JSON.stringify(body) }),
+  },
+
   // Spec V8 §3.9. Fee Catalogue (single source of truth for all fees)
   fees: {
     list:    ()                                  => req<any[]>('/admin/fees'),
@@ -396,9 +420,27 @@ export const adminApi = {
       }),
   },
 
+  /**
+   * Travel Buddy ops.
+   *
+   * Seats are the one product where SEIRS is not holding a parcel but a
+   * person, and where a fare can be forfeited on one party's word. That
+   * makes it the product most likely to produce an argument, and an
+   * argument support cannot see into is an argument SEIRS loses.
+   */
+  travelBuddy: {
+    trips:           (limit = 50)    => req<any[]>(`/travel-buddy/admin/trips?limit=${limit}`),
+    bookings:        (status?: string, limit = 100) =>
+      req<any[]>(`/travel-buddy/admin/bookings?limit=${limit}${status ? `&status=${status}` : ''}`),
+    noShows:         (limit = 50)    => req<any[]>(`/travel-buddy/admin/no-shows?limit=${limit}`),
+    pendingPayments: (limit = 50)    => req<any[]>(`/travel-buddy/admin/pending-payments?limit=${limit}`),
+    dropReview:      (limit = 50)    => req<any[]>(`/travel-buddy/admin/drop-review?limit=${limit}`),
+  },
+
   // Spec V8 §3.13. NDPR admin tools (A32 + A33)
   ndpr: {
     exportUser:      (id: string)                 => req<any>(`/admin/users/${id}/export`),
+
     hardDeleteUser:  (id: string, reason: string) =>
       req<{ ok: true; archivedAt: string }>(`/admin/users/${id}/hard-delete`, {
         method: 'POST', body: JSON.stringify({ reason }),
@@ -725,4 +767,84 @@ export const adminApi = {
       demoDeliveriesCreated: number;
     }>('/admin/demo-data/seed', { method: 'POST' }),
   },
+
+  /**
+   * Launch reset (super admin only). Lives on its own /launch-reset
+   * controller rather than under /admin, because the one operation that
+   * deletes accounts in bulk should not be reachable by fat-fingering a
+   * neighbouring admin route.
+   *
+   * preview() is a read. execute() refuses without the typed phrase AND
+   * without the deletable count the preview showed, so a replayed
+   * request cannot run against a set nobody reviewed.
+   */
+  launchReset: {
+    preview: () => req<LaunchResetReport>('/launch-reset/preview'),
+    execute: (confirm: string, expectedDeletableAccounts: number) =>
+      req<LaunchResetReport>('/launch-reset/execute', {
+        method: 'POST',
+        body: JSON.stringify({ confirm, expectedDeletableAccounts }),
+      }),
+  },
 };
+
+// -- CSV exports ---------------------------------------------------------
+
+export type ExportKey =
+  | 'driver-payouts'
+  | 'driver-earnings'
+  | 'payments'
+  | 'deliveries'
+  | 'drivers'
+  | 'customers'
+  | 'support-tickets';
+
+/**
+ * Pull one CSV export and hand it to the browser as a download.
+ *
+ * Not routed through req() above: that helper sets a JSON content type
+ * and ends in res.json(), and these responses are a stream of text/csv
+ * that can run to megabytes. The body is read as a blob instead.
+ *
+ * The filename is rebuilt here rather than read from the response's
+ * Content-Disposition header. The API sets that header correctly, but
+ * CORS hides every non-simple response header from JavaScript unless the
+ * server lists it in exposedHeaders, and main.ts does not. Rebuilding it
+ * from the same key and range the request carried gives the identical
+ * name with no server change.
+ */
+export async function downloadExportCsv(key: ExportKey, from: string, to: string): Promise<void> {
+  const token = getToken();
+  touchActivity();
+
+  const qs  = new URLSearchParams({ from, to }).toString();
+  const res = await fetch(`${BASE}/admin/exports/${key}?${qs}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    // Same session handling as req(): a 30-minute token behind an
+    // 8-hour cookie means an idle tab 401s, and silently doing nothing
+    // would look like an export with no rows.
+    if (res.status === 401 && typeof window !== 'undefined') {
+      const { clearSession } = await import('./auth');
+      clearSession();
+      if (!window.location.pathname.startsWith('/login')) {
+        const back = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.replace(`/login?reason=expired&from=${back}`);
+      }
+    }
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as any).message ?? `Export failed (${res.status}).`);
+  }
+
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `seirs-${key}_${from}_to_${to}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

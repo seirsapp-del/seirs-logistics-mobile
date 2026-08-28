@@ -51,6 +51,12 @@ export const ROLE_COLORS: Record<AdminRoleType, string> = {
 // This list is ALSO seeded, separately, in the backend at
 // seirs-backend/src/roles/roles.seed.ts SYSTEM_ROLES, and the two have
 // drifted. See the note on canAccessFromUser.
+// 'exports-finance' and 'exports-operational' appear in NO role below,
+// on purpose, and the backend seed agrees. Bulk data egress is a founder
+// decision rather than something that arrives with a deploy, so only a
+// '*' holder has it until a super admin ticks it on a role in Role
+// Management. Both slugs are in the backend PERMISSION_CATALOGUE so they
+// are two clicks away, not a code change.
 export const PERMISSIONS: Record<AdminRoleType, string[]> = {
   super_admin:       ['*'],
   ops_manager:       ['sos','overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','support','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs'],
@@ -215,6 +221,13 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/wallet':                  'wallet',
   '/pricing':                 'pricing',
   '/service-catalog':         'pricing',
+  // SEIRS Zones sits under the pricing key on purpose. A zone is a
+  // pricing surface first, and the two writes that are genuinely
+  // dangerous (closing an area, repricing one) are gated separately in
+  // the API by zones.close and zones.price, which is where a refusal
+  // actually protects anybody. An unlisted route is denied outright
+  // since 2026-08-25, so without this row the page would be unreachable.
+  '/zones':                   'pricing',
   '/fees':                    'fees',
   '/referrals':               'referrals',
   '/insurance':               'insurance',
@@ -227,6 +240,10 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/disputes':                'disputes',
   '/last-order-compliance':   'last-order-compliance',
   '/interstate':              'interstate',
+  // Seat ops share the interstate grant: it is the same product and the
+  // same people work it, so a second permission would only be a second
+  // thing to forget when a role is created.
+  '/travel-buddy':            'interstate',
 
   '/health':                  'health',
   '/notify':                  'notify',
@@ -250,10 +267,21 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/analytics':               'analytics',
   '/reports':                 'reports',
 
+  // Two permissions, either of which opens the page, because the money
+  // exports and the operational exports are separate grants and a
+  // finance officer holding only the first must still be able to reach
+  // the screen. permsAllow understands the '|' form; the page then
+  // hides each individual button the viewer was not granted.
+  '/exports':                 'exports-finance|exports-operational',
+
   '/admins':                  'super_admin_only',
   '/roles':                   'roles',
   '/audit-log':               'audit-log',
   '/settings':                'super_admin_only',
+  // The launch reset deletes accounts in bulk. Super admin only, and
+  // never a page a role can be granted: 'super_admin_only' is an
+  // assertion about WHO the account is, so even a '*' holder fails it.
+  '/launch-reset':            'super_admin_only',
 };
 
 /**
@@ -303,6 +331,14 @@ export function permsAllow(perms: string[], permission: string, slug?: string): 
   // a fully enabled screen whose every save returns 403. That is the
   // same defect already documented on the NDPR buttons above.
   if (permission === 'super_admin_only') return slug === AdminRole.SUPER_ADMIN;
+  // 'a|b' means either grant opens the route. Added for /exports, whose
+  // two permissions are deliberately separate (money is a stricter grant
+  // than operational data) while the page they share is one route. No
+  // existing permission slug contains a pipe, so this changes nothing
+  // for any other row in the table.
+  if (permission.includes('|')) {
+    return permission.split('|').some((p) => permsAllow(perms, p, slug));
+  }
   if (perms.includes('*')) return true;
   if (ALWAYS_GRANTED.includes(permission)) return true;
   return perms.includes(permission);
@@ -477,6 +513,7 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
       { href: '/wallet',          label: 'Wallet & Payouts',   icon: 'Wallet'     },
       { href: '/pricing',         label: 'Pricing Engine',     icon: 'Tag'        },
       { href: '/service-catalog', label: 'Service Catalog',    icon: 'List'       },
+      { href: '/zones',           label: 'Zones',             icon: 'Map'        },
       { href: '/fees',            label: 'Fee Catalogue',      icon: 'DollarSign' },
       { href: '/referrals',       label: 'Referrals',          icon: 'Share2'     },
       { href: '/insurance',       label: 'Insurance Partners', icon: 'Shield'     },
@@ -493,6 +530,7 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
       { href: '/disputes',              label: 'Liability Disputes',    icon: 'ShieldCheck'    },
       { href: '/last-order-compliance', label: 'Last-Order Compliance', icon: 'MoonStar'       },
       { href: '/interstate',            label: 'Interstate Trips',      icon: 'Truck'          },
+      { href: '/travel-buddy',          label: 'Travel Buddy',          icon: 'Users'          },
     ],
   },
   {
@@ -540,6 +578,10 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     items: [
       { href: '/analytics', label: 'Analytics', icon: 'BarChart2'    },
       { href: '/reports',   label: 'Reports',   icon: 'FileBarChart' },
+      // Until 2026-08-28 the only export in the whole admin was the NDPR
+      // bundle on one driver, so reconciling a payout run against a bank
+      // statement meant retyping numbers off a web page.
+      { href: '/exports',   label: 'Data Exports', icon: 'Download'  },
     ],
   },
   {
@@ -549,6 +591,9 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
       { href: '/roles',     label: 'Role Management',  icon: 'ShieldCheck' },
       { href: '/audit-log', label: 'Audit Log',        icon: 'ScrollText'  },
       { href: '/settings',  label: 'System Settings',  icon: 'Settings'    },
+      // Last in the sidebar, and last for a reason: it is the only
+      // screen on the platform that deletes accounts in bulk.
+      { href: '/launch-reset', label: 'Launch Reset',    icon: 'Rocket'      },
     ],
   },
 ];

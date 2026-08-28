@@ -9,6 +9,7 @@ import { ArchivedUser } from './archived-user.entity';
 import { UserProfileAudit, ProfileFieldName } from './user-profile-audit.entity';
 import { AccountIdPrefix, generateAccountId } from '../common/utils/auth-codes';
 import { SavedAddress } from '../addresses/saved-address.entity';
+import { AccountSecurityService } from '../notifications/account-security.service';
 
 const ARCHIVE_GRACE_DAYS = 30;
 
@@ -105,6 +106,7 @@ export class UsersService implements OnModuleInit {
     @InjectRepository(ArchivedUser)      private archiveRepo:     Repository<ArchivedUser>,
     @InjectRepository(UserProfileAudit)  private auditRepo:       Repository<UserProfileAudit>,
     @InjectRepository(SavedAddress)      private savedAddrRepo:   Repository<SavedAddress>,
+    private readonly security: AccountSecurityService,
   ) {}
 
   findById(id: string) {
@@ -367,6 +369,17 @@ export class UsersService implements OnModuleInit {
       deletionRequestedBy: 'self',
       deletionReason:      reason ?? null,
     } as any);
+
+    /**
+     * The grace window is only a safety net if the person knows it is
+     * running. Somebody whose session was stolen and used to schedule a
+     * deletion had, until now, nothing at all telling them the clock
+     * had started, and would find out when the account was already
+     * gone. Unawaited so a mail outage cannot fail the request itself.
+     */
+    this.security.deletionRequested(userId, scheduledAt)
+      .catch(e => this.logger.warn(`deletion-scheduled notice failed for ${userId}: ${e?.message ?? e}`));
+
     return {
       message: `Account scheduled for deletion on ${scheduledAt.toISOString().slice(0, 10)}. Sign in anytime before then and tap Cancel Deletion to keep your account.`,
       scheduledAt: scheduledAt.toISOString(),
@@ -389,6 +402,13 @@ export class UsersService implements OnModuleInit {
       deletionRequestedBy: null,
       deletionReason:      null,
     } as any);
+
+    // Cancelling needs no password re-entry, so a stolen session can
+    // also keep an account alive that its owner wanted gone. Same
+    // reasoning as the schedule notice: say it happened, and when.
+    this.security.deletionCancelled(userId)
+      .catch(e => this.logger.warn(`deletion-cancelled notice failed for ${userId}: ${e?.message ?? e}`));
+
     return { message: 'Deletion cancelled. Your account is safe.' };
   }
 
@@ -419,6 +439,13 @@ export class UsersService implements OnModuleInit {
       deletionRequestedBy: `admin:${adminId}`,
       deletionReason:      reason,
     } as any);
+
+    // An admin scheduling it is the case where the account holder is
+    // LEAST likely to already know, so the notice matters more here
+    // than on the self-service path above.
+    this.security.deletionRequested(userId, scheduledAt)
+      .catch(e => this.logger.warn(`admin deletion-scheduled notice failed for ${userId}: ${e?.message ?? e}`));
+
     return { ok: true, scheduledAt: scheduledAt.toISOString() };
   }
 
@@ -426,12 +453,23 @@ export class UsersService implements OnModuleInit {
   async adminCancelDeletion(userId: string) {
     const user = await this.repo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('Account not found');
+    const hadPending = !!user.deletionScheduledAt;
     await this.repo.update(userId, {
       deletionRequestedAt: null,
       deletionScheduledAt: null,
       deletionRequestedBy: null,
       deletionReason:      null,
     } as any);
+
+    // Only when something was actually cancelled. This endpoint is safe
+    // to call on an account with no pending deletion, and telling
+    // somebody their deletion was cancelled when they never asked for
+    // one is how a real alert gets trained into background noise.
+    if (hadPending) {
+      this.security.deletionCancelled(userId)
+        .catch(e => this.logger.warn(`admin deletion-cancelled notice failed for ${userId}: ${e?.message ?? e}`));
+    }
+
     return { ok: true };
   }
 

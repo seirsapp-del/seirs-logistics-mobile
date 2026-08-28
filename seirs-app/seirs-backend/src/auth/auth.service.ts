@@ -22,6 +22,7 @@ import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { MailService } from '../mail/mail.service';
+import { AccountSecurityService } from '../notifications/account-security.service';
 import { ConfigService } from '@nestjs/config';
 import {
   AccountIdPrefix,
@@ -30,6 +31,18 @@ import {
   generateOtp,
   generateUuidAccountId,
 } from '../common/utils/auth-codes';
+
+/**
+ * Caller detail the sign-in paths use to spot an unfamiliar device.
+ *
+ * Optional throughout, because an older client that does not send a
+ * user-agent must still be able to sign in. A missing agent costs only
+ * the new-device alert, and silence is the right answer when there is
+ * nothing to tell one device from another.
+ */
+export interface SignInContext {
+  userAgent?: string | null;
+}
 
 @Injectable()
 export class AuthService {
@@ -44,6 +57,7 @@ export class AuthService {
     private jwtService:  JwtService,
     private mailService: MailService,
     private cfg:         ConfigService,
+    private security:    AccountSecurityService,
   ) {
     this.googleClient = new OAuth2Client(cfg.get<string>('GOOGLE_CLIENT_ID'));
   }
@@ -260,7 +274,27 @@ export class AuthService {
   private static readonly MAX_ATTEMPTS  = 5;
   private static readonly LOCKOUT_MS    = 15 * 60 * 1000; // 15 minutes
 
-  async login(dto: LoginDto) {
+  /**
+   * Fire the two notices every sign-in path owes the account holder.
+   *
+   * Both are deliberately unawaited. A sign-in must not get slower, and
+   * must not fail, because a push or an email is slow or dead:
+   * AccountSecurityService swallows its own errors, and the extra catch
+   * here means even an unexpected rejection cannot take the process
+   * down. The lock notice in particular has to go out on a request that
+   * is about to throw 401, so it cannot be part of the response path.
+   */
+  private noteSignInSuccess(userId: string, ctx?: SignInContext): void {
+    this.security.recordSignIn(userId, { userAgent: ctx?.userAgent ?? null })
+      .catch(e => this.logger.warn(`sign-in device check failed for ${userId}: ${e?.message ?? e}`));
+  }
+
+  private noteAccountLocked(userId: string, unlockAt: Date): void {
+    this.security.accountLocked(userId, unlockAt)
+      .catch(e => this.logger.warn(`lockout notice failed for ${userId}: ${e?.message ?? e}`));
+  }
+
+  async login(dto: LoginDto, ctx?: SignInContext) {
     const user = await this.usersRepo
       .createQueryBuilder('u')
       .addSelect('u.password')
@@ -304,6 +338,7 @@ export class AuthService {
         update.lockedUntil = new Date(Date.now() + AuthService.LOCKOUT_MS);
       }
       await this.usersRepo.update(user.id, update as any);
+      if (update.lockedUntil) this.noteAccountLocked(user.id, update.lockedUntil);
       throw new UnauthorizedException('Invalid email or password.');
     }
 
@@ -312,6 +347,7 @@ export class AuthService {
     // via `pendingDeletion` in the auth response and the user cancels
     // explicitly via /users/me/cancel-deletion.
     await this.usersRepo.update(user.id, { failedLoginAttempts: 0, lockedUntil: null } as any);
+    this.noteSignInSuccess(user.id, ctx);
     return this.buildAuthResponse(user);
   }
 
@@ -483,6 +519,20 @@ export class AuthService {
     await this.usersRepo.update(userId, {
       password: await bcrypt.hash(newPassword, 12),
     });
+
+    /**
+     * Tell them it happened, even though they just did it.
+     *
+     * The notice is not for the person who typed it. It is for the
+     * person who did NOT, whose session token was stolen: a change made
+     * from a hijacked session is otherwise completely silent, and the
+     * owner discovers it the next time their own password stops
+     * working. Unawaited so a dead mail transport cannot turn a
+     * successful password change into an error.
+     */
+    this.security.passwordChanged(userId)
+      .catch(e => this.logger.warn(`password-change notice failed for ${userId}: ${e?.message ?? e}`));
+
     return { message: 'Password changed.' };
   }
 
@@ -510,6 +560,12 @@ export class AuthService {
       passwordResetToken:  null,
       passwordResetExpiry: null,
     });
+
+    // The reset path matters more than the deliberate change above: it
+    // is the one that needs no knowledge of the old password, so it is
+    // the route a takeover actually takes.
+    this.security.passwordChanged(user.id)
+      .catch(e => this.logger.warn(`password-reset notice failed for ${user.id}: ${e?.message ?? e}`));
 
     return { message: 'Password reset successful. You can now log in.' };
   }
@@ -637,7 +693,7 @@ export class AuthService {
     return { requiresOtp: true, email, message: 'Account created. Please verify your email.' };
   }
 
-  async adminLogin(email: string, password: string) {
+  async adminLogin(email: string, password: string, ctx?: SignInContext) {
     const user = await this.usersRepo
       .createQueryBuilder('u')
       .addSelect('u.password')
@@ -667,14 +723,16 @@ export class AuthService {
         update.lockedUntil = new Date(Date.now() + AuthService.LOCKOUT_MS);
       }
       await this.usersRepo.update(user.id, update as any);
+      if (update.lockedUntil) this.noteAccountLocked(user.id, update.lockedUntil);
       throw new UnauthorizedException('Invalid email or password.');
     }
 
     await this.usersRepo.update(user.id, { failedLoginAttempts: 0, lockedUntil: null });
+    this.noteSignInSuccess(user.id, ctx);
     return this.buildAuthResponse(user);
   }
 
-  async businessLogin(email: string, password: string) {
+  async businessLogin(email: string, password: string, ctx?: SignInContext) {
     const user = await this.usersRepo
       .createQueryBuilder('u')
       .addSelect('u.password')
@@ -705,10 +763,12 @@ export class AuthService {
         update.lockedUntil = new Date(Date.now() + AuthService.LOCKOUT_MS);
       }
       await this.usersRepo.update(user.id, update as any);
+      if (update.lockedUntil) this.noteAccountLocked(user.id, update.lockedUntil);
       throw new UnauthorizedException('Invalid email or password.');
     }
 
     await this.usersRepo.update(user.id, { failedLoginAttempts: 0, lockedUntil: null });
+    this.noteSignInSuccess(user.id, ctx);
     return this.buildAuthResponse(user);
   }
 

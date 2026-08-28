@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -28,20 +28,29 @@ export class AuthController {
   // Stricter limit: 10 login attempts per minute per IP before lockout
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Headers('user-agent') userAgent?: string) {
+    // The user-agent is the only thing distinguishing one sign-in from
+    // another, so it has to reach the service for the new-device alert
+    // to have anything to compare against.
+    return this.authService.login(dto, { userAgent });
   }
 
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('business-login')
-  businessLogin(@Body() body: { email: string; password: string }) {
-    return this.authService.businessLogin(body.email, body.password);
+  businessLogin(
+    @Body() body: { email: string; password: string },
+    @Headers('user-agent') userAgent?: string,
+  ) {
+    return this.authService.businessLogin(body.email, body.password, { userAgent });
   }
 
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('admin-login')
-  adminLogin(@Body() body: { email: string; password: string }) {
-    return this.authService.adminLogin(body.email, body.password);
+  adminLogin(
+    @Body() body: { email: string; password: string },
+    @Headers('user-agent') userAgent?: string,
+  ) {
+    return this.authService.adminLogin(body.email, body.password, { userAgent });
   }
 
   @Throttle({ default: { ttl: 60000, limit: 5 } })

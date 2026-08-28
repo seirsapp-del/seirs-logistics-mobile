@@ -9,6 +9,7 @@ import { Wallet } from './wallet.entity';
 import { SavedCard } from './saved-card.entity';
 import { FlutterwaveService } from './flutterwave.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AccountSecurityService } from '../notifications/account-security.service';
 import { Delivery } from '../deliveries/delivery.entity';
 import { User } from '../users/user.entity';
 import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
@@ -38,6 +39,7 @@ export class PaymentsService {
     private loyaltyService:     LoyaltyService,
     private dataSource: DataSource,
     private notificationsService: NotificationsService,
+    private accountSecurity: AccountSecurityService,
   ) {}
 
   // ── SavedCard CRUD (Flutterwave-tokenized cards for one-tap reuse) ───────
@@ -1431,16 +1433,32 @@ export class PaymentsService {
     bankName: string,
     pending: boolean,
   ): Promise<void> {
-    const last4 = String(accountNumber ?? '').slice(-4);
-    const where = `${bankName ?? 'your bank'} ending ${last4}`;
+    /**
+     * Routed through AccountSecurityService rather than sending its own
+     * push (2026-08-28).
+     *
+     * The in-app notice below has existed since this method was
+     * written. What it never had was an EMAIL, and a payout redirect is
+     * the event on this platform most deserving of one: a push lands on
+     * a phone that, in exactly the scenario this exists for, is in
+     * somebody else's hand. Email is the channel the real owner still
+     * controls.
+     *
+     * Deliberately NOT a second notification. One event, one notice,
+     * two channels. Two rows in the inbox for one change would make a
+     * person trust both of them less.
+     *
+     * It also stops using sendToUser(), which refuses to write to a
+     * deactivated account: a payout change on an account an admin just
+     * froze for suspected takeover is precisely when the owner must
+     * still be told.
+     */
     try {
-      await this.notificationsService?.sendToUser({
-        userId,
-        title: pending ? 'Payout account change requested' : 'Payout account changed',
-        body: pending
-          ? `A request to send your payouts to ${where} is being reviewed. If this was not you, contact support now.`
-          : `Your payouts will now go to ${where}. If this was not you, contact support now.`,
-      });
+      if (pending) {
+        await this.accountSecurity.bankChangeRequested(userId, accountNumber, bankName);
+      } else {
+        await this.accountSecurity.bankAccountSet(userId, accountNumber, bankName);
+      }
     } catch (e: any) {
       // Never let a failed notification block the change itself: the
       // holder asked for it and a silent notification outage must not
@@ -1636,16 +1654,19 @@ export class PaymentsService {
      * The message names the last four digits only: enough for a real
      * owner to recognise their own account, useless over a shoulder.
      */
-    const pendingLast4 = String(wallet.pendingBankAccountNumber ?? '').slice(-4);
-    const pendingBank  = wallet.pendingBankName ?? 'your bank';
+    // Same single notice as before, now carried by email as well as
+    // push (2026-08-28). Approval is the moment money starts going
+    // somewhere new, and a push is the channel most easily missed by
+    // the one person who has to see it. Masking to the last four
+    // digits happens inside AccountSecurityService, so no call site can
+    // put a whole NUBAN in an email by forgetting to slice it.
     try {
-      await this.notificationsService?.sendToUser({
+      await this.accountSecurity.bankChangeResolved(
         userId,
-        title: approve ? 'Payout account updated' : 'Payout account change declined',
-        body: approve
-          ? `Your payouts now go to ${pendingBank} ending ${pendingLast4}. If you did not request this, contact support now.`
-          : `Your request to change payouts to ${pendingBank} ending ${pendingLast4} was not approved. Your current account is unchanged.`,
-      });
+        approve,
+        wallet.pendingBankAccountNumber ?? '',
+        wallet.pendingBankName ?? '',
+      );
     } catch (e: any) {
       this.logger.warn(`Bank-resolution notification failed for ${userId}: ${e?.message}`);
     }

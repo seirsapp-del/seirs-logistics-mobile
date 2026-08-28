@@ -266,6 +266,23 @@ export class User {
   @Column({ type: 'jsonb', nullable: true })
   notificationPrefs: Record<string, boolean>;
 
+  /**
+   * Fingerprints of devices this account has already signed in from.
+   *
+   * Exists so "a login from a new device" is answerable at all. Without
+   * a memory of what is normal, every sign-in looks identical and the
+   * one that matters, a stranger on a phone in another state, is
+   * indistinguishable from the owner opening the app.
+   *
+   * Holds salted SHA-256 hashes only, never the raw user-agent, so the
+   * table cannot be mined to profile anyone's handset. Capped at
+   * MAX_KNOWN_DEVICES in AccountSecurityService: an unbounded list
+   * would eventually mean every device is known and the alert never
+   * fires again.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  knownDeviceHashes: string[] | null;
+
   @OneToMany(() => Delivery, (d) => d.customer)
   deliveries: Delivery[];
 

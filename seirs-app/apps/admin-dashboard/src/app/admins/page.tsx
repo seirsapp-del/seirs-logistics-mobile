@@ -802,9 +802,16 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
           </div>
         </div>
       )}
+      {/*
+        The copy says what actually happens. Offboarding wipes the role on
+        purpose, so a reactivated account comes back able to sign in and do
+        nothing. The old wording promised access "based on their role",
+        which would have had a super admin press this expecting a colleague
+        restored, then field a call about a dashboard full of locked doors.
+      */}
       {confirm === 'reactivate' && (
         <ConfirmDialog
-          message={`Reactivate ${getFullName(member)}'s account? They will regain dashboard access based on their role.`}
+          message={`Reactivate ${getFullName(member)}'s account? They will be able to sign in again, but with NO role: offboarding removed it. Grant them a role afterwards or they will see nothing.`}
           onConfirm={handleReactivate}
           onCancel={() => setConfirm(null)}
           confirmLabel="Reactivate"

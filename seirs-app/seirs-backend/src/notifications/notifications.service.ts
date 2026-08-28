@@ -58,8 +58,34 @@ export class NotificationsService {
     [NotificationType.GENERAL]: 'marketing',
   };
 
+  /**
+   * Types that ignore notificationPrefs entirely, on purpose.
+   *
+   * A person may mute marketing. They may not mute "your password was
+   * changed" or "your payouts now go to a different bank", because that
+   * notice existing is the ONLY thing that makes an account takeover
+   * detectable by its owner. An attacker who reaches the settings
+   * screen would otherwise switch the alarm off before pulling the
+   * money, and the first the owner hears of it is a payday that never
+   * arrives.
+   *
+   * This is deliberately a hard-coded set rather than a pref key with a
+   * default, so no admin toggle, migration or badly-shaped prefs blob
+   * can ever turn it off. The apps must not render these as settings
+   * rows at all: a locked switch that pretends to be a choice is worse
+   * than no switch.
+   */
+  private static readonly SECURITY_TYPES: ReadonlySet<NotificationType> = new Set([
+    NotificationType.SECURITY_ALERT,
+    NotificationType.ACCOUNT_UPDATE,
+  ]);
+
   /** False when the recipient has explicitly switched this type off. */
   private async wantsNotification(userId: string, type: NotificationType): Promise<boolean> {
+    // Checked before the map lookup so the bypass is a stated rule and
+    // not an accident of these types happening to be absent from it.
+    if (NotificationsService.SECURITY_TYPES.has(type)) return true;
+
     const key = NotificationsService.PREF_KEY_BY_TYPE[type];
     if (!key) return true;
     try {

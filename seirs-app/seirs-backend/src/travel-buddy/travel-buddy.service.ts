@@ -1299,6 +1299,162 @@ export class TravelBuddyService {
    * actively disputed. Ops works this list; the rider is never blocked
    * mid-journey by it.
    */
+  /**
+   * The four ops views the spec asked for, beside the drop review queue.
+   *
+   * Travel Buddy is the one product where SEIRS is not holding a parcel
+   * but a person, and where a fare can be forfeited on one party's word.
+   * That makes it the product most likely to produce an argument, and an
+   * argument support cannot see into is an argument SEIRS loses.
+   *
+   * Every one of these carries the ids support needs to click through to
+   * a profile, because the standing rule is that a person named on a
+   * screen is a link to that person, never a dead string.
+   */
+
+  /** Declared trips with their route and how full each segment is. */
+  async adminTrips(limit = 50) {
+    const trips: Array<any> = await this.bookingsRepo.manager.query(
+      `SELECT t.id, t."fromCity", t."toCity", t."departAt", t."routeKm",
+              t."seatsTotal", t."seatsBooked", t.status,
+              u.id AS "driverUserId", u.name AS "driverName", u."accountId" AS "driverAccountId",
+              (SELECT COUNT(*) FROM "trip_stops" s WHERE s."trip_id" = t.id) AS "stopCount",
+              (SELECT COUNT(*) FROM "seat_bookings" sb
+                WHERE sb."trip_id" = t.id
+                  AND sb.status = ANY(ARRAY['booked','boarded','dropped','no_show'])) AS "seatBookings"
+         FROM "driver_trips" t
+         LEFT JOIN "drivers" d ON d.id = t."driverId"
+         LEFT JOIN "users" u ON u.id = d."userId"
+        ORDER BY t."departAt" DESC
+        LIMIT $1`,
+      [limit],
+    ).catch(() => []);
+    return trips.map((t) => ({
+      ...t,
+      routeKm:      t.routeKm == null ? null : Number(t.routeKm),
+      stopCount:    Number(t.stopCount ?? 0),
+      seatBookings: Number(t.seatBookings ?? 0),
+      // A two-city trip that never got stops is an old declaration, and
+      // its seats are still priced on the whole route.
+      legacyTwoCity: Number(t.stopCount ?? 0) < 2,
+    }));
+  }
+
+  /** Every seat booking, newest first, filterable by status. */
+  async adminBookings(status?: string, limit = 100) {
+    const rows: Array<any> = await this.bookingsRepo.manager.query(
+      `SELECT b.id, b.status, b.seats, b."segment_km" AS "segmentKm",
+              b."price_ngn" AS "priceNgn", b."refund_ngn" AS "refundNgn",
+              b."requested_at" AS "requestedAt", b."paid_at" AS "paidAt",
+              b."trip_id" AS "tripId",
+              t."fromCity", t."toCity", t."departAt",
+              p.id AS "passengerUserId", p.name AS "passengerName",
+              du.id AS "driverUserId", du.name AS "driverName",
+              bs.city AS "boardCity", als.city AS "alightCity"
+         FROM "seat_bookings" b
+         LEFT JOIN "driver_trips" t ON t.id = b."trip_id"
+         LEFT JOIN "drivers" d ON d.id = t."driverId"
+         LEFT JOIN "users" du ON du.id = d."userId"
+         LEFT JOIN "users" p ON p.id = b."passenger_id"
+         LEFT JOIN "trip_stops" bs ON bs.id = b."board_stop_id"
+         LEFT JOIN "trip_stops" als ON als.id = b."alight_stop_id"
+        WHERE ($1::text IS NULL OR b.status = $1::text)
+        ORDER BY b."requested_at" DESC
+        LIMIT $2`,
+      [status ?? null, limit],
+    ).catch(() => []);
+    return rows.map((r) => ({
+      ...r,
+      segmentKm: r.segmentKm == null ? null : Number(r.segmentKm),
+      priceNgn:  r.priceNgn  == null ? null : Number(r.priceNgn),
+      refundNgn: r.refundNgn == null ? null : Number(r.refundNgn),
+    }));
+  }
+
+  /**
+   * Forfeited fares, each with its evidence trail attached.
+   *
+   * A forfeited fare will be disputed, and a passenger who genuinely was
+   * there and got left will say so. Support opening this needs the wait,
+   * the rider's position and every attempt to reach them in one place,
+   * or it is one person's word against another.
+   */
+  async adminNoShows(limit = 50) {
+    const rows: Array<any> = await this.bookingsRepo.manager.query(
+      `SELECT b.id, b."price_ngn" AS "priceNgn", b."contact_attempts" AS "contactAttempts",
+              b."arrived_at" AS "arrivedAt", b."no_show_deadline_at" AS "noShowDeadlineAt",
+              b."no_show_at" AS "noShowAt",
+              b."arrived_lat" AS "arrivedLat", b."arrived_lng" AS "arrivedLng",
+              b."departed_lat" AS "departedLat", b."departed_lng" AS "departedLng",
+              t."fromCity", t."toCity", t."departAt",
+              p.id AS "passengerUserId", p.name AS "passengerName",
+              du.id AS "driverUserId", du.name AS "driverName",
+              bs.city AS "boardCity", bs.address AS "boardAddress"
+         FROM "seat_bookings" b
+         LEFT JOIN "driver_trips" t ON t.id = b."trip_id"
+         LEFT JOIN "drivers" d ON d.id = t."driverId"
+         LEFT JOIN "users" du ON du.id = d."userId"
+         LEFT JOIN "users" p ON p.id = b."passenger_id"
+         LEFT JOIN "trip_stops" bs ON bs.id = b."board_stop_id"
+        WHERE b.status = 'no_show'
+        ORDER BY b."no_show_at" DESC
+        LIMIT $1`,
+      [limit],
+    ).catch(() => []);
+
+    const withTrail = [];
+    for (const r of rows) {
+      const events: Array<any> = await this.bookingsRepo.manager.query(
+        `SELECT type, "actor_role" AS "actorRole", lat, lng, note, "created_at" AS "createdAt"
+           FROM "seat_booking_events" WHERE "booking_id" = $1 ORDER BY "created_at" ASC`,
+        [r.id],
+      ).catch(() => []);
+      withTrail.push({
+        ...r,
+        priceNgn: r.priceNgn == null ? null : Number(r.priceNgn),
+        waitedMinutes: r.arrivedAt && r.noShowAt
+          ? Math.round((new Date(r.noShowAt).getTime() - new Date(r.arrivedAt).getTime()) / 60_000)
+          : null,
+        evidence: events,
+      });
+    }
+    return withTrail;
+  }
+
+  /**
+   * Accepted but unpaid, with how long is left on the hold.
+   *
+   * These are the seats a rider has agreed to carry and nobody has paid
+   * for. They do not block capacity by design, so this is the only place
+   * an operator can see a rider being messed about.
+   */
+  async adminPendingPayments(limit = 50) {
+    const rows: Array<any> = await this.bookingsRepo.manager.query(
+      `SELECT b.id, b.status, b."price_ngn" AS "priceNgn",
+              b."accepted_at" AS "acceptedAt", b."payment_due_at" AS "paymentDueAt",
+              t."fromCity", t."toCity", t."departAt",
+              p.id AS "passengerUserId", p.name AS "passengerName",
+              du.id AS "driverUserId", du.name AS "driverName"
+         FROM "seat_bookings" b
+         LEFT JOIN "driver_trips" t ON t.id = b."trip_id"
+         LEFT JOIN "drivers" d ON d.id = t."driverId"
+         LEFT JOIN "users" du ON du.id = d."userId"
+         LEFT JOIN "users" p ON p.id = b."passenger_id"
+        WHERE b.status = ANY(ARRAY['requested','accepted','pending_payment'])
+        ORDER BY b."accepted_at" DESC NULLS LAST
+        LIMIT $1`,
+      [limit],
+    ).catch(() => []);
+    const now = Date.now();
+    return rows.map((r) => ({
+      ...r,
+      priceNgn: r.priceNgn == null ? null : Number(r.priceNgn),
+      minutesLeft: r.paymentDueAt
+        ? Math.round((new Date(r.paymentDueAt).getTime() - now) / 60_000)
+        : null,
+    }));
+  }
+
   async dropReviewQueue(limit = 50) {
     const graceMin = await this.fee(FEE.NO_SHOW_WAIT_MIN);
     const rows = await this.bookingsRepo

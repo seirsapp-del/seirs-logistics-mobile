@@ -224,6 +224,36 @@ export class AdminController {
   // of granting it, and one disgruntled editor should not be able to
   // lock out the finance team.
   @UseGuards(SuperAdminGuard)
+  /**
+   * PATCH /api/v1/admin/admins/:id/reactivate
+   *
+   * The admins page has shipped a "Reactivate Account" button for some
+   * time with no route behind it, so it 404d. Super admin only, and it
+   * restores the LOGIN only: offboarding wipes the role on purpose, so
+   * that reinstatement grants nothing until somebody deliberately
+   * re-grants one. Reactivating a former colleague looks far more
+   * innocent in a log than granting them super_admin.
+   */
+  @UseGuards(SuperAdminGuard)
+  @Patch('admins/:id/reactivate')
+  reactivateAdmin(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
+    return this.adminService.reactivateAdmin(id, admin, req.ip);
+  }
+
+  /**
+   * POST /api/v1/admin/admins/:id/reset-password
+   *
+   * Also had a button and no route. Invalidates the current password and
+   * emails a reset link, in that order: invalidating alone locks somebody
+   * out, and a link alone leaves the old password working while a laptop
+   * is missing. No plaintext credential is ever created or returned.
+   */
+  @UseGuards(SuperAdminGuard)
+  @Post('admins/:id/reset-password')
+  resetAdminPassword(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
+    return this.adminService.resetAdminPassword(id, admin, req.ip);
+  }
+
   @Post('admins/:id/offboard')
   offboard(
     @Param('id') id: string,

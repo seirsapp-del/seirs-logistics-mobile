@@ -28,6 +28,10 @@ const ACTION_COLORS: Record<string, string> = {
   publish:        'bg-violet-100 text-violet-700',
   role_change:    'bg-pink-100 text-pink-700',
   pricing_update: 'bg-indigo-100 text-indigo-700',
+  // Matches both 'data_export' (bulk CSV) and 'ndpr_export' (one
+  // user's bundle). Data leaving the building should not read as a
+  // grey nothing-happened row in the trail.
+  export:         'bg-fuchsia-100 text-fuchsia-700',
 };
 
 function actionColor(action: string): string {
