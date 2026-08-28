@@ -402,8 +402,8 @@ export class AdminController {
 
   // GET /api/v1/admin/drivers?status=pending
   @Get('drivers')
-  getDrivers(@Query() q: { page?: number; limit?: number; status?: string }) {
-    return this.adminService.getDrivers(q.page ?? 1, q.limit ?? 20, q.status);
+  getDrivers(@Query() q: { page?: number; limit?: number; status?: string; search?: string }) {
+    return this.adminService.getDrivers(q.page ?? 1, q.limit ?? 20, q.status, q.search);
   }
 
   // GET /api/v1/admin/driver-compliance

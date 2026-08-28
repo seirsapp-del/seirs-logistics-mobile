@@ -1994,14 +1994,14 @@ export class AdminService {
    * separation is the whole point. Reviewing somebody's identity papers
    * should mean opening their file, not listing a page.
    */
-  async getDrivers(page: number, limit: number, status?: string) {
+  async getDrivers(page: number, limit: number, status?: string, search?: string) {
     const qb = this.driversRepo
       .createQueryBuilder('d')
       .leftJoin('d.user', 'user')
       .select([
         'd.id', 'd.status', 'd.isOnline', 'd.rating', 'd.totalDeliveries',
         'd.vehicleType', 'd.vehiclePlate', 'd.createdAt', 'd.lastOnlineAt',
-        'd.valueLevel',
+        'd.valueLevel', 'd.locationUpdatedAt',
       ])
       .addSelect([
         'user.id', 'user.name', 'user.email', 'user.phone',
@@ -2011,7 +2011,40 @@ export class AdminService {
       .skip((page - 1) * limit)
       .take(limit);
 
-    if (status) qb.where('d.status = :status', { status });
+    if (status) qb.andWhere('d.status = :status', { status });
+
+    /**
+     * SEARCH, which the dashboard has been sending since it was written
+     * and the server has been throwing away (2026-08-28).
+     *
+     * adminApi.drivers() appends &search=, the controller destructured
+     * only { page, limit, status }, and this method never took the
+     * parameter, so the term vanished at the edge with no error.
+     * Verified against production: search=Emeka and search=zzzzzqqq both
+     * returned all nine drivers.
+     *
+     * Two screens depended on it. The assign-driver dialog on a delivery
+     * has a box reading "Search approved drivers by name", which did
+     * nothing, so manual dispatch meant eyeballing an unfiltered list at
+     * the moment somebody is waiting for a rider. The drivers page had
+     * no box at all and now has one.
+     *
+     * Plate is in here deliberately: when a customer reports a vehicle
+     * they almost never have the rider's name, they have what was
+     * written on the okada.
+     */
+    const q = (search ?? '').trim();
+    if (q) {
+      const like = `%${q}%`;
+      qb.andWhere(`(
+             user.name          ILIKE :like
+          OR user.email         ILIKE :like
+          OR user.phone         ILIKE :like
+          OR user."accountId"   ILIKE :like
+          OR d."vehiclePlate"   ILIKE :like
+          OR CAST(d.id AS text) = :exact
+        )`, { like, exact: q });
+    }
 
     const [drivers, total] = await qb.getManyAndCount();
     return { drivers, total, page, limit };
