@@ -334,11 +334,24 @@ export class ChatService {
    * a window-function query if it ever gets slow.
    */
   async listConversations(userId: string) {
+    /**
+     * Named columns, not AndSelect.
+     *
+     * customer and driverUser are User entities, so AndSelect loaded
+     * bank details, BVN, date of birth, home address, next of kin,
+     * device hashes and lockout state to render a first name and an
+     * avatar letter. The mapping below sends almost none of it, which is
+     * one refactor away from sending all of it, and a driver calling
+     * this endpoint pulls the CUSTOMER's row.
+     */
     const deliveries = await this.deliveriesRepo
       .createQueryBuilder('d')
-      .leftJoinAndSelect('d.customer', 'customer')
-      .leftJoinAndSelect('d.driver',   'driver')
-      .leftJoinAndSelect('driver.user', 'driverUser')
+      .leftJoin('d.customer', 'customer')
+      .addSelect(['customer.id', 'customer.name', 'customer.firstName'])
+      .leftJoin('d.driver',   'driver')
+      .addSelect(['driver.id'])
+      .leftJoin('driver.user', 'driverUser')
+      .addSelect(['driverUser.id', 'driverUser.name'])
       .where('d.customerId = :userId OR driverUser.id = :userId', { userId })
       .orderBy('d.updatedAt', 'DESC')
       .limit(100)
@@ -400,11 +413,25 @@ export class ChatService {
         const last = latestByDelivery.get(d.id);
         if (!last) return null;
         const isCustomer = d.customer?.id === userId;
+        /**
+         * No driver assigned means no driver to name (2026-08-29).
+         *
+         * This fell back to the literal string "Driver", so a customer's
+         * inbox filled with rows headed by a person called Driver. Seen
+         * on device: nine of ten threads, every one of them a delivery
+         * cancelled before anybody was assigned, where the only message
+         * is a platform notice like "Delivery was cancelled."
+         *
+         * There is no counterparty in those threads. Naming SEIRS is the
+         * honest answer, and it also stops the inbox implying a rider
+         * was involved in a job no rider ever took.
+         */
+        const driverName = d.driver?.user?.name?.trim();
         const otherParty = isCustomer
           ? {
               id:    d.driver?.user?.id ?? null,
-              name:  d.driver?.user?.name ?? 'Driver',
-              role:  'driver' as const,
+              name:  driverName || 'SEIRS',
+              role:  (driverName ? 'driver' : 'support') as 'driver' | 'support',
             }
           : {
               id:    d.customer?.id ?? null,
