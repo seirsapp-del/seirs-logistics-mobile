@@ -105,18 +105,44 @@ function DeliveriesContent() {
               </button>
             ))}
             <span className="h-5 w-px bg-gray-200" />
-            {['', 'pending', 'assigned', 'in_transit', 'delivered', 'failed'].map((s) => (
-              <a
-                key={s}
+            {/*
+              Three of these are not delivery statuses. They are the
+              questions a dispatcher actually asks, and none of them
+              could be asked before: unassigned work was mixed into
+              pending alongside jobs already on their way, a complaint
+              could only be found by scrolling past its badge, and a
+              booking for tomorrow sat in pending looking overdue.
+
+              Link, not <a>: every filter click was a full page reload.
+            */}
+            {([
+              ['',           'All',        false],
+              ['unassigned', 'Unassigned', true ],
+              ['scheduled',  'Scheduled',  true ],
+              ['disputed',   'Disputed',   true ],
+              ['pending',    'Pending',    false],
+              ['assigned',   'Assigned',   false],
+              ['picked_up',  'Picked up',  false],
+              ['in_transit', 'In transit', false],
+              ['delivered',  'Delivered',  false],
+              ['failed',     'Failed',     false],
+              ['cancelled',  'Cancelled',  false],
+            ] as const).map(([s, label, virtual]) => (
+              <Link
+                key={s || 'all'}
                 href={s ? `/deliveries?status=${s}` : '/deliveries'}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                   statusFilter === s
-                    ? 'bg-[#3A7BD5] text-white border-[#3A7BD5]'
-                    : 'bg-white text-[#0F2B4C]/50 border-[#E5E7EB] hover:border-[#0F2B4C]/20'
+                    ? (s === 'disputed'
+                        ? 'bg-[#DC2626] text-white border-[#DC2626]'
+                        : 'bg-[#3A7BD5] text-white border-[#3A7BD5]')
+                    : virtual
+                      ? 'bg-[#F5F5F0] text-[#0F2B4C]/70 border-[#E5E7EB] hover:border-[#3A7BD5]'
+                      : 'bg-white text-[#0F2B4C]/50 border-[#E5E7EB] hover:border-[#0F2B4C]/20'
                 }`}
               >
-                {s ? s.replace('_', ' ') : 'All'}
-              </a>
+                {label}
+              </Link>
             ))}
           </div>
         </div>
@@ -151,7 +177,7 @@ function DeliveriesContent() {
               <table className="w-full text-sm">
                 <thead className="bg-[#F5F5F0] border-b border-[#E5E7EB]">
                   <tr>
-                    {['Tracking', 'Customer', 'Route', 'Status', 'Price', 'Created', 'Actions'].map((h) => (
+                    {['Tracking', 'Customer', 'Driver', 'Route', 'Status', 'Price', 'Age', 'Actions'].map((h) => (
                       <th key={h} className="text-left px-4 py-3 font-semibold text-[#0F2B4C]/40 text-xs uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
@@ -197,6 +223,41 @@ function DeliveriesContent() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-[#0F2B4C]/70">{d.customer?.name ?? '-'}</td>
+                      {/*
+                        Who is carrying it. A dispatch board that cannot
+                        tell you which rider holds which job is a list of
+                        regrets: you had to open a row, or the reassign
+                        dialog, to find out, and the dialog did not know
+                        either because the query never joined driver.user.
+                      */}
+                      <td className="px-4 py-3">
+                        {d.driver?.user?.name ? (
+                          <>
+                            <Link
+                              href={`/drivers/${d.driver.id}`}
+                              className="text-xs font-semibold text-[#0F2B4C] hover:text-[#3A7BD5] hover:underline"
+                            >
+                              {d.driver.user.name}
+                            </Link>
+                            <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[#0F2B4C]/40">
+                              <span
+                                className={`inline-block h-1.5 w-1.5 rounded-full ${
+                                  d.driver.isOnline ? 'bg-emerald-500' : 'bg-gray-300'
+                                }`}
+                                title={d.driver.isOnline ? 'Online' : 'Offline'}
+                              />
+                              {d.driver.vehicleType ?? 'vehicle'}
+                              {d.driver.vehiclePlate ? ` · ${d.driver.vehiclePlate}` : ''}
+                            </div>
+                          </>
+                        ) : ['delivered', 'cancelled', 'failed'].includes(d.status) ? (
+                          <span className="text-xs text-[#0F2B4C]/25">-</span>
+                        ) : (
+                          <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                            Nobody yet
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 max-w-xs">
                         <div className="flex items-start gap-1 text-xs text-[#0F2B4C]/60 mb-0.5" title={d.pickupAddress}>
                           <MapPin size={10} className="mt-0.5 shrink-0 text-[#3A7BD5]" />
@@ -218,10 +279,55 @@ function DeliveriesContent() {
                             Left with {d.receivedByName}
                           </div>
                         )}
+                        {/* A failed or cancelled row said only that it
+                            ended, never why, so the one thing you opened
+                            it to learn needed another click. */}
+                        {(d.failureReason || d.cancellationReason) && (
+                          <div className="mt-1 max-w-[160px] truncate text-[10px] text-[#0F2B4C]/45"
+                               title={d.failureReason || d.cancellationReason}>
+                            {d.failureReason || d.cancellationReason}
+                          </div>
+                        )}
+                        {d.returnStatus && d.returnStatus !== 'none' && (
+                          <div className="mt-1 rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-purple-700">
+                            Return: {String(d.returnStatus).replace('_', ' ')}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-semibold text-[#0F2B4C]">{naira(d.price)}</td>
-                      <td className="px-4 py-3 text-[#0F2B4C]/40 text-xs">
-                        {new Date(d.createdAt).toLocaleDateString()}
+                      {/*
+                        How long it has been sitting, not what day it was
+                        booked. toLocaleDateString() rendered a job raised
+                        ten minutes ago and one raised at breakfast
+                        identically, and on a dispatch board the age of an
+                        unassigned job is the whole question. Only live
+                        work escalates: a delivered run being four days
+                        old is not a problem.
+                      */}
+                      <td className="px-4 py-3 text-xs" title={new Date(d.createdAt).toLocaleString('en-NG')}>
+                        {(() => {
+                          const mins  = Math.max(0, Math.round((Date.now() - new Date(d.createdAt).getTime()) / 60000));
+                          const live  = !['delivered', 'cancelled', 'failed'].includes(d.status);
+                          const label = mins < 60 ? `${mins}m`
+                            : mins < 1440 ? `${Math.floor(mins / 60)}h ${mins % 60}m`
+                            : `${Math.floor(mins / 1440)}d`;
+                          const tone  = !live ? 'text-[#0F2B4C]/40'
+                            : mins >= 120 ? 'font-bold text-[#DC2626]'
+                            : mins >= 30  ? 'font-semibold text-[#B45309]'
+                            : 'text-[#0F2B4C]/60';
+                          return (
+                            <>
+                              <div className={`tabular-nums ${tone}`}>{label}</div>
+                              {d.scheduledFor && new Date(d.scheduledFor) > new Date() && (
+                                <div className="mt-0.5 rounded bg-indigo-50 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-700">
+                                  for {new Date(d.scheduledFor).toLocaleString('en-NG', {
+                                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                                  })}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         {!['delivered', 'cancelled', 'failed'].includes(d.status) && (
@@ -262,6 +368,9 @@ function DeliveriesContent() {
                             <td className="px-4 py-2 text-xs text-[#0F2B4C]/70">
                               {[st.receiverFirstName, st.receiverLastName].filter(Boolean).join(' ') || st.recipientName || '-'}
                             </td>
+                            {/* Aligns the package rows with the Driver
+                                column added to the parent row. */}
+                            <td className="px-4 py-2" />
                             <td className="px-4 py-2 text-xs text-[#0F2B4C]/60 max-w-xs truncate" title={st.address}>
                               {st.destinationStoreName ? `Counter: ${st.destinationStoreName}` : st.address}
                             </td>
@@ -291,26 +400,64 @@ function DeliveriesContent() {
               )}
             </div>
 
-            <div className="flex items-center justify-between mt-4 text-sm text-[#0F2B4C]/50">
-              <span>Total: {data?.total?.toLocaleString()} deliveries</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => load(page - 1)}
-                  disabled={page <= 1}
-                  className="px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5F0] disabled:opacity-40 transition-colors text-xs font-medium"
-                >
-                  ← Prev
-                </button>
-                <span className="px-3 py-1.5 text-xs">Page {page}</span>
-                <button
-                  onClick={() => load(page + 1)}
-                  disabled={data?.deliveries?.length < 20}
-                  className="px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5F0] disabled:opacity-40 transition-colors text-xs font-medium"
-                >
-                  Next →
-                </button>
-              </div>
-            </div>
+            {/*
+              Paging off the TOTAL, not off how many rows came back.
+              "disabled={deliveries.length < 20}" looked reasonable and
+              was fatal: the server was paginating over joined stop rows,
+              so page one returned 12 of 41 deliveries, the button
+              disabled itself, and 29 jobs were unreachable from this
+              screen. The server fix makes pages whole; this makes the
+              control honest about how many there are.
+            */}
+            {(() => {
+              const total    = Number(data?.total ?? 0);
+              const perPage  = Number(data?.limit ?? 20);
+              const lastPage = Math.max(1, Math.ceil(total / perPage));
+              const firstRow = total === 0 ? 0 : (page - 1) * perPage + 1;
+              const lastRow  = Math.min(page * perPage, total);
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-3 mt-4 text-sm text-[#0F2B4C]/50">
+                  <span className="tabular-nums">
+                    {total === 0
+                      ? 'No deliveries'
+                      : `Showing ${firstRow.toLocaleString()}-${lastRow.toLocaleString()} of ${total.toLocaleString()}`}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => load(1)}
+                      disabled={page <= 1}
+                      className="px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5F0] disabled:opacity-40 transition-colors text-xs font-medium"
+                    >
+                      First
+                    </button>
+                    <button
+                      onClick={() => load(page - 1)}
+                      disabled={page <= 1}
+                      className="px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5F0] disabled:opacity-40 transition-colors text-xs font-medium"
+                    >
+                      Prev
+                    </button>
+                    <span className="px-3 py-1.5 text-xs tabular-nums">
+                      Page {page} of {lastPage}
+                    </span>
+                    <button
+                      onClick={() => load(page + 1)}
+                      disabled={page >= lastPage}
+                      className="px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5F0] disabled:opacity-40 transition-colors text-xs font-medium"
+                    >
+                      Next
+                    </button>
+                    <button
+                      onClick={() => load(lastPage)}
+                      disabled={page >= lastPage}
+                      className="px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5F0] disabled:opacity-40 transition-colors text-xs font-medium"
+                    >
+                      Last
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </>
         )}
       </main>

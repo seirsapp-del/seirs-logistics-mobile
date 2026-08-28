@@ -2313,7 +2313,35 @@ export class AdminService {
       .skip((page - 1) * limit)
       .take(limit);
 
-    if (status) qb.andWhere('d.status = :status', { status });
+    /**
+     * Virtual filters, because the three questions a dispatcher actually
+     * asks are not delivery statuses (2026-08-28).
+     *
+     *   unassigned  pending with nobody on it. The only queue that needs
+     *               a human right now, and it was mixed in with pending
+     *               jobs that already have a rider on the way.
+     *   disputed    the list already flags "rider reported a problem" on
+     *               a row, so the flag existed and could not be filtered
+     *               to: you found a complaint by scrolling past it.
+     *   scheduled   a booking for later. It sits in pending looking
+     *               exactly like an overdue job, so ops chase work that
+     *               is not due. Same virtual-filter pattern getUsers
+     *               already uses for business and partner accounts.
+     */
+    if (status === 'unassigned') {
+      qb.andWhere('d.status = :st', { st: DeliveryStatus.PENDING })
+        .andWhere('d."driverId" IS NULL');
+    } else if (status === 'disputed') {
+      qb.andWhere('d."disputedAt" IS NOT NULL');
+    } else if (status === 'scheduled') {
+      qb.andWhere('d."scheduledFor" IS NOT NULL')
+        .andWhere('d."scheduledFor" > NOW()')
+        .andWhere('d.status NOT IN (:...done)', {
+          done: [DeliveryStatus.DELIVERED, DeliveryStatus.CANCELLED],
+        });
+    } else if (status) {
+      qb.andWhere('d.status = :status', { status });
+    }
     // Rides vs packages: two product lines, one table (founder 2026-08-23).
     if (kind === 'ride' || kind === 'package') qb.andWhere('d.kind = :kind', { kind });
 
@@ -2332,7 +2360,74 @@ export class AdminService {
         )`, { like, exact: q });
     }
 
-    const [deliveries, total] = await qb.getManyAndCount();
+    /**
+     * PAGINATE ON DELIVERIES, NOT ON JOINED ROWS (2026-08-28).
+     *
+     * This was getManyAndCount() on a builder that leftJoinAndSelects
+     * d.stops, a one-to-many. Postgres returns one row per stop, so
+     * LIMIT 20 was counting STOPS, and a five-package run ate five
+     * places in the page. Measured against production: page 1 returned
+     * 12 rows saying total=12, page 2 returned 17 saying total=37, page
+     * 3 returned 12 saying total=52. The real number is 41.
+     *
+     * The count being wrong was the mild half. The dashboard disables
+     * Next when a page comes back short of the limit, and page 1 came
+     * back short every time, so the button was dead on arrival and 29
+     * of 41 deliveries could not be reached from the UI by any route.
+     * On a dispatch board an unreachable job is an undispatched job.
+     *
+     * Fixed the standard way: page over distinct delivery ids first,
+     * then load those rows whole. The id query keeps the joins the
+     * filters need, because search reaches into stops and customer, and
+     * COUNT(DISTINCT d.id) is what getCount() emits, so the total is
+     * deliveries and not join products.
+     */
+    const total = await qb.getCount();
+
+    const idRows = await qb
+      .clone()
+      .select('d.id', 'id')
+      .addSelect('d."createdAt"', 'createdAt')
+      .distinct(true)
+      .orderBy('d."createdAt"', 'DESC')
+      .offset((page - 1) * limit)
+      .limit(limit)
+      .getRawMany();
+
+    const ids = idRows.map((r: any) => r.id);
+    if (ids.length === 0) return { deliveries: [], total, page, limit };
+
+    /**
+     * Second pass loads the full rows for exactly those ids, with no
+     * limit, so a run with twelve packages arrives complete instead of
+     * truncated at the page boundary. Re-sorted in the id order because
+     * an IN () does not preserve one.
+     */
+    const rows = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .leftJoin('d.customer', 'customer')
+      .addSelect([
+        'customer.id', 'customer.name', 'customer.email',
+        'customer.phone', 'customer.accountId', 'customer.isDemo',
+      ])
+      .leftJoin('d.driver', 'driver')
+      .addSelect([
+        'driver.id', 'driver.vehicleType', 'driver.vehiclePlate',
+        'driver.rating', 'driver.status', 'driver.isOnline',
+      ])
+      .leftJoin('driver.user', 'driverUser')
+      .addSelect(['driverUser.id', 'driverUser.name', 'driverUser.phone'])
+      .leftJoinAndSelect('d.stops', 'stops')
+      .where('d.id IN (:...ids)', { ids })
+      .orderBy('d.createdAt', 'DESC')
+      .addOrderBy('stops.sequenceOrder', 'ASC')
+      .getMany();
+
+    const order = new Map(ids.map((id: string, i: number) => [id, i]));
+    const deliveries = rows.sort(
+      (a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0),
+    );
+
     return { deliveries, total, page, limit };
   }
 
