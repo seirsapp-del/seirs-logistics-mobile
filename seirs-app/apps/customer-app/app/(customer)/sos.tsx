@@ -137,13 +137,39 @@ export default function SOSScreen() {
         const items = (res?.items ?? [])
           .filter(c => c && Array.isArray(c.numbers) && c.numbers.length > 0)
           .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-        if (items.length === 0) { setOffline(true); setContacts(fallbackContacts); return; }
+        // An empty directory is a directory nobody has filled in yet,
+        // not a failure to reach one.
+        if (items.length === 0) { setOffline(false); setContacts(fallbackContacts); return; }
         setOffline(false);
         setContacts(items);
       })
-      .catch(() => {
+      .catch((e: any) => {
         if (cancelled) return;
-        setOffline(true);
+        /**
+         * A 404 is not an outage (2026-08-29).
+         *
+         * GET /config/emergency-contacts has never existed on the
+         * server: no controller, no entity, no admin screen. Verified
+         * against production, which returns 404. So this screen has
+         * shown "We could not load the full directory" to every user
+         * since it shipped, permanently, for a directory that was never
+         * built.
+         *
+         * A red offline warning on the emergency screen is not a small
+         * cosmetic problem. It tells somebody who may already be
+         * frightened that part of the safety net is broken, every single
+         * time, and it trains them to ignore the one banner that should
+         * always mean something.
+         *
+         * The two national numbers below are correct and sufficient to
+         * dial, so when the endpoint is simply absent the screen presents
+         * them plainly. A genuine network failure still says so, because
+         * then the warning is true. The missing directory is tracked in
+         * LAUNCH_CHECKLIST rather than shouted at the user.
+         */
+        const status = Number(e?.status ?? e?.response?.status ?? 0);
+        const featureAbsent = status === 404;
+        setOffline(!featureAbsent);
         setContacts(fallbackContacts);
       });
     return () => { cancelled = true; };

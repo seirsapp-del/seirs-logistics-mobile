@@ -253,6 +253,13 @@ export const LAUNCH_CHECKLIST = [
    * founder decision with a date on it.
    */
   {
+    key: 'EMERGENCY_CONTACT_DIRECTORY',
+    what: 'The admin-managed emergency directory the SOS screen was built against',
+    where: 'Backend: GET /config/emergency-contacts does not exist. No entity, no controller, no admin page',
+    blocks: 'Nothing dangerous: the SOS screen falls back to 112 (national emergency) and 199 (fire service), both correct, and both dial. But a Lagos user gets two national lines instead of LASEMA, FRSC, state police and ambulance numbers. The screen no longer shouts "we could not load the directory" at them, because that read as an outage on the one screen where a warning must mean something',
+    from: 'Founder, who has to supply VERIFIED local numbers. A wrong number on this screen is the most dangerous string in the product, so nobody should invent them',
+  },
+  {
     key: 'driver_clearance_business_days',
     what: 'Business days a completed job waits before a rider may withdraw it. Currently 0, code default is 2',
     where: 'Fee Catalogue, Pricing page, "What a rider is paid"',

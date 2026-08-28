@@ -87,7 +87,21 @@ export async function request<T>(
     throw new Error('Session expired. Please sign in again.');
   }
 
-  if (!res.ok) throw new Error(data.message ?? 'Request failed');
+  if (!res.ok) {
+    /**
+     * Carry the HTTP status on the error.
+     *
+     * Callers could only see a message string, so nothing could tell a
+     * 404 apart from a 500. That matters wherever the two mean opposite
+     * things: the SOS screen was reporting "we could not load the
+     * emergency directory" as an outage when the endpoint simply does
+     * not exist, which is a permanent red warning on the one screen
+     * where a warning has to mean something.
+     */
+    const err = new Error(data.message ?? 'Request failed') as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
   return data as T;
 }
 
