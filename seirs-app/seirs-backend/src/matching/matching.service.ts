@@ -201,6 +201,31 @@ export class MatchingService {
     return drivers.filter((d) => d.vehicleType === delivery.vehicleType);
   }
 
+  /**
+   * LAUNCH CALIBRATION, flagged 2026-08-28 and not changed here because
+   * the ladder is a founder policy.
+   *
+   * This is a hard filter: a rider below the level for a parcel's
+   * declared value is removed from the pool, and if the pool empties the
+   * job matches nobody and stops with a log line.
+   *
+   * Every rider starts at valueLevel 1, whose cap is 5,000, and the
+   * nightly auto-raise needs 25 completed deliveries per level and can
+   * only move somebody one level a night. So on day one, when nobody has
+   * a delivery history yet, ANY booking that declares a value above
+   * 5,000 has no eligible rider anywhere in Lagos. A 25,000 phone needs
+   * a rider with 50 completed jobs; there will not be one.
+   *
+   * Parcels that declare nothing are unaffected: the filter returns
+   * early when declaredValueNgn is 0. But declaring value is exactly
+   * what SEIRS asks customers to do, since it drives the high-value
+   * premium and the signature rules, so the customers following the
+   * product's own advice are the ones who cannot be matched.
+   *
+   * Three ways out, all the founder's call: raise the level-1 cap for
+   * launch, seed approved riders above level 1, or let the pool widen
+   * with a flag when nothing qualifies.
+   */
   private async filterByValueLevel(drivers: Driver[], delivery: Delivery): Promise<Driver[]> {
     const declaredNgn = Number((delivery as any).declaredValueNgn ?? 0);
     if (!(declaredNgn > 0)) return drivers;
