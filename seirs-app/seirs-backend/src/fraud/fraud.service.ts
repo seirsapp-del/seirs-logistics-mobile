@@ -9,6 +9,37 @@ const CANCELLATION_THRESHOLD = 0.5;  // 50% cancellation rate triggers flag
 const FAILED_PAYMENT_THRESHOLD = 5;  // 5+ failed payments triggers flag
 const GPS_MAX_SPEED_KMH = 200;        // 200 km/h - impossible for ground delivery
 
+/**
+ * Noise floors, without which this detector flags GPS jitter as fraud.
+ *
+ * Speed is distance over elapsed time, and both inputs come from a phone
+ * doing its best. Divide a few metres of receiver wobble by a few
+ * milliseconds and you get a number in the thousands, every time, from a
+ * device that never moved.
+ *
+ * Both live flags in production on 2026-08-28 were this:
+ *
+ *   0.006 km in 0.052 s  ->  "412 km/h".  Six metres in a twentieth of
+ *   a second. Consumer GPS is accurate to roughly 5 to 20 metres on a
+ *   good day, so that is a stationary phone.
+ *
+ *   Lagos to Berlin in 30 minutes  ->  "10,450 km/h". Real movement, but
+ *   between countries: a founder testing abroad, not a courier.
+ *
+ * A queue whose every entry is noise is a queue nobody opens, and the
+ * cost of that is missing the real one. So: ignore samples too close
+ * together in time to be meaningful, and movements too small to be
+ * distinguishable from receiver error.
+ *
+ * Deliberately NOT admin-tunable yet. These belong in the Fee Catalogue
+ * by the standing rule, but FraudService would have to take FeesService,
+ * and this codebase has already hit one circular-import boot crash
+ * between MatchingService and FeesModule. Worth doing carefully rather
+ * than three days before a pitch.
+ */
+const GPS_MIN_ELAPSED_SECONDS = 10;   // below this, jitter dominates the ratio
+const GPS_MIN_DISTANCE_KM     = 0.05; // 50 m, comfortably outside receiver error
+
 @Injectable()
 export class FraudService {
   private readonly logger = new Logger(FraudService.name);
@@ -53,8 +84,22 @@ export class FraudService {
   // ── GPS velocity anomaly check - called from tracking gateway ──────────────
 
   async checkGpsAnomaly(userId: string, prevLat: number, prevLng: number, newLat: number, newLng: number, elapsedSeconds: number) {
-    const distKm = this.haversine(prevLat, prevLng, newLat, newLng);
-    const speedKmh = (distKm / elapsedSeconds) * 3600;
+    /**
+     * Guard the inputs before dividing by them.
+     *
+     * elapsedSeconds arrives from a subtraction of two timestamps, so it
+     * can be zero or negative on a retry, a clock adjustment or two
+     * pings processed out of order. Zero makes the speed Infinity, which
+     * is greater than any threshold, so the flag was one bad sample
+     * away at all times.
+     */
+    const elapsed = Number(elapsedSeconds);
+    const distKm  = this.haversine(prevLat, prevLng, newLat, newLng);
+
+    if (!Number.isFinite(elapsed) || elapsed < GPS_MIN_ELAPSED_SECONDS) return;
+    if (!Number.isFinite(distKm)  || distKm  < GPS_MIN_DISTANCE_KM)     return;
+
+    const speedKmh = (distKm / elapsed) * 3600;
 
     if (speedKmh > GPS_MAX_SPEED_KMH) {
       const user = await this.usersRepo.findOne({ where: { id: userId } });

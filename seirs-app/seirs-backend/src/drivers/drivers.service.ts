@@ -1178,7 +1178,11 @@ export class DriversService {
       if (elapsedSeconds > 0 && elapsedSeconds < 3600) {
         this.fraudService
           .checkGpsAnomaly(userId, driver.lastLat, driver.lastLng, lat, lng, elapsedSeconds)
-          .catch(() => {});
+          // Swallowed so a fraud check can never break a location
+          // update, but logged: a detector that has silently stopped
+          // running looks exactly like a platform with no fraud on it.
+          .catch((e: any) =>
+            this.logger?.warn?.(`GPS anomaly check failed for ${userId}: ${e?.message ?? e}`));
       }
     }
 
