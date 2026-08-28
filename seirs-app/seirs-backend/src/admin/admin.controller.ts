@@ -70,8 +70,8 @@ export class AdminController {
    * activate at 4am and scheduling runs 5am to 9pm.
    */
   @Get('demand-by-hour')
-  demandByHour(@Query('days') days?: string) {
-    return this.adminService.demandByHour(Number(days ?? 60));
+  demandByHour(@Query('days') days?: string, @Query('demo') demo?: string) {
+    return this.adminService.demandByHour(Number(days ?? 60), demo === '1' || demo === 'true');
   }
 
   /**
@@ -81,8 +81,14 @@ export class AdminController {
    * than from parsing address text.
    */
   @Get('top-corridors')
-  topCorridors(@Query('limit') limit?: string, @Query('days') days?: string) {
-    return this.adminService.topCorridors(Number(limit ?? 8), Number(days ?? 90));
+  topCorridors(
+    @Query('limit') limit?: string,
+    @Query('days') days?: string,
+    @Query('demo') demo?: string,
+  ) {
+    return this.adminService.topCorridors(
+      Number(limit ?? 8), Number(days ?? 90), demo === '1' || demo === 'true',
+    );
   }
 
   /**

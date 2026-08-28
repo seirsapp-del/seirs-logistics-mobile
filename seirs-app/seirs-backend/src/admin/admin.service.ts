@@ -772,7 +772,7 @@ export class AdminService {
    * cohort was created in a batch at whatever hour the seeder ran, which
    * would draw a spike at a time nobody ordered anything.
    */
-  async demandByHour(daysBack = 60) {
+  async demandByHour(daysBack = 60, includeDemo = false) {
     const n = Math.min(Math.max(Number(daysBack) || 60, 7), 365);
     const rows: Array<{ dow: string; hour: string; cnt: string }> =
       await this.usersRepo.manager.query(
@@ -782,9 +782,9 @@ export class AdminService {
            FROM "deliveries" d
            LEFT JOIN "users" u ON u.id = d."customerId"
           WHERE d."createdAt" >= NOW() - ($1::int * INTERVAL '1 day')
-            AND COALESCE(u."isDemo", false) = false
+            AND ($2::boolean OR COALESCE(u."isDemo", false) = false)
           GROUP BY 1, 2`,
-        [n],
+        [n, includeDemo],
       ).catch(() => []);
 
     // Dense grid: an absent hour means nobody ordered, which is itself
@@ -798,7 +798,27 @@ export class AdminService {
         if (c > peak) peak = c;
       }
     }
-    return { grid, peak, daysBack: n, timezone: 'Africa/Lagos' };
+    /**
+     * Say how much was left out, so an empty chart explains itself.
+     *
+     * Every delivery on the platform today was made by a demo account,
+     * so this renders blank, and a blank chart with no explanation looks
+     * broken rather than honest. demoAvailable lets the panel offer to
+     * show the test data instead of just sitting there.
+     */
+    const demoRow: Array<{ cnt: string }> = await this.usersRepo.manager.query(
+      `SELECT COUNT(*) AS cnt FROM "deliveries" d
+         LEFT JOIN "users" u ON u.id = d."customerId"
+        WHERE d."createdAt" >= NOW() - ($1::int * INTERVAL '1 day')
+          AND COALESCE(u."isDemo", false) = true`,
+      [n],
+    ).catch(() => [{ cnt: '0' }]);
+
+    return {
+      grid, peak, daysBack: n, timezone: 'Africa/Lagos',
+      includeDemo,
+      demoAvailable: Number(demoRow?.[0]?.cnt ?? 0),
+    };
   }
 
   /**
@@ -808,7 +828,7 @@ export class AdminService {
    * and in Lagos where matters as much as when. Corridors are what a
    * rider actually plans around and what a zone is eventually drawn on.
    */
-  async topCorridors(limit = 8, daysBack = 90) {
+  async topCorridors(limit = 8, daysBack = 90, includeDemo = false) {
     const n    = Math.min(Math.max(Number(limit) || 8, 3), 20);
     const days = Math.min(Math.max(Number(daysBack) || 90, 7), 365);
 
@@ -834,9 +854,9 @@ export class AdminService {
            FROM "deliveries" d
            LEFT JOIN "users" u ON u.id = d."customerId"
           WHERE d."createdAt" >= NOW() - ($1::int * INTERVAL '1 day')
-            AND COALESCE(u."isDemo", false) = false
+            AND ($2::boolean OR COALESCE(u."isDemo", false) = false)
             AND d."pickupLat" IS NOT NULL AND d."dropoffLat" IS NOT NULL`,
-        [days],
+        [days, includeDemo],
       ).catch(() => []);
 
     const bucket = new Map<string, { count: number; revenue: number }>();
@@ -1001,6 +1021,58 @@ export class AdminService {
     );
     const revTarget: number = targetMap.get('dashboard_target_monthly_revenue_ngn') ?? 0;
     const delTarget: number = targetMap.get('dashboard_target_monthly_deliveries')   ?? 0;
+
+    /**
+     * The money and safety watches, added 2026-08-28.
+     *
+     * The panel monitored three things, all of them a delivery running
+     * late, and reported "All clear" while money could be sitting in the
+     * wrong place and areas could be closed. An exception feed that
+     * cannot see money is not watching the thing that hurts most.
+     *
+     * Each of these should normally be zero, so any non-zero is the
+     * story rather than a threshold to tune.
+     */
+    const [refundsOwed, payoutsFailed, dropsUnconfirmed, dropsOffGeofence, zonesBlocking] =
+      await Promise.all([
+        // Money SEIRS holds that belongs to a customer.
+        this.usersRepo.manager.query(
+          `SELECT COUNT(*) AS c, COALESCE(SUM(p."amountKobo"), 0) AS kobo
+             FROM "payments" p JOIN "deliveries" d ON d.id = p."deliveryId"
+            WHERE p."escrowStatus" = 'held' AND d.status IN ('cancelled','failed')`,
+        ).catch(() => [{ c: '0', kobo: '0' }]),
+        // A rider was owed and the transfer was refused.
+        this.usersRepo.manager.query(
+          `SELECT COUNT(*) AS c FROM "audit_logs"
+            WHERE action = 'payout.declined' AND "createdAt" >= NOW() - INTERVAL '7 days'`,
+        ).catch(() => [{ c: '0' }]),
+        // A passenger was marked dropped and never confirmed it.
+        this.usersRepo.manager.query(
+          `SELECT COUNT(*) AS c FROM "seat_bookings"
+            WHERE status = 'dropped' AND "drop_confirmed_at" IS NULL`,
+        ).catch(() => [{ c: '0' }]),
+        // Dropped far from the declared stop: allowed, but recorded.
+        this.usersRepo.manager.query(
+          `SELECT COUNT(*) AS c FROM "seat_bookings" WHERE "drop_off_geofence" = true`,
+        ).catch(() => [{ c: '0' }]),
+        // The banner the Zones spec asked for and nobody built: SEIRS is
+        // not operating somewhere right now, and the dashboard says so.
+        this.usersRepo.manager.query(
+          `SELECT COUNT(*) AS c FROM "zones"
+            WHERE published = true AND status IN ('closed','no_pickup','no_dropoff')`,
+        ).catch(() => [{ c: '0' }]),
+      ]);
+
+    const moneyAndZoneAnomalies = {
+      refundsOwed: {
+        count: Number(refundsOwed?.[0]?.c ?? 0),
+        totalNgn: +(Number(refundsOwed?.[0]?.kobo ?? 0) / 100).toFixed(2),
+      },
+      payoutsDeclined7d: { count: Number(payoutsFailed?.[0]?.c ?? 0) },
+      dropsUnconfirmed:  { count: Number(dropsUnconfirmed?.[0]?.c ?? 0) },
+      dropsOffGeofence:  { count: Number(dropsOffGeofence?.[0]?.c ?? 0) },
+      zonesBlocking:     { count: Number(zonesBlocking?.[0]?.c ?? 0) },
+    };
 
     return {
       generatedAt: now.toISOString(),

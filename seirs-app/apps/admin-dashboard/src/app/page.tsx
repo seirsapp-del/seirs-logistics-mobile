@@ -52,6 +52,16 @@ export default function DashboardPage() {
   const [liveUpdatedAt, setLiveUpdatedAt] = useState<Date | null>(null);
   const [drill, setDrill] = useState<DrillKey | null>(null);
   const [queues, setQueues] = useState<QueueRow[]>([]);
+  const [forward, setForward] = useState<any[]>([]);
+  const [demand, setDemand] = useState<any>(null);
+  const [corridors, setCorridors] = useState<any[]>([]);
+  /**
+   * Off by default. Every delivery on the platform today was made by a
+   * demo account, so both charts render blank, and a blank chart with no
+   * explanation looks broken rather than honest. The panel offers to
+   * show the test data instead of just sitting there.
+   */
+  const [showDemo, setShowDemo] = useState(false);
 
   /**
    * Explain the bounce. middleware.ts redirects a role that opens a page
@@ -106,6 +116,12 @@ export default function DashboardPage() {
       .catch(() => setQueues([]));
   };
 
+  const loadForward = () => {
+    adminApi.forwardBook(7)
+      .then((r: any[]) => setForward(Array.isArray(r) ? r : []))
+      .catch(() => setForward([]));
+  };
+
   const loadLive = () => {
     adminApi.liveDashboard().then((d) => {
       setLive(d);
@@ -113,7 +129,15 @@ export default function DashboardPage() {
     }).catch(() => {});
   };
 
-  useEffect(() => { load(); loadLive(); loadQueues(); }, []);
+  useEffect(() => { load(); loadLive(); loadQueues(); loadForward(); }, []);
+
+  // Re-fetch both charts when the demo toggle flips.
+  useEffect(() => {
+    adminApi.demandByHour(60, showDemo).then(setDemand).catch(() => setDemand(null));
+    adminApi.topCorridors(8, 90, showDemo)
+      .then((r: any[]) => setCorridors(Array.isArray(r) ? r : []))
+      .catch(() => setCorridors([]));
+  }, [showDemo]);
   // Auto-refresh live panel every 30 seconds while the page is visible
   useEffect(() => {
     const id = setInterval(() => { loadLive(); loadQueues(); }, 30_000);
@@ -472,6 +496,160 @@ export default function DashboardPage() {
               being added server-side, rather than by somebody
               remembering to hardcode a fifth card.
             */}
+            {/*
+              When work happens, and where.
+
+              A revenue line shows a trend and never says WHEN, which is
+              the question that decides staffing. Two live policies
+              already depend on the answer with nothing validating
+              either: riders activate at 4am and scheduling runs 5am to
+              9pm.
+
+              Demo rows are excluded by default because a seeded cohort
+              is created in one batch at whatever hour the seeder ran and
+              would draw a spike at a time nobody ordered anything. Every
+              delivery on the platform today is demo, so the empty state
+              says so and offers the toggle rather than looking broken.
+            */}
+            <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm lg:col-span-2">
+                <div className="mb-3 flex items-baseline gap-2">
+                  <h2 className="text-sm font-semibold text-[#0F2B4C]">When the work comes in</h2>
+                  <span className="text-xs text-[#0F2B4C]/40">
+                    last {demand?.daysBack ?? 60} days, Lagos time
+                  </span>
+                  {(demand?.demoAvailable ?? 0) > 0 && (
+                    <button
+                      onClick={() => setShowDemo((v) => !v)}
+                      className="ml-auto rounded border border-gray-200 px-2 py-1 text-[11px] font-medium text-[#0F2B4C]/60 hover:bg-gray-50"
+                    >
+                      {showDemo ? 'Hide test data' : `Show ${demand?.demoAvailable} test deliveries`}
+                    </button>
+                  )}
+                </div>
+
+                {!demand || demand.peak === 0 ? (
+                  <p className="py-8 text-center text-sm text-[#0F2B4C]/40">
+                    {(demand?.demoAvailable ?? 0) > 0
+                      ? `No real deliveries yet. ${demand.demoAvailable} test deliveries exist.`
+                      : 'No deliveries in this window.'}
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[560px]">
+                      {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, d) => (
+                        <div key={day} className="mb-0.5 flex items-center gap-1">
+                          <span className="w-8 shrink-0 text-[10px] text-[#0F2B4C]/40">{day}</span>
+                          {Array.from({ length: 24 }, (_, h) => {
+                            const v = demand.grid?.[d]?.[h] ?? 0;
+                            const pct = demand.peak > 0 ? v / demand.peak : 0;
+                            return (
+                              <div
+                                key={h}
+                                title={`${day} ${String(h).padStart(2, '0')}:00 - ${v} booking${v === 1 ? '' : 's'}`}
+                                className="h-4 flex-1 rounded-[2px]"
+                                style={{
+                                  backgroundColor: v === 0
+                                    ? '#F3F4F6'
+                                    : `rgba(58,123,213,${0.15 + pct * 0.85})`,
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      ))}
+                      <div className="mt-1 flex gap-1 pl-9">
+                        {Array.from({ length: 24 }, (_, h) => (
+                          <span key={h} className="flex-1 text-center text-[8px] text-[#0F2B4C]/30">
+                            {h % 3 === 0 ? h : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div className="mb-3">
+                  <h2 className="text-sm font-semibold text-[#0F2B4C]">Busiest corridors</h2>
+                  <span className="text-xs text-[#0F2B4C]/40">by state, from coordinates</span>
+                </div>
+                {corridors.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-[#0F2B4C]/40">
+                    Nothing to map yet.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {corridors.map((c) => {
+                      const top = corridors[0]?.count || 1;
+                      return (
+                        <div key={c.corridor}>
+                          <div className="flex items-baseline justify-between text-xs">
+                            <span className="font-medium text-[#0F2B4C]">{c.corridor}</span>
+                            <span className="text-[#0F2B4C]/40">{c.count}</span>
+                          </div>
+                          <div className="mt-1 h-1.5 rounded-full bg-gray-100">
+                            <div className="h-1.5 rounded-full bg-[#3A7BD5]"
+                              style={{ width: `${Math.max(4, (c.count / top) * 100)}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/*
+              What SEIRS has already promised.
+
+              The dashboard could see now and the past and nothing about
+              committed future work, which is the wrong half of time for
+              a business where people book days ahead: scheduled pickups
+              run 5am to 9pm, interstate trips are declared up to three
+              days out, and seats are sold against those trips in
+              advance (founder 2026-08-28: "i am suprised it does not
+              have a calender").
+            */}
+            {forward.length > 0 && (
+              <div className="mb-6 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div className="mb-3 flex items-baseline gap-2">
+                  <h2 className="text-sm font-semibold text-[#0F2B4C]">The week ahead</h2>
+                  <span className="text-xs text-[#0F2B4C]/40">work already committed</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 md:grid-cols-7">
+                  {forward.map((d, i) => {
+                    const dt = new Date(d.day + 'T00:00:00');
+                    const busy = d.total > 0;
+                    return (
+                      <div key={d.day}
+                        className={`rounded-lg border p-3 text-center ${
+                          busy ? 'border-[#3A7BD5]/30 bg-[#3A7BD5]/5' : 'border-gray-100'
+                        }`}>
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-[#0F2B4C]/40">
+                          {i === 0 ? 'Today' : dt.toLocaleDateString('en-NG', { weekday: 'short' })}
+                        </div>
+                        <div className="text-[10px] text-[#0F2B4C]/30">
+                          {dt.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                        </div>
+                        <div className={`mt-1 text-xl font-bold ${busy ? 'text-[#0F2B4C]' : 'text-[#0F2B4C]/20'}`}>
+                          {d.total}
+                        </div>
+                        {busy && (
+                          <div className="mt-1 space-y-0.5 text-[10px] text-[#0F2B4C]/50">
+                            {d.scheduled > 0 && <div>{d.scheduled} scheduled</div>}
+                            {d.trips > 0 && <div>{d.trips} trip{d.trips === 1 ? '' : 's'}</div>}
+                            {d.seats > 0 && <div>{d.seats} seat{d.seats === 1 ? '' : 's'}</div>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="mb-2 flex items-baseline gap-2">
               <h2 className="text-sm font-semibold text-[#0F2B4C]">Work waiting</h2>
               <span className="text-xs text-[#0F2B4C]/40">oldest item in each queue</span>
@@ -796,7 +974,7 @@ function SosCard({ label, seconds, good, bad }: { label: string; seconds: number
 // Anomaly panel: three buckets of things that need admin attention. Renders
 // nothing when all counts are zero (clean board = no visual noise).
 function AnomalyPanel({ anomalies }: { anomalies: any }) {
-  const buckets: Array<{ key: string; title: string; count: number; items: any[]; render: (i: any) => string }> = [
+  const buckets: Array<{ key: string; title: string; count: number; items: any[]; render: (i: any) => string; href?: string; note?: string }> = [
     {
       key: 'pending', title: 'Pending > 15 min (no driver accepted)',
       count: anomalies.pendingOver15Min?.count ?? 0,
@@ -814,6 +992,60 @@ function AnomalyPanel({ anomalies }: { anomalies: any }) {
       count: anomalies.highVelocityDrivers?.count ?? 0,
       items: anomalies.highVelocityDrivers?.items ?? [],
       render: (i) => `Driver ${i.driverId} · ${i.acceptedLastHour} accepts`,
+    },
+    /*
+      Five money and safety watches. The panel used to monitor three
+      things, all of them a delivery running late, and said "All clear"
+      while money could be sitting in the wrong place and areas could be
+      closed. Each of these should normally be zero, so any non-zero is
+      the story rather than a threshold to tune.
+    */
+    {
+      key: 'refunds',
+      title: 'Refunds owed to customers and never issued',
+      count: anomalies.refundsOwed?.count ?? 0,
+      items: [],
+      href: '/wallet',
+      render: () => '',
+      note: anomalies.refundsOwed?.count
+        ? `${naira(anomalies.refundsOwed?.totalNgn ?? 0)} of customer money still held by SEIRS.`
+        : '',
+    },
+    {
+      key: 'payouts',
+      title: 'Payouts declined in the last 7 days',
+      count: anomalies.payoutsDeclined7d?.count ?? 0,
+      items: [],
+      href: '/wallet',
+      render: () => '',
+      note: 'A rider was owed and the transfer was refused.',
+    },
+    {
+      key: 'zones',
+      title: 'Areas where SEIRS is not operating',
+      count: anomalies.zonesBlocking?.count ?? 0,
+      items: [],
+      href: '/zones',
+      render: () => '',
+      note: 'A published zone is blocking pickups, dropoffs or both.',
+    },
+    {
+      key: 'dropsUnconfirmed',
+      title: 'Drops the passenger never confirmed',
+      count: anomalies.dropsUnconfirmed?.count ?? 0,
+      items: [],
+      href: '/travel-buddy',
+      render: () => '',
+      note: 'A rider marked someone dropped and nobody agreed.',
+    },
+    {
+      key: 'dropsGeofence',
+      title: 'Drops recorded far from the declared stop',
+      count: anomalies.dropsOffGeofence?.count ?? 0,
+      items: [],
+      href: '/travel-buddy',
+      render: () => '',
+      note: 'Allowed, because roads close, but worth a look.',
     },
   ];
   const anyAnomaly = buckets.some((b) => b.count > 0);
@@ -835,17 +1067,40 @@ function AnomalyPanel({ anomalies }: { anomalies: any }) {
         <h2 className="text-sm font-semibold text-[#0F2B4C]">Attention required</h2>
       </div>
       <div className="space-y-3">
-        {buckets.filter((b) => b.count > 0).map((b) => (
-          <div key={b.key} className="border border-amber-100 bg-amber-50/40 rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-[#78350F]">{b.title}</span>
-              <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">{b.count}</span>
+        {buckets.filter((b) => b.count > 0).map((b) => {
+          // The money and zone watches carry no item list, only a
+          // destination: the detail lives on a page built to work it,
+          // and duplicating it here would be a second thing to keep true.
+          const Body = (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-[#78350F]">{b.title}</span>
+                <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">{b.count}</span>
+              </div>
+              {b.note && <p className="mt-1 text-xs text-[#78350F]/80">{b.note}</p>}
+              {b.items.length > 0 && (
+                <ul className="mt-2 space-y-0.5 font-mono text-xs text-[#78350F]/90">
+                  {b.items.slice(0, 5).map((i, idx) => <li key={idx}>· {b.render(i)}</li>)}
+                </ul>
+              )}
+              {b.href && (
+                <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#3A7BD5]">
+                  Open <ChevronRight size={12} />
+                </span>
+              )}
+            </>
+          );
+          return b.href ? (
+            <Link key={b.key} href={b.href}
+              className="block rounded-lg border border-amber-100 bg-amber-50/40 p-3 transition-colors hover:bg-amber-50">
+              {Body}
+            </Link>
+          ) : (
+            <div key={b.key} className="rounded-lg border border-amber-100 bg-amber-50/40 p-3">
+              {Body}
             </div>
-            <ul className="mt-2 space-y-0.5 text-xs text-[#78350F]/90 font-mono">
-              {b.items.slice(0, 5).map((i, idx) => <li key={idx}>· {b.render(i)}</li>)}
-            </ul>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

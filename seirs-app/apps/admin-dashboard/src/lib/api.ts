@@ -101,6 +101,22 @@ export const adminApi = {
    */
   queues: () => req<any[]>('/admin/queues'),
 
+  /** What SEIRS has already promised, day by day for the week ahead. */
+  forwardBook: (days = 7) => req<any[]>(`/admin/forward-book?days=${days}`),
+
+  /**
+   * Hour of day against day of week, in Lagos time. demo=1 includes the
+   * seeded cohort, which is off by default because a batch of test rows
+   * created at whatever hour the seeder ran draws a spike at a time
+   * nobody ordered anything.
+   */
+  demandByHour: (days = 60, demo = false) =>
+    req<any>(`/admin/demand-by-hour?days=${days}${demo ? '&demo=1' : ''}`),
+
+  /** Busiest state pairs, derived from coordinates rather than address text. */
+  topCorridors: (limit = 8, days = 90, demo = false) =>
+    req<any[]>(`/admin/top-corridors?limit=${limit}&days=${days}${demo ? '&demo=1' : ''}`),
+
   // GET /auth/me. Used by the Health page so the Auth row is a genuinely
   // separate probe from the Backend API row.
   me: () => req<any>('/auth/me'),
