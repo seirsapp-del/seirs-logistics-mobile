@@ -241,4 +241,43 @@ export const LAUNCH_CHECKLIST = [
     blocks: 'Nothing today. /r/<code> saves the code to localStorage, but only the visitor\'s browser can read it, so attribution still depends on the new user typing the code into the app signup field',
     from: 'Engineering, post-launch',
   },
+
+  /*
+   * Four live values deliberately parked, confirmed against production on
+   * 2026-08-28 and confirmed deliberate by the founder the same day.
+   *
+   * They are here rather than in a note because every one of them is a
+   * number that is CORRECT to hold today and WRONG to launch with, which
+   * is exactly the state this list exists to track. None is a bug and
+   * none should be "fixed" by anybody reading the code: each is a
+   * founder decision with a date on it.
+   */
+  {
+    key: 'driver_clearance_business_days',
+    what: 'Business days a completed job waits before a rider may withdraw it. Currently 0, code default is 2',
+    where: 'Fee Catalogue, Pricing page, "What a rider is paid"',
+    blocks: 'Nothing today, and that is the problem at launch: a rider completes a job at 6pm and can withdraw it the same evening, so a dispute raised the next morning arrives after the money has gone. Dialled to 0 deliberately so a real payout, a failed payout and a pay-in could be watched in one sitting instead of waiting out a weekend',
+    from: 'Founder, before the first real customer money moves',
+  },
+  {
+    key: 'partner_payout_hold_hours',
+    what: 'Hours a counter handling fee waits before a partner may withdraw it. Currently 0, seeded value is 168 (the weekly Monday payout)',
+    where: 'Fee Catalogue, Pricing page, "Partner stores and counters"',
+    blocks: 'Nothing today. At launch a shop can withdraw a handling fee the same afternoon, before anyone has confirmed the parcel arrived intact',
+    from: 'Founder, before the first partner counter goes live',
+  },
+  {
+    key: 'serviceFees.packageNgn / serviceFees.rideNgn',
+    what: 'The SEIRS service fee on every booking and every ride. Both published at 0 on rate card v2',
+    where: 'Rate card, Pricing page, "Service fee". Needs a PUBLISH, not a save',
+    blocks: 'Nothing breaks. SEIRS simply collects no service fee at all: margin comes entirely from the customer/driver spread, about 19.5% on a sample 1,025.00 job. The lever works and is switched off',
+    from: 'Founder, as a pricing decision before launch',
+  },
+  {
+    key: 'seatDriverSharePct',
+    what: 'The rider share of a Travel Buddy seat fare. Null on the live card, so it falls back to a hardcoded 75%',
+    where: 'Rate card, Pricing page. Needs a PUBLISH',
+    blocks: 'Nothing today, but the column was added specifically because this share was a literal 0.75 buried in computeSeatPrice and should be admin-tunable. Until a value is published it is still effectively hardcoded, so that fix is not finished',
+    from: 'Founder, before Travel Buddy carries paying passengers',
+  },
 ] as const;
