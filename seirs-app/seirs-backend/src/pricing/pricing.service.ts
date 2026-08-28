@@ -1267,7 +1267,23 @@ export class PricingService implements OnModuleInit {
     // High-value premium: charged in the engine so the pinned quote and
     // the booking carry it identically. Card fields with code fallback.
     const hv = (card as any).highValue ?? {};
-    const hvThresholdNgn = Number(hv.thresholdNgn ?? 50_000);
+    /**
+     * Same fallback chain as the handoff gate, or the bug comes back.
+     *
+     * The gate in deliveries.service.ts now follows this threshold so a
+     * parcel charged the high-value premium is the same parcel that gets
+     * the mandatory signature. That only holds if both sides fall back
+     * the same way. This line used to drop to a hardcoded 50,000 while
+     * the gate dropped to the Fee Catalogue's 100,000, so on any card
+     * with no highValue published the two still disagreed and the gap
+     * survived the fix that was supposed to close it.
+     *
+     * Card, then catalogue, then 100,000, on both sides.
+     */
+    const cardThreshold = Number(hv.thresholdNgn);
+    const hvThresholdNgn = Number.isFinite(cardThreshold) && cardThreshold > 0
+      ? cardThreshold
+      : await this.fees.getValueOr('high_value_threshold_ngn', 100_000);
     const hvPremiumPct   = Number(hv.premiumPct   ?? 0.5);
     const declaredNgn    = Number(input.declaredValueNgn ?? 0);
     const highValuePremium = declaredNgn > hvThresholdNgn && hvPremiumPct > 0
