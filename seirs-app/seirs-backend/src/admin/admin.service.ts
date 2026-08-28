@@ -583,13 +583,23 @@ export class AdminService {
      * honest scope here too. The demo figures are returned separately
      * rather than dropped, so a toggle can show them deliberately.
      */
+    /**
+     * Money is judged by whether it MOVED, never by whose account moved it.
+     *
+     * My first pass filtered this on isDemo alongside the people counts,
+     * and it reported zero. The only payment SEIRS has ever actually
+     * banked, 2,609.06 through Flutterwave, was made from a seeded
+     * account because that is how the founder tested it. The naira is
+     * real; the account label is not the test.
+     *
+     * So the demo filter belongs on counts of PEOPLE, where a seeded
+     * cohort genuinely is not a customer base, and never on payments. A
+     * successful charge is revenue whoever pressed the button.
+     */
     const receivedRow: Array<{ total: string; cnt: string }> = await this.usersRepo.manager.query(
       `SELECT COALESCE(SUM(p."amountKobo"), 0) AS total, COUNT(*) AS cnt
          FROM "payments" p
-         LEFT JOIN "deliveries" d ON d.id = p."deliveryId"
-         LEFT JOIN "users" u ON u.id = d."customerId"
-        WHERE p.status = 'success'
-          AND COALESCE(u."isDemo", false) = false`,
+        WHERE p.status = 'success'`,
     ).catch(() => [{ total: '0', cnt: '0' }]);
 
     const receivedTotal = Number(receivedRow?.[0]?.total ?? 0) / 100;
@@ -600,9 +610,7 @@ export class AdminService {
     const realCutRow: Array<{ driverTotal: string }> = await this.usersRepo.manager.query(
       `SELECT COALESCE(SUM(d."driverEarnings"), 0) AS "driverTotal"
          FROM "deliveries" d
-         JOIN "payments" p ON p."deliveryId" = d.id AND p.status = 'success'
-         LEFT JOIN "users" u ON u.id = d."customerId"
-        WHERE COALESCE(u."isDemo", false) = false`,
+         JOIN "payments" p ON p."deliveryId" = d.id AND p.status = 'success'`,
     ).catch(() => [{ driverTotal: '0' }]);
 
     const revenueTotal = receivedTotal;
