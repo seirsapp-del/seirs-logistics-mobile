@@ -148,7 +148,7 @@ export class FeesService implements OnModuleInit {
       }
     }
 
-    const existing  = await this.feesRepo.find({ select: ['key', 'unit', 'description'] });
+    const existing  = await this.feesRepo.find({ select: ['key', 'unit', 'description', 'name'] });
     const existingKeys = new Set(existing.map(f => f.key));
     const toInsert  = FEE_SEEDS.filter(f => !existingKeys.has(f.key!));
     if (toInsert.length > 0) {
@@ -191,6 +191,13 @@ export class FeesService implements OnModuleInit {
       if (seed.description && stored.description !== seed.description) {
         patch.description = seed.description;
       }
+      // The NAME is display-only in the dashboard too, so a wrong one is
+      // equally uncorrectable from the admin side. storage_24_72hr was
+      // labelled "Storage Fee (24-72hr)" for a band the code has never
+      // had: it charges every started day until the abandonment
+      // threshold, so the label promised that charging stops on day
+      // three (audit, 2026-08-28).
+      if (seed.name && stored.name !== seed.name) patch.name = seed.name;
       if (Object.keys(patch).length === 0) continue;
       try {
         await this.feesRepo.update(seed.key!, patch);

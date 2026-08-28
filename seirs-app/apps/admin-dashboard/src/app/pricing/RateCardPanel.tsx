@@ -888,8 +888,8 @@ Nothing goes live yet. It fills the boxes on this page so you can check them, an
 
       {/* ── Partner store ─────────────────────────────────────────── */}
       <Card title="Partner store economics">
-        <p className="text-sm text-[#0F2B4C]/70">Set in the <a href="/fees" className="font-semibold text-[#3A7BD5] hover:underline">Fee Catalogue</a>, under <b>partner_store_handling_ngn</b> and the counter fee rows.</p>
-        <p className="mt-2 text-xs text-[#0F2B4C]/45">The rate card carries a partnerStore block that no pricing code reads. The counter fees a partner is actually paid come from the Fee Catalogue.</p>
+        <p className="text-sm text-[#0F2B4C]/70">Set in the <a href="#fees" className="font-semibold text-[#3A7BD5] hover:underline">Fee Catalogue</a>, under <b>partner_store_handling_ngn</b> and the counter fee rows.</p>
+        <p className="mt-2 text-xs text-[#0F2B4C]/45">The rate card carries a partnerStore block that no pricing code reads: perPackageFeeNgn, an overstay start day and two daily tiers. The live behaviour is a single per-day rate from the Fee Catalogue below, so the card’s second tier describes an escalation SEIRS does not currently charge.</p>
       </Card>
 
       {/* ── VAT ───────────────────────────────────────────────────── */}

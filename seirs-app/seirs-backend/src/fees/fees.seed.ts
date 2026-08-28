@@ -111,8 +111,15 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // ── Driver-side fees ───────────────────────────────────────────────────
 
   // ── Storage (partner stores) ───────────────────────────────────────────
-  { key: 'storage_24_72hr',             name: 'Storage Fee (24-72hr)',
-    description: 'Daily fee charged to sender when their package overstays at a partner store between 24 and 72 hours.',
+  // Named for a 24-to-72-hour band that the code does not have and never
+  // had (audit, 2026-08-28). partner-store.service.ts charges this for
+  // every started day past storage_free_hours, with no upper band and no
+  // second tier, until storage_max_days declares the parcel abandoned.
+  // The key is referenced by string and stays; the label an operator
+  // reads is what was wrong, and it read as though charging stopped
+  // after three days.
+  { key: 'storage_24_72hr',             name: 'Storage Fee (per day)',
+    description: 'Charged to the sender for each started day a parcel sits at a counter past the free window. There is no upper band: it accrues every day until the abandonment threshold. Free window is storage_free_hours, the cut-off is storage_max_days.',
     category: FeeCategory.STORAGE,      unit: FeeUnit.PER_DAY,    value: 200 },
 
   /**
