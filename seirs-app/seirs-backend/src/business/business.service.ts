@@ -22,7 +22,8 @@ import { FeesService } from '../fees/fees.service';
 import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery.entity';
 import { DeliveriesService } from '../deliveries/deliveries.service';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
-import { secureCode } from '../common/utils/auth-codes';
+import { secureCode } from '../common/utils/auth-codes';
+
 import { redactDriverForCustomer } from '../common/redact-driver';
 
 /**
@@ -1509,16 +1510,30 @@ export class BusinessService {
     // Build daily buckets. The rate is read once so the statement and
     // the credit that produced it always agree.
     /**
-     * What the shop actually keeps on a typical parcel.
+     * What the shop keeps, estimated at the SMALLEST tier (2026-08-28).
      *
-     * This reported the whole handling fee, so the earnings screen told
-     * partners they earn NGN 500 flat when the fee is tiered by weight
-     * AND split with the platform: on a small parcel they keep 70% of
-     * NGN 300 (found on device 2026-08-19). Reported at the medium tier,
-     * which is the common case, and after the split.
+     * The handling fee is tiered by weight and split with the platform.
+     * This screen used the medium tier for every parcel and carried a
+     * comment saying "the statement and the credit that produced it
+     * always agree". They do not agree, and cannot: BusinessPackage has
+     * no weight column, so this statement has no way to know which tier
+     * any given parcel was actually charged at.
+     *
+     * The medium tier therefore overstated systematically. Pricing's own
+     * note says the small end is "where most parcels are", so a counter
+     * handling ordinary parcels saw 350.00 each and was credited 210.00.
+     * A partner earnings screen that overstates is how a counter network
+     * learns not to believe its own numbers.
+     *
+     * Estimating at the smallest tier reverses the error: a partner is
+     * shown the least they can have earned and is credited that or more.
+     * Being paid more than the screen promised is not a complaint.
+     *
+     * The real fix is recording the weight on the package, which needs a
+     * column and a migration. Until then this errs toward the partner.
      */
     const [tierFee, sharePct] = await Promise.all([
-      this.fees.getValueOr('counter_fee_medium_ngn', PER_PACKAGE_RATE_FALLBACK),
+      this.fees.getValueOr('counter_fee_small_ngn', PER_PACKAGE_RATE_FALLBACK),
       this.fees.getValueOr('counter_partner_share_pct', 70),
     ]);
     const perPackageRate = Math.round(tierFee * (sharePct / 100));

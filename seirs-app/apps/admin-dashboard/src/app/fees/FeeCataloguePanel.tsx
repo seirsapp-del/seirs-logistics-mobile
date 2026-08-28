@@ -186,7 +186,12 @@ const FEE_GROUPS: FeeGroup[] = [
   { id: 'future', label: 'Not launched yet', collapsed: true,
     hint: 'Set up in advance and read by nothing today. They stay because the value is a decision already made, not because anything uses it.',
     categories: ['dev_platform', 'subscription', 'financial', 'pool'],
-    keys: ['partner_sponsored_placement', 'insurance_referral_commission'] },
+    keys: ['partner_sponsored_placement', 'insurance_referral_commission',
+           // A ceiling on a counter volume bonus that is not implemented:
+           // nothing pays a volume bonus, so nothing reads its cap. Kept
+           // rather than retired, because no live feature replaces it
+           // (audit, 2026-08-28).
+           'counter_volume_bonus_cap_ngn'] },
 ];
 
 /** Pass one: an exact key or a prefix. Pass two: the stored category. */
