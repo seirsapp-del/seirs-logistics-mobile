@@ -1995,17 +1995,27 @@ export class AdminService {
    * should mean opening their file, not listing a page.
    */
   async getDrivers(page: number, limit: number, status?: string, search?: string) {
+    /**
+     * Alias is `du`, not `user`.
+     *
+     * `user` is a RESERVED WORD in Postgres, and TypeORM only quotes an
+     * alias when it recognises the `alias.property` form. A fragment
+     * like user."accountId" is not that form, so it went to the server
+     * as bare user."accountId" and every search request 500'd. The join
+     * carried this alias for as long as nothing filtered on it, which is
+     * exactly why it surfaced the moment search started working.
+     */
     const qb = this.driversRepo
       .createQueryBuilder('d')
-      .leftJoin('d.user', 'user')
+      .leftJoin('d.user', 'du')
       .select([
         'd.id', 'd.status', 'd.isOnline', 'd.rating', 'd.totalDeliveries',
         'd.vehicleType', 'd.vehiclePlate', 'd.createdAt', 'd.lastOnlineAt',
         'd.valueLevel', 'd.locationUpdatedAt',
       ])
       .addSelect([
-        'user.id', 'user.name', 'user.email', 'user.phone',
-        'user.accountId', 'user.profilePhoto',
+        'du.id', 'du.name', 'du.email', 'du.phone',
+        'du.accountId', 'du.profilePhoto',
       ])
       .orderBy('d.createdAt', 'DESC')
       .skip((page - 1) * limit)
@@ -2036,12 +2046,15 @@ export class AdminService {
     const q = (search ?? '').trim();
     if (q) {
       const like = `%${q}%`;
+      /* Property form throughout (du.accountId, not du."accountId"), so
+         TypeORM quotes the alias for us and nothing reaches Postgres
+         bare. */
       qb.andWhere(`(
-             user.name          ILIKE :like
-          OR user.email         ILIKE :like
-          OR user.phone         ILIKE :like
-          OR user."accountId"   ILIKE :like
-          OR d."vehiclePlate"   ILIKE :like
+             du.name            ILIKE :like
+          OR du.email           ILIKE :like
+          OR du.phone           ILIKE :like
+          OR du.accountId       ILIKE :like
+          OR d.vehiclePlate     ILIKE :like
           OR CAST(d.id AS text) = :exact
         )`, { like, exact: q });
     }
