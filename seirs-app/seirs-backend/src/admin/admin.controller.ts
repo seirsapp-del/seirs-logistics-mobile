@@ -49,6 +49,43 @@ export class AdminController {
   queues() { return this.adminService.queueAges(); }
 
   /**
+   * GET /api/v1/admin/forward-book
+   *
+   * What SEIRS has already promised, day by day. The dashboard could see
+   * now and the past and nothing at all about committed future work,
+   * which is the wrong half of time for a business where people book
+   * days ahead.
+   */
+  @Get('forward-book')
+  forwardBook(@Query('days') days?: string) {
+    return this.adminService.forwardBook(Number(days ?? 7));
+  }
+
+  /**
+   * GET /api/v1/admin/demand-by-hour
+   *
+   * Hour of day against day of week, in Lagos time. A revenue line shows
+   * a trend but never says WHEN, and when is what decides staffing. Two
+   * live policies depend on this and nothing validated either: riders
+   * activate at 4am and scheduling runs 5am to 9pm.
+   */
+  @Get('demand-by-hour')
+  demandByHour(@Query('days') days?: string) {
+    return this.adminService.demandByHour(Number(days ?? 60));
+  }
+
+  /**
+   * GET /api/v1/admin/top-corridors
+   *
+   * Where the work is, as state pairs derived from coordinates rather
+   * than from parsing address text.
+   */
+  @Get('top-corridors')
+  topCorridors(@Query('limit') limit?: string, @Query('days') days?: string) {
+    return this.adminService.topCorridors(Number(limit ?? 8), Number(days ?? 90));
+  }
+
+  /**
    * GET /api/v1/admin/egress-ip
    *
    * The address this server appears to come from, which is the one that

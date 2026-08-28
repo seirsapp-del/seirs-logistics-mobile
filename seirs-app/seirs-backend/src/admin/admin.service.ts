@@ -10,6 +10,7 @@ import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery
 import { FraudFlag, FraudFlagStatus } from '../fraud/fraud-flag.entity';
 import { FraudService } from '../fraud/fraud.service';
 import { MailService } from '../mail/mail.service';
+import { detectStateFromCoords } from '../pricing/regions';
 import { UsersService } from '../users/users.service';
 import { PaymentsService } from '../payments/payments.service';
 import { FeesService } from '../fees/fees.service';
@@ -706,6 +707,154 @@ export class AdminService {
       { key: 'dropReview',   label: 'Drops awaiting confirmation', href: '/travel-buddy', ...dropReview, warnAfterMin: 60 * 2 },
       { key: 'stuckRefunds', label: 'Refunds owed and unissued',   href: '/wallet',       ...stuckRefunds, warnAfterMin: 0 },
     ];
+  }
+
+  /**
+   * The work already promised, day by day, for the week ahead.
+   *
+   * The dashboard could show what is happening now and what happened
+   * before, and nothing at all about what SEIRS has committed to. That
+   * is the wrong half of time for this business: scheduled pickups run
+   * on a 5am to 9pm window, interstate trips are declared up to three
+   * days ahead, and Travel Buddy seats are booked against those trips
+   * days in advance. An ops manager could not answer "what is committed
+   * for tomorrow?" (founder 2026-08-28: "i am suprised it does not have
+   * a calender").
+   *
+   * Seven days including today, in Lagos time, because a day boundary
+   * read in UTC puts an hour of Nigerian evening work on the wrong date.
+   */
+  async forwardBook(days = 7) {
+    const n = Math.min(Math.max(Number(days) || 7, 1), 31);
+    const rows: Array<{ day: string; scheduled: string; trips: string; seats: string }> =
+      await this.usersRepo.manager.query(
+        `WITH d AS (
+           SELECT generate_series(
+             date_trunc('day', NOW() AT TIME ZONE 'Africa/Lagos'),
+             date_trunc('day', NOW() AT TIME ZONE 'Africa/Lagos') + ($1::int - 1) * INTERVAL '1 day',
+             INTERVAL '1 day'
+           )::date AS day
+         )
+         SELECT d.day::text AS day,
+           (SELECT COUNT(*) FROM "deliveries" x
+             WHERE x."scheduledFor" IS NOT NULL
+               AND (x."scheduledFor" AT TIME ZONE 'Africa/Lagos')::date = d.day
+               AND x.status NOT IN ('cancelled','failed','delivered')) AS scheduled,
+           (SELECT COUNT(*) FROM "driver_trips" t
+             WHERE (t."departAt" AT TIME ZONE 'Africa/Lagos')::date = d.day
+               AND t.status = 'active') AS trips,
+           (SELECT COUNT(*) FROM "seat_bookings" b
+             JOIN "driver_trips" t2 ON t2.id = b."trip_id"
+            WHERE (t2."departAt" AT TIME ZONE 'Africa/Lagos')::date = d.day
+              AND b.status IN ('booked','boarded')) AS seats
+         FROM d ORDER BY d.day`,
+        [n],
+      ).catch(() => []);
+
+    return rows.map((r) => ({
+      day:       r.day,
+      scheduled: Number(r.scheduled ?? 0),
+      trips:     Number(r.trips ?? 0),
+      seats:     Number(r.seats ?? 0),
+      total:     Number(r.scheduled ?? 0) + Number(r.trips ?? 0) + Number(r.seats ?? 0),
+    }));
+  }
+
+  /**
+   * When work actually happens: hour of day against day of week.
+   *
+   * A thirty-day revenue line shows a trend but never says WHEN, and for
+   * a delivery business that is the question that decides staffing. Two
+   * live policies already depend on the answer and nothing validated
+   * either: riders activate at 4am, and scheduling runs 5am to 9pm.
+   *
+   * Bucketed in Lagos time. Demo rows are excluded because a seeded
+   * cohort was created in a batch at whatever hour the seeder ran, which
+   * would draw a spike at a time nobody ordered anything.
+   */
+  async demandByHour(daysBack = 60) {
+    const n = Math.min(Math.max(Number(daysBack) || 60, 7), 365);
+    const rows: Array<{ dow: string; hour: string; cnt: string }> =
+      await this.usersRepo.manager.query(
+        `SELECT EXTRACT(DOW  FROM (d."createdAt" AT TIME ZONE 'Africa/Lagos'))::int::text AS dow,
+                EXTRACT(HOUR FROM (d."createdAt" AT TIME ZONE 'Africa/Lagos'))::int::text AS hour,
+                COUNT(*) AS cnt
+           FROM "deliveries" d
+           LEFT JOIN "users" u ON u.id = d."customerId"
+          WHERE d."createdAt" >= NOW() - ($1::int * INTERVAL '1 day')
+            AND COALESCE(u."isDemo", false) = false
+          GROUP BY 1, 2`,
+        [n],
+      ).catch(() => []);
+
+    // Dense grid: an absent hour means nobody ordered, which is itself
+    // the finding, so it must render as a zero rather than a gap.
+    const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+    let peak = 0;
+    for (const r of rows) {
+      const dow = Number(r.dow), hour = Number(r.hour), c = Number(r.cnt ?? 0);
+      if (dow >= 0 && dow < 7 && hour >= 0 && hour < 24) {
+        grid[dow][hour] = c;
+        if (c > peak) peak = c;
+      }
+    }
+    return { grid, peak, daysBack: n, timezone: 'Africa/Lagos' };
+  }
+
+  /**
+   * Where the work is, as city pairs.
+   *
+   * There is an ops map, but the dashboard had no sense of place at all,
+   * and in Lagos where matters as much as when. Corridors are what a
+   * rider actually plans around and what a zone is eventually drawn on.
+   */
+  async topCorridors(limit = 8, daysBack = 90) {
+    const n    = Math.min(Math.max(Number(limit) || 8, 3), 20);
+    const days = Math.min(Math.max(Number(daysBack) || 90, 7), 365);
+
+    /**
+     * Place comes from coordinates, not from parsing the address text.
+     *
+     * Delivery has no city or state column, only pickupAddress and
+     * pickupLat/Lng. Splitting the address string on commas would invent
+     * a second, worse notion of where things happen: Nigerian addresses
+     * are not uniformly formatted, and "Ikeja" would end up as a
+     * different place from "Ikeja, Lagos".
+     *
+     * detectStateFromCoords is the platform's own answer to that
+     * question, already used by the pricing engine to decide interstate
+     * surcharges, so the dashboard and the price agree about geography
+     * by construction.
+     */
+    const rows: Array<{ plat: string; plng: string; dlat: string; dlng: string; price: string }> =
+      await this.deliveriesRepo.manager.query(
+        `SELECT d."pickupLat" AS plat, d."pickupLng" AS plng,
+                d."dropoffLat" AS dlat, d."dropoffLng" AS dlng,
+                COALESCE(d.price, 0) AS price
+           FROM "deliveries" d
+           LEFT JOIN "users" u ON u.id = d."customerId"
+          WHERE d."createdAt" >= NOW() - ($1::int * INTERVAL '1 day')
+            AND COALESCE(u."isDemo", false) = false
+            AND d."pickupLat" IS NOT NULL AND d."dropoffLat" IS NOT NULL`,
+        [days],
+      ).catch(() => []);
+
+    const bucket = new Map<string, { count: number; revenue: number }>();
+    for (const r of rows) {
+      const from = detectStateFromCoords(Number(r.plat), Number(r.plng));
+      const to   = detectStateFromCoords(Number(r.dlat), Number(r.dlng));
+      if (!from || !to) continue;   // offshore or a bad pin, not a corridor
+      const key = from === to ? `Within ${from}` : `${from} to ${to}`;
+      const cur = bucket.get(key) ?? { count: 0, revenue: 0 };
+      cur.count   += 1;
+      cur.revenue += Number(r.price ?? 0);
+      bucket.set(key, cur);
+    }
+
+    return [...bucket.entries()]
+      .map(([corridor, v]) => ({ corridor, count: v.count, revenue: +v.revenue.toFixed(2) }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, n);
   }
 
   // ── Live ops dashboard ────────────────────────────────────────────────────
