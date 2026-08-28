@@ -93,7 +93,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'travel_buddy_no_show_wait_min', name: 'Travel Buddy no-show wait (min)',
     description: 'Minutes a rider must wait at the boarding stop, visible to both sides, before the fare may be forfeited and the vehicle may leave. The wait, the rider position and every contact attempt are recorded for the dispute.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.MINUTES, value: 15 },
-  { key: 'travel_buddy_free_cancel_hours', name: 'Travel Buddy free-cancel window (hours)',
+  { key: 'travel_buddy_free_cancel_hours', name: 'Travel Buddy free-cancel cut-off (hours before departure)',
     description: 'Hours before departure inside which a passenger cancellation stops being refunded in full. Outside it the fare returns less the sunk card processing (cancel_processing_pct).',
     category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.HOURS, value: 24 },
   // 100, not 0. Founder 2026-08-28: "they get a refund minus the
@@ -103,7 +103,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // processing is still withheld through cancel_processing_pct, because
   // that is a real sunk cost rather than a penalty.
   { key: 'travel_buddy_late_cancel_refund_pct', name: 'Travel Buddy late-cancel refund (%)',
-    description: 'Share of a paid seat fare returned when the passenger cancels INSIDE the free window, before card processing is deducted. 100 means they get their money back less the Flutterwave fee. Lower it here, never in code.',
+    description: 'Share of a paid seat fare returned when a passenger cancels INSIDE the cut-off, before card processing is deducted. 100 returns the fare less the Flutterwave fee, which is the standing policy. 0 returns nothing at all. While this sits at 100 the cut-off changes nothing, because both sides of it refund the same: lower this to make late cancellations cost the passenger something.',
     category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.PERCENT, value: 100 },
   { key: 'travel_buddy_drop_geofence_m', name: 'Travel Buddy drop geofence (m)',
     description: 'Metres from the declared alight stop beyond which a drop is FLAGGED, never refused: roads close and plans change, so the distance is recorded for review rather than used to strand a rider mid-journey.',

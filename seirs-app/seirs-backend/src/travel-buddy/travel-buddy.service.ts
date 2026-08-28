@@ -47,7 +47,16 @@ const FEE_FALLBACK = {
   [FEE.NO_SHOW_WAIT_MIN]:       15,
   [FEE.UNPAID_HOLD_MIN]:        30,
   [FEE.FREE_CANCEL_HOURS]:      24,
-  [FEE.LATE_CANCEL_REFUND_PCT]: 0,
+  /**
+   * 100, not 0 (audit, 2026-08-28).
+   *
+   * The founder's rule for a passenger cancellation is "they get a
+   * refund minus the Flutterwave fee". This fallback said zero, so if
+   * the fees table were ever unavailable the platform would keep a
+   * passenger's entire fare. A fallback should fail toward the stated
+   * policy, and on money it should fail toward the customer.
+   */
+  [FEE.LATE_CANCEL_REFUND_PCT]: 100,
   [FEE.DROP_GEOFENCE_M]:        1000,
   [FEE.CANCEL_PROCESSING_PCT]:  1.4,
 };
@@ -1632,8 +1641,21 @@ export class TravelBuddyService {
       if (hoursToDeparture > freeHours) {
         refund = kobo(paid * (1 - processingPct / 100));
       } else {
+        /**
+         * A configured 0 means ZERO, not "unset" (audit, 2026-08-28).
+         *
+         * The guard was `latePct > 0 ? latePct/100 : 1`, so setting this
+         * row to 0 fell through to a share of 1 and returned the
+         * passenger their WHOLE fare. An admin lowering the number to
+         * zero to stop refunding late cancellations would have started
+         * refunding all of them, and the catalogue's own description
+         * tells them to lower it here rather than in code.
+         *
+         * Only a missing or unreadable value falls back now, and it
+         * falls back to a full refund, matching the policy.
+         */
         const latePct = await this.fee(FEE.LATE_CANCEL_REFUND_PCT);
-        const lateShare = Number.isFinite(latePct) && latePct > 0
+        const lateShare = Number.isFinite(latePct)
           ? Math.max(0, Math.min(100, latePct)) / 100
           : 1;
         refund = kobo(paid * lateShare * (1 - processingPct / 100));

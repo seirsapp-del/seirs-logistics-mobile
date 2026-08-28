@@ -888,24 +888,52 @@ Nothing goes live yet. It fills the boxes on this page so you can check them, an
             value={card.feeRules.cancelPostAssignCustomer}
             onChange={(v) => patchPath('feeRules.cancelPostAssignCustomer', v)} />
         </Row>
+        {/*
+          Four of the seven fields in this section are read by nothing
+          and sat beside three that are, with no way to tell them apart
+          (audit, 2026-08-28). Worse, each dead one disagrees with the
+          live Fee Catalogue row that does its job, so an operator could
+          set a 10-minute wait here while the platform waits 15.
+
+          Left editable, per the rule that a value set in advance is a
+          decision already made. Labelled, so nobody tunes a number that
+          changes nothing.
+        */}
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+          <p className="font-semibold">Four fields below are not wired up.</p>
+          <p className="mt-1">
+            The three cancellation fees are live. <b>Sender no-show fee</b>, <b>No-show wait
+            window</b>, <b>Return trip base fee</b> and <b>Recipient call attempts</b> are not:
+            nothing reads them. What actually runs today lives in the Fee Catalogue further
+            down this page, and it does not match what is typed here:
+          </p>
+          <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
+            <li>Waiting on a sender is <b>sender_response_window_minutes</b>, currently 15,
+              not the 10 shown here.</li>
+            <li>A rider is paid for a wasted trip by <b>driver_failed_trip_base_ngn</b>,
+              a base plus fuel for the distance ridden, not a flat fee.</li>
+            <li>Returns are charged by <b>return_to_sender_fee</b>, currently 1,500.00.</li>
+            <li>Nothing counts recipient call attempts at all.</li>
+          </ul>
+        </div>
         <Row>
           <FieldNumber label="Driver gets on post-assign cancel ₦"
             value={card.feeRules.cancelPostAssignDriver}
             onChange={(v) => patchPath('feeRules.cancelPostAssignDriver', v)} />
-          <FieldNumber label="Sender no-show fee ₦"
+          <FieldNumber label="Sender no-show fee ₦ (not wired)"
             value={card.feeRules.senderNoShowFlat}
             onChange={(v) => patchPath('feeRules.senderNoShowFlat', v)} />
         </Row>
         <Row>
-          <FieldNumber label="No-show wait window (minutes)"
+          <FieldNumber label="No-show wait window (minutes) (not wired)"
             value={card.feeRules.senderNoShowWaitMinutes}
             onChange={(v) => patchPath('feeRules.senderNoShowWaitMinutes', v)} />
-          <FieldNumber label="Return trip base fee ₦"
+          <FieldNumber label="Return trip base fee ₦ (not wired)"
             value={card.feeRules.returnTripBaseFee}
             onChange={(v) => patchPath('feeRules.returnTripBaseFee', v)} />
         </Row>
         <Row>
-          <FieldNumber label="Recipient call attempts"
+          <FieldNumber label="Recipient call attempts (not wired)"
             value={card.feeRules.returnCallAttempts}
             onChange={(v) => patchPath('feeRules.returnCallAttempts', v)}
             hint="How many tries before declaring recipient unreachable." />
