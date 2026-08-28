@@ -16,8 +16,14 @@ export interface DrawerItem {
   onPress?: () => void;
   /** Optional badge/counter on the right side (e.g. unread count). */
   badge?:  string | number;
-  /** Style as a destructive item (red text + icon). */
+  /** Style as a destructive item (red text + icon on a light plate). */
   danger?: boolean;
+  /**
+   * Optional group heading rendered above this item, shown only when it
+   * differs from the previous item's. Lets a host app group a flat list
+   * the way the Profile tab does, without every app having to.
+   */
+  section?: string;
 }
 
 export interface DrawerThemeTokens {
@@ -56,6 +62,19 @@ export interface DrawerProps {
   /** Footer sign-out action. */
   signOut: { label: string; onPress: () => void };
 
+  /**
+   * Small print above Sign Out: version, and anything legal.
+   *
+   * The drawer ended at the theme toggle and then had roughly 40% of its
+   * height empty before Sign Out, which reads as unfinished rather than
+   * airy (founder, 2026-08-29: "dont forget the hambuger region").
+   *
+   * The Profile tab already solves this properly, ending with
+   * "SEIRS Logistics v1.0.0" above its Sign Out, so the drawer borrows
+   * its own app's answer rather than inventing one.
+   */
+  footerNote?: string;
+
   /** Theme tokens from the host app. */
   theme: DrawerThemeTokens;
 
@@ -75,7 +94,7 @@ export interface DrawerProps {
  * sign-out wiring, and the theme toggle UI.
  */
 export function Drawer({
-  visible, onClose, user, items, themeToggle, signOut, theme, Icon,
+  visible, onClose, user, items, themeToggle, signOut, footerNote, theme, Icon,
 }: DrawerProps) {
   const insets = useSafeAreaInsets();
   const dangerColor = theme.danger ?? '#EF4444';
@@ -145,8 +164,20 @@ export function Drawer({
         {/* Menu items */}
         <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
           {items.map((item, idx) => (
+            <React.Fragment key={`${item.label}-${idx}`}>
+            {/*
+              A section label whenever this item starts a new group.
+              Six items in one flat list covered three different kinds of
+              thing: features, help, and a setting. Profile groups its
+              rows under ACCOUNT / ACTIVITY / SUPPORT and is much easier
+              to scan for it (2026-08-29).
+            */}
+            {item.section && item.section !== items[idx - 1]?.section && (
+              <Text style={[styles.sectionLabel, { color: theme.textThird }]}>
+                {item.section}
+              </Text>
+            )}
             <Pressable
-              key={`${item.label}-${idx}`}
               style={({ pressed }) => [
                 styles.item,
                 {
@@ -156,12 +187,20 @@ export function Drawer({
               ]}
               onPress={item.onPress}
             >
-              <Icon
-                name={item.icon}
-                size={20}
-                color={item.danger ? dangerColor : theme.textSecond}
-                strokeWidth={1.8}
-              />
+              {/*
+                A danger row carries its icon on a light plate, the way
+                Profile draws SOS. A thin red glyph on a dark row reads
+                as decoration; the plate is what makes it findable when
+                somebody is frightened and not reading.
+              */}
+              <View style={item.danger ? styles.dangerPlate : undefined}>
+                <Icon
+                  name={item.icon}
+                  size={20}
+                  color={item.danger ? dangerColor : theme.textSecond}
+                  strokeWidth={item.danger ? 2.2 : 1.8}
+                />
+              </View>
               <Text style={[styles.itemLabel, { color: item.danger ? dangerColor : theme.text }]}>
                 {item.label}
               </Text>
@@ -172,6 +211,7 @@ export function Drawer({
               )}
               <Icon name="ChevronRight" size={16} color={theme.textThird} strokeWidth={2} />
             </Pressable>
+            </React.Fragment>
           ))}
 
           {/* Theme toggle row */}
@@ -200,6 +240,10 @@ export function Drawer({
             </View>
           )}
         </ScrollView>
+
+        {footerNote ? (
+          <Text style={[styles.footerNote, { color: theme.textThird }]}>{footerNote}</Text>
+        ) : null}
 
         {/* Sign out */}
         <Pressable
@@ -252,6 +296,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   itemLabel: { flex: 1, fontSize: 13, fontWeight: '500' },
+  sectionLabel: {
+    fontSize: 10, fontWeight: '700', letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    paddingHorizontal: 20, paddingTop: 18, paddingBottom: 6,
+  },
+  dangerPlate: {
+    width: 32, height: 32, borderRadius: 9,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+    marginLeft: -6,
+  },
+  footerNote: {
+    fontSize: 11, textAlign: 'center',
+    paddingHorizontal: 20, paddingBottom: 10,
+  },
   badge: {
     minWidth: 22, height: 22, borderRadius: 11,
     paddingHorizontal: 6,
