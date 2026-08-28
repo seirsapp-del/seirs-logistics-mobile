@@ -28,8 +28,8 @@ export const VEHICLE_LABEL: Record<string, string> = {
   tricycle:    'Keke',
   car:         'Car',
   van:         'Danfo / Van',
-  truck_small: 'Small truck',
-  truck_large: 'Large truck',
+  truck_small: 'Small Truck',
+  truck_large: 'Large Truck',
 
   // Ride-side aliases, so both sides of the app say the same word.
   okada: 'Okada',

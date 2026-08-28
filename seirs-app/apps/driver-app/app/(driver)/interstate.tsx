@@ -24,6 +24,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { driversApi, configApi, mapsApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+import { vehicleLabel } from '@seirs/shared/models/vehicles';
 
 // Spec V8 §2.18: driver declares an upcoming intercity trip
 // (Lagos → Ibadan, etc.). System surfaces matching packages along
@@ -560,7 +561,7 @@ export default function InterstateScreen() {
       if (seatCap != null && (Number(seats) || 0) > seatCap) {
         alertDialog(
           'Too many seats',
-          `A ${vehicleType} sells at most ${seatCap} seat${seatCap === 1 ? '' : 's'}. No squeezing: that is the rule.`,
+          `A ${vehicleLabel(vehicleType)} sells at most ${seatCap} seat${seatCap === 1 ? '' : 's'}. No squeezing: that is the rule.`,
         );
         return;
       }
@@ -1277,7 +1278,7 @@ export default function InterstateScreen() {
               <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>Carry passengers</Text>
               <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
                 {seatCap === 0
-                  ? `A ${vehicleType} is not a passenger class on SEIRS. Packages only on this run.`
+                  ? `A ${vehicleLabel(vehicleType)} is not a passenger class on SEIRS. Packages only on this run.`
                   : 'Real seats only: SEIRS blocks overloading. No doubling the front seat, ever.'}
               </Text>
             </View>

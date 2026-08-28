@@ -32,6 +32,7 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { SOCKET_URL } from '@/constants/config';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+import { vehicleLabel } from '@seirs/shared/models/vehicles';
 
 const URGENCY_COLOR: Record<string, string> = {
   economy:  '#16A34A',
@@ -568,8 +569,8 @@ export default function DriverHomeScreen() {
                       drivers can judge where the trip ends. */}
                   <Text style={[styles.jobCustomer, { color: job.kind === 'ride' ? '#6366F1' : theme.text }]}>
                     {job.kind === 'ride'
-                      ? `RIDE · passenger (${job.vehicleType})`
-                      : [job.packageSize, job.vehicleType].filter(Boolean).join(' · ') || 'Package delivery'}
+                      ? `RIDE · passenger (${vehicleLabel(job.vehicleType)})`
+                      : [job.packageSize, vehicleLabel(job.vehicleType)].filter(Boolean).join(' · ') || 'Package delivery'}
                   </Text>
                   <View style={styles.addrRow}>
                     <MapPin size={12} color="#16A34A" strokeWidth={1.75} />
