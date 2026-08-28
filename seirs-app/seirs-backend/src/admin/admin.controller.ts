@@ -232,8 +232,8 @@ export class AdminController {
 
   // GET /api/v1/admin/users?page=1&limit=20&role=customer
   @Get('users')
-  getUsers(@Query() q: { page?: number; limit?: number; role?: string }) {
-    return this.adminService.getUsers(q.page ?? 1, q.limit ?? 20, q.role);
+  getUsers(@Query() q: { page?: number; limit?: number; role?: string; search?: string }) {
+    return this.adminService.getUsers(q.page ?? 1, q.limit ?? 20, q.role, q.search);
   }
 
   /**

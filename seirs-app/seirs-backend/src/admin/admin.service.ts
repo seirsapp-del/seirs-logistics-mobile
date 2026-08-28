@@ -1428,7 +1428,7 @@ export class AdminService {
    * select:false on the entity, which is the pattern this list should
    * have followed and did not.
    */
-  async getUsers(page: number, limit: number, role?: string) {
+  async getUsers(page: number, limit: number, role?: string, search?: string) {
     const qb = this.usersRepo.createQueryBuilder('u')
       .select([
         'u.id', 'u.name', 'u.firstName', 'u.middleName', 'u.lastName',
@@ -1455,6 +1455,36 @@ export class AdminService {
       qb.where(`u.role = 'customer' AND u."businessRole" IS NULL AND u."accountId" NOT LIKE 'BIZ-%'`);
     } else if (role) {
       qb.where('u.role = :role', { role });
+    }
+
+    /**
+     * Search, which the dashboard has been sending and the server
+     * discarding, exactly as it was doing for drivers (2026-08-28).
+     *
+     * adminApi.users() appends &search=; the controller destructured
+     * only { page, limit, role }. The users page had no box to type in,
+     * so nothing revealed it, but the capability was absent rather than
+     * unbuilt: support hunting one customer had the global TopBar search
+     * (three hits per type, a jump-to, not a list) or nothing.
+     *
+     * andWhere, not where: the role branches above are already on this
+     * builder, and a bare .where() here would have silently discarded
+     * them, turning "banned business accounts called X" into "anyone
+     * called X". Alias is `u` and every column is property form, so the
+     * reserved-word trap that broke driver search cannot bite here.
+     */
+    const q = (search ?? '').trim();
+    if (q) {
+      const like = `%${q}%`;
+      qb.andWhere(`(
+             u.name        ILIKE :like
+          OR u.firstName   ILIKE :like
+          OR u.lastName    ILIKE :like
+          OR u.email       ILIKE :like
+          OR u.phone       ILIKE :like
+          OR u.accountId   ILIKE :like
+          OR CAST(u.id AS text) = :exact
+        )`, { like, exact: q });
     }
 
     const [users, total] = await qb.getManyAndCount();
