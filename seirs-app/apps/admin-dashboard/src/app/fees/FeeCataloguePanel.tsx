@@ -184,7 +184,7 @@ const FEE_GROUPS: FeeGroup[] = [
            'fuel_reprice_trigger_pct'] },
 
   { id: 'future', label: 'Not launched yet', collapsed: true,
-    hint: 'Set up in advance and read by nothing today. They stay because the value is a decision already made, not because anything uses it.',
+    hint: 'Nothing here changes what anyone is charged today: most are read by no code at all, and Driver Premium is wired but paused platform-wide. They stay because the value is a decision already made.',
     categories: ['dev_platform', 'subscription', 'financial', 'pool'],
     keys: ['partner_sponsored_placement', 'insurance_referral_commission',
            // A ceiling on a counter volume bonus that is not implemented:

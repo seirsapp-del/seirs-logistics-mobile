@@ -259,12 +259,26 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // pass-through the entire gap came out of the driver's pocket: a truck
   // driver on a 400km run was NGN 53,333 short on fuel alone. These rows
   // are corrected the day the pump moves, with no deploy.
-  { key: 'current_petrol_price_ngn',    name: 'Petrol Pump Price (per litre)',
-    description: 'Current petrol price. Drivers are reimbursed at this rate, so it must track the real pump price or riders subsidise every trip.',
+  /**
+   * These two said "Drivers are reimbursed at this rate, so it must
+   * track the real pump price or riders subsidise every trip" (audit,
+   * 2026-08-28). They are not, and it does not.
+   *
+   * fuelPerKm reads card.fuelPrices, or a region override of it, and
+   * never these rows: pricing.service.ts:409. The rows exist so
+   * livePumpPrices can compare reality against the published card and
+   * raise the drift warning at :449.
+   *
+   * The old wording pointed the wrong way on the one thing that matters:
+   * a founder raising the petrol price here to stop riders subsidising
+   * fuel would have changed no payout at all, and believed he had.
+   */
+  { key: 'current_petrol_price_ngn',    name: 'Petrol Pump Price (per litre, reference)',
+    description: 'REFERENCE ONLY. Today’s real pump price, recorded here so the dashboard can warn you when the rate card has fallen behind it. It does NOT price anything: what a rider is reimbursed and what a customer is quoted both come from the rate card’s own fuel prices. Changing this number alone changes no fare and no payout. Update it, read the drift warning, then update the card and publish.',
     category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 1380 },
 
-  { key: 'current_diesel_price_ngn',    name: 'Diesel Pump Price (per litre)',
-    description: 'Current diesel price, used for van and truck fuel reimbursement.',
+  { key: 'current_diesel_price_ngn',    name: 'Diesel Pump Price (per litre, reference)',
+    description: 'REFERENCE ONLY, same as the petrol row. Today’s real diesel price for the drift warning on vans and trucks. Reimbursement and quotes come from the rate card, not from here. Changing this alone changes nothing until the card is republished.',
     category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 1650 },
 
   { key: 'fuel_reprice_trigger_pct',    name: 'Fuel Drift Warning Threshold',
@@ -395,15 +409,15 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
 
   // ── Subscriptions ──────────────────────────────────────────────────────
   { key: 'seirs_plus_subscription',     name: 'SEIRS Plus (customer)',
-    description: 'Customer monthly subscription - free booking fee, priority dispatch, 5% delivery discount.',
+    description: 'Not built. A customer monthly subscription concept: no booking fee, priority dispatch, 5 percent off deliveries. Nothing reads this row. Note that the booking fee it would waive is now the rate card service fee, since the old customer_booking_fee row was retired as a dead duplicate on 2026-08-28.',
     category: FeeCategory.SUBSCRIPTION, unit: FeeUnit.PER_MONTH,  value: 2000 },
   // Was NGN 5,000 per WEEK, which is NGN 21,667 a month against a Lagos
   // rider income of NGN 150k-300k: between 7% and 14% of everything they
   // earn, priced like Western SaaS rather than like a rider's wallet
   // (review 2026-08-18). Monthly, and small enough to be an easy yes.
-  { key: 'driver_premium_subscription', name: 'Driver Premium',
-    description: 'Monthly flat fee a driver can pay instead of the commission cut, for high-volume drivers who prefer predictability. Must stay comfortably under 3% of a typical rider month.',
-    category: FeeCategory.SUBSCRIPTION, unit: FeeUnit.PER_MONTH,  value: 4000 },
+  { key: 'driver_premium_subscription', name: 'Driver Premium (per week, paused)',
+    description: 'PAUSED PLATFORM-WIDE since 2026-08-10: activation is blocked, billing is stopped and the matching boost is off, so this charges nobody today. Note the period: the code bills this WEEKLY, and the catalogue used to label it monthly, so a driver would have been charged this every week against a screen promising a month. Settle the number before ever un-pausing it.',
+    category: FeeCategory.SUBSCRIPTION, unit: FeeUnit.PER_WEEK,  value: 4000 },
 
   // ── Partner ────────────────────────────────────────────────────────────
   { key: 'partner_sponsored_placement', name: 'Partner Sponsored Placement',
