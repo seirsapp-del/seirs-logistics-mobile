@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, Navigation, Package, User, Bike, Store, Receipt, AlertTriangle, Camera } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Package, User, Bike, Store, Receipt, AlertTriangle, Camera, Siren } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { naira } from "@/lib/money";
 
@@ -193,6 +193,25 @@ export default function DeliveryDetailPage() {
   const [rfNote,  setRfNote]  = useState('');
   const [rfError, setRfError] = useState<string | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
+  /**
+   * Whether anybody pressed the panic button on this run.
+   *
+   * This page had no idea. A trip where a rider hit SOS and a trip where
+   * nothing happened rendered identically, so anyone opening a run to
+   * work out what went wrong, a refund, a dispute, a complaint, was
+   * reading it with the single most serious event on the record missing.
+   * The alert was only ever visible on the SOS desk, and only while it
+   * was still open.
+   */
+  const [sos, setSos] = useState<any[]>([]);
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    adminApi.sos.history('all', 20, { deliveryId: String(id) })
+      .then((r: any) => { if (alive) setSos(Array.isArray(r) ? r : []); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [id]);
   /* Preview is deliberately separate from issuing: an agent should see
      the split before any money moves. */
   const previewRefund = async (pct: string) => {
@@ -334,6 +353,53 @@ export default function DeliveryDetailPage() {
       <Link href="/deliveries" className="inline-flex items-center gap-1 text-sm text-[#3A7BD5] hover:underline">
         <ArrowLeft size={14} /> All deliveries
       </Link>
+
+      {/* Above the fold, always. An SOS outranks every other fact on this
+          page: it is the reason someone is reading it. */}
+      {sos.length > 0 && (
+        <div className="mt-3 rounded-xl border-2 border-red-300 bg-red-50 p-4">
+          <p className="flex items-center gap-2 text-sm font-bold text-red-800">
+            <Siren size={16} />
+            SOS was pressed on this run
+            {sos.length > 1 ? ` (${sos.length} times)` : ''}
+          </p>
+          <div className="mt-2 space-y-2">
+            {sos.map((a: any) => (
+              <div key={a.id} className="rounded-lg bg-white px-3 py-2 text-xs">
+                <p className="font-semibold text-[#0F2B4C]">
+                  {a.user?.name ?? 'Someone'}
+                  {a.user?.role ? ` (${String(a.user.role).toLowerCase()})` : ''}
+                  {' · '}
+                  {new Date(a.createdAt).toLocaleString('en-NG')}
+                  <span className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                    a.status === 'active' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {a.status}
+                  </span>
+                </p>
+                {a.note && <p className="mt-1 text-[#0F2B4C]">They said: {a.note}</p>}
+                <p className="mt-1 text-[#0F2B4C]/60">
+                  {a.status === 'cancelled'
+                    ? 'Stood down by whoever raised it.'
+                    : a.resolutionNote
+                      ? `Support: ${a.resolutionNote}`
+                      : a.status === 'active'
+                        ? 'Still open on the SOS desk.'
+                        : 'Closed with no note.'}
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-3 font-semibold">
+                  <Link href="/sos" className="text-[#3A7BD5] hover:underline">SOS desk</Link>
+                  {a.user?.id && (
+                    <Link href={`/users/${a.user.id}`} className="text-[#3A7BD5] hover:underline">
+                      Their record
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 flex items-start justify-between gap-4">
         <div>

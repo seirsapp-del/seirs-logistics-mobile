@@ -140,6 +140,16 @@ export const adminApi = {
   sos: {
     active:  ()          => req<any[]>('/sos/active'),
     /**
+     * Resolved alerts and what was done about them. The desk only ever
+     * listed OPEN alerts, so a resolved incident left the product
+     * entirely and the resolution note nobody could read was written for
+     * nothing.
+     */
+    history: (status = 'resolved', limit = 100, opts: { userId?: string; deliveryId?: string } = {}) =>
+      req<any[]>(`/sos/history?status=${status}&limit=${limit}`
+        + (opts.userId ? `&userId=${opts.userId}` : '')
+        + (opts.deliveryId ? `&deliveryId=${opts.deliveryId}` : '')),
+    /**
      * Closing an alert now records what was done about it (founder
      * 2026-08-24). Without it the queue is unreviewable: a month later
      * nobody can tell a false alarm from a real incident that was handled.

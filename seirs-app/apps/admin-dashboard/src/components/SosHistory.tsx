@@ -18,29 +18,27 @@ import { adminApi } from '@/lib/api';
  * leaning on the button. Neither is readable if the only surface that
  * ever shows an alert drops it the moment it is closed.
  *
- * WHAT THIS CAN AND CANNOT SHOW, and why.
+ * WHERE THE ROWS COME FROM.
  *
- * `GET /sos/active` is the only SOS read endpoint that exists, and its
- * WHERE clause is `status = 'active'`. Nothing else in the backend
- * reads the sos_alerts table: the admin module never touches it, the
- * NDPR export bundle omits it, and SosService.resolve writes no audit
- * row. So a resolved alert, its note and its resolution note become
- * unreachable through the API the instant support closes it. The rows
- * are all still in Postgres with `note`, `resolutionNote`, `resolvedAt`
- * and `resolvedBy` intact; there is simply no route that returns them.
+ * This panel shipped able to show only OPEN alerts, because
+ * `GET /sos/active` was the single SOS read route in the backend and its
+ * WHERE clause is `status = 'active'`. A resolved alert, its note and
+ * its resolution note became unreachable through the API the instant
+ * support closed it, so this panel carried a printed apology saying the
+ * past was not readable: an empty panel without it would have read as
+ * "this person has never pressed SOS", a different and dangerous claim.
  *
- * So this renders in one of two modes.
+ * `GET /sos/history?userId=` exists as of 2026-08-28 and returns exactly
+ * this person's alerts, open and closed, with the resolution note and
+ * who wrote it. The apology is gone because the gap is.
  *
- *   `alerts` given: the person's full history, straight from the detail
- *   payload. Nothing sends it today. It is read anyway so that the day
- *   AdminService.getUserDetail / getDriverDetail adds one more branch
- *   to its Promise.all (sosRepo.find on that user, newest first), the
- *   history appears here with no second edit on the dashboard.
+ * Two modes remain, and the order matters:
  *
- *   `alerts` absent: live alerts only, fetched from the SOS desk feed,
- *   plus a note saying in plain words that the past is not readable.
- *   An empty panel without that note would read as "this person has
- *   never pressed SOS", which is a different and dangerous claim.
+ *   `alerts` given: the person's history straight from the detail
+ *   payload, no second request. Nothing sends it today; it stays first
+ *   so that the day getUserDetail adds that branch, this panel uses it.
+ *
+ *   `alerts` absent: fetched here, scoped to this user by the server.
  */
 export function SosHistory({
   userId, personLabel, alerts,
@@ -55,16 +53,15 @@ export function SosHistory({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    /* The desk feed is only a stand-in for history. When the server
-       sends the real thing, skip the extra request entirely. */
+    /* Skip the request entirely when the detail payload already carries
+       the history. */
     if (!userId || history) return;
     let alive = true;
-    adminApi.sos.active()
-      .then((rows: any) => {
-        if (!alive) return;
-        const list = Array.isArray(rows) ? rows : [];
-        setLive(list.filter((a: any) => a?.user?.id === userId));
-      })
+    /* status 'all', because a cancelled alert is part of a person's
+       record too: a pocket press says the button sits somewhere wrong,
+       and a withdrawn one may say somebody was told to take it back. */
+    adminApi.sos.history('all', 100, { userId })
+      .then((rows: any) => { if (alive) setLive(Array.isArray(rows) ? rows : []); })
       .catch((e: any) => { if (alive) setError(e?.message ?? 'Could not load SOS alerts'); });
     return () => { alive = false; };
   }, [userId, history]);
@@ -86,9 +83,9 @@ export function SosHistory({
       <h3 className="text-sm font-bold text-[#0F2B4C] mb-3 flex items-center gap-1.5">
         <Siren size={14} className={activeRows.length > 0 ? 'text-red-600' : 'text-gray-400'} />
         Safety and SOS
-        {history && (
+        {rows !== null && rows.length > 0 && (
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700">
-            {history.length} on record
+            {rows.length} on record
           </span>
         )}
         {activeRows.length > 0 && (
@@ -106,15 +103,11 @@ export function SosHistory({
       )}
 
       {rows === null && !error && (
-        <p className="text-sm text-gray-400">Checking the SOS desk...</p>
+        <p className="text-sm text-gray-400">Reading their SOS record...</p>
       )}
 
       {rows !== null && rows.length === 0 && (
-        <p className="text-sm text-gray-500">
-          {history
-            ? `${personLabel} has never pressed SOS.`
-            : `No alert from ${personLabel} is open right now.`}
-        </p>
+        <p className="text-sm text-gray-500">{personLabel} has never pressed SOS.</p>
       )}
 
       {rows !== null && rows.length > 0 && (
@@ -184,17 +177,14 @@ export function SosHistory({
         </div>
       )}
 
-      {/* Say what is missing, in place. An empty panel here would read as
-          "never pressed SOS", which is a different and dangerous claim. */}
-      {!history && (
-        <div className="mt-3 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2.5 text-xs text-gray-600">
-          <span className="font-semibold text-gray-700">Past alerts are not readable yet.</span>{' '}
-          Every SOS is stored with its note, who closed it, when, and the
-          resolution note support wrote, but the only endpoint that reads the
-          table returns alerts that are still open, so a closed one cannot be
-          fetched by any screen. Counting {personLabel}&apos;s history needs the
-          server to return that person&apos;s sos_alerts rows on this profile;
-          this dashboard will not guess at it.
+      {/* A pattern is the reason this panel exists, so it is stated rather
+          than left for whoever is reading to count the cards. */}
+      {rows !== null && rows.length > 1 && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+          <span className="font-semibold">{personLabel} has pressed SOS {rows.length} times.</span>{' '}
+          Read them together before deciding what this one is. A rider
+          repeating on the same route and somebody leaning on the button
+          look identical one alert at a time.
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Get, Param, Patch, Post, UseGuards,
+  Body, Controller, Get, Param, Patch, Post, Query, UseGuards,
 } from '@nestjs/common';
 import { SosService } from './sos.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -48,6 +48,28 @@ export class SosController {
   }
 
   // GET /api/v1/sos/active - admin dashboard feed
+  /**
+   * GET /api/v1/sos/history?status=&limit=
+   *
+   * Every alert with what was done about it. Resolving has recorded a
+   * note since 2026-08-24 and nothing could read one back, so a resolved
+   * alert left the product entirely. For a safety feature that is the
+   * wrong shape: the history is what shows a pattern, and it is the only
+   * evidence SEIRS responded if an incident is ever disputed.
+   */
+  @Get('history')
+  history(
+    @CurrentUser() admin: User,
+    @Query('status') status?: string,
+    @Query('limit') limit?: string,
+    @Query('userId') userId?: string,
+    @Query('deliveryId') deliveryId?: string,
+  ) {
+    return this.svc.listHistory(admin, {
+      status, limit: Number(limit ?? 100), userId, deliveryId,
+    });
+  }
+
   @Get('active')
   listActive(@CurrentUser() user: User) {
     return this.svc.listActive(user);

@@ -12,10 +12,11 @@
  *   2. Resolve records what was done about it, so the queue can be
  *      reviewed later instead of collapsing into "closed, by someone".
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Siren, MapPin, Phone, Package, CheckCircle2, Copy, Quote, ClipboardCheck } from 'lucide-react';
+import { Siren, MapPin, Phone, Package, CheckCircle2, Copy, Quote, ClipboardCheck,
+         PhoneCall, Navigation, Bell, BellOff, Repeat, UserRound, Clock } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 export default function SosDeskPage() {
@@ -28,9 +29,79 @@ export default function SosDeskPage() {
   // not be typing the outcome blind.
   const [resolving, setResolving] = useState<any | null>(null);
   const [saving,    setSaving]    = useState(false);
+  /**
+   * Resolved alerts, with what was done about them.
+   *
+   * Closing an alert has recorded a resolution note since 2026-08-24,
+   * added so that a month later somebody could tell a false alarm from a
+   * real incident. Nothing could read one back: the desk only ever
+   * listed OPEN alerts, so the moment an alert was resolved it left the
+   * product entirely (2026-08-28). For a safety feature that is the
+   * wrong shape. The history is what shows a pattern, the same rider or
+   * the same stretch of road recurring, and it is the only evidence
+   * SEIRS responded at all if an incident is ever disputed.
+   */
+  const [history, setHistory] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [histStatus, setHistStatus] = useState<'resolved' | 'cancelled' | 'all'>('resolved');
+  const [histQuery,  setHistQuery]  = useState('');
+  /**
+   * A desk you have to be staring at is not a desk.
+   *
+   * This page polled every 15 seconds and changed silently. An operator
+   * with the tab open behind a spreadsheet found out about an emergency
+   * whenever they next looked. Now the tab title carries the count, and
+   * a new alert makes a sound. The sound is a plain oscillator rather
+   * than an audio file so there is no asset to fail to load, and it is
+   * off until switched on because browsers refuse audio before a click
+   * anyway: the toggle IS the gesture that unlocks it.
+   */
+  const [sound, setSound] = useState(false);
+  const seenIds = useRef<Set<string>>(new Set());
+
+  const beep = () => {
+    try {
+      const Ctx = (window as any).AudioContext ?? (window as any).webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      [0, 0.45].forEach((offset) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.18, ctx.currentTime + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.35);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + offset);
+        osc.stop(ctx.currentTime + offset + 0.36);
+      });
+    } catch { /* audio is a bonus, never a dependency */ }
+  };
 
   const load = () =>
     adminApi.sos.active().then((r: any[]) => setAlerts(r ?? [])).catch(() => {});
+
+  const loadHistory = () =>
+    adminApi.sos.history(histStatus, 200)
+      .then((r: any[]) => setHistory(r ?? []))
+      .catch(() => setHistory([]));
+
+  useEffect(() => { if (showHistory) loadHistory(); }, [showHistory, histStatus]);
+
+  /**
+   * Alert the operator who is not looking at this tab: the count goes
+   * into the browser tab title, and a genuinely new id makes a noise.
+   * Comparing ids rather than the count means a resolve-then-raise in
+   * the same 15 second window still sounds.
+   */
+  useEffect(() => {
+    const open = alerts.length;
+    document.title = open ? `(${open}) SOS - SEIRS admin` : 'SEIRS admin';
+    const fresh = alerts.filter((a) => !seenIds.current.has(a.id));
+    alerts.forEach((a) => seenIds.current.add(a.id));
+    if (fresh.length && sound) beep();
+    return () => { document.title = 'SEIRS admin'; };
+  }, [alerts, sound]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -56,6 +127,49 @@ export default function SosDeskPage() {
     }
   };
 
+  /**
+   * One line an operator can paste into WhatsApp or read down a phone to
+   * the police. Copying raw coordinates, which is all this desk offered,
+   * gives whoever receives it two numbers and no name, no callback and
+   * no map.
+   */
+  const copyDispatch = (a: any) => {
+    const maps = a.lat != null && a.lng != null
+      ? `https://www.google.com/maps?q=${a.lat},${a.lng}`
+      : 'no GPS fix';
+    const lines = [
+      `SEIRS EMERGENCY - ${a.user?.name ?? 'unknown user'} (${String(a.user?.role ?? 'user').toLowerCase()})`,
+      `Phone: ${a.user?.phone ?? 'none on file'}`,
+      a.note ? `They said: ${a.note}` : 'No detail given.',
+      `Location: ${maps}`,
+      a.counterparty ? `Other party: ${a.counterparty.name} (${a.counterparty.role}) ${a.counterparty.phone ?? ''}`.trim() : null,
+      a.user?.emergencyContactPhone
+        ? `Their emergency contact: ${a.user.emergencyContactName ?? 'unnamed'} ${a.user.emergencyContactPhone}`
+        : null,
+      a.delivery?.trackingCode ? `Booking: ${a.delivery.trackingCode}` : null,
+      `Raised: ${new Date(a.createdAt).toLocaleString('en-NG')}`,
+    ].filter(Boolean);
+    navigator.clipboard.writeText(lines.join(String.fromCharCode(10)))
+      .then(() => { setCopied(a.id + ':d'); setTimeout(() => setCopied(null), 1800); })
+      .catch(() => {});
+  };
+
+  const copyPhone = (a: any, phone: string, key: string) => {
+    navigator.clipboard.writeText(phone)
+      .then(() => { setCopied(a.id + ':' + key); setTimeout(() => setCopied(null), 1500); })
+      .catch(() => {});
+  };
+
+  /** Text filter over what an operator would actually remember: a name, a
+   *  phone, what was said, what was done, or the tracking code. */
+  const shownHistory = history.filter((h) => {
+    const q = histQuery.trim().toLowerCase();
+    if (!q) return true;
+    return [h.user?.name, h.user?.phone, h.note, h.resolutionNote,
+            h.delivery?.trackingCode, h.resolvedBy?.name]
+      .some((v) => String(v ?? '').toLowerCase().includes(q));
+  });
+
   const copyCoords = (a: any) => {
     navigator.clipboard.writeText(`${Number(a.lat).toFixed(6)}, ${Number(a.lng).toFixed(6)}`)
       .then(() => { setCopied(a.id); setTimeout(() => setCopied(null), 1500); })
@@ -75,6 +189,38 @@ export default function SosDeskPage() {
               Live emergency alerts from any SEIRS app · refreshes every 15s
             </p>
           </div>
+          <button
+            onClick={() => { setSound((v) => !v); if (!sound) beep(); }}
+            title={sound ? 'Alert sound is on' : 'Alert sound is off'}
+            className={`ml-auto inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium ${
+              sound
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            {sound ? <Bell size={13} /> : <BellOff size={13} />}
+            {sound ? 'Sound on' : 'Sound off'}
+          </button>
+        </div>
+
+        {/*
+          The desk listed only OPEN alerts, so a resolved incident left
+          the product entirely and the resolution note nobody could read
+          was recorded for nothing. History is what shows a pattern and
+          what proves SEIRS responded at all.
+        */}
+        <div className="mb-4 flex items-center gap-2">
+          <button
+            onClick={() => setShowHistory((v) => !v)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            {showHistory ? 'Hide resolved alerts' : 'Show resolved alerts'}
+          </button>
+          {showHistory && (
+            <span className="text-xs text-gray-400">
+              {history.length} closed alert{history.length === 1 ? '' : 's'}
+            </span>
+          )}
         </div>
 
         {loading ? (
@@ -109,21 +255,81 @@ export default function SosDeskPage() {
                       {String(a.user?.role ?? '').toUpperCase() || 'USER'}
                     </span>
                   </p>
-                  <p className="text-sm text-gray-600 flex items-center gap-1.5 mt-1">
-                    <Phone size={13} className="text-gray-400" />
-                    {a.user?.phone ?? 'no phone on file'} · {a.user?.email ?? ''}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Raised {new Date(a.createdAt).toLocaleString('en-NG')}
+                  {/*
+                    Calling them is the first thing anyone does, and the
+                    number was flat grey text: the desk let you copy the
+                    COORDINATES but not the phone. You ring before you
+                    navigate.
+                  */}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    {a.user?.phone ? (
+                      <>
+                        <a
+                          href={`tel:${String(a.user.phone).replace(/[^+\d]/g, '')}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-red-700"
+                        >
+                          <PhoneCall size={14} /> Call {a.user.phone}
+                        </a>
+                        <button
+                          onClick={() => copyPhone(a, a.user.phone, 'p')}
+                          className="rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
+                        >
+                          {copied === a.id + ':p' ? 'Copied!' : 'Copy number'}
+                        </button>
+                      </>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+                        <Phone size={13} /> No phone on file
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">
+                    {a.user?.email ?? 'no email'} · raised{' '}
+                    {new Date(a.createdAt).toLocaleString('en-NG')}
                   </p>
                 </div>
-                <button
-                  onClick={() => setResolving(a)}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                >
-                  Resolve
-                </button>
+                <div className="flex flex-col items-end gap-2">
+                  {/*
+                    How long this has been open, big enough to read across
+                    a room. The card showed a raise timestamp and left the
+                    subtraction to the operator, in the one situation where
+                    nobody does arithmetic.
+                  */}
+                  <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold tabular-nums ${
+                    a.openMinutes >= 15 ? 'bg-red-600 text-white'
+                    : a.openMinutes >= 5 ? 'bg-amber-100 text-amber-800'
+                    : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    <Clock size={13} />
+                    {a.openMinutes < 60
+                      ? `open ${a.openMinutes}m`
+                      : `open ${Math.floor(a.openMinutes / 60)}h ${a.openMinutes % 60}m`}
+                  </span>
+                  <button
+                    onClick={() => setResolving(a)}
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                  >
+                    Resolve
+                  </button>
+                </div>
               </div>
+
+              {/*
+                A repeat raiser is a signal in both directions: someone
+                genuinely in danger on a route they keep working, or
+                someone leaning on the button. The desk should know
+                before it picks up the phone.
+              */}
+              {a.raiserAlertCount > 1 && (
+                <Link
+                  href={`/users/${a.user?.id}`}
+                  className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                >
+                  <Repeat size={13} />
+                  This is alert number {a.raiserAlertCount} from{' '}
+                  {a.user?.name ?? 'this person'}. Read their record before you call.
+                </Link>
+              )}
 
               {/*
                 What they said, at a glance. This used to be grey 12px text
@@ -164,6 +370,80 @@ export default function SosDeskPage() {
                 </div>
               )}
 
+              {/*
+                Who else is in that vehicle.
+                When a rider presses SOS mid-trip the other party is the
+                most relevant person on earth, and this desk could not
+                name them. It knew the booking, so it offered "open their
+                booking" and sent the operator to read a second page for
+                a phone number, in the first minute of an emergency.
+              */}
+              {a.counterparty && (
+                <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                    <UserRound size={12} />
+                    The {a.counterparty.role} on this trip
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/users/${a.counterparty.id}`}
+                      className="text-sm font-semibold text-gray-900 underline decoration-gray-300 underline-offset-2 hover:text-[#3A7BD5]"
+                    >
+                      {a.counterparty.name ?? 'Unknown'}
+                    </Link>
+                    {a.counterparty.phone ? (
+                      <>
+                        <a
+                          href={`tel:${String(a.counterparty.phone).replace(/[^+\d]/g, '')}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100"
+                        >
+                          <PhoneCall size={12} /> Call {a.counterparty.phone}
+                        </a>
+                        <button
+                          onClick={() => copyPhone(a, a.counterparty.phone, 'c')}
+                          className="rounded-lg px-2 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900"
+                        >
+                          {copied === a.id + ':c' ? 'Copied!' : 'Copy'}
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-amber-700">no phone on file</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/*
+                The next of kin they already gave us.
+                Every SEIRS user is asked for an emergency contact and
+                the answer is stored on their record. On the one screen
+                that exists for an emergency, it was not shown, so an
+                operator holding a live alert had to go and open the
+                person's profile to find the number their own app
+                collected for exactly this moment.
+
+                Deliberately quieter than the buttons above it. Ringing
+                somebody's family is a judgement call, not the next step:
+                you call the person first. It only has to be reachable
+                without leaving this page.
+              */}
+              {a.user?.emergencyContactPhone && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-gray-300 px-4 py-2.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                    Their emergency contact
+                  </span>
+                  <span className="text-sm font-semibold text-gray-800">
+                    {a.user.emergencyContactName || 'unnamed'}
+                  </span>
+                  <a
+                    href={`tel:${String(a.user.emergencyContactPhone).replace(/[^+\d]/g, '')}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                  >
+                    <PhoneCall size={12} /> {a.user.emergencyContactPhone}
+                  </a>
+                </div>
+              )}
+
               <div className="mt-4 flex flex-wrap gap-2">
                 {a.lat != null && a.lng != null ? (
                   <>
@@ -182,6 +462,20 @@ export default function SosDeskPage() {
                     >
                       View on ops map
                     </Link>
+                    {/*
+                      The ops map is for SEIRS. This one is for everybody
+                      else: it is what an operator sends a police station
+                      or a family member, and what gives whoever is
+                      driving to them turn-by-turn directions.
+                    */}
+                    <a
+                      href={`https://www.google.com/maps?q=${a.lat},${a.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                    >
+                      <Navigation size={12} /> Directions
+                    </a>
                   </>
                 ) : (
                   <span className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
@@ -193,12 +487,128 @@ export default function SosDeskPage() {
                     onClick={() => router.push(`/deliveries/${a.delivery.id}`)}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
                   >
-                    <Package size={12} /> Open their booking
+                    <Package size={12} />
+                    {a.delivery.trackingCode ? `Booking ${a.delivery.trackingCode}` : 'Open their booking'}
                   </button>
                 )}
+                <button
+                  onClick={() => copyDispatch(a)}
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                >
+                  <Copy size={12} />
+                  {copied === a.id + ':d' ? 'Copied for dispatch' : 'Copy for dispatch'}
+                </button>
               </div>
             </div>
           ))
+        )}
+
+        {showHistory && (
+          <section className="mt-8">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-gray-800">Past alerts</h2>
+              {/*
+                Cancelled is not a lesser resolved. A person pressing SOS
+                and immediately withdrawing it is either a pocket press,
+                which says the button is in the wrong place, or somebody
+                who was told to take it back. Both are worth seeing, and
+                filtering to resolved only hid them.
+              */}
+              <div className="flex overflow-hidden rounded-lg border border-gray-200">
+                {(['resolved', 'cancelled', 'all'] as const).map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setHistStatus(st)}
+                    className={`px-3 py-1.5 text-xs font-medium capitalize ${
+                      histStatus === st
+                        ? 'bg-[#0F2B4C] text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+              <input
+                value={histQuery}
+                onChange={(e) => setHistQuery(e.target.value)}
+                placeholder="Filter by name, note or tracking code"
+                className="min-w-[240px] flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-[#3A7BD5] focus:outline-none"
+              />
+            </div>
+            {shownHistory.length === 0 ? (
+              <div className="rounded-xl border border-gray-100 bg-white p-8 text-center text-sm text-gray-400">
+                {history.length === 0
+                  ? `No ${histStatus === 'all' ? '' : histStatus + ' '}alerts on record.`
+                  : 'Nothing matches that filter.'}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {shownHistory.map((h) => (
+                  <div key={h.id} className="rounded-xl border border-gray-100 bg-white p-4">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="text-sm font-semibold text-gray-800">
+                        {h.user?.name ?? 'Unknown'}
+                      </span>
+                      {h.user?.role && (
+                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">
+                          {h.user.role}
+                        </span>
+                      )}
+                      {histStatus === 'all' && (
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                          h.status === 'active'    ? 'bg-red-100 text-red-700'
+                          : h.status === 'cancelled' ? 'bg-gray-100 text-gray-600'
+                          : 'bg-emerald-100 text-emerald-700'
+                        }`}>
+                          {h.status}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-400">
+                        {new Date(h.createdAt).toLocaleString('en-NG')}
+                      </span>
+                      {/*
+                        How long it stayed open is the number that says
+                        whether SEIRS responded, so it is not buried.
+                      */}
+                      <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                        h.openMinutes > 60 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        open {h.openMinutes < 60 ? `${h.openMinutes}m` : `${Math.round(h.openMinutes / 60)}h`}
+                      </span>
+                    </div>
+                    {h.note && (
+                      <p className="mt-2 text-sm text-gray-600">
+                        <span className="text-gray-400">They said:</span> {h.note}
+                      </p>
+                    )}
+                    <p className="mt-1 text-sm text-gray-700">
+                      <span className="text-gray-400">Outcome:</span>{' '}
+                      {h.status === 'cancelled' ? (
+                        /* Withdrawn by the person who raised it, so there is
+                           no support note to be missing and flagging one as
+                           an omission would be wrong. */
+                        <em className="text-gray-500">stood down by {h.user?.name ?? 'the raiser'}</em>
+                      ) : (
+                        h.resolutionNote || <em className="text-amber-600">closed with no note</em>
+                      )}
+                      {h.resolvedBy?.name && h.status !== 'cancelled' && (
+                        <span className="text-gray-400"> · by {h.resolvedBy.name}</span>
+                      )}
+                    </p>
+                    {h.delivery?.trackingCode && (
+                      <button
+                        onClick={() => router.push(`/deliveries/${h.delivery.id}`)}
+                        className="mt-2 text-xs font-medium text-[#3A7BD5] hover:underline"
+                      >
+                        {h.delivery.trackingCode}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         )}
       </main>
 
