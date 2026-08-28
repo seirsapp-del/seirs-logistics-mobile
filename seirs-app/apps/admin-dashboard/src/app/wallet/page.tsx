@@ -35,8 +35,16 @@ interface PendingPayout {
   availableAt: string;
   deliveryId: string;
   /**
-   * The delivery behind this row ALREADY has a paid earning, so paying
-   * this one pays the rider twice for the same job. Residue of the
+   * A deliberate correction: money SEIRS owes this rider and recorded on
+   * purpose. Shares a delivery with a settled earning by design, because
+   * the column requires one, so it must never be mistaken for a
+   * duplicate.
+   */
+  isCorrection?: boolean;
+  correctionReason?: string | null;
+  /**
+   * Shares a delivery with a PAID earning and is NOT a correction, so
+   * paying it would pay the rider twice for one job. Residue of the
    * double-credit bug fixed 2026-08-27.
    */
   alreadyPaidForDelivery?: boolean;
@@ -453,13 +461,20 @@ export default function WalletPage() {
           <Clock size={15} className="text-yellow-600" />
           <span className="text-sm font-semibold text-[#0F2B4C]">Ready for riders to withdraw</span>
           <RowCount shown={pending.length} total={summary?.pendingCount} noun="earnings" />
+          {pending.some(p => p.isCorrection) && (
+            <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+              <b>One or more of these is a correction: money SEIRS owes and recorded on purpose.</b>{' '}
+              A correction is attached to the rider&apos;s most recent delivery because the record
+              needs one, so it will always look like a second payment on a job that is already
+              settled. It is not. The reason is shown on the row, and this money is genuinely owed.
+            </p>
+          )}
           {pending.some(p => p.alreadyPaidForDelivery) && (
             <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-900">
               <b>One or more of these deliveries has already been paid in full.</b> Those rows are
-              marked below. They are left over from a bug where a single job could write two
-              earning rows, fixed on 27 August, and they are not money anybody is owed. Paying one
-              pays the rider twice for the same job. Decide whether to write it off or settle it,
-              but do not clear it as routine.
+              marked below and are NOT corrections. They are left over from a bug where a single job
+              could write two earning rows, fixed on 27 August, and they are not money anybody is
+              owed. Paying one pays the rider twice for the same job.
             </p>
           )}
         </div>
@@ -495,28 +510,47 @@ export default function WalletPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {/*
-                  A row whose delivery has ALREADY been paid is a ghost
-                  (2026-08-28). Delivery 9bf32bd4 carries two earning
-                  rows: 1,469.68 paid in full, matching the delivery's
-                  booked figure exactly, and 146.97 still sitting here
-                  looking like ordinary work.
+                  Two rows on one delivery mean opposite things, and they
+                  look identical (2026-08-28).
 
-                  It is not work. That job is settled, and 146.97 is
-                  exactly 10 percent of the payout, the new-rider
-                  holdback rate: residue of the double-credit bug fixed
-                  on 2026-08-27. The idempotency guard stops new
-                  duplicates and does nothing about the rows already in
-                  the table.
+                  A CORRECTION is money SEIRS owes. It is attached to the
+                  rider's most recent delivery on purpose, because the
+                  record requires one, so it always shares a delivery
+                  with a settled earning. Emeka's 146.97 is this: his
+                  new-rider holdback was taken on the 27 Aug payout and
+                  never returned, and the audit row says so in words.
 
-                  Marked rather than hidden. Hiding it would leave the
-                  totals unexplained and the row undiscoverable, and
-                  somebody still has to decide what happens to it.
+                  A DUPLICATE is the opposite: residue of the
+                  double-credit bug fixed 2026-08-27, where one job wrote
+                  two earning rows. Paying one pays the rider twice.
+
+                  I called Emeka's row a duplicate on first reading and
+                  was wrong. Marking a debt as "already paid" is the
+                  expensive direction to be wrong in, so the correction
+                  test wins and the reason is printed on the row rather
+                  than left to be inferred.
                 */}
                 {pending.map(p => (
-                  <tr key={p.id} className={p.alreadyPaidForDelivery ? 'bg-red-50/60' : undefined}>
-                    <td className="px-4 py-3"><DriverLink id={p.driverId} name={p.driverName} /></td>
+                  <tr key={p.id} className={
+                    p.alreadyPaidForDelivery ? 'bg-red-50/60'
+                    : p.isCorrection ? 'bg-amber-50/50'
+                    : undefined
+                  }>
+                    <td className="px-4 py-3">
+                      <DriverLink id={p.driverId} name={p.driverName} />
+                      {p.isCorrection && p.correctionReason && (
+                        <p className="mt-1 max-w-md text-[11px] leading-snug text-amber-900/80">
+                          {p.correctionReason}
+                        </p>
+                      )}
+                    </td>
                     <td className="px-4 py-3 font-semibold text-gray-800 tabular-nums">
                       {naira(p.driverNet)}
+                      {p.isCorrection && (
+                        <span className="ml-2 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                          owed, correction
+                        </span>
+                      )}
                       {p.alreadyPaidForDelivery && (
                         <span className="ml-2 whitespace-nowrap rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700">
                           already paid

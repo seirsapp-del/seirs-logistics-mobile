@@ -3531,23 +3531,31 @@ export class AdminService {
       .getMany();
 
     /**
-     * Does this delivery ALREADY have a paid earning? (2026-08-28)
+     * Two rows on one delivery: a CORRECTION, or a genuine duplicate?
      *
-     * Found live: delivery 9bf32bd4 carried two earning rows. One was
-     * paid in full, 1,469.68, matching the delivery's booked
-     * driverEarnings exactly. The other, 146.97, was sitting in this
-     * queue looking like ordinary work waiting to be paid.
+     * They look identical from the outside and mean opposite things, so
+     * this has to tell them apart or it is worse than saying nothing.
      *
-     * It is not. That job is settled. Paying it would pay the rider
-     * twice, and 146.97 is exactly 10 percent of the payout, which is
-     * the new-rider holdback rate: the residue of the double-credit bug
-     * fixed on 2026-08-27, from before recordForDelivery became
-     * idempotent on deliveryId.
+     * creditEarningCorrection attaches its row to the rider's most
+     * recent deliveryId, deliberately, because the column requires one.
+     * So every correction shares a delivery with a settled earning by
+     * design. Emeka's 146.97 is exactly that: his new-rider holdback was
+     * marked paid and never transferred, and the correction is SEIRS
+     * paying back what it owes him.
      *
-     * The idempotency guard stops NEW duplicates. It does nothing about
-     * the ones already in the table, and nothing on this screen said a
-     * word. An operator clearing a payout queue has no way to know a row
-     * is a ghost, so the screen has to tell them.
+     * A duplicate is the other thing entirely: residue of the
+     * double-credit bug fixed 2026-08-27, where one job wrote two
+     * earning rows before recordForDelivery became idempotent on
+     * deliveryId. That guard stops new ones and does nothing about rows
+     * already in the table.
+     *
+     * The marker is holdReason, which creditEarningCorrection stamps
+     * with "Correction by <admin>: <reason>". A row carrying one is a
+     * debt to pay. A row sharing a delivery WITHOUT one is a ghost.
+     *
+     * Getting this backwards writes off money a rider is owed, which is
+     * the more expensive direction to be wrong in, so the correction
+     * test runs first and wins.
      */
     const deliveryIds = rows.map(r => r.deliveryId).filter(Boolean) as string[];
     let settled = new Set<string>();
@@ -3561,18 +3569,29 @@ export class AdminService {
       settled = new Set(paid.map((x: any) => x.deliveryId));
     }
 
-    return rows.map(r => ({
-      id:             r.id,
-      driverId:       r.driverId,
-      driverName:     r.driver?.name ?? '-',
-      grossAmount:    Number(r.grossAmount),
-      seirsCut:       Number(r.seirsCut),
-      driverNet:      Number(r.driverNet),
-      availableAt:    r.availableAt,
-      deliveryId:     r.deliveryId,
-      /** This delivery already has a PAID earning. Paying this pays twice. */
-      alreadyPaidForDelivery: r.deliveryId ? settled.has(r.deliveryId) : false,
-    }));
+    return rows.map(r => {
+      const reason      = String((r as any).holdReason ?? '');
+      const isCorrection = reason.startsWith('Correction by');
+      return {
+        id:             r.id,
+        driverId:       r.driverId,
+        driverName:     r.driver?.name ?? '-',
+        grossAmount:    Number(r.grossAmount),
+        seirsCut:       Number(r.seirsCut),
+        driverNet:      Number(r.driverNet),
+        availableAt:    r.availableAt,
+        deliveryId:     r.deliveryId,
+        /** A deliberate correction: money SEIRS owes and must pay. */
+        isCorrection,
+        correctionReason: isCorrection ? reason : null,
+        /**
+         * Shares a delivery with a paid earning AND is not a correction,
+         * so paying it would pay the rider twice for one job.
+         */
+        alreadyPaidForDelivery:
+          !isCorrection && r.deliveryId ? settled.has(r.deliveryId) : false,
+      };
+    });
   }
 
   async listHeldEarnings(limit = 50) {
