@@ -44,6 +44,30 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'driver_level_auto_min_rating', name: 'Level auto-raise: minimum rating',
     description: 'A driver below this rating is never auto-raised, whatever their delivery count.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 4.5 },
+  /**
+   * Read in two places and seeded in none, so both fell back and the two
+   * fallbacks disagreed: 1 in the pricing floor, 1.3 in Travel Buddy
+   * (audit, 2026-08-28). The Travel Buddy comment says it uses "the same
+   * approximation the delivery pricing floor already uses, so the two
+   * engines cannot disagree about how far apart two points are". They
+   * disagreed by 30 percent.
+   *
+   * Seeded at 1.3, which keeps Travel Buddy exactly where it was and
+   * lifts the pricing floor from the bare straight line. The floor only
+   * binds when a reported distance is BELOW straight-line times this, and
+   * real Lagos road distance runs about 1.45 times the straight line, so
+   * a legitimate distance still clears it. It now catches the
+   * impossible ones, which is what a floor is for.
+   *
+   * Not the same thing as circuity_default_pct. That is the calibrated,
+   * self-correcting road estimate used to price a journey. This is a
+   * sanity bound, deliberately stable, so a quoted seat cannot reprice
+   * because a routing API answered differently tomorrow.
+   */
+  { key: 'pricing_road_factor',         name: 'Road-distance sanity factor',
+    description: 'Multiplier on straight-line distance used as a floor, so no journey can be priced shorter than is physically plausible. Deliberately stable and separate from the calibrated circuity estimate. Never below 1.',
+    category: FeeCategory.CONFIG,       unit: FeeUnit.COUNT,      value: 1.3 },
+
   { key: 'corridor_match_radius_m', name: 'Corridor match radius (m)',
     description: 'A job scores the corridor bonus when its pickup AND drop are both within this many metres of the courier declared line.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 600 },
@@ -214,11 +238,11 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // charging for a sixth of a run while paying for six whole ones.
   { key: 'consolidated_dispatch_enabled', name: 'Consolidated Dispatch Live',
     description: 'Set to 1 only once counter-to-counter parcels are genuinely batched onto shared trunk runs. Until then counter journeys are priced per parcel, like any other trip.',
-    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 0 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.COUNT, value: 0 },
 
   { key: 'trunk_assumed_parcels',       name: 'Assumed Parcels per Trunk Run',
     description: 'Divisor behind consolidated counter-to-counter pricing. Start pessimistic and raise it only on measured load data.',
-    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 6 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.COUNT, value: 6 },
 
   { key: 'consolidated_floor_ngn',      name: 'Consolidated Journey Floor Price',
     description: 'The price below which a counter-to-counter parcel never sells, however empty the run turns out to be.',

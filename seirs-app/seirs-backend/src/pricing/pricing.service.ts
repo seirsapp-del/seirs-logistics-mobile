@@ -975,8 +975,17 @@ export class PricingService implements OnModuleInit {
       pickup.latitude, pickup.longitude, dropoff.latitude, dropoff.longitude,
     );
     if (!Number.isFinite(straight) || straight <= 0) return km;
-    const raw    = Number(await this.fees.getValueOr('pricing_road_factor', 1));
-    const factor = Number.isFinite(raw) && raw >= 1 ? raw : 1;
+    /**
+     * 1.3, matching Travel Buddy's fallback for the same key.
+     *
+     * This fell back to 1 while drivers.service.ts fell back to 1.3, and
+     * no seed row existed, so both fallbacks were live at once and the
+     * two engines disagreed by 30 percent about the distance between the
+     * same two points (audit, 2026-08-28). The Travel Buddy side carries
+     * a comment saying that cannot happen.
+     */
+    const raw    = Number(await this.fees.getValueOr('pricing_road_factor', 1.3));
+    const factor = Number.isFinite(raw) && raw >= 1 ? raw : 1.3;
     return Math.max(km, round2(straight * factor));
   }
 
