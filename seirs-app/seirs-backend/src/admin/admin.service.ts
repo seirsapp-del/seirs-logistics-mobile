@@ -1934,10 +1934,38 @@ export class AdminService {
     };
   }
 
+  /**
+   * The drivers LIST. Narrow on purpose (2026-08-28).
+   *
+   * leftJoinAndSelect returned the whole Driver row and the whole User
+   * behind it, so this endpoint was serving every driver's national ID
+   * front and back, licence, selfie, guarantor letter, insurance
+   * certificate, ownership proof, vehicle document, the vehicle owner's
+   * ID, name and phone, plus bank account name, number and code, date
+   * of birth, home address, next of kin, device hashes, FCM token and
+   * lockout state. Verified live against production.
+   *
+   * The list renders a name, an account id, an email, a photo, a
+   * vehicle type, a rating and a status. Not one document is drawn.
+   *
+   * KYC review is not affected: it runs on getDriverDetail, which loads
+   * the relation separately and sits behind the kyc permission. That
+   * separation is the whole point. Reviewing somebody's identity papers
+   * should mean opening their file, not listing a page.
+   */
   async getDrivers(page: number, limit: number, status?: string) {
     const qb = this.driversRepo
       .createQueryBuilder('d')
-      .leftJoinAndSelect('d.user', 'user')
+      .leftJoin('d.user', 'user')
+      .select([
+        'd.id', 'd.status', 'd.isOnline', 'd.rating', 'd.totalDeliveries',
+        'd.vehicleType', 'd.vehiclePlate', 'd.createdAt', 'd.lastOnlineAt',
+        'd.valueLevel',
+      ])
+      .addSelect([
+        'user.id', 'user.name', 'user.email', 'user.phone',
+        'user.accountId', 'user.profilePhoto',
+      ])
       .orderBy('d.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
@@ -2191,10 +2219,53 @@ export class AdminService {
    * thing a receiver actually has.
    */
   async getDeliveries(page: number, limit: number, status?: string, search?: string, kind?: string) {
+    /**
+     * NARROW SELECTS, and the reason is not tidiness (2026-08-28).
+     *
+     * This was leftJoinAndSelect on customer and driver, which selects
+     * every column of both entities. Measured against production: 41
+     * rows returned real bank account numbers on 9 of them, home
+     * addresses on 38, and live driver GPS on 9. Also in the payload,
+     * schema-wide: date of birth, next-of-kin name and phone, device
+     * hashes, FCM tokens, Google and Apple ids, lockout state, and on
+     * the driver every KYC document URL there is, national ID front and
+     * back, licence, selfie, guarantor, insurance, plus the vehicle
+     * owner's name and phone, who is frequently not the driver and
+     * never consented to appear on a dispatch screen.
+     *
+     * The dashboard renders NONE of it. This page shows a tracking code,
+     * a customer name and a status. Every one of those fields was
+     * travelling to any browser that opened the list, where it sits in
+     * the network tab, and /deliveries is granted to support_agent and
+     * ops_manager, not just the founder. Reading a customer's bank
+     * details should require going to that customer, deliberately, on a
+     * page that says so.
+     *
+     * The columns below are exactly what the list and the reassign
+     * dialog draw, nothing more. The joins stay wide enough for the
+     * search clause, which filters on customer email, name and id:
+     * leftJoin still lets WHERE reach a column it does not return.
+     */
     const qb = this.deliveriesRepo
       .createQueryBuilder('d')
-      .leftJoinAndSelect('d.customer', 'customer')
-      .leftJoinAndSelect('d.driver', 'driver')
+      .leftJoin('d.customer', 'customer')
+      .addSelect([
+        'customer.id', 'customer.name', 'customer.email',
+        'customer.phone', 'customer.accountId', 'customer.isDemo',
+      ])
+      .leftJoin('d.driver', 'driver')
+      .addSelect([
+        'driver.id', 'driver.vehicleType', 'driver.vehiclePlate',
+        'driver.rating', 'driver.status', 'driver.isOnline',
+      ])
+      /**
+       * driver.user was never joined at all, so the reassign dialog's
+       * "Currently with {driver.user.name}" has always rendered its
+       * fallback: you could take a job off somebody without being told
+       * whose job you were taking.
+       */
+      .leftJoin('driver.user', 'driverUser')
+      .addSelect(['driverUser.id', 'driverUser.name', 'driverUser.phone'])
       .leftJoinAndSelect('d.stops', 'stops')
       .orderBy('d.createdAt', 'DESC')
       .addOrderBy('stops.sequenceOrder', 'ASC')
@@ -2273,6 +2344,47 @@ export class AdminService {
 
     return {
       ...d,
+      /**
+       * Same narrowing as the list, for the same reason (2026-08-28).
+       *
+       * findOne with relations loads whole entities, so this page was
+       * serving the customer's bank details, date of birth, home
+       * address, next of kin, device hashes and lockout state, and the
+       * driver's entire KYC folder: national ID front and back,
+       * licence, selfie, guarantor, insurance, ownership proof, plus
+       * the vehicle owner's name and phone. A dispute or a refund is
+       * the reason somebody opens this page, and none of that is
+       * needed to settle one. The driver's KYC lives on Driver KYC,
+       * behind its own permission, which is the point of having one.
+       */
+      customer: d.customer ? {
+        id:        d.customer.id,
+        name:      d.customer.name,
+        email:     d.customer.email,
+        phone:     d.customer.phone,
+        accountId: d.customer.accountId,
+        isDemo:    d.customer.isDemo,
+      } : null,
+      driver: d.driver ? {
+        id:           d.driver.id,
+        status:       d.driver.status,
+        rating:       d.driver.rating,
+        isOnline:     d.driver.isOnline,
+        vehicleType:  d.driver.vehicleType,
+        vehiclePlate: d.driver.vehiclePlate,
+        vehiclePhotoUrl: d.driver.vehiclePhotoUrl,
+        // Kept: the detail page draws the driver's last known position
+        // on this delivery's map.
+        lastLat: d.driver.lastLat,
+        lastLng: d.driver.lastLng,
+        locationUpdatedAt: d.driver.locationUpdatedAt,
+        user: d.driver.user ? {
+          id:    d.driver.user.id,
+          name:  d.driver.user.name,
+          phone: d.driver.user.phone,
+          email: d.driver.user.email,
+        } : null,
+      } : null,
       receipt: {
         customerPaid:   price,
         actuallyCollected: r2(collected),
@@ -2456,10 +2568,30 @@ export class AdminService {
     return rows.map(r => ({ status: r.status, count: Number(r.count) }));
   }
 
+  /**
+   * A LEADERBOARD. It has no business holding anybody's papers.
+   *
+   * This is an analytics endpoint behind the `analytics` permission,
+   * and leftJoinAndSelect made it return every driver's full KYC folder
+   * and bank details, verified live against production.
+   *
+   * Worse than the drivers list, because of where the rows end up:
+   * Reports builds "Driver activity" straight from this array and
+   * writes it to a file the operator downloads. A finance officer
+   * running a routine top-50 report was exporting fifty people's
+   * national ID scans, bank account numbers, dates of birth and home
+   * addresses onto a laptop. That is the shape of an NDPR incident, and
+   * nothing on either screen ever displayed a single one of those
+   * fields.
+   */
   async getTopDrivers(limit = 10) {
     return this.driversRepo
       .createQueryBuilder('d')
-      .leftJoinAndSelect('d.user', 'user')
+      .leftJoin('d.user', 'user')
+      .select([
+        'd.id', 'd.rating', 'd.totalDeliveries', 'd.vehicleType', 'd.status',
+      ])
+      .addSelect(['user.id', 'user.name', 'user.accountId'])
       .orderBy('d.totalDeliveries', 'DESC')
       .addOrderBy('d.rating', 'DESC')
       .take(limit)
