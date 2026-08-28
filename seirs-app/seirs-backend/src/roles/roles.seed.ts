@@ -45,6 +45,12 @@ export const SYSTEM_ROLES: Array<Partial<Role>> = [
       'sos','overview','ops-map','deliveries','drivers','users','partners','partner-redirects',
       'specialists','analytics','tickets','support','pricing','fees','disputes','health',
       'last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs',
+      // Closing an area is an operations decision made under time
+      // pressure. Reserving it to the founder alone means SEIRS cannot
+      // close anywhere while he is asleep or on a plane, and a curfew
+      // does not wait. They get pricing effects too, since they already
+      // hold the pricing lever next to it.
+      'zones.close','zones.price',
     ],
     isSystemRole: true,
     badgeColor:  'blue',
@@ -61,7 +67,9 @@ export const SYSTEM_ROLES: Array<Partial<Role>> = [
     slug:        'finance_officer',
     name:        'Finance Officer',
     description: 'Money and partnerships - wallet, pricing, fees, referrals, insurance commissions, dev platform billing.',
-    permissions: ['sos','overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage'],
+    // zones.price and NOT zones.close: setting what an area costs is
+    // their job, deciding whether SEIRS operates there is not.
+    permissions: ['sos','overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage','zones.price'],
     isSystemRole: true,
     badgeColor:  'yellow',
   },
@@ -119,6 +127,22 @@ export const PERMISSION_CATALOGUE: Array<{ section: string; items: Array<{ slug:
   ]},
   { section: 'OPERATIONS', items: [
     { slug: 'deliveries',         label: 'Deliveries' },
+    /**
+     * Two zone permissions, deliberately separate.
+     *
+     * zones.close stops SEIRS operating somewhere: a curfew, a flood, an
+     * area riders will not enter after dark. zones.price only changes
+     * what a job costs there. Closing is a safety call and pricing is a
+     * commercial one, and the person trusted with one is not
+     * automatically the person trusted with the other.
+     *
+     * Without a catalogue row a permission cannot be ticked at all, so
+     * until 2026-08-28 only a '*' holder could close an area. That meant
+     * SEIRS could not close anywhere while the founder was asleep, which
+     * is precisely when a curfew gets announced.
+     */
+    { slug: 'zones.close',        label: 'Zones: close an area' },
+    { slug: 'zones.price',        label: 'Zones: pricing effects' },
     { slug: 'drivers',            label: 'Drivers' },
     { slug: 'users',              label: 'Customers' },
     { slug: 'partners',           label: 'Partner Accounts' },

@@ -59,9 +59,17 @@ export const ROLE_COLORS: Record<AdminRoleType, string> = {
 // are two clicks away, not a code change.
 export const PERMISSIONS: Record<AdminRoleType, string[]> = {
   super_admin:       ['*'],
-  ops_manager:       ['sos','overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','support','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs'],
+  // zones.close and zones.price granted 2026-08-28. Closing an area is an
+  // operations decision made under time pressure, and reserving it to the
+  // founder alone meant SEIRS could not close anywhere while he was
+  // asleep, which is exactly when a curfew is announced. Mirrors the
+  // backend seed: the buttons and the API have to agree, or the page
+  // offers a control the server then refuses.
+  ops_manager:       ['sos','overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','support','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs','zones.close','zones.price'],
   support_agent:     ['sos','tickets','support','users','suggestions','deliveries','disputes'],
-  finance_officer:   ['sos','overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage'],
+  // zones.price, never zones.close: what an area costs is their job,
+  // whether SEIRS operates there is not.
+  finance_officer:   ['sos','overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage','zones.price'],
   // audit-log removed 2026-08-23: /audit-log is super-admin only, so the
   // grant put a nav entry in front of a wall that always said Access
   // Restricted. Grant it back only if the page stops being super-admin only.
@@ -496,11 +504,49 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     ],
   },
   {
+    /**
+     * The things SEIRS moves, and the people who move them.
+     *
+     * Interstate Trips and Travel Buddy moved here from COMPLIANCE on
+     * 2026-08-28. They are the intercity product, not a compliance
+     * queue: a rider declares a route and a passenger books a seat on
+     * it. They sat under COMPLIANCE only because that is where they
+     * happened to land, which also made that section nine items deep.
+     */
     title: 'OPERATIONS',
     items: [
-      { href: '/deliveries',           label: 'Deliveries',           icon: 'Package'        },
-      { href: '/drivers',              label: 'Drivers',              icon: 'Truck'          },
-      { href: '/users',                label: 'Customers',            icon: 'Users'          },
+      { href: '/deliveries', label: 'Deliveries',       icon: 'Package' },
+      { href: '/drivers',    label: 'Drivers',          icon: 'Truck'   },
+      { href: '/users',      label: 'Customers',        icon: 'Users'   },
+      /**
+       * Zones lives with operations, not with pricing.
+       *
+       * It does two jobs and they are not equally urgent. Tuning a
+       * multiplier for a corridor is planned work. Closing an area for a
+       * curfew, a flood or a riot is not, and closing is the reason
+       * Zones exists at all: "when i say close it means closed so no
+       * form of operation there" (founder, 2026-08-27), which is the
+       * requirement the whole spec was built around.
+       *
+       * At 6pm with a curfew coming, the person scanning this sidebar is
+       * an ops manager and they will look under OPERATIONS. Reaching a
+       * multiplier a few seconds slower costs nothing. Reaching a
+       * closure slower costs real risk.
+       */
+      { href: '/zones',      label: 'Zones',            icon: 'Map'     },
+      { href: '/interstate', label: 'Interstate Trips', icon: 'Truck'   },
+      { href: '/travel-buddy', label: 'Travel Buddy',   icon: 'Users'   },
+    ],
+  },
+  {
+    /**
+     * Split out of OPERATIONS on 2026-08-28. Four partner rows were
+     * making that section seven deep, and a partner relationship is a
+     * different job from dispatching a delivery: you approve them,
+     * suspend them, and pay them, none of which happens to a parcel.
+     */
+    title: 'PARTNERS',
+    items: [
       { href: '/partners',             label: 'Partner Accounts',     icon: 'Store'          },
       { href: '/partner-applications', label: 'Partner Applications', icon: 'FileText'       },
       { href: '/partner-redirects',    label: 'Partner Redirects',    icon: 'ArrowRightLeft' },
@@ -513,10 +559,19 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
       { href: '/wallet',          label: 'Wallet & Payouts',   icon: 'Wallet'     },
       { href: '/pricing',         label: 'Pricing Engine',     icon: 'Tag'        },
       { href: '/service-catalog', label: 'Service Catalog',    icon: 'List'       },
-      { href: '/zones',           label: 'Zones',             icon: 'Map'        },
       { href: '/fees',            label: 'Fee Catalogue',      icon: 'DollarSign' },
       { href: '/referrals',       label: 'Referrals',          icon: 'Share2'     },
       { href: '/insurance',       label: 'Insurance Partners', icon: 'Shield'     },
+      // Until 2026-08-28 the only export in the whole admin was the NDPR
+      // bundle on one driver, so reconciling a payout run against a bank
+      // statement meant reading figures off a page and retyping them.
+      //
+      // It sat under ANALYTICS at first, which is where you go to look at
+      // charts. This is where you go to take the money data away: it reads
+      // the payout ledger, it is gated on exports-finance, and it is the
+      // easiest way for a customer table to leave the building. It belongs
+      // beside the money it reports on.
+      { href: '/exports',         label: 'Data Exports',       icon: 'Download'   },
     ],
   },
   {
@@ -524,29 +579,40 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     items: [
       { href: '/fraud',                 label: 'Fraud & Risk',          icon: 'ShieldAlert',    badge: 'fraud' },
       { href: '/duplicates',            label: 'Duplicate Accounts',    icon: 'Copy'           },
-      { href: '/recycle-bin',           label: 'Recycle Bin',           icon: 'Trash2'         },
       { href: '/kyc',                   label: 'Driver KYC Queue',      icon: 'ClipboardCheck' },
       { href: '/identity',              label: 'Customer ID Queue',     icon: 'ShieldCheck'    },
       { href: '/disputes',              label: 'Liability Disputes',    icon: 'ShieldCheck'    },
       { href: '/last-order-compliance', label: 'Last-Order Compliance', icon: 'MoonStar'       },
-      { href: '/interstate',            label: 'Interstate Trips',      icon: 'Truck'          },
-      { href: '/travel-buddy',          label: 'Travel Buddy',          icon: 'Users'          },
+      { href: '/recycle-bin',           label: 'Recycle Bin',           icon: 'Trash2'         },
     ],
   },
   {
-    title: 'OPS',
+    /**
+     * Everything the platform says to somebody, in one place.
+     *
+     * This replaces the old OPS section, which was a navigation bug
+     * rather than a category: OPS and OPERATIONS mean the same thing, so
+     * anyone looking for Deliveries read OPS first and found server
+     * health. Its three rows were System Health (now SYSTEM), Push
+     * Composer and Email Templates.
+     *
+     * Push, email, website copy and promotions were split across OPS and
+     * CONTENT, so every outbound message the platform sends lived in two
+     * different sections of the sidebar.
+     */
+    title: 'MESSAGING',
     items: [
-      { href: '/health',          label: 'System Health',   icon: 'Activity' },
-      { href: '/notify',          label: 'Push Composer',   icon: 'Send'     },
-      { href: '/email-templates', label: 'Email Templates', icon: 'Mail'     },
-    ],
-  },
-  {
-    title: 'DEVELOPER PLATFORM',
-    items: [
-      { href: '/dev-accounts', label: 'Developer Accounts', icon: 'Code2'     },
-      { href: '/dev-usage',    label: 'Platform Stats',     icon: 'BarChart3' },
-      { href: '/dev-docs',     label: 'Developer Docs',     icon: 'BookOpen'  },
+      { href: '/notify',          label: 'Push Composer',   icon: 'Send'    },
+      { href: '/email-templates', label: 'Email Templates', icon: 'Mail'    },
+      // Labels swapped round 2026-08-26. They were exactly backwards.
+      // "In-App CMS" writes to cms_items, which no app or website reads:
+      // it has no public route at all. "Website" writes to
+      // website_content, which feeds the customer app carousel, the
+      // business app carousel, the in-app Stories list AND seirs.app.
+      // The founder went looking for the app carousel, clicked the one
+      // that said In-App, published, and nothing happened.
+      { href: '/website',         label: 'App & Website Content', icon: 'Globe'   },
+      { href: '/promotions',      label: 'Promotions',      icon: 'Percent' },
     ],
   },
   {
@@ -560,44 +626,54 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     ],
   },
   {
-    title: 'CONTENT',
+    title: 'DEVELOPER PLATFORM',
     items: [
-      // Labels swapped round 2026-08-26. They were exactly backwards.
-      // "In-App CMS" writes to cms_items, which no app or website reads:
-      // it has no public route at all. "Website" writes to
-      // website_content, which feeds the customer app carousel, the
-      // business app carousel, the in-app Stories list AND seirs.app.
-      // The founder went looking for the app carousel, clicked the one
-      // that said In-App, published, and nothing happened.
-      { href: '/website',    label: 'App & Website Content', icon: 'Globe'    },
-      { href: '/promotions', label: 'Promotions',             icon: 'Percent'  },
+      { href: '/dev-accounts', label: 'Developer Accounts', icon: 'Code2'     },
+      { href: '/dev-usage',    label: 'Platform Stats',     icon: 'BarChart3' },
+      { href: '/dev-docs',     label: 'Developer Docs',     icon: 'BookOpen'  },
     ],
   },
   {
-    title: 'ANALYTICS',
-    items: [
-      { href: '/analytics', label: 'Analytics', icon: 'BarChart2'    },
-      { href: '/reports',   label: 'Reports',   icon: 'FileBarChart' },
-      // Until 2026-08-28 the only export in the whole admin was the NDPR
-      // bundle on one driver, so reconciling a payout run against a bank
-      // statement meant retyping numbers off a web page.
-      { href: '/exports',   label: 'Data Exports', icon: 'Download'  },
-    ],
-  },
-  {
-    title: 'SETTINGS',
+    /**
+     * Who can do what, and who did it. Lifted out of SETTINGS on
+     * 2026-08-28.
+     *
+     * Access control is not a preference. It governs every other page in
+     * this dashboard, and it sat between Audit Log and System Settings
+     * with the same visual weight as a colour scheme. The audit log
+     * belongs beside it rather than under SYSTEM: granting a role and
+     * reading who used it are one job, and separating them is how a
+     * permission change goes unnoticed.
+     *
+     * The night of 2026-08-27 made the case. A "Reactivate Account"
+     * button called a route that did not exist, and the obvious fix
+     * would have restored a dormant super admin along with the login.
+     */
+    title: 'ACCESS CONTROL',
     items: [
       { href: '/admins',    label: 'Staff Management', icon: 'UserCog'     },
       { href: '/roles',     label: 'Role Management',  icon: 'ShieldCheck' },
       { href: '/audit-log', label: 'Audit Log',        icon: 'ScrollText'  },
-      { href: '/settings',  label: 'System Settings',  icon: 'Settings'    },
-      // Last in the sidebar, and last for a reason: it is the only
-      // screen on the platform that deletes accounts in bulk.
-      { href: '/launch-reset', label: 'Launch Reset',    icon: 'Rocket'      },
+    ],
+  },
+  {
+    /**
+     * Reading the platform, and changing how it runs.
+     *
+     * Launch Reset stays last on purpose. It is the only irreversible
+     * item in the sidebar: it deletes across forty tables, and it should
+     * read as the end of the list rather than one more row of settings.
+     */
+    title: 'SYSTEM',
+    items: [
+      { href: '/analytics',    label: 'Analytics',       icon: 'BarChart2'    },
+      { href: '/reports',      label: 'Reports',         icon: 'FileBarChart' },
+      { href: '/health',       label: 'System Health',   icon: 'Activity'     },
+      { href: '/settings',     label: 'System Settings', icon: 'Settings'     },
+      { href: '/launch-reset', label: 'Launch Reset',    icon: 'Rocket'       },
     ],
   },
 ];
-
 export const NAV_SECTIONS: NavSection[] = NAV_LAYOUT.map((section) => ({
   title: section.title,
   items: section.items.map((item) => ({
