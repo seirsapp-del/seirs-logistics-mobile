@@ -557,9 +557,8 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     title: 'FINANCE',
     items: [
       { href: '/wallet',          label: 'Wallet & Payouts',   icon: 'Wallet'     },
-      { href: '/pricing',         label: 'Pricing Engine',     icon: 'Tag'        },
+      { href: '/pricing',         label: 'Pricing & Fees',     icon: 'Tag'        },
       { href: '/service-catalog', label: 'Service Catalog',    icon: 'List'       },
-      { href: '/fees',            label: 'Fee Catalogue',      icon: 'DollarSign' },
       { href: '/referrals',       label: 'Referrals',          icon: 'Share2'     },
       { href: '/insurance',       label: 'Insurance Partners', icon: 'Shield'     },
       // Until 2026-08-28 the only export in the whole admin was the NDPR
