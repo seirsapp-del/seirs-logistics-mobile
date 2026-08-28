@@ -117,10 +117,10 @@ export default function AnalyticsPage() {
       // a whole if either of the first two threw, which emptied all seven
       // panels and rendered the entire page as "No data yet".
       adminApi.analytics.revenue(days).then(r => { mark('revenue', true); return r; }).catch(() => { mark('revenue', false); return null; }),
-      adminApi.analytics.deliveriesByStatus().then(r => { mark('status', true); return r; }).catch(() => { mark('status', false); return []; }),
-      adminApi.analytics.topDrivers(10).then(r => { mark('drivers', true); return r; }).catch(() => { mark('drivers', false); return []; }),
-      adminApi.analytics.deliveriesByVehicle().then(r => { mark('vehicle', true); return r; }).catch(() => { mark('vehicle', false); return []; }),
-      adminApi.analytics.deliveriesByCategory().then(r => { mark('urgency', true); return r; }).catch(() => { mark('urgency', false); return []; }),
+      adminApi.analytics.deliveriesByStatus(days).then(r => { mark('status', true); return r; }).catch(() => { mark('status', false); return []; }),
+      adminApi.analytics.topDrivers(10, days).then(r => { mark('drivers', true); return r; }).catch(() => { mark('drivers', false); return []; }),
+      adminApi.analytics.deliveriesByVehicle(days).then(r => { mark('vehicle', true); return r; }).catch(() => { mark('vehicle', false); return []; }),
+      adminApi.analytics.deliveriesByCategory(days).then(r => { mark('urgency', true); return r; }).catch(() => { mark('urgency', false); return []; }),
       adminApi.analytics.driverHours(days, 8).then(r => { mark('hours', true); return r; }).catch(() => { mark('hours', false); return []; }),
       adminApi.analytics.referralFunnel().then(r => { mark('referral', true); return r; }).catch(() => { mark('referral', false); return null; }),
     ]).then(([rev, status, drivers, veh, cat, hrs, ref]) => {
@@ -266,7 +266,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-2 gap-6">
               <Panel
                 title="Where deliveries stand"
-                window="All time"
+                window={rangeLabel}
                 note="Every delivery SEIRS has ever taken, whatever the dates above say."
               >
                 {statusData.length > 0 ? (
@@ -296,7 +296,7 @@ export default function AnalyticsPage() {
 
               <Panel
                 title="Busiest riders"
-                window="All time"
+                window={rangeLabel}
                 note="Ranked by total deliveries ever completed, not by this period."
               >
                 <div className="space-y-2">
@@ -333,7 +333,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-2 gap-6">
               <Panel
                 title="What carried it"
-                window="All time"
+                window={rangeLabel}
                 note="Completed deliveries by the kind of machine that carried them."
               >
                 {vehicleData.length > 0 ? (
@@ -354,7 +354,7 @@ export default function AnalyticsPage() {
 
               <Panel
                 title="How fast customers asked for it"
-                window="All time"
+                window={rangeLabel}
                 /* The backend groups this by d.urgency, not by category
                    code, so the legend reads express/standard. Renamed to
                    match the query rather than mislabelling the data. */

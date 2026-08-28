@@ -12,9 +12,19 @@ export class PromotionsService {
   ) {}
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────
-  list(opts: { status?: PromoStatus } = {}) {
+  /**
+   * Paged, with a count (2026-08-28). This returned every promotion ever
+   * created as a bare array with no total, so the screen could neither
+   * page nor say how many there were.
+   */
+  async list(opts: { status?: PromoStatus; page?: number; limit?: number } = {}) {
     const where = opts.status ? { status: opts.status } : {};
-    return this.repo.find({ where, order: { createdAt: 'DESC' } });
+    const take = Math.min(Math.max(Number(opts.limit) || 50, 1), 200);
+    const skip = (Math.max(Number(opts.page) || 1, 1) - 1) * take;
+    const [items, total] = await this.repo.findAndCount({
+      where, order: { createdAt: 'DESC' }, take, skip,
+    });
+    return { items, total, page: Math.max(Number(opts.page) || 1, 1), limit: take };
   }
 
   async getOne(id: string) {

@@ -67,31 +67,38 @@ export default function NotifyComposerPage() {
   const [recipient,   setRecipient]   = useState<any | null>(null);
 
   /**
-   * Roughly how many people an audience is.
+   * Exactly how many people an audience is (2026-08-28).
    *
-   * There is no endpoint that counts a broadcast audience, so these come
-   * from the dashboard totals and are close but not exact: they leave
-   * out test accounts and do not know about suspensions. Labelled as
-   * approximate everywhere they appear, because a number presented as
-   * fact and then contradicted by the send result is worse than no
-   * number at all.
+   * This used to come from the dashboard totals, and was wrong in BOTH
+   * directions: totalUsers excluded nothing, so it counted suspended
+   * accounts the broadcast skips, and it missed business accounts the
+   * broadcast includes. It also had no figure at all for partners. The
+   * number shown before messaging the entire user base was therefore
+   * not the number of people who would receive it.
+   *
+   * It now calls the same resolver the send calls, so the count and the
+   * send cannot disagree, and it separates the two things that were
+   * being reported as one: everybody in the audience gets an in-app
+   * notification row, but only those with a device token saved have a
+   * phone that can be buzzed.
    */
-  const [approx, setApprox] = useState<{ customers: number; drivers: number } | null>(null);
-  useEffect(() => {
-    adminApi.stats()
-      .then((s: any) => setApprox({
-        customers: Number(s?.totalUsers ?? 0),
-        drivers:   Number(s?.totalDrivers ?? 0),
-      }))
-      .catch(() => setApprox(null));
-  }, []);
+  const [reach, setReach] = useState<{
+    recipients: number; withPush: number; withoutPush: number; pushEnabled: boolean;
+  } | null>(null);
+  const [sizing, setSizing] = useState(false);
 
-  const approxFor = (a: Audience): number | null => {
-    if (!approx) return null;
-    if (a === 'all_customers') return approx.customers;
-    if (a === 'all_drivers')   return approx.drivers;
-    return null;
-  };
+  useEffect(() => {
+    let alive = true;
+    setSizing(true);
+    setReach(null);
+    adminApi.broadcastAudienceSize(audience)
+      .then(r => { if (alive) setReach(r); })
+      .catch(() => { if (alive) setReach(null); })
+      .finally(() => { if (alive) setSizing(false); });
+    return () => { alive = false; };
+  }, [audience]);
+
+  const approxFor = (_a: Audience): number | null => reach?.recipients ?? null;
 
   useEffect(() => {
     if (audience !== 'one_user') return;
@@ -244,7 +251,7 @@ export default function NotifyComposerPage() {
                   <p className="text-sm font-semibold text-[#0F2B4C]">
                     {a.label}
                     {aSize !== null && (
-                      <span className="ml-1.5 font-normal text-xs text-[#0F2B4C]/50">about {aSize.toLocaleString()}</span>
+                      <span className="ml-1.5 font-normal text-xs text-[#0F2B4C]/50">{aSize.toLocaleString()}</span>
                     )}
                   </p>
                   <p className="text-xs leading-snug text-gray-500">{a.sub}</p>
@@ -253,6 +260,42 @@ export default function NotifyComposerPage() {
             );
           })}
         </div>
+
+        {/*
+          The two numbers that were being reported as one.
+          EVERYBODY in the audience gets an in-app notification row.
+          Only those with a device token saved have a phone that can be
+          buzzed. Collapsing them is how "sent to 5,000 people" comes to
+          mean five thousand rows nobody looked at.
+        */}
+        {audience !== 'one_user' && (
+          <div className="mt-3 rounded-lg bg-[#F5F5F0] px-3 py-2.5 text-sm text-[#0F2B4C]/70">
+            {sizing ? (
+              'Counting who this reaches...'
+            ) : reach == null ? (
+              'Could not count this audience. The send would still go to everyone in it.'
+            ) : (
+              <>
+                <strong className="tabular-nums text-[#0F2B4C]">{reach.recipients.toLocaleString()}</strong>
+                {' '}{reach.recipients === 1 ? 'person gets' : 'people get'} this in the app.
+                {' '}
+                {!reach.pushEnabled ? (
+                  <span className="font-semibold text-amber-800">
+                    No phone will buzz: push is not switched on for this server.
+                  </span>
+                ) : (
+                  <>
+                    <strong className="tabular-nums text-[#0F2B4C]">{reach.withPush.toLocaleString()}</strong>
+                    {' '}of them {reach.withPush === 1 ? 'has' : 'have'} a phone that can be buzzed
+                    {reach.withoutPush > 0 && (
+                      <>; the other {reach.withoutPush.toLocaleString()} will see it when they next open the app</>
+                    )}.
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {audience === 'one_user' && (
           <div className="mt-3">
@@ -371,7 +414,7 @@ export default function NotifyComposerPage() {
           <p className="text-xs opacity-90">{body || 'The message body, as it appears in the phone notification tray and in the in-app inbox.'}</p>
           <p className="text-[10px] opacity-50">
             to {aud.label.toLowerCase()}
-            {audience === 'one_user' && recipient ? `: ${recipient.name}` : size !== null ? `, about ${size.toLocaleString()} people` : ''}
+            {audience === 'one_user' && recipient ? `: ${recipient.name}` : size !== null ? `, ${size.toLocaleString()} people` : ''}
           </p>
         </div>
       </div>

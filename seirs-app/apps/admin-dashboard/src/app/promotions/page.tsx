@@ -67,6 +67,9 @@ const TABS: Array<{ key: string; label: string }> = [
 
 export default function PromotionsPage() {
   const [promos,  setPromos]  = useState<Promo[]>([]);
+  /* The server sends a real count now, so the screen can stop guessing
+     from the rows it happens to be holding. */
+  const [total,   setTotal]   = useState(0);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -78,7 +81,14 @@ export default function PromotionsPage() {
     setLoading(true);
     setError(null);
     adminApi.promotions.list()
-      .then((data: any) => setPromos(Array.isArray(data) ? data : []))
+      .then((data: any) => {
+        /* The endpoint returns { items, total } now. The array fallback
+           stays so a stale deploy of either side degrades to a list
+           rather than an empty board, which on a queue reads as
+           "nothing to do" rather than "not loaded". */
+          setPromos(Array.isArray(data) ? data : (data?.items ?? []));
+        setTotal(Number(data?.total ?? (Array.isArray(data) ? data.length : 0)));
+      })
       .catch((e: any) => setError(e?.message ?? 'Could not load the codes.'))
       .finally(() => setLoading(false));
   };

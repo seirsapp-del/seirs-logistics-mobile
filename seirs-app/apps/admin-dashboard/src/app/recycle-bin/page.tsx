@@ -46,6 +46,9 @@ const fmtDate = (iso: string | null): string =>
 
 export default function RecycleBinPage() {
   const [rows, setRows]       = useState<PendingDeletion[]>([]);
+  /* The server sends a real count now, so the screen can stop guessing
+     from the rows it happens to be holding. */
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId]   = useState<string | null>(null);
   // Which row is being purged for good. Held separately from busyId so
@@ -63,7 +66,14 @@ export default function RecycleBinPage() {
     setLoading(true);
     setError(null);
     adminApi.pendingDeletions.list()
-      .then((data) => setRows(Array.isArray(data) ? data : []))
+      .then((data: any) => {
+        /* The endpoint returns { items, total } now. The array fallback
+           stays so a stale deploy of either side degrades to a list
+           rather than an empty board, which on a queue reads as
+           "nothing to do" rather than "not loaded". */
+          setRows(Array.isArray(data) ? data : (data?.items ?? []));
+        setTotal(Number(data?.total ?? (Array.isArray(data) ? data.length : 0)));
+      })
       .catch((e: any) => { setRows([]); setError(e?.message ?? 'Could not load the recycle bin'); })
       .finally(() => setLoading(false));
   }, []);

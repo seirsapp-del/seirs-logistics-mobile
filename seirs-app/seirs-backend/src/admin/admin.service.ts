@@ -157,8 +157,8 @@ export class AdminService {
 
   // Admin lists all users with a pending deletion (self- or admin-scheduled).
   // Sorted soonest-purge-first so the recycle-bin page has action items on top.
-  async listPendingDeletions() {
-    return this.usersService.listPendingDeletions();
+  async listPendingDeletions(page = 1, limit = 50) {
+    return this.usersService.listPendingDeletions(page, limit);
   }
 
   /**
@@ -400,13 +400,23 @@ export class AdminService {
     return { scanned: users.length, newCandidates: inserted };
   }
 
-  listDuplicates(status?: DuplicateStatus) {
+  /**
+   * Paged, with a count (2026-08-28). 200 rows and no total meant a
+   * duplicate-account queue could be hiding the rest with nothing on
+   * screen to say so, on a board whose entire job is catching people
+   * farming sign-up bonuses across accounts.
+   */
+  async listDuplicates(status?: DuplicateStatus, page = 1, limit = 50) {
     const where = status ? { status } : {};
-    return this.duplicatesRepo.find({
+    const take = Math.min(Math.max(Number(limit) || 50, 1), 200);
+    const skip = (Math.max(Number(page) || 1, 1) - 1) * take;
+    const [items, total] = await this.duplicatesRepo.findAndCount({
       where,
       order: { matchScore: 'DESC', createdAt: 'DESC' },
-      take: 200,
+      take,
+      skip,
     });
+    return { items, total, page: Math.max(Number(page) || 1, 1), limit: take };
   }
 
   // Soft-merge: marks the duplicate as merged-into the primary.
@@ -2810,13 +2820,38 @@ export class AdminService {
     };
   }
 
-  async getDeliveriesByStatus() {
-    const rows = await this.deliveriesRepo
+  /**
+   * The date selector was decorative on five of seven analytics panels.
+   *
+   * The dashboard has 7/14/30/90 buttons that read as governing the
+   * page, and only revenue and driver-hours ever took a range. The other
+   * five returned all-time figures that did not move when the buttons
+   * were pressed, so somebody comparing a week against a quarter was
+   * reading the same numbers twice and concluding the page was broken,
+   * or worse, believing them.
+   *
+   * `days` is optional on every one of them. Omitted means all time,
+   * which is the behaviour every existing caller had, so nothing changes
+   * for anyone who does not ask for a window.
+   */
+  private sinceFor(days?: number): Date | null {
+    const n = Number(days);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    const d = new Date();
+    d.setDate(d.getDate() - Math.min(n, 3650));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  async getDeliveriesByStatus(days?: number) {
+    const rows0 = this.deliveriesRepo
       .createQueryBuilder('d')
       .select('d.status', 'status')
       .addSelect('COUNT(d.id)', 'count')
-      .groupBy('d.status')
-      .getRawMany();
+      .groupBy('d.status');
+    const sinceStatus = this.sinceFor(days);
+    if (sinceStatus) rows0.andWhere('d.createdAt >= :since', { since: sinceStatus });
+    const rows = await rows0.getRawMany();
 
     return rows.map(r => ({ status: r.status, count: Number(r.count) }));
   }
@@ -2837,7 +2872,7 @@ export class AdminService {
    * nothing on either screen ever displayed a single one of those
    * fields.
    */
-  async getTopDrivers(limit = 10) {
+  async getTopDrivers(limit = 10, days?: number) {
     return this.driversRepo
       .createQueryBuilder('d')
       .leftJoin('d.user', 'user')
@@ -2852,15 +2887,17 @@ export class AdminService {
   }
 
   // Spec V8. deliveries grouped by driver's vehicle type (motorcycle vs van etc.)
-  async getDeliveriesByVehicle() {
-    const rows = await this.deliveriesRepo
+  async getDeliveriesByVehicle(days?: number) {
+    const qbv = this.deliveriesRepo
       .createQueryBuilder('d')
       .leftJoin('d.driver', 'driver')
       .select('driver.vehicleType', 'vehicleType')
       .addSelect('COUNT(d.id)', 'count')
       .where('d.status = :status', { status: DeliveryStatus.DELIVERED })
-      .groupBy('driver.vehicleType')
-      .getRawMany();
+      .groupBy('driver.vehicleType');
+    const sinceVeh = this.sinceFor(days);
+    if (sinceVeh) qbv.andWhere('d.createdAt >= :since', { since: sinceVeh });
+    const rows = await qbv.getRawMany();
     return rows
       .filter(r => r.vehicleType)
       .map(r => ({ vehicleType: r.vehicleType as string, count: Number(r.count) }));
@@ -2868,13 +2905,15 @@ export class AdminService {
 
   // Spec V8. deliveries grouped by package category (using urgency as proxy
   // until per-category field ships in the multi-drop e-commerce module)
-  async getDeliveriesByCategory() {
-    const rows = await this.deliveriesRepo
+  async getDeliveriesByCategory(days?: number) {
+    const qbc = this.deliveriesRepo
       .createQueryBuilder('d')
       .select('d.urgency',  'category')
       .addSelect('COUNT(d.id)', 'count')
-      .groupBy('d.urgency')
-      .getRawMany();
+      .groupBy('d.urgency');
+    const sinceCat = this.sinceFor(days);
+    if (sinceCat) qbc.andWhere('d.createdAt >= :since', { since: sinceCat });
+    const rows = await qbc.getRawMany();
     return rows.map(r => ({ category: r.category as string, count: Number(r.count) }));
   }
 

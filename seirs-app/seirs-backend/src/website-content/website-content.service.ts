@@ -360,11 +360,22 @@ export class WebsiteContentService implements OnModuleInit {
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────
 
-  list(opts: { type?: WebContentType; status?: WebContentStatus } = {}) {
+  /**
+   * Paged, with a count (2026-08-28). The 200 cap was silent: past two
+   * hundred stories nothing on the screen could say the rest existed.
+   */
+  async list(opts: {
+    type?: WebContentType; status?: WebContentStatus; page?: number; limit?: number;
+  } = {}) {
     const where: any = {};
     if (opts.type)   where.type   = opts.type;
     if (opts.status) where.status = opts.status;
-    return this.repo.find({ where, order: { updatedAt: 'DESC' }, take: 200 });
+    const take = Math.min(Math.max(Number(opts.limit) || 50, 1), 200);
+    const skip = (Math.max(Number(opts.page) || 1, 1) - 1) * take;
+    const [items, total] = await this.repo.findAndCount({
+      where, order: { updatedAt: 'DESC' }, take, skip,
+    });
+    return { items, total, page: Math.max(Number(opts.page) || 1, 1), limit: take };
   }
 
   async getOne(id: string) {

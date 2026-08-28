@@ -467,6 +467,41 @@ export class NotificationsService {
     };
   }
 
+  /**
+   * How many a broadcast would actually reach, before anybody sends it.
+   *
+   * The composer showed a figure derived from adminApi.stats(), which
+   * was wrong in BOTH directions: it excluded business accounts the
+   * broadcast includes and counted suspended accounts the broadcast
+   * excludes. So the number on screen before pressing send to the whole
+   * user base was not the number of people who would receive it.
+   *
+   * This calls the same resolveAudience the send calls, so the count and
+   * the send cannot disagree.
+   *
+   * `withPush` is the honest second half: everybody in the audience gets
+   * an in-app notification row, but only the ones with a device token
+   * saved get a phone to buzz. Reporting one number for both is how
+   * "sent to 5,000 people" comes to mean five thousand rows nobody saw.
+   */
+  async audienceSize(audience: BroadcastAudience, zone?: string): Promise<{
+    audience: BroadcastAudience;
+    recipients: number;
+    withPush: number;
+    withoutPush: number;
+    pushEnabled: boolean;
+  }> {
+    const rows = await this.resolveAudience(audience, zone);
+    const withPush = rows.filter(r => !!r.fcmToken).length;
+    return {
+      audience,
+      recipients: rows.length,
+      withPush,
+      withoutPush: rows.length - withPush,
+      pushEnabled: this.fcm.isEnabled,
+    };
+  }
+
   private async resolveAudience(audience: BroadcastAudience, zone?: string): Promise<Array<Pick<User, 'id' | 'fcmToken'>>> {
     // 'specific_zone' is a future-ship - Geo-fence by city/LGA needs an
     // Address index, which isn't there yet. For now treat it as all

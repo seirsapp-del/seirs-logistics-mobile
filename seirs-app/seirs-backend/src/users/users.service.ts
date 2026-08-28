@@ -414,12 +414,39 @@ export class UsersService implements OnModuleInit {
 
   // Admin lists all users with a pending deletion. Ordered by
   // deletionScheduledAt ASC so the ones about to purge are at the top.
-  async listPendingDeletions() {
-    return this.repo.find({
+  /**
+   * NARROW SELECT and a real count (2026-08-28).
+   *
+   * This was a bare find() on the users repo, so every row carried the
+   * whole User entity: bank account name, number and code, date of
+   * birth, home address, next of kin, device hashes, FCM token and
+   * lockout state, for a screen that shows a name, an email and a date.
+   * The all-routes sweep reported this endpoint clean, and it was clean
+   * only because nobody currently has a deletion scheduled. It would
+   * have started leaking the first time somebody asked to be deleted,
+   * which is precisely the person whose data should be handled most
+   * carefully.
+   *
+   * Paging as well: 200 with no total meant nothing on screen could say
+   * more existed. The ASC order stays, so the accounts about to be
+   * purged remain on page one.
+   */
+  async listPendingDeletions(page = 1, limit = 50) {
+    const take = Math.min(Math.max(Number(limit) || 50, 1), 200);
+    const skip = (Math.max(Number(page) || 1, 1) - 1) * take;
+    const [items, total] = await this.repo.findAndCount({
       where: { deletionScheduledAt: Not(IsNull()) } as any,
       order: { deletionScheduledAt: 'ASC' },
-      take:  200,
+      take,
+      skip,
+      select: {
+        id: true, name: true, email: true, phone: true, role: true,
+        accountId: true, isActive: true, createdAt: true,
+        deletionScheduledAt: true, deletionRequestedAt: true,
+        deletionRequestedBy: true, deletionReason: true,
+      } as any,
     });
+    return { items, total, page: Math.max(Number(page) || 1, 1), limit: take };
   }
 
   // Admin schedules a soft-delete on behalf of a user. Same 30-day grace

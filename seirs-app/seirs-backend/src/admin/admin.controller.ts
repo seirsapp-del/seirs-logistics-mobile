@@ -246,8 +246,8 @@ export class AdminController {
    * paths under users/ must go above the wildcard too.
    */
   @Get('users/pending-deletion')
-  listPendingDeletions() {
-    return this.adminService.listPendingDeletions();
+  listPendingDeletions(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.adminService.listPendingDeletions(Number(page ?? 1), Number(limit ?? 50));
   }
 
   // GET /api/v1/admin/users/:id
@@ -668,14 +668,14 @@ export class AdminController {
 
   // GET /api/v1/admin/analytics/deliveries-by-status
   @Get('analytics/deliveries-by-status')
-  getDeliveriesByStatus() {
-    return this.adminService.getDeliveriesByStatus();
+  getDeliveriesByStatus(@Query('days') days?: string) {
+    return this.adminService.getDeliveriesByStatus(days ? Number(days) : undefined);
   }
 
   // GET /api/v1/admin/analytics/top-drivers?limit=10
   @Get('analytics/top-drivers')
-  getTopDrivers(@Query('limit') limit?: number) {
-    return this.adminService.getTopDrivers(limit ? Number(limit) : 10);
+  getTopDrivers(@Query('limit') limit?: number, @Query('days') days?: string) {
+    return this.adminService.getTopDrivers(limit ? Number(limit) : 10, days ? Number(days) : undefined);
   }
 
   // GET /api/v1/admin/analytics/heatmap
@@ -686,14 +686,14 @@ export class AdminController {
 
   // GET /api/v1/admin/analytics/deliveries-by-vehicle
   @Get('analytics/deliveries-by-vehicle')
-  getDeliveriesByVehicle() {
-    return this.adminService.getDeliveriesByVehicle();
+  getDeliveriesByVehicle(@Query('days') days?: string) {
+    return this.adminService.getDeliveriesByVehicle(days ? Number(days) : undefined);
   }
 
   // GET /api/v1/admin/analytics/deliveries-by-category
   @Get('analytics/deliveries-by-category')
-  getDeliveriesByCategory() {
-    return this.adminService.getDeliveriesByCategory();
+  getDeliveriesByCategory(@Query('days') days?: string) {
+    return this.adminService.getDeliveriesByCategory(days ? Number(days) : undefined);
   }
 
   // GET /api/v1/admin/analytics/driver-hours?days=30&limit=10
@@ -1015,8 +1015,12 @@ export class AdminController {
 
   // ── Duplicate accounts (A21) ─────────────────────────────────────────────
   @Get('duplicates')
-  listDuplicates(@Query('status') status?: DuplicateStatus) {
-    return this.adminService.listDuplicates(status);
+  listDuplicates(
+    @Query('status') status?: DuplicateStatus,
+    @Query('page')   page?: string,
+    @Query('limit')  limit?: string,
+  ) {
+    return this.adminService.listDuplicates(status, Number(page ?? 1), Number(limit ?? 50));
   }
 
   @Post('duplicates/scan')

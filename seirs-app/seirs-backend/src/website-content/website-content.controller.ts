@@ -101,8 +101,10 @@ export class WebsiteContentController {
   adminList(
     @Query('type')   type?:   WebContentType,
     @Query('status') status?: WebContentStatus,
+    @Query('page')   page?:   string,
+    @Query('limit')  limit?:  string,
   ) {
-    return this.svc.list({ type, status });
+    return this.svc.list({ type, status, page: Number(page ?? 1), limit: Number(limit ?? 50) });
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)

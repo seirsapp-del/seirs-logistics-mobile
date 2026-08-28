@@ -72,6 +72,20 @@ export class NotificationsController {
   // Spec V8 §3.13 - ops broadcast composer endpoint. Fans out one push
   // to every user in the chosen audience. Returns { recipients, pushed }.
   @UseGuards(AdminGuard)
+  /**
+   * GET /api/v1/notifications/audience-size?audience=all_customers
+   *
+   * The count the composer shows before somebody messages the entire
+   * user base. Uses the same resolver the send uses, so the two cannot
+   * disagree, and separates "will get a notification row" from "has a
+   * phone that can be buzzed".
+   */
+  @Get('audience-size')
+  @UseGuards(AdminGuard)
+  audienceSize(@Query('audience') audience?: string, @Query('zone') zone?: string) {
+    return this.svc.audienceSize((audience ?? 'all_customers') as any, zone);
+  }
+
   @Post('broadcast')
   broadcast(@Body() body: {
     audience: BroadcastAudience; zone?: string; title: string; body: string;

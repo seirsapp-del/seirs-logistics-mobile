@@ -184,7 +184,17 @@ export const adminApi = {
   },
 
   pendingDeletions: {
-    list:   ()             => req<any[]>('/admin/users/pending-deletion'),
+    /**
+     * These four now return { items, total, page, limit } instead of a bare
+     * array (2026-08-28). They were capped server-side at 50 to 200 rows
+     * with no total, so anything past the cap was unreachable and no screen
+     * could say it existed. Each caller keeps an Array.isArray fallback so a
+     * stale deploy of either side degrades to a list rather than an empty
+     * board, which on a queue reads as "nothing to do".
+     */
+    list:   (page = 1, limit = 50) =>
+      req<{ items: any[]; total: number; page: number; limit: number }>(
+        `/admin/users/pending-deletion?page=${page}&limit=${limit}`),
     cancel: (userId: string) =>
       req<any>(`/admin/users/${userId}/cancel-deletion`, { method: 'POST' }),
     softDelete: (userId: string, reason: string) =>
@@ -206,6 +216,19 @@ export const adminApi = {
    * suspension was recorded as anonymous and the fraud desk was told to
    * write the reason on a support ticket instead.
    */
+  /**
+   * How many a push broadcast would actually reach, from the same
+   * resolver the send uses, so the count and the send cannot disagree.
+   * The composer previously derived this from stats(), which was wrong
+   * in both directions: it excluded business accounts the broadcast
+   * includes and counted suspended ones it excludes.
+   */
+  broadcastAudienceSize: (audience: string) =>
+    req<{
+      audience: string; recipients: number;
+      withPush: number; withoutPush: number; pushEnabled: boolean;
+    }>(`/notifications/audience-size?audience=${encodeURIComponent(audience)}`),
+
   suspendUser: (id: string, reason?: string) =>
     req<any>(`/admin/users/${id}/suspend`, {
       method: 'PATCH', body: JSON.stringify({ reason }),
@@ -500,7 +523,9 @@ export const adminApi = {
 
   // Spec V8 §3.13. promotions CRUD.
   promotions: {
-    list:   (status?: string) => req<any[]>(`/admin/promotions${status ? `?status=${status}` : ''}`),
+    list:   (status?: string, page = 1, limit = 50) =>
+      req<{ items: any[]; total: number; page: number; limit: number }>(
+        `/admin/promotions?page=${page}&limit=${limit}${status ? `&status=${status}` : ''}`),
     create: (body: any)       => req<any>('/admin/promotions', { method: 'POST', body: JSON.stringify(body) }),
     update: (id: string, body: any) => req<any>(`/admin/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     remove: (id: string)      => req<any>(`/admin/promotions/${id}`, { method: 'DELETE' }),
@@ -508,7 +533,12 @@ export const adminApi = {
 
   // Spec V8 §3.13. suggestions inbox.
   suggestions: {
-    list:   (status?: string) => req<{ items: any[]; total: number; page: number }>(`/admin/suggestions${status ? `?status=${status}` : ''}`),
+    /* The server has always paged this at 30 and the client never sent a
+       page, so pages 2+ were unreachable through the dashboard even
+       though the endpoint supported them. */
+    list:   (status?: string, page = 1) =>
+      req<{ items: any[]; total: number; page: number }>(
+        `/admin/suggestions?page=${page}${status ? `&status=${status}` : ''}`),
     update: (id: string, body: { status?: string; adminReply?: string }) =>
       req<any>(`/admin/suggestions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   },
@@ -551,7 +581,9 @@ export const adminApi = {
 
   // Spec V8 §3.13. duplicate accounts (A21)
   duplicates: {
-    list:    (status?: string) => req<any[]>(`/admin/duplicates${status ? `?status=${status}` : ''}`),
+    list:    (status?: string, page = 1, limit = 50) =>
+      req<{ items: any[]; total: number; page: number; limit: number }>(
+        `/admin/duplicates?page=${page}&limit=${limit}${status ? `&status=${status}` : ''}`),
     scan:    ()                => req<{ scanned: number; newCandidates: number }>('/admin/duplicates/scan', { method: 'POST' }),
     merge:   (id: string)      => req<any>(`/admin/duplicates/${id}/merge`,   { method: 'POST' }),
     dismiss: (id: string)      => req<any>(`/admin/duplicates/${id}/dismiss`, { method: 'POST' }),
@@ -568,12 +600,14 @@ export const adminApi = {
 
   // Spec V8. public website CMS (articles + FAQ + changelog + page blocks)
   websiteContent: {
-    list:   (type?: string, status?: string) => {
+    list:   (type?: string, status?: string, page = 1, limit = 50) => {
       const params = new URLSearchParams();
       if (type)   params.set('type', type);
       if (status) params.set('status', status);
-      const qs = params.toString();
-      return req<any[]>(`/admin/website/content${qs ? `?${qs}` : ''}`);
+      params.set('page',  String(page));
+      params.set('limit', String(limit));
+      return req<{ items: any[]; total: number; page: number; limit: number }>(
+        `/admin/website/content?${params.toString()}`);
     },
     get:    (id: string)             => req<any>(`/admin/website/content/${id}`),
     create: (body: any)              => req<any>('/admin/website/content', { method: 'POST', body: JSON.stringify(body) }),
@@ -708,11 +742,14 @@ export const adminApi = {
 
   analytics: {
     revenue:              (days = 30) => req<any>(`/admin/analytics/revenue?days=${days}`),
-    deliveriesByStatus:   ()          => req<any>('/admin/analytics/deliveries-by-status'),
-    topDrivers:           (limit = 10) => req<any>(`/admin/analytics/top-drivers?limit=${limit}`),
+    /* days is optional on all four. Omitted means all time, which is
+       what every caller got before 2026-08-28, when the 7/14/30/90
+       buttons governed only two of the seven panels. */
+    deliveriesByStatus:   (days?: number) => req<any>(`/admin/analytics/deliveries-by-status${days ? `?days=${days}` : ''}`),
+    topDrivers:           (limit = 10, days?: number) => req<any>(`/admin/analytics/top-drivers?limit=${limit}${days ? `&days=${days}` : ''}`),
     heatmap:              ()          => req<any>('/admin/analytics/heatmap'),
-    deliveriesByVehicle:  ()          => req<any>('/admin/analytics/deliveries-by-vehicle'),
-    deliveriesByCategory: ()          => req<any>('/admin/analytics/deliveries-by-category'),
+    deliveriesByVehicle:  (days?: number) => req<any>(`/admin/analytics/deliveries-by-vehicle${days ? `?days=${days}` : ''}`),
+    deliveriesByCategory: (days?: number) => req<any>(`/admin/analytics/deliveries-by-category${days ? `?days=${days}` : ''}`),
     driverHours:          (days = 30, limit = 10) =>
       req<any>(`/admin/analytics/driver-hours?days=${days}&limit=${limit}`),
     referralFunnel:       ()          => req<any>('/admin/analytics/referral-funnel'),

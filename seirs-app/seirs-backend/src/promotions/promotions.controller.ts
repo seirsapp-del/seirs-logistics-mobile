@@ -37,8 +37,12 @@ export class PromotionsController {
 
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Get('admin/promotions')
-  list(@Query('status') status?: PromoStatus) {
-    return this.svc.list({ status });
+  list(
+    @Query('status') status?: PromoStatus,
+    @Query('page')   page?: string,
+    @Query('limit')  limit?: string,
+  ) {
+    return this.svc.list({ status, page: Number(page ?? 1), limit: Number(limit ?? 50) });
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)

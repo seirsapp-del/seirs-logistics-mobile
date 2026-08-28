@@ -91,6 +91,9 @@ function confidence(score: number): string {
 
 export default function DuplicatesPage() {
   const [items,    setItems]    = useState<Candidate[]>([]);
+  /* The server sends a real count now, so the screen can stop guessing
+     from the rows it happens to be holding. */
+  const [total, setTotal] = useState(0);
   const [loading,  setLoading]  = useState(true);
   const [scanning, setScanning] = useState(false);
   const [error,    setError]    = useState<string | null>(null);
@@ -106,7 +109,14 @@ export default function DuplicatesPage() {
     // Loaded unfiltered on purpose: the tab counts have to be true, and
     // a per-tab fetch would make each count describe only itself.
     adminApi.duplicates.list()
-      .then(list => setItems(Array.isArray(list) ? list : []))
+      .then((list: any) => {
+        /* The endpoint returns { items, total } now. The array fallback
+           stays so a stale deploy of either side degrades to a list
+           rather than an empty board, which on a queue reads as
+           "nothing to do" rather than "not loaded". */
+          setItems(Array.isArray(list) ? list : (list?.items ?? []));
+        setTotal(Number(list?.total ?? (Array.isArray(list) ? list.length : 0)));
+      })
       .catch((e: any) => setError(e?.message ?? 'Could not load the flagged pairs.'))
       .finally(() => setLoading(false));
   };
