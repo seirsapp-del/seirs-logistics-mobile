@@ -197,7 +197,36 @@ const TIME_SLOTS = Array.from({ length: 24 }, (_, hour) => {
   return { hour, label, night };
 });
 
-const TODAY_ISO       = new Date().toISOString().slice(0, 10);
+/**
+ * Today, and the hour, in Africa/Lagos. The only clock SEIRS runs on.
+ *
+ * This was two different clocks (found on device, 2026-08-29):
+ *
+ *   TODAY_ISO came from toISOString(), which is UTC.
+ *   The past-hour check came from getHours(), which is device-local.
+ *
+ * They agree only for a user whose phone is set to UTC. For a Lagos
+ * phone they disagree between midnight and 1am, and for the founder
+ * testing from Berlin they disagreed by two hours all night.
+ *
+ * What that produced, reproduced on the device at 23:36 Lagos time: the
+ * calendar preselected the WRONG DAY, every hour chip from 1am to 11pm
+ * rendered as available because the local hour was 0, and selecting
+ * "5 AM" on a day already 18 hours gone was accepted by Continue. A
+ * pickup scheduled into the past.
+ *
+ * It also explains the one chip that was missing: 12 AM vanished,
+ * because hour 0 was the only one the broken comparison caught.
+ *
+ * Lagos is UTC+1 with no daylight saving, so a fixed offset is exact.
+ * Same idiom as isBusinessHoursNow() in support/new.tsx. Functions
+ * rather than constants, so an app left open across midnight does not
+ * keep yesterday's answer.
+ */
+const LAGOS_OFFSET_MS = 60 * 60 * 1000;
+const lagosNow      = () => new Date(Date.now() + LAGOS_OFFSET_MS);
+const todayIsoLagos = () => lagosNow().toISOString().slice(0, 10);
+const lagosHourNow  = () => lagosNow().getUTCHours();
 // Matches the server cap (create() rejects anything past 7 days).
 const MAX_BOOK_AHEAD  = (() => {
   const d = new Date(); d.setDate(d.getDate() + 7);
@@ -1020,6 +1049,29 @@ export default function SendScreen() {
     }
     if (step === 1 && !pickup)  { failField('pickup',  t('send.errPickupMissing'));  return; }
 
+    /**
+     * A scheduled pickup must be in the future (2026-08-29).
+     *
+     * The only guard was "an hour has been chosen", and the only thing
+     * that cleared a stale hour was tapping the date again. So a draft
+     * carrying yesterday's 5 AM, or a customer who picked 5 AM at 4 AM
+     * and finished the form at 6, sailed through: the review screen
+     * cheerfully read "Scheduled for Friday, 28 Aug, 05:00" at half past
+     * eleven that night, and Pay was live.
+     *
+     * Reproduced on device. The date is now checked, not just its
+     * presence, and the message says what to do rather than what is
+     * wrong.
+     */
+    if (step === 1 && !scheduleNow && scheduledHour != null) {
+      const when = buildScheduledFor(scheduledDate, scheduledHour);
+      if (when.getTime() <= Date.now()) {
+        failField('schedule', t('send.errSchedulePast', {
+          defaultValue: 'That pickup time has already passed. Pick a later hour, or tomorrow.',
+        }));
+        return;
+      }
+    }
     if (step === 1 && !scheduleNow && scheduledHour == null) {
       failField('schedule', t('send.errScheduleTime'));
       return;
@@ -1844,13 +1896,13 @@ export default function SendScreen() {
                   {!scheduleNow && (
                     <View style={[styles.scheduleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                       <RNCalendar
-                        minDate={TODAY_ISO}
+                        minDate={todayIsoLagos()}
                         maxDate={MAX_BOOK_AHEAD}
                         current={scheduledDate}
                         onDayPress={(day) => {
                           setScheduledDate(day.dateString);
                           // Reset time if the previously chosen hour is now in the past for the new "today" pick.
-                          if (day.dateString === TODAY_ISO && scheduledHour != null && scheduledHour <= new Date().getHours()) {
+                          if (day.dateString === todayIsoLagos() && scheduledHour != null && scheduledHour <= lagosHourNow()) {
                             setScheduledHour(null);
                           }
                         }}
@@ -1876,9 +1928,24 @@ export default function SendScreen() {
                         {t('send.timeLabel')} <Text style={{ color: theme.textThird, fontWeight: FontWeight.regular }}>{t('send.scheduledHoursHint')}</Text>
                       </Text>
                       <View style={styles.chipRow}>
+                        {TIME_SLOTS.every(slot =>
+                          scheduledDate === todayIsoLagos() && slot.hour <= lagosHourNow()) && (
+                          /*
+                            Late at night every hour of today's window has
+                            gone, so the list renders empty and says
+                            nothing. A blank space where the times should
+                            be reads as broken rather than as "come back
+                            tomorrow" (2026-08-29).
+                          */
+                          <Text style={[styles.hintText, { color: theme.textThird }]}>
+                            {t('send.noSlotsToday', {
+                              defaultValue: 'No pickup hours left today. Choose tomorrow on the calendar above, or go back and pick Send now.',
+                            })}
+                          </Text>
+                        )}
                         {TIME_SLOTS.map(slot => {
                           const active = scheduledHour === slot.hour;
-                          const isPast = scheduledDate === TODAY_ISO && slot.hour <= new Date().getHours();
+                          const isPast = scheduledDate === todayIsoLagos() && slot.hour <= lagosHourNow();
                           if (isPast) return null;
                           return (
                             <Pressable

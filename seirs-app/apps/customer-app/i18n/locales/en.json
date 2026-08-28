@@ -212,7 +212,7 @@
     "sendNowDesc": "We match a driver straight away",
     "scheduleLaterDesc": "Pick a pickup hour, today or tomorrow",
     "timeLabel": "Time",
-    "scheduledHoursHint": "(scheduled hours: 5 AM, 9 PM)",
+    "scheduledHoursHint": "(pickups 5 AM to 9 PM)",
     "scheduledForPrefix": "Scheduled for",
     "summaryWhen": "When",
     "summarySendNow": "Send now",
