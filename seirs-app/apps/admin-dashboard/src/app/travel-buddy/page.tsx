@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { naira } from '@/lib/money';
+import { seatStatus } from '@/lib/labels';
 
 /**
  * Travel Buddy ops.
@@ -49,7 +50,7 @@ function StatusPill({ status }: { status: string }) {
       : 'bg-amber-100 text-amber-700';
   return (
     <span className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${tone}`}>
-      {status.replace(/_/g, ' ')}
+      {seatStatus(status)}
     </span>
   );
 }
@@ -132,12 +133,32 @@ export default function TravelBuddyOpsPage() {
             <Loader2 size={16} className="animate-spin" /> Loading
           </div>
         ) : rows.length === 0 ? (
-          <div className="py-14 text-center text-sm text-gray-400">
-            {tab === 'noshows'
-              ? 'No forfeited fares. That is the good outcome.'
-              : tab === 'pending'
-              ? 'Nobody is keeping a rider waiting on payment.'
-              : 'Nothing here yet.'}
+          /* An outage rendered as "That is the good outcome", which is
+             the most misleading sentence available on a board whose job
+             is forfeited money. A failed request is now its own state. */
+          <div className="py-14 text-center text-sm">
+            {err ? (
+              <>
+                <p className="font-semibold text-[#0F2B4C]">This board did not load</p>
+                <p className="mt-1 text-gray-500">
+                  It does not mean there is nothing here. Try again.
+                </p>
+                <button
+                  onClick={load}
+                  className="mt-3 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-[#0F2B4C] hover:bg-gray-50"
+                >
+                  Try again
+                </button>
+              </>
+            ) : (
+              <span className="text-gray-400">
+                {tab === 'noshows'
+                  ? 'No forfeited fares. That is the good outcome.'
+                  : tab === 'pending'
+                  ? 'Nobody is keeping a rider waiting on payment.'
+                  : 'Nothing here yet.'}
+              </span>
+            )}
           </div>
         ) : tab === 'trips' ? (
           <table className="w-full text-sm">
@@ -276,12 +297,21 @@ export default function TravelBuddyOpsPage() {
                   </td>
                   <td className="px-4 py-3"><StatusPill status={b.status} /></td>
                   <td className="px-4 py-3 text-xs text-gray-500">
+                    {/*
+                      The seat is released when this runs out, so the
+                      countdown is the whole reason the tab exists and it
+                      was the same grey as a timestamp.
+                    */}
                     {tab === 'pending'
                       ? b.minutesLeft == null
                         ? '-'
                         : b.minutesLeft < 0
-                        ? 'expired'
-                        : `${b.minutesLeft} min`
+                        ? <span className="rounded bg-red-100 px-1.5 py-0.5 font-bold text-red-700">time is up</span>
+                        : <span className={b.minutesLeft <= 10
+                            ? 'rounded bg-amber-100 px-1.5 py-0.5 font-bold text-amber-800'
+                            : 'text-gray-600'}>
+                            {b.minutesLeft} min left
+                          </span>
                       : fmt(b.requestedAt)}
                   </td>
                 </tr>

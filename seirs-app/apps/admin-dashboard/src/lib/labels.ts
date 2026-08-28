@@ -72,7 +72,26 @@ const ZONE: Record<string, Label> = {
   no_dropoff:      { label: 'No drop-offs',    hint: 'Nothing can be delivered here. Collections still work.' },
 };
 
+/**
+ * Travel Buddy seats. A passenger is a person, so "no_show" reading as
+ * "no show" on an ops board understates it: somebody paid, did not
+ * arrive, and forfeited the fare, and the desk is deciding whether that
+ * is fair.
+ */
+const SEAT: Record<string, Label> = {
+  requested: { label: 'Waiting on the driver', hint: 'The passenger asked for a seat; the driver has not accepted yet.' },
+  accepted:  { label: 'Driver said yes',       hint: 'Accepted, and the passenger now has to pay before the seat is held.' },
+  declined:  { label: 'Driver said no' },
+  booked:    { label: 'Seat paid for',         hint: 'Paid and held. The passenger is expected at the boarding point.' },
+  boarded:   { label: 'On board' },
+  dropped:   { label: 'Dropped off',           hint: 'Completed. The driver has been credited for this seat.' },
+  no_show:   { label: 'Did not turn up',       hint: 'The fare was forfeited. Check this one before keeping the money.' },
+  cancelled: { label: 'Cancelled' },
+  expired:   { label: 'Ran out of time',       hint: 'Not paid inside the window, so the seat went back on sale.' },
+};
+
 const BOOKS: Record<string, Record<string, Label>> = {
+  seat:     SEAT,
   delivery: DELIVERY,
   driver:   DRIVER,
   return:   RETURN,
@@ -107,3 +126,4 @@ export const driverStatus   = (s: unknown) => humanLabel('driver', s);
 export const returnStatus   = (s: unknown) => humanLabel('return', s);
 export const roleLabel      = (s: unknown) => humanLabel('role', s);
 export const zoneStatus     = (s: unknown) => humanLabel('zone', s);
+export const seatStatus     = (s: unknown) => humanLabel('seat', s);
