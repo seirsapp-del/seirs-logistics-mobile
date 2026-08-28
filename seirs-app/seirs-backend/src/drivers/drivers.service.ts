@@ -674,10 +674,22 @@ export class DriversService {
   // Admin board - Spec V8 §3.12. Returns trips with driver + user joined
   // for the UI to display "<name> | Lagos → Ibadan | <kg> free".
   listAllInterstateTrips(opts: { status?: DriverTripStatus } = {}) {
+    /**
+     * Narrow selects (2026-08-28). leftJoinAndSelect pulled the whole
+     * Driver and the whole User behind it, so an interstate trips list
+     * was serving every declared driver's KYC folder and bank details.
+     * The page draws a name, a route, a departure time and a spare
+     * capacity, and links to the driver by id.
+     */
     const qb = this.tripsRepo
       .createQueryBuilder('t')
-      .leftJoinAndSelect('t.driver', 'd')
-      .leftJoinAndSelect('d.user', 'u')
+      .leftJoin('t.driver', 'd')
+      .addSelect([
+        'd.id', 'd.status', 'd.rating', 'd.vehicleType',
+        'd.vehiclePlate', 'd.isOnline',
+      ])
+      .leftJoin('d.user', 'u')
+      .addSelect(['u.id', 'u.name', 'u.phone', 'u.accountId'])
       .orderBy('t.departAt', 'ASC')
       .limit(100);
     if (opts.status) qb.where('t.status = :status', { status: opts.status });

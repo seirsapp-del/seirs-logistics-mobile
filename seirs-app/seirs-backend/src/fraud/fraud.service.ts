@@ -86,9 +86,26 @@ export class FraudService {
   // ── Admin: list all open flags (paginated) ──────────────────────────────────
 
   async getFlags(page: number, limit: number, status?: string) {
+    /**
+     * Narrow select (2026-08-28). leftJoinAndSelect returned the flagged
+     * user's whole record, so the fraud queue was serving bank account
+     * name, number and code, date of birth, home address, next of kin
+     * and device hashes for every flag on the page.
+     *
+     * Tempting to argue a fraud desk wants exactly those. It does not
+     * get them this way: the page renders the flag type, its details
+     * and the user's name and email, and nothing else. A signal that
+     * two accounts share a bank account is a comparison the DETECTOR
+     * should make and state in the flag's details, not twenty raw bank
+     * records shipped to a browser in the hope somebody notices.
+     */
     const qb = this.flagsRepo
       .createQueryBuilder('f')
-      .leftJoinAndSelect('f.user', 'user')
+      .leftJoin('f.user', 'user')
+      .addSelect([
+        'user.id', 'user.name', 'user.email', 'user.phone',
+        'user.accountId', 'user.role', 'user.isActive', 'user.createdAt',
+      ])
       .orderBy('f.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);

@@ -1414,8 +1414,29 @@ export class AdminService {
 
   // ── Users ─────────────────────────────────────────────────────────────────
 
+  /**
+   * The users LIST. Explicit columns (2026-08-28).
+   *
+   * A bare createQueryBuilder selects every column of User, so this was
+   * serving bank account name, number and code, date of birth, home
+   * address, next of kin, device hashes, FCM token, Google and Apple
+   * ids, failed login counts, lockout state and password reset expiry,
+   * for twenty accounts at a time. The page draws a name, an email, a
+   * phone, a role and a status.
+   *
+   * Password and passwordResetToken were never at risk: both are
+   * select:false on the entity, which is the pattern this list should
+   * have followed and did not.
+   */
   async getUsers(page: number, limit: number, role?: string) {
     const qb = this.usersRepo.createQueryBuilder('u')
+      .select([
+        'u.id', 'u.name', 'u.firstName', 'u.middleName', 'u.lastName',
+        'u.email', 'u.phone', 'u.role', 'u.accountId', 'u.businessRole',
+        'u.capabilities', 'u.isActive', 'u.isDemo', 'u.createdAt',
+        'u.emailVerified', 'u.identityVerifiedAt', 'u.profilePhoto',
+        'u.deactivatedAt', 'u.adminRole', 'u.roleId',
+      ])
       .orderBy('u.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
@@ -1704,10 +1725,30 @@ export class AdminService {
 
   // ── Admin management ──────────────────────────────────────────────────────
 
+  /**
+   * Staff list for ACCESS CONTROL. Explicit columns (2026-08-28).
+   *
+   * find() with no select returns whole User rows, so opening the staff
+   * page handed every colleague's device hashes, failed login counts,
+   * lockout state, date of birth, home address and bank details to
+   * whoever was looking. On the one page whose subject is who can do
+   * what, that is the wrong default twice over.
+   */
   async getAdmins() {
     return this.usersRepo.find({
       where: { role: UserRole.ADMIN },
       order: { createdAt: 'ASC' },
+      select: {
+        id: true, name: true, firstName: true, lastName: true,
+        email: true, phone: true, role: true, adminRole: true,
+        roleId: true, isActive: true, createdAt: true,
+        accountId: true, deactivatedAt: true,
+        /* NOT lastLoginAt: the User entity has no such column, and never
+           has. The staff page renders member.lastLoginAt, so its "last
+           login" has always been blank. Recording a login timestamp is a
+           real change (a write on every sign-in) and is left as its own
+           decision rather than smuggled into a data-exposure fix. */
+      },
     });
   }
 
