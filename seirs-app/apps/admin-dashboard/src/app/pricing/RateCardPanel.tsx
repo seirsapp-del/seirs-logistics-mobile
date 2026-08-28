@@ -445,16 +445,43 @@ Nothing goes live yet. It fills the boxes on this page so you can check them, an
       {/* ── Insurance ─────────────────────────────────────────────── */}
       <Card
         title="Goods-in-transit insurance"
-        hint="OFF until SEIRS has an underwriter. Everything sits at zero, so nothing is charged and nothing is promised. Read the steps below before switching it on."
+        hint="NOT BUILT YET. These fields save and publish, but no code reads them, so nothing is charged and no cover exists whatever you set here."
       >
+        {/*
+          The panel warned about the business risk of enabling insurance
+          without an underwriter, and said nothing about the technical
+          one: the pricing engine does not read card.insurance at all
+          (audit, 2026-08-28). The steps below ended "Tick Enabled last,
+          then Publish", which reads as though that switches it on.
+
+          It does not. Enabling is currently safe in the only direction
+          that matters for customers, since no premium is collected and
+          no promise reaches the app. It is dangerous in the other
+          direction: the founder could believe SEIRS carries goods-in-
+          transit cover and say so to a customer or an investor.
+
+          The fields stay editable, per the standing rule that a value
+          set in advance is a decision already made. What changes is that
+          the screen no longer implies the switch is live.
+        */}
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs leading-relaxed text-red-900">
+          <p className="font-semibold">Nothing here is wired up yet.</p>
+          <p className="mt-1">
+            These five fields save and publish like any other, but no part of SEIRS reads
+            them. Ticking <b>Enabled</b> does not start charging a premium and does not create
+            any cover. Until the premium is actually implemented, treat this section as a
+            place to record the terms you have agreed, not as a switch. Ask for it to be
+            built when you have an underwriter.
+          </p>
+        </div>
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-          <p className="font-semibold">When a partner is signed, set it up in this order:</p>
+          <p className="font-semibold">When a partner is signed, and once this is built, set it up in this order:</p>
           <ol className="mt-1.5 list-decimal space-y-1 pl-4">
             <li>Set <b>Premium</b> to the underwriter&apos;s rate on declared value.</li>
             <li>Set <b>Minimum premium</b> to the floor they charge per parcel.</li>
             <li>Set <b>Offer cover above</b> to the declared value where cover starts being worth collecting.</li>
             <li>Set <b>Maximum payout</b> to what the policy actually pays. Never leave this at zero once enabled, or the app offers cover with no stated limit.</li>
-            <li>Tick <b>Enabled</b> last, then <b>Publish</b>.</li>
+            <li>Tick <b>Enabled</b> last, then <b>Publish</b>. That step does nothing today.</li>
           </ol>
           <p className="mt-2">
             Do not enable this before a policy exists. Charging a premium with no underwriter
