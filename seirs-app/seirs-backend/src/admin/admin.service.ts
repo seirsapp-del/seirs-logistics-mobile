@@ -3618,8 +3618,36 @@ export class AdminService {
     const earning = await this.earningsRepo.findOne({ where: { id } });
     if (!earning) throw new NotFoundException('Earning row not found.');
     if (earning.status !== 'held') throw new BadRequestException('Only held earnings can be released.');
-    await this.earningsRepo.update(id, { status: 'available', holdReason: null });
-    await this.logAudit(admin, 'earning.release', `earning:${id}`, { previousStatus: 'held' });
+
+    /**
+     * Keep a correction's marker when clearing a hold (2026-08-28).
+     *
+     * holdReason carries two different things: why an earning was
+     * frozen, which should go when it is unfrozen, and the
+     * "Correction by <admin>: <reason>" stamp that identifies a row as
+     * money SEIRS owes rather than a duplicate settlement.
+     *
+     * Nulling it unconditionally meant freezing a correction for a fraud
+     * check and then releasing it would strip the only thing marking it
+     * as a debt. It would then look exactly like a duplicate: an
+     * available row sharing a delivery with a settled earning. The
+     * payouts screen would flag it "already paid" and somebody would
+     * reasonably write off money a rider is owed.
+     *
+     * A correction keeps its stamp. Anything else is cleared as before.
+     */
+    const reason = String(earning.holdReason ?? '');
+    const keepMarker = reason.startsWith('Correction by');
+
+    await this.earningsRepo.update(id, {
+      status: 'available',
+      holdReason: keepMarker ? earning.holdReason : null,
+    });
+    await this.logAudit(admin, 'earning.release', `earning:${id}`, {
+      previousStatus: 'held',
+      previousHoldReason: earning.holdReason ?? null,
+      correctionMarkerKept: keepMarker,
+    });
     return { ok: true };
   }
 
@@ -3909,7 +3937,25 @@ export class AdminService {
         ORDER BY p."createdAt" DESC
         LIMIT $1`,
       [limit],
-    ).catch(() => []);
+    ).catch((e: any) => {
+      /**
+       * Do NOT swallow this into an empty list (2026-08-28).
+       *
+       * An empty result here renders as a green "No customer is owed a
+       * refund", which is the most reassuring sentence on the page. If
+       * the query fails, that sentence becomes a lie told confidently,
+       * and the dashboard has a failure path built for exactly this: it
+       * says the refund list could not be loaded and warns against
+       * reconciling.
+       *
+       * Verified 2026-08-28 that the green is currently earned: all 34
+       * cancelled deliveries carry no held payment and there are no
+       * failed ones. That is a reason to protect the signal, not to
+       * trust the catch.
+       */
+      this.logger?.error?.(`stuckRefunds query failed: ${e?.message ?? e}`);
+      throw e;
+    });
 
     return rows.map((r) => ({
       paymentId:      r.id,
