@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { paymentsApi, deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
+import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 
 // Spec V8 §"Confirmed Decisions": COD removed. Everything routes through
 // Flutterwave's hosted checkout (card, bank transfer, USSD live there;
@@ -23,15 +24,6 @@ import { naira } from '@/utils/money';
 // the protection copy promises only what the failed-delivery policy
 // actually does.
 
-const VEHICLE_LABEL: Record<string, string> = {
-  bicycle:     'Bicycle / On-foot',
-  motorcycle:  'Okada',
-  tricycle:    'Keke',
-  car:         'Car',
-  van:         'Danfo / Van',
-  truck_small: 'Small truck',
-  truck_large: 'Big truck',
-};
 
 export default function PaymentScreen() {
   const { deliveryId, price, trackingCode } = useLocalSearchParams<{

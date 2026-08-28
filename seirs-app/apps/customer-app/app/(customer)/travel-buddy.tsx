@@ -19,10 +19,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
 import { showDialog, type DialogAction } from '@/components/SeirsDialog';
+import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 
-const VEHICLE_LABEL: Record<string, string> = {
-  motorcycle: 'Okada', tricycle: 'Keke', car: 'Car', van: 'Danfo / Bus',
-};
 
 /**
  * The colour, make and model of the machine, as one phrase.

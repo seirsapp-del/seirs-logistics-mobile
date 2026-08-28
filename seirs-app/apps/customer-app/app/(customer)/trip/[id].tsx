@@ -32,6 +32,7 @@ import { Colors } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
+import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
@@ -53,10 +54,6 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 
 // The names Nigerians use, not the backend enum.
-const VEHICLE_LABEL: Record<string, string> = {
-  bicycle: 'Bicycle / On-foot', motorcycle: 'Okada', tricycle: 'Keke',
-  car: 'Car', van: 'Danfo / Van', truck_small: 'Small truck', truck_large: 'Large truck',
-};
 
 export default function TripDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

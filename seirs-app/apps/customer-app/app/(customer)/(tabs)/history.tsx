@@ -13,6 +13,7 @@ import { deliveriesApi } from '@/services/api';
 import { naira, nairaAmount } from '@/utils/money';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { vehicleLabel } from '@seirs/shared/models/vehicles';
 // My Trips rebuilt as the business Deliveries screen, exactly (founder
 // 2026-08-22: "the exact same as deliveries on the business app, that's
 // what I wanted"). Layout, rail, card and style values are copied from
@@ -247,7 +248,7 @@ export default function HistoryScreen() {
           {!!item.vehicleType && (
             <View style={styles.meta}>
               <Icon name="Truck" size={12} color={theme.textThird} />
-              <Text style={[styles.metaText, { color: theme.textThird }]}>{item.vehicleType.replace('_', ' ')}</Text>
+              <Text style={[styles.metaText, { color: theme.textThird }]}>{vehicleLabel(item.vehicleType)}</Text>
             </View>
           )}
           <View style={styles.meta}>

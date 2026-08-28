@@ -92,8 +92,41 @@ export default function ReceiptScreen() {
   const trackingCode    = trip.trackingCode    ?? trip.id;
   const pickupAddress   = trip.pickupAddress   ?? trip.pickup?.address   ?? '-';
   const dropoffAddress  = trip.dropoffAddress  ?? trip.dropoff?.address  ?? '-';
-  const distance        = trip.distance        ?? '-';
-  const duration        = trip.duration        ?? '-';
+
+  /**
+   * Read the fields the API actually sends (2026-08-29).
+   *
+   * This asked for `trip.distance` and `trip.duration`. A delivery has
+   * neither: the column is `distanceKm`, and there is no duration field
+   * at all. Both silently fell through to '-', so every receipt in the
+   * platform showed a dash where the distance and the time should be,
+   * while the trip screen a tap away rendered "8.4 km by road" from the
+   * same delivery.
+   *
+   * Duration is derived from the two timestamps that do exist rather
+   * than asked for, and omitted when the journey was never picked up or
+   * never delivered, because a receipt should not guess.
+   */
+  const km = Number(trip.distanceKm ?? trip.distance ?? NaN);
+  const distance = Number.isFinite(km) && km > 0 ? `${km.toFixed(1)} km` : null;
+
+  const pickedAt = trip.pickedUpAt ? new Date(trip.pickedUpAt).getTime() : null;
+  const droppedAt = trip.deliveredAt ? new Date(trip.deliveredAt).getTime() : null;
+  const duration = (pickedAt && droppedAt && droppedAt > pickedAt)
+    ? (() => {
+        const mins = Math.round((droppedAt - pickedAt) / 60000);
+        return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`;
+      })()
+    : null;
+
+  /**
+   * A package is not a trip.
+   *
+   * The header said "Trip Completed" on every receipt, including a
+   * single carton of Indomie. Ride language on a parcel reads as though
+   * the app does not know what it just carried.
+   */
+  const isRide = trip.kind === 'ride';
   // Never default to 'wallet': customers hold no naira balance with us,
   // so a receipt claiming "paid via wallet" describes a product that
   // does not exist (audit 2026-08-13).
@@ -159,7 +192,9 @@ export default function ReceiptScreen() {
             <View style={[styles.successIcon, { backgroundColor: '#22C55E20' }]}>
               <Ionicons name="checkmark-circle" size={36} color={isDark ? '#4ADE80' : '#22C55E'} />
             </View>
-            <Text style={[styles.successTitle, { color: isDark ? '#4ADE80' : '#15803D' }]}>Trip Completed</Text>
+            <Text style={[styles.successTitle, { color: isDark ? '#4ADE80' : '#15803D' }]}>
+              {isRide ? 'Trip Completed' : 'Delivery Completed'}
+            </Text>
             <Text style={[styles.successDate,  { color: isDark ? '#8B949E' : '#4B5563' }]}>{formatDate(completedDate)}</Text>
           </View>
 
@@ -177,7 +212,12 @@ export default function ReceiptScreen() {
               <View style={[styles.driverRow, { borderTopColor: theme.border }]}>
                 <Avatar name={trip.driver.name ?? 'Driver'} uri={trip.driver.profilePhoto} size={40} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.driverName, { color: theme.text }]}>{trip.driver.name ?? 'Driver'}</Text>
+                  {/* The name is on driver.user, which is where the trip
+                      screen reads it from. Reading driver.name gave
+                      undefined, so every receipt was signed "Driver". */}
+                  <Text style={[styles.driverName, { color: theme.text }]}>
+                    {trip.driver.user?.name ?? trip.driver.name ?? 'Driver'}
+                  </Text>
                   <Text style={[styles.driverSub,  { color: theme.textSecond }]}>{trip.driver.vehicleNumber ?? trip.driver.plate ?? ''}</Text>
                 </View>
                 {!!rating && (
@@ -204,15 +244,22 @@ export default function ReceiptScreen() {
                   <Text style={[styles.routeAddr, { color: theme.text, marginTop: Spacing.md }]}>{dropoffAddress}</Text>
                 </View>
               </View>
+              {/* A row with nothing in it is worse than no row. Both of
+                  these rendered a bare dash on every receipt because
+                  they read fields the API does not send. */}
               <View style={styles.routeMeta}>
+                {distance && (
                 <View style={styles.routeMetaItem}>
                   <Ionicons name="navigate-outline" size={13} color={theme.textSecond} />
                   <Text style={[styles.routeMetaText, { color: theme.textSecond }]}>{distance}</Text>
                 </View>
+                )}
+                {duration && (
                 <View style={styles.routeMetaItem}>
                   <Ionicons name="time-outline" size={13} color={theme.textSecond} />
                   <Text style={[styles.routeMetaText, { color: theme.textSecond }]}>{duration}</Text>
                 </View>
+                )}
               </View>
             </View>
 
