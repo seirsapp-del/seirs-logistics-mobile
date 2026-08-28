@@ -27,7 +27,16 @@ const LOGO_WHITE_URL = `${WEB}/seirs-logo-white.png`;
  * not have an account: telling them they do is both wrong and the sort
  * of thing that makes a real email look like a phish.
  */
-function baseTemplate(
+/**
+ * Exported 2026-08-28 so the admin gallery can render the TRUE email.
+ *
+ * The template editor previewed by dropping bodyHtml into a div, which
+ * its own code called a "rough preview": no header, no banner, no
+ * accent colour, no footer, none of the table layout that decides how
+ * an email actually looks in a mail client. A non-technical person was
+ * being asked to approve something they had never seen.
+ */
+export function baseTemplate(
   content: string,
   footerNote?: string,
   opts?: { bannerImageUrl?: string | null; accentColor?: string | null },

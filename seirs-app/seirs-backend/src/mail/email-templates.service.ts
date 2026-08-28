@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/com
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EmailTemplate } from './email-template.entity';
+import { baseTemplate } from './mail.service';
 
 // Spec V8 §3.13 - admin-editable email template store.
 //
@@ -19,6 +20,13 @@ export interface TemplateSeed {
   subject:  string;
   bodyHtml: string;
   vars:     string[];
+  /**
+   * What the gallery groups by. Seasonal and campaign templates are the
+   * ones a person browses and picks; transactional and security ones are
+   * sent by the code on an event and are read rather than chosen.
+   * Defaults to transactional, since most of the catalogue is.
+   */
+  category?: 'transactional' | 'security' | 'seasonal' | 'campaign';
 }
 
 
@@ -67,13 +75,23 @@ const SAMPLE_VARS: Record<string, string> = {
 const SEASONAL_TEMPLATES: TemplateSeed[] = [
   {
     key:      'seasonal_christmas',
+    category: 'seasonal',
     name:     'Christmas greeting',
     subject:  'Compliments of the season from SEIRS',
     bodyHtml: `<p>Hi {{name}},</p><p>Thank you for trusting us with your deliveries this year. Our riders will be moving through the holidays, so if something needs to reach family before the day, we are on the road.</p><p>From all of us at SEIRS, a peaceful Christmas.</p>`,
     vars:     ['name'],
   },
   {
+    key:      'seasonal_birthday',
+    name:     'Birthday',
+    category: 'seasonal',
+    subject:  'Happy birthday, {{firstName}}',
+    bodyHtml: `<p>Hi {{firstName}},</p><p>Happy birthday from everyone at SEIRS. Thank you for letting us carry your parcels this year.</p><p>Have a good one, and if anything needs moving today, we are on the road.</p>`,
+    vars:     ['firstName'],
+  },
+  {
     key:      'seasonal_new_year',
+    category: 'seasonal',
     name:     'New Year greeting',
     subject:  'Happy New Year from SEIRS',
     bodyHtml: `<p>Hi {{name}},</p><p>Thank you for riding with us through {{lastYear}}. We are open through the new year and ready whenever you are.</p><p>Here is to a good {{thisYear}}.</p>`,
@@ -81,6 +99,7 @@ const SEASONAL_TEMPLATES: TemplateSeed[] = [
   },
   {
     key:      'promotion_generic',
+    category: 'campaign',
     name:     'Promotion or offer',
     subject:  '{{headline}}',
     bodyHtml: `<p>Hi {{name}},</p><p>{{message}}</p><p>Use code <b>{{promoCode}}</b> in the app before {{expiresOn}}.</p>`,
@@ -88,6 +107,7 @@ const SEASONAL_TEMPLATES: TemplateSeed[] = [
   },
   {
     key:      'announcement',
+    category: 'campaign',
     name:     'General announcement',
     subject:  '{{headline}}',
     bodyHtml: `<p>Hi {{name}},</p><p>{{message}}</p>`,
@@ -376,6 +396,13 @@ export class EmailTemplatesService implements OnModuleInit {
     for (const sql of [
       `ALTER TABLE "email_templates" ADD COLUMN IF NOT EXISTS "bannerImageUrl" text NULL`,
       `ALTER TABLE "email_templates" ADD COLUMN IF NOT EXISTS "accentColor" varchar(9) NULL`,
+      /* Added 2026-08-28 with the gallery: templates people create
+         themselves, what they are called, how the gallery groups them,
+         and the grey line under the subject in most inboxes. */
+      `ALTER TABLE "email_templates" ADD COLUMN IF NOT EXISTS "isCustom" boolean NOT NULL DEFAULT false`,
+      `ALTER TABLE "email_templates" ADD COLUMN IF NOT EXISTS "name" varchar(120) NULL`,
+      `ALTER TABLE "email_templates" ADD COLUMN IF NOT EXISTS "category" varchar(24) NOT NULL DEFAULT 'campaign'`,
+      `ALTER TABLE "email_templates" ADD COLUMN IF NOT EXISTS "previewText" varchar(200) NULL`,
     ]) {
       try {
         await this.repo.manager.query(sql);
@@ -466,35 +493,169 @@ export class EmailTemplatesService implements OnModuleInit {
   // ── Admin ─────────────────────────────────────────────────────────────────
   // The admin UI merges this with SEED_TEMPLATES to render the editor
   // catalogue - so unseeded templates still show in the list.
+  /**
+   * Fill the {{placeholders}} with the sample people so a preview reads
+   * like a real email rather than a form. Anything with no sample is
+   * left visibly as its placeholder, because silently blanking it would
+   * hide that the template asks for something nobody supplies.
+   */
+  private fillSamples(text: string): string {
+    return String(text ?? '').replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (m, k) =>
+      SAMPLE_VARS[k] ?? m);
+  }
+
+  /**
+   * The email as it will actually arrive.
+   *
+   * The editor previewed by dropping bodyHtml into a div, which its own
+   * comment called a "rough preview": no header, no banner, no accent
+   * colour, no footer, none of the table layout a mail client uses. So a
+   * non-technical person was approving something they had never seen.
+   * This runs the same baseTemplate() every real send runs.
+   */
+  renderPreview(input: {
+    bodyHtml?: string; bannerImageUrl?: string | null; accentColor?: string | null;
+  }): string {
+    return baseTemplate(
+      this.fillSamples(input.bodyHtml ?? ''),
+      undefined,
+      { bannerImageUrl: input.bannerImageUrl ?? null, accentColor: input.accentColor ?? null },
+    );
+  }
+
+  /**
+   * The gallery payload.
+   *
+   * Every template arrives with the finished HTML attached, so the
+   * gallery can draw a real thumbnail of each design with its own
+   * colours and banner. That is the whole point of a gallery: you pick
+   * by looking, not by reading a list of slugs.
+   */
   async listForAdmin() {
     const rows = await this.repo.find();
     const byKey = new Map(rows.map(r => [r.key, r]));
-    return ALL_TEMPLATES.map(t => {
+
+    const seeded = ALL_TEMPLATES.map(t => {
       const row = byKey.get(t.key);
+      const subject  = row?.subject  ?? t.subject;
+      const bodyHtml = row?.bodyHtml ?? t.bodyHtml;
       return {
         key:      t.key,
         name:     t.name,
         vars:     t.vars,
+        category: t.category ?? 'transactional',
+        isCustom: false,
         defaults: { subject: t.subject, bodyHtml: t.bodyHtml },
         override: row ?? null,
+        renderedSubject: this.fillSamples(subject),
+        previewText: row?.previewText ?? null,
+        renderedHtml: this.renderPreview({
+          bodyHtml,
+          bannerImageUrl: row?.bannerImageUrl ?? null,
+          accentColor:    row?.accentColor ?? null,
+        }),
       };
     });
+
+    /* Templates somebody at SEIRS made. They have no seed behind them,
+       so their name and category live on the row. */
+    const custom = rows.filter(r => r.isCustom).map(r => ({
+      key:      r.key,
+      name:     r.name ?? r.key,
+      vars:     r.vars ?? [],
+      category: r.category ?? 'campaign',
+      isCustom: true,
+      defaults: { subject: r.subject, bodyHtml: r.bodyHtml },
+      override: r,
+      renderedSubject: this.fillSamples(r.subject),
+      previewText: r.previewText ?? null,
+      renderedHtml: this.renderPreview({
+        bodyHtml: r.bodyHtml,
+        bannerImageUrl: r.bannerImageUrl,
+        accentColor:    r.accentColor,
+      }),
+    }));
+
+    return [...custom, ...seeded];
+  }
+
+  /**
+   * Make a new one.
+   *
+   * upsertOverride refuses any key without a seed, so until now the only
+   * thing this screen could do was edit the fixed set the code sends.
+   * "Build new ones" was the founder's second requirement and there was
+   * no route for it at all.
+   *
+   * The key is derived from the name and made unique, because a person
+   * naming a template should not have to invent a slug, and two
+   * campaigns called "Christmas" in different years must not collide.
+   */
+  async createCustom(body: {
+    name: string; subject?: string; bodyHtml?: string; category?: string;
+    bannerImageUrl?: string | null; accentColor?: string | null;
+    previewText?: string | null; editedByUserId?: string;
+  }) {
+    const name = String(body.name ?? '').trim();
+    if (!name) throw new NotFoundException('A template needs a name.');
+
+    const base = 'custom_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+    let key = base || 'custom_template';
+    let n = 2;
+    while (await this.repo.findOne({ where: { key } })) key = `${base}_${n++}`;
+
+    const row = this.repo.create({
+      key,
+      name,
+      isCustom: true,
+      category: (body.category as any) ?? 'campaign',
+      subject:  body.subject  ?? name,
+      bodyHtml: body.bodyHtml ?? '<p>Hi {{name}},</p><p>Write your message here.</p>',
+      vars:     ['name'],
+      active:   true,
+      previewText:    body.previewText ?? null,
+      bannerImageUrl: body.bannerImageUrl ?? null,
+      accentColor:    body.accentColor ?? null,
+      lastEditedByUserId: body.editedByUserId,
+    });
+    return this.repo.save(row);
+  }
+
+  /**
+   * Delete, and only ever a custom one. A system template is sent by a
+   * code path, so removing its row would not delete the email, it would
+   * silently drop it back to the in-code default while the screen
+   * implied it was gone.
+   */
+  async removeCustom(key: string) {
+    const row = await this.repo.findOne({ where: { key } });
+    if (!row) throw new NotFoundException(`No template ${key}`);
+    if (!row.isCustom) {
+      throw new NotFoundException(
+        'That is a template the app sends automatically, so it can be edited but not deleted.',
+      );
+    }
+    await this.repo.remove(row);
+    return { ok: true, key };
   }
 
   async upsertOverride(key: string, body: {
     subject?: string; bodyHtml?: string; active?: boolean; editedByUserId?: string;
     bannerImageUrl?: string | null; accentColor?: string | null;
+    previewText?: string | null; name?: string; category?: string;
   }) {
-    const seed = ALL_TEMPLATES.find(t => t.key === key);
-    if (!seed) throw new NotFoundException(`Unknown template key: ${key}`);
-
     let row = await this.repo.findOne({ where: { key } });
+    const seed = ALL_TEMPLATES.find(t => t.key === key);
+    /* A custom template has no seed by definition, so the old guard
+       rejected every edit to anything somebody created. */
+    if (!seed && !row?.isCustom) throw new NotFoundException(`Unknown template key: ${key}`);
     if (!row) {
       row = this.repo.create({
         key,
-        subject:  body.subject  ?? seed.subject,
-        bodyHtml: body.bodyHtml ?? seed.bodyHtml,
-        vars:     seed.vars,
+        subject:  body.subject  ?? seed!.subject,
+        bodyHtml: body.bodyHtml ?? seed!.bodyHtml,
+        vars:     seed!.vars,
+        category: seed!.category ?? 'transactional',
         active:   body.active ?? true,
         bannerImageUrl: body.bannerImageUrl ?? null,
         accentColor:    body.accentColor    ?? null,
@@ -506,6 +667,9 @@ export class EmailTemplatesService implements OnModuleInit {
       if (body.active   !== undefined) row.active   = body.active;
       if (body.bannerImageUrl !== undefined) row.bannerImageUrl = body.bannerImageUrl || null;
       if (body.accentColor    !== undefined) row.accentColor    = body.accentColor    || null;
+      if (body.previewText !== undefined) row.previewText = body.previewText || null;
+      if (body.name !== undefined && row.isCustom) row.name = body.name || row.name;
+      if (body.category !== undefined && row.isCustom) row.category = body.category;
       if (body.editedByUserId) row.lastEditedByUserId = body.editedByUserId;
     }
     return this.repo.save(row);

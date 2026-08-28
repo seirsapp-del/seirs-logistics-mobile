@@ -54,6 +54,31 @@ export class EmailTemplate {
   @Column({ type: 'varchar', length: 9, nullable: true })
   accentColor: string | null;
 
+  /**
+   * A template somebody at SEIRS created, rather than one the code
+   * sends. Custom rows have no seed behind them, so they carry their own
+   * name and can be deleted; a system template can only be overridden,
+   * because deleting it would break the code path that sends it.
+   */
+  @Column({ default: false })
+  isCustom: boolean;
+
+  /** Only set for custom rows; system rows take their name from the seed. */
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  name: string | null;
+
+  /**
+   * What the gallery groups by. Seasonal and campaign templates are the
+   * ones somebody browses and picks; transactional and security ones are
+   * sent by the code and are read, not chosen.
+   */
+  @Column({ type: 'varchar', length: 24, default: 'campaign' })
+  category: string;
+
+  /** The grey line under the subject in most inboxes. */
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  previewText: string | null;
+
   @Column({ nullable: true })
   lastEditedByUserId: string;
 
