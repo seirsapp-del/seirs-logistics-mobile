@@ -45,7 +45,13 @@ export enum FeeCategory {
 @Entity('fees')
 export class Fee {
   // Stable code-friendly identifier - referenced from backend services
-  // (e.g. PricingService reads 'customer_booking_fee'). Never rename.
+  // by literal string, so renaming one silently unhooks its consumer.
+  //
+  // The example here used to be 'customer_booking_fee', which
+  // PricingService has never read. A comment is not a consumer: that
+  // key was dead, and its mention here was the only thing that made it
+  // look alive during a grep (audit, 2026-08-28). Real example:
+  // pricing.service.ts:1322 reads 'card_processing_pct'.
   @PrimaryColumn({ length: 64 })
   key: string;
 

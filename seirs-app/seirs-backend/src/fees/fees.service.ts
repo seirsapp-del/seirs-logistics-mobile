@@ -70,10 +70,36 @@ export class FeesService implements OnModuleInit {
     'current_fuel_price',
     'multi_stop_discount',
     'lekki_zone_surcharge',
-    /* Superseded: platform_commission_pct is what payments.service
-       actually reads when splitting a booking. */
+    /* Superseded: rider pay comes from the rate card's per-vehicle driver
+       base and per-km. platform_commission_pct settles only jobs recorded
+       before that figure was stored (audit, 2026-08-28). */
     'driver_commission_packages',
     'driver_commission_rides',
+    /*
+     * Both replaced by a rate-card field that is live, and neither was
+     * read by one line of code anywhere in the backend or the three apps
+     * (audit, 2026-08-28). Not zero-valued, so the standing rule about
+     * deliberate zeroes does not cover them: they are duplicates of a
+     * working feature, which is exactly what the founder asked to be
+     * removed rather than left to be edited by mistake.
+     *
+     *   customer_booking_fee, NGN 100, a flat fee on every order. The
+     *     rate card's serviceFees.packageNgn and rideNgn do this and are
+     *     read at pricing.service.ts:1238, :823 and :887. Its only
+     *     mention outside the seed was a comment claiming PricingService
+     *     reads it. PricingService does not.
+     *
+     *   surge_multiplier_peak, 150 percent, a peak-demand multiplier.
+     *     The rate card's timeSurcharges.peak does this, with its own
+     *     window and its own driver share.
+     *
+     * pool_ride_discount was checked with them and KEPT: it is equally
+     * unread, but pooling is deferred by founder decision rather than
+     * replaced, so its value is a decision already made. It moves to
+     * "Not launched yet" instead.
+     */
+    'customer_booking_fee',
+    'surge_multiplier_peak',
     /* The instant-withdrawal feature was removed by founder decision
        (2026-08-27: "the first false promise i noticed"). The option is
        gone from the rider app; these are its leftover knobs. */

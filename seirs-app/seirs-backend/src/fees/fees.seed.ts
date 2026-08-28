@@ -107,9 +107,6 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // ── Commission ─────────────────────────────────────────────────────────
 
   // ── Customer-side fees ─────────────────────────────────────────────────
-  { key: 'customer_booking_fee',        name: 'Customer Booking Fee',
-    description: 'Charged on every order placed by a customer regardless of vehicle class. Pure platform margin.',
-    category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.FLAT_NGN,   value: 100 },
 
   // ── Driver-side fees ───────────────────────────────────────────────────
 
@@ -147,9 +144,6 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 500 },
 
   // ── Surge ──────────────────────────────────────────────────────────────
-  { key: 'surge_multiplier_peak',       name: 'Surge Multiplier (peak)',
-    description: 'Auto-applied multiplier on base fare during demand spikes. Platform keeps 50% of the surge slice.',
-    category: FeeCategory.SURGE,        unit: FeeUnit.PERCENT,    value: 150 },
 
   // ── The real cost of serving a job ─────────────────────────────────────
   // None of these were modelled, so every quote reported a margin the
@@ -394,7 +388,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // that changed nothing (audit 2026-08-18). Kept out of new
   // environments; existing rows are harmless but should be deleted.
   { key: 'high_value_threshold_ngn',    name: 'High-Value Package Threshold',
-    description: 'Order value at which extra recipient verification kicks in (Spec V8 §1.17: physical ID photo required at handoff). Raised 50k -> 100k 2026-08-09 per founder decision.',
+    description: 'Fallback only. The rate card’s high-value threshold is the one in charge: it sets both the premium a customer pays and the handoff rules that follow, so the two can never disagree. This value is used when the card has no threshold published.',
     category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 100000 },
   { key: 'return_to_sender_fee',        name: 'Return-to-Sender Transport Fee',
     description: 'Flat transport fee owed by the sender when a partner-store package passes 5 working days uncollected and is returned. Storage itself is free (2026-08-09 policy: 3 working days free, warning at 3, return at 5, no fee build-up).',

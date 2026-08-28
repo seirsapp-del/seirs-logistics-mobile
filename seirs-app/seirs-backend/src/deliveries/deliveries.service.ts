@@ -523,8 +523,11 @@ export class DeliveriesService {
     // High-value packages can never be gate-drops or unnamed-neighbour
     // drops (founder policy 2026-08-11): hand to receiver or partner
     // store only, otherwise the mandatory signature has a hole in it.
-    if (Number(dto.declaredValueNgn ?? 0) > 0 && this.feesServiceRef) {
-      const hvThreshold = await this.feesServiceRef.getValueOr('high_value_threshold_ngn', 100000);
+    // Through the helper, so this gate uses the same threshold as the
+    // premium the customer was charged. It read the Fee Catalogue row
+    // directly and could disagree with the card that set the price.
+    if (Number(dto.declaredValueNgn ?? 0) > 0) {
+      const hvThreshold = await this.getHighValueThreshold();
       if (Number(dto.declaredValueNgn) >= hvThreshold &&
           (dto.fallbackPref === 'gate' || dto.fallbackPref === 'neighbour')) {
         const { BadRequestException } = await import('@nestjs/common');
@@ -3262,10 +3265,35 @@ export class DeliveriesService {
     }
   }
 
-  // Catalogue-driven threshold for the high-value handoff gate.
-  // Falls back to the founder's target default when the fees row is
-  // missing so the gate never silently disables.
+  /**
+   * What counts as high value. ONE number, from the rate card.
+   *
+   * There were two, and they disagreed (audit, 2026-08-28). The rate
+   * card's highValue.thresholdNgn decides when a customer is CHARGED the
+   * high-value premium; this method decided when the parcel is PROTECTED,
+   * meaning a mandatory signature and no gate or neighbour drop. They are
+   * the same idea and were separate settings with different defaults:
+   * 50,000 on the card, 100,000 in the Fee Catalogue.
+   *
+   * A parcel declared at 75,000 therefore sat in the gap. It was over the
+   * card's threshold, so the customer paid a premium for high-value
+   * handling, and under the catalogue's, so the parcel could still be
+   * left at a gate. Paying for a protection you do not receive is the
+   * worst version of this bug, so the gate now follows the same number
+   * that sets the charge.
+   *
+   * The Fee Catalogue row stays as the fallback, which is what makes the
+   * gate survive a card that has never had the field published. Order is
+   * card, then catalogue, then the founder's 100,000 target, and the
+   * gate never silently disables.
+   */
   private async getHighValueThreshold(): Promise<number> {
+    try {
+      const card: any = await this.rateCardPricing.getActiveRateCard();
+      const fromCard = Number(card?.highValue?.thresholdNgn);
+      if (Number.isFinite(fromCard) && fromCard > 0) return fromCard;
+    } catch { /* card unavailable: fall through to the catalogue */ }
+
     try {
       const rows = await this.repo.manager.query(
         `SELECT "value" FROM "fees" WHERE "key" = 'high_value_threshold_ngn' LIMIT 1`,

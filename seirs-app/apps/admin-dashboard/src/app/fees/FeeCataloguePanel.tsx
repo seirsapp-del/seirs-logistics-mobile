@@ -81,102 +81,122 @@ const CATEGORY_LABEL: Record<string, string> = {
  * `collapsed` is the default state, not a restriction: the ten value
  * levels are a ladder somebody sets once and then scrolls past forever.
  */
+/**
+ * A group claims rows by NAME or by CATEGORY, and name always wins.
+ *
+ * The first version used one `match` predicate per group and took the
+ * first group that said yes, so the order of this list decided ownership.
+ * That order is also the order of the page, and the two wants are
+ * opposite: revenue belongs at the top, but a group that claims a whole
+ * stored category is the least specific claim there is. Every
+ * category-claiming group therefore stole rows from the specific groups
+ * printed below it.
+ *
+ * It happened twice, and would have kept happening:
+ *
+ *   `commission` pulled the three circuity ratios and the Google
+ *   Directions budget into "What SEIRS takes". They size a journey.
+ *
+ *   `customer_fee` pulled all four Travel Buddy seat settings, the
+ *   redirect fee and the cancellation processing cut out of their own
+ *   sections and into "What a customer pays".
+ *
+ * Resolved by separating the two kinds of claim rather than by keeping a
+ * list of exceptions. Assignment runs in two passes over the whole list:
+ * every exact key and prefix first, then categories for whatever is
+ * still unclaimed. Display order is this array and is now independent of
+ * matching, so the sections can be ordered for a reader.
+ *
+ * Anything no group claims still appears, under its stored category, so
+ * a row added to the backend can never silently vanish from this page.
+ */
 interface FeeGroup {
   id: string;
   label: string;
   hint?: string;
   collapsed?: boolean;
-  match: (key: string, category: string) => boolean;
+  /** Exact keys this group owns. Beats any category claim. */
+  keys?: string[];
+  /** Key prefixes this group owns. Beats any category claim. */
+  prefixes?: string[];
+  /** Stored categories this group takes whatever is left of. */
+  categories?: string[];
 }
-
-const startsWith = (...prefixes: string[]) =>
-  (k: string) => prefixes.some(p => k.startsWith(p));
-const oneOf = (...keys: string[]) => (k: string) => keys.includes(k);
-
-/**
- * Four rows carry the stored category `commission` and have nothing to do
- * with what SEIRS takes: they size a journey, they do not price one.
- * `circuity_*` is the road-versus-straight-line ratio and
- * `routes_api_monthly_cap` is the monthly Google Directions budget, all
- * four consumed in route-distance.service.ts and never in the pricing
- * engine.
- *
- * They surfaced under "What SEIRS takes" because the group below claimed
- * the whole `commission` category before the corridor group was reached
- * (audit, 2026-08-28). Excluded by name here rather than by reordering
- * the list, because the order of this array is also the order of the
- * page, and revenue belongs at the top of it.
- */
-const DISTANCE_KEYS = [
-  'circuity_default_pct', 'circuity_min_pct', 'circuity_max_pct',
-  'routes_api_monthly_cap',
-];
 
 const FEE_GROUPS: FeeGroup[] = [
   { id: 'money-in', label: 'What SEIRS takes',
     hint: 'Commission and the processing costs that come off every booking.',
-    match: (k, c) => (c === 'commission' && !DISTANCE_KEYS.includes(k)) ||
-      oneOf('card_processing_pct', 'nipost_postal_fund_pct', 'min_job_margin_ngn',
-            'door_delivery_failure_pct')(k) },
+    categories: ['commission'],
+    keys: ['card_processing_pct', 'nipost_postal_fund_pct', 'min_job_margin_ngn',
+           'door_delivery_failure_pct', 'platform_commission_pct'] },
 
   { id: 'customer', label: 'What a customer pays',
     hint: 'Booking fees, surcharges and the discounts that come off them.',
-    match: (k, c) => c === 'customer_fee' || c === 'surge' || c === 'zone' || c === 'pool' ||
-      oneOf('high_value_threshold_ngn', 'return_to_sender_fee')(k) },
+    categories: ['customer_fee', 'surge', 'zone'],
+    keys: ['high_value_threshold_ngn', 'return_to_sender_fee'] },
 
   { id: 'driver-pay', label: 'What a rider is paid',
     hint: 'Payout floors, caps, the new-rider holdback and how long money is held.',
-    match: (k) => oneOf(
-      'driver_min_payout_ngn', 'driver_new_holdback_pct', 'driver_new_period_days',
-      'driver_clearance_business_days', 'driver_daily_cap_ngn', 'driver_daily_cap_new_ngn',
-      'driver_failed_trip_base_ngn')(k) },
+    keys: ['driver_min_payout_ngn', 'driver_new_holdback_pct', 'driver_new_period_days',
+           'driver_clearance_business_days', 'driver_daily_cap_ngn',
+           'driver_daily_cap_new_ngn', 'driver_failed_trip_base_ngn'] },
 
   { id: 'driver-conduct', label: 'Rider reliability',
     hint: 'What happens when a rider cancels or turns work down.',
-    match: (k) => oneOf('driver_cancel_free_per_day', 'driver_cancel_pause_hours',
-                        'last_order_min_acceptance_pct')(k) },
+    keys: ['driver_cancel_free_per_day', 'driver_cancel_pause_hours',
+           'last_order_min_acceptance_pct'] },
 
   { id: 'driver-levels', label: 'Rider value levels', collapsed: true,
     hint: 'The ceiling on what each level may carry, and how a rider climbs. Set once, then rarely touched.',
-    match: startsWith('driver_level_') },
+    prefixes: ['driver_level_'] },
 
   { id: 'matching', label: 'Matching and corridors',
-    hint: 'How far SEIRS looks for a rider and how a corridor run is scored.',
-    match: (k) => startsWith('corridor_')(k) ||
-      oneOf('interstate_match_bonus', 'consolidated_dispatch_enabled', 'consolidated_floor_ngn',
-            'trunk_assumed_parcels', 'pending_booking_expiry_minutes',
-            'circuity_default_pct', 'circuity_min_pct', 'circuity_max_pct',
-            'pricing_road_factor', 'routes_api_monthly_cap')(k) },
+    hint: 'How far SEIRS looks for a rider, how a corridor run is scored, and how road distance is estimated.',
+    prefixes: ['corridor_'],
+    keys: ['interstate_match_bonus', 'consolidated_dispatch_enabled',
+           'consolidated_floor_ngn', 'trunk_assumed_parcels',
+           'pending_booking_expiry_minutes', 'circuity_default_pct',
+           'circuity_min_pct', 'circuity_max_pct', 'pricing_road_factor',
+           'routes_api_monthly_cap'] },
 
   { id: 'travel-buddy', label: 'Travel Buddy',
     hint: 'Seat bookings: how long an offer stands, what a no-show forfeits, when a seat is released.',
-    match: startsWith('travel_buddy_') },
+    prefixes: ['travel_buddy_'] },
 
   { id: 'exception', label: 'When a delivery fails',
     hint: 'Storage, redirects, returns and the windows people are given to respond.',
-    match: (k, c) => c === 'storage' ||
-      oneOf('sender_response_window_minutes', 'admin_redirect_timeout_minutes',
-            'perishable_max_hours', 'failed_delivery_redirect_fee',
-            'cancel_processing_pct')(k) },
+    categories: ['storage'],
+    keys: ['sender_response_window_minutes', 'admin_redirect_timeout_minutes',
+           'perishable_max_hours', 'failed_delivery_redirect_fee',
+           'cancel_processing_pct'] },
 
   { id: 'partner', label: 'Partner stores and counters',
     hint: 'What a counter is paid to hold a parcel, and what SEIRS keeps.',
-    match: (k, c) => c === 'partner' },
+    categories: ['partner'] },
 
   { id: 'loyalty', label: 'Loyalty and referrals',
     hint: 'Points, streaks and what a referral is worth. Customers hold points, never naira.',
-    match: (k, c) => c === 'loyalty' },
+    categories: ['loyalty'] },
 
   { id: 'fuel', label: 'Fuel reference',
-    hint: 'Today\u2019s pump price. This prices NOTHING: quotes and rider reimbursement are built on the rate card above. These exist so the drift warning can tell you the card has fallen behind.',
-    match: (k) => oneOf('current_petrol_price_ngn', 'current_diesel_price_ngn',
-                        'fuel_reprice_trigger_pct')(k) },
+    hint: 'Today’s pump price. This prices NOTHING: quotes and rider reimbursement are built on the rate card above. These exist so the drift warning can tell you the card has fallen behind.',
+    keys: ['current_petrol_price_ngn', 'current_diesel_price_ngn',
+           'fuel_reprice_trigger_pct'] },
 
   { id: 'future', label: 'Not launched yet', collapsed: true,
     hint: 'Set up in advance and read by nothing today. They stay because the value is a decision already made, not because anything uses it.',
-    match: (k, c) => c === 'dev_platform' || c === 'subscription' || c === 'financial' ||
-      oneOf('partner_sponsored_placement', 'insurance_referral_commission')(k) },
+    categories: ['dev_platform', 'subscription', 'financial', 'pool'],
+    keys: ['partner_sponsored_placement', 'insurance_referral_commission'] },
 ];
+
+/** Pass one: an exact key or a prefix. Pass two: the stored category. */
+function groupIdFor(key: string, category: string): string {
+  const byName = FEE_GROUPS.find(g =>
+    g.keys?.includes(key) || g.prefixes?.some(p => key.startsWith(p)));
+  if (byName) return byName.id;
+  const byCategory = FEE_GROUPS.find(g => g.categories?.includes(category));
+  return byCategory ? byCategory.id : `cat:${category}`;
+}
 
 // Kept for the fallback path below: anything a group does not claim is
 // still shown, under its stored category, rather than vanishing.
@@ -289,8 +309,7 @@ export function FeeCataloguePanel() {
     /* Group by the FEE_GROUPS map first; anything unclaimed falls back to
        its stored category so a row the backend adds can never disappear. */
     for (const f of visible) {
-      const g = FEE_GROUPS.find(grp => grp.match(f.key, f.category));
-      (byCat[g ? g.id : `cat:${f.category}`] ??= []).push(f);
+      (byCat[groupIdFor(f.key, f.category)] ??= []).push(f);
     }
     return { grouped: byCat, matchCount: visible.length };
   }, [fees, search]);
