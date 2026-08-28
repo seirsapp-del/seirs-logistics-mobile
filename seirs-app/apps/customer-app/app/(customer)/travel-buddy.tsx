@@ -8,10 +8,7 @@
  * the same rails as every other booking.
  */
 import { useState } from 'react';
-import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView, StatusBar,
-  ActivityIndicator, Image,
-} from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator, Image, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -72,6 +69,21 @@ export default function TravelBuddyScreen() {
   const [booking,  setBooking]  = useState<string | null>(null);
 
   const search = async () => {
+    /**
+     * Put the keyboard away before answering (2026-08-29).
+     *
+     * Tapping Find trips left the keyboard up, and the result renders
+     * below the button. So the answer, whether it is a list of trips or
+     * the "No trips on this route yet" card, appeared underneath the
+     * keyboard and the search looked like it had done nothing. Found on
+     * the device: the empty state was there the whole time, just
+     * invisible until the keyboard was dismissed by hand.
+     *
+     * Same shape as the business app's address suggestions sitting under
+     * the keyboard, which is a defect this codebase has already paid for
+     * once.
+     */
+    Keyboard.dismiss();
     if (!from.trim() || !to.trim()) {
       showDialog({ title: 'Both cities needed', message: 'Where are you leaving from, and where to?' });
       return;
