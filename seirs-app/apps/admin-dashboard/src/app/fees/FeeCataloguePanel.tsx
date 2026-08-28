@@ -17,7 +17,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { isSuperAdminFromUser } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
-import { Save, X, History, Search, AlertCircle, CheckCircle2, Lock, SearchX } from 'lucide-react';
+import { Save, X, History, Search, AlertCircle, CheckCircle2, Lock, SearchX, ChevronRight} from 'lucide-react';
 
 interface Fee {
   key:               string;
@@ -60,9 +60,107 @@ const CATEGORY_LABEL: Record<string, string> = {
   config:        'System Config',
 };
 
-// Ordered by how often someone actually needs them. Partner and Loyalty
-// used to sit near the end, and System Config had become a 24-row
-// dumping ground at the very bottom that nobody scrolled to.
+/**
+ * Real groups, replacing the database category (founder, 2026-08-28:
+ * "driver level 1 to 10 could be collapable, and other things that need
+ * their own categories").
+ *
+ * The stored category is too coarse to navigate. `driver_fee` alone held
+ * 29 rows covering five unrelated subjects: what a rider is paid, the
+ * ten value-level ceilings, how levels are earned, corridor matching,
+ * and Travel Buddy timings. Corridor radius in metres is not a driver
+ * fee, and hunting for it inside 29 rows is why this screen was hard to
+ * use.
+ *
+ * Grouped by key, in the page, deliberately. Re-categorising properly
+ * means adding values to a Postgres enum and migrating live rows, which
+ * is not a thing to do to the table that holds every SEIRS price four
+ * days before a pitch. The stored category is unchanged; only the
+ * presentation is fixed.
+ *
+ * `collapsed` is the default state, not a restriction: the ten value
+ * levels are a ladder somebody sets once and then scrolls past forever.
+ */
+interface FeeGroup {
+  id: string;
+  label: string;
+  hint?: string;
+  collapsed?: boolean;
+  match: (key: string, category: string) => boolean;
+}
+
+const startsWith = (...prefixes: string[]) =>
+  (k: string) => prefixes.some(p => k.startsWith(p));
+const oneOf = (...keys: string[]) => (k: string) => keys.includes(k);
+
+const FEE_GROUPS: FeeGroup[] = [
+  { id: 'money-in', label: 'What SEIRS takes',
+    hint: 'Commission and the processing costs that come off every booking.',
+    match: (k, c) => c === 'commission' ||
+      oneOf('card_processing_pct', 'nipost_postal_fund_pct', 'min_job_margin_ngn',
+            'door_delivery_failure_pct')(k) },
+
+  { id: 'customer', label: 'What a customer pays',
+    hint: 'Booking fees, surcharges and the discounts that come off them.',
+    match: (k, c) => c === 'customer_fee' || c === 'surge' || c === 'zone' || c === 'pool' ||
+      oneOf('high_value_threshold_ngn', 'return_to_sender_fee')(k) },
+
+  { id: 'driver-pay', label: 'What a rider is paid',
+    hint: 'Payout floors, caps, the new-rider holdback and how long money is held.',
+    match: (k) => oneOf(
+      'driver_min_payout_ngn', 'driver_new_holdback_pct', 'driver_new_period_days',
+      'driver_clearance_business_days', 'driver_daily_cap_ngn', 'driver_daily_cap_new_ngn',
+      'driver_failed_trip_base_ngn')(k) },
+
+  { id: 'driver-conduct', label: 'Rider reliability',
+    hint: 'What happens when a rider cancels or turns work down.',
+    match: (k) => oneOf('driver_cancel_free_per_day', 'driver_cancel_pause_hours',
+                        'last_order_min_acceptance_pct')(k) },
+
+  { id: 'driver-levels', label: 'Rider value levels', collapsed: true,
+    hint: 'The ceiling on what each level may carry, and how a rider climbs. Set once, then rarely touched.',
+    match: startsWith('driver_level_') },
+
+  { id: 'matching', label: 'Matching and corridors',
+    hint: 'How far SEIRS looks for a rider and how a corridor run is scored.',
+    match: (k) => startsWith('corridor_')(k) ||
+      oneOf('interstate_match_bonus', 'consolidated_dispatch_enabled', 'consolidated_floor_ngn',
+            'trunk_assumed_parcels', 'pending_booking_expiry_minutes',
+            'circuity_default_pct', 'circuity_min_pct', 'circuity_max_pct',
+            'pricing_road_factor', 'routes_api_monthly_cap')(k) },
+
+  { id: 'travel-buddy', label: 'Travel Buddy',
+    hint: 'Seat bookings: how long an offer stands, what a no-show forfeits, when a seat is released.',
+    match: startsWith('travel_buddy_') },
+
+  { id: 'exception', label: 'When a delivery fails',
+    hint: 'Storage, redirects, returns and the windows people are given to respond.',
+    match: (k, c) => c === 'storage' ||
+      oneOf('sender_response_window_minutes', 'admin_redirect_timeout_minutes',
+            'perishable_max_hours', 'failed_delivery_redirect_fee',
+            'cancel_processing_pct')(k) },
+
+  { id: 'partner', label: 'Partner stores and counters',
+    hint: 'What a counter is paid to hold a parcel, and what SEIRS keeps.',
+    match: (k, c) => c === 'partner' },
+
+  { id: 'loyalty', label: 'Loyalty and referrals',
+    hint: 'Points, streaks and what a referral is worth. Customers hold points, never naira.',
+    match: (k, c) => c === 'loyalty' },
+
+  { id: 'fuel', label: 'Fuel reference',
+    hint: 'Today\u2019s pump price. This prices NOTHING: quotes and rider reimbursement are built on the rate card above. These exist so the drift warning can tell you the card has fallen behind.',
+    match: (k) => oneOf('current_petrol_price_ngn', 'current_diesel_price_ngn',
+                        'fuel_reprice_trigger_pct')(k) },
+
+  { id: 'future', label: 'Not launched yet', collapsed: true,
+    hint: 'Set up in advance and read by nothing today. They stay because the value is a decision already made, not because anything uses it.',
+    match: (k, c) => c === 'dev_platform' || c === 'subscription' || c === 'financial' ||
+      oneOf('partner_sponsored_placement', 'insurance_referral_commission')(k) },
+];
+
+// Kept for the fallback path below: anything a group does not claim is
+// still shown, under its stored category, rather than vanishing.
 const CATEGORY_ORDER = [
   'commission', 'customer_fee', 'driver_fee', 'partner', 'loyalty',
   'storage', 'surge', 'pool', 'zone', 'subscription', 'financial',
@@ -136,6 +234,12 @@ export function FeeCataloguePanel() {
   // hit an always-enabled Save and collect a 403 alert. Read-only for
   // them now, and the drawer says so before they start typing.
   const canEdit = isSuperAdminFromUser(getUser());
+  /**
+   * Which groups are folded shut. Undefined means "use the group's own
+   * default", so the ten value levels start closed without pinning every
+   * other group open forever.
+   */
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // Initial load
   const load = () => {
@@ -163,7 +267,12 @@ export function FeeCataloguePanel() {
         )
       : fees;
     const byCat: Record<string, Fee[]> = {};
-    for (const f of visible) (byCat[f.category] ??= []).push(f);
+    /* Group by the FEE_GROUPS map first; anything unclaimed falls back to
+       its stored category so a row the backend adds can never disappear. */
+    for (const f of visible) {
+      const g = FEE_GROUPS.find(grp => grp.match(f.key, f.category));
+      (byCat[g ? g.id : `cat:${f.category}`] ??= []).push(f);
+    }
     return { grouped: byCat, matchCount: visible.length };
   }, [fees, search]);
 
@@ -352,14 +461,39 @@ export function FeeCataloguePanel() {
           {/* Anything the backend adds that CATEGORY_ORDER has not heard of
               used to vanish silently. Known categories keep their order,
               unknown ones fall in at the end rather than disappearing. */}
-          {[...CATEGORY_ORDER, ...Object.keys(grouped).filter(c => !CATEGORY_ORDER.includes(c)).sort()]
-            .filter(cat => grouped[cat]?.length).map(cat => (
-            <section key={cat}>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F2B4C]/60 mb-2 px-1">
-                {CATEGORY_LABEL[cat] ?? cat}
-              </h2>
+          {[...FEE_GROUPS.map(g => g.id),
+            ...Object.keys(grouped).filter(c => c.startsWith('cat:')).sort()]
+            .filter(id => grouped[id]?.length).map(id => {
+            const g       = FEE_GROUPS.find(x => x.id === id);
+            const label   = g?.label ?? (CATEGORY_LABEL[id.replace('cat:', '')] ?? id.replace('cat:', ''));
+            /* A search should open what it matched: collapsing a group the
+               operator is actively looking inside would be perverse. */
+            const isOpen  = collapsed[id] === undefined
+              ? !(g?.collapsed && !search.trim())
+              : !collapsed[id];
+            return (
+            <section key={id}>
+              <button
+                onClick={() => setCollapsed(m => ({ ...m, [id]: isOpen }))}
+                className="mb-2 flex w-full items-baseline gap-2 px-1 text-left"
+              >
+                <ChevronRight
+                  size={13}
+                  className={`shrink-0 self-center text-[#0F2B4C]/40 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F2B4C]/60">
+                  {label}
+                </h2>
+                <span className="text-[11px] text-[#0F2B4C]/35">{grouped[id].length}</span>
+                {g?.hint && (
+                  <span className="ml-2 hidden truncate text-[11px] font-normal normal-case text-[#0F2B4C]/40 sm:inline">
+                    {g.hint}
+                  </span>
+                )}
+              </button>
+              {isOpen && (
               <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] divide-y divide-[#E5E7EB]">
-                {grouped[cat].map(fee => (
+                {grouped[id].map(fee => (
                   <div
                     key={fee.key}
                     className="flex items-start gap-4 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
@@ -405,8 +539,10 @@ export function FeeCataloguePanel() {
                   </div>
                 ))}
               </div>
+              )}
             </section>
-          ))}
+            );
+          })}
         </div>
       )}
 

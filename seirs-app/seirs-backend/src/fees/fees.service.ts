@@ -51,6 +51,23 @@ export class FeesService implements OnModuleInit {
    * surcharges, returns are return_to_sender_fee.
    */
   private static readonly RETIRED_KEYS = [
+    /**
+     * A THIRD fuel price (founder, 2026-08-28: "we have 2 fuel prices
+     * thats not okay"). There were three.
+     *
+     * current_fuel_price sits in the database at 770 next to
+     * current_petrol_price_ngn at 1380 and current_diesel_price_ngn at
+     * 1650. It appears nowhere in this codebase, not even in the seed
+     * below, so it is a leftover of an older seed that was never
+     * cleaned up: editable, stale, and adding a third answer to a
+     * question that already had two.
+     *
+     * Deleted rather than kept as a future knob, because the founder's
+     * rule is that a value left at ZERO is deliberate, and this is not
+     * zero. It is an abandoned value with no code path and no seed row
+     * to recreate it.
+     */
+    'current_fuel_price',
     'multi_stop_discount',
     'lekki_zone_surcharge',
     /* Superseded: platform_commission_pct is what payments.service
