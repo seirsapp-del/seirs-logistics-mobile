@@ -317,6 +317,18 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // ── Loyalty, which is a liability ──────────────────────────────────────
   // Every point issued is a discount owed later, so the earn rate and the
   // abuse ceilings belong on the dashboard rather than in a deploy.
+  /**
+   * The ceiling on the free-delivery reward, added 2026-08-28.
+   *
+   * redeem_free_delivery set a delivery's price to 0 with no bound, and
+   * 1,000 points is worth 1,000 naira at the rate card's redemption
+   * rate. It was buying interstate runs outright. Every loyalty perk
+   * carries a cap by standing rule.
+   */
+  { key: 'loyalty_free_delivery_max_ngn', name: 'Free Delivery, largest covered',
+    description: 'The most a delivery may cost and still be covered by the free-delivery reward. A larger delivery is refused with the points untouched, rather than part-discounted, so the reward keeps meaning what it says. Set to 0 to remove the ceiling entirely, which leaves the reward unbounded.',
+    category: FeeCategory.LOYALTY,      unit: FeeUnit.FLAT_NGN,   value: 3000 },
+
   { key: 'loyalty_points_per_1000_ngn', name: 'Points per NGN 1,000 Spent',
     description: 'Base earn rate before any tier multiplier.',
     category: FeeCategory.LOYALTY, unit: FeeUnit.POINTS, value: 10 },

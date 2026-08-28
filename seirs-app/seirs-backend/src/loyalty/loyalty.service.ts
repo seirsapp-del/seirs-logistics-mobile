@@ -471,11 +471,63 @@ export class LoyaltyService {
       throw new BadRequestException(`Insufficient points. Balance: ${balance}, required: ${params.cost}.`);
     }
 
-    // Apply the reward to the delivery. Currently only the two NGN-value
-    // redemptions mutate price; priority + insurance are recorded on the
-    // ledger but need dispatcher + insurance-partner wiring to actually
-    // deliver value. Kept as recorded intents until that ships.
+    /**
+     * A redemption that delivers nothing must not take points.
+     *
+     * priority and insurance were deducted from the ledger and then did
+     * nothing at all: the note here said they "need dispatcher +
+     * insurance-partner wiring to actually deliver value. Kept as
+     * recorded intents until that ships." So a customer spent 300 points
+     * on priority dispatch, or 200 on insurance, and received neither
+     * (audit, 2026-08-28).
+     *
+     * Those points were earned with real spending. Taking them for a
+     * product that does not exist is the plainest kind of false promise,
+     * and insurance in particular cannot exist: the rate card's
+     * insurance block is unread and SEIRS has no underwriter.
+     *
+     * Refused, with their balance untouched, until the thing behind them
+     * is real. Priority also has to clear a founder decision first: the
+     * loyalty tier policy says tiers unlock the earning multiplier and
+     * nothing material, and queue priority was withdrawn from Driver
+     * Premium on 2026-08-10 for the same reason.
+     */
+    if (params.reason === 'redeem_priority' || params.reason === 'redeem_insurance') {
+      throw new BadRequestException(
+        params.reason === 'redeem_priority'
+          ? 'Priority dispatch is not available to redeem yet. Your points have not been touched.'
+          : 'Parcel cover is not available to redeem yet. Your points have not been touched.',
+      );
+    }
+
+    /**
+     * Free delivery needs a ceiling (founder rule: every loyalty perk
+     * carries a maxPerMonth or a maxValueNgn, "unlimited is bankruptcy
+     * by good intentions").
+     *
+     * This set price to 0 on ANY delivery. 1,000 points is worth 1,000
+     * naira at the card's redemption rate, and it was buying a 40,000
+     * naira interstate run outright.
+     *
+     * Refused rather than part-discounted, so "free delivery" keeps
+     * meaning free: the customer keeps their points and can spend them
+     * on a job it covers, instead of being told a thing was free and
+     * then charged for most of it.
+     */
     let newPrice = Number(delivery.price);
+    if (params.reason === 'redeem_free_delivery') {
+      const capNgn = Number(
+        await this.fees.getValueOr('loyalty_free_delivery_max_ngn', 3000),
+      );
+      if (capNgn > 0 && newPrice > capNgn) {
+        throw new BadRequestException(
+          `Free delivery covers deliveries up to ${capNgn.toFixed(2)}. This one is ` +
+          `${newPrice.toFixed(2)}, so your points have not been used. ` +
+          `Redeem it on a smaller delivery, or use the ${500} off reward here.`,
+        );
+      }
+    }
+
     if (params.reason === 'redeem_discount') {
       newPrice = Math.max(0, newPrice - 500);
     } else if (params.reason === 'redeem_free_delivery') {

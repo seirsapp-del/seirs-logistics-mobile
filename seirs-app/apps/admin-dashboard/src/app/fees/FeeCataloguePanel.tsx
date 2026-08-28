@@ -175,7 +175,7 @@ const FEE_GROUPS: FeeGroup[] = [
     categories: ['partner'] },
 
   { id: 'loyalty', label: 'Loyalty and referrals',
-    hint: 'Points, streaks and what a referral is worth. Customers hold points, never naira.',
+    hint: 'Points, streaks, what a referral is worth and the ceiling on each reward. Customers hold points, never naira.',
     categories: ['loyalty'] },
 
   { id: 'fuel', label: 'Fuel reference',

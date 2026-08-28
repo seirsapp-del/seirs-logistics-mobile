@@ -18,8 +18,10 @@ import { User } from '../users/user.entity';
  *
  * Balance = SUM(delta) WHERE expiresAt > NOW()
  *
- * Points expire after 24 months of inactivity (any earn or redeem resets
- * the clock - see loyalty.service.ts for renewal logic).
+ * Points expire after loyalty_point_lifetime_months, currently 12, not
+ * the 24 this comment used to claim (audit, 2026-08-28). The row is what
+ * runs: loyalty.service.ts:654 sets expiresAt from it. Any earn or
+ * redeem resets the clock.
  *
  * See docs/payments-spec.md §⑤.
  */
