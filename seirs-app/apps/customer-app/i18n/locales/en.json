@@ -72,6 +72,8 @@
     "sendTileHint": "Document to fridge, okada to truck",
     "rideTile": "Book a ride",
     "rideTileHint": "Okada, Keke, Car or Danfo",
+    "travelTile": "Travel Buddy",
+    "travelTileHint": "Seats on trips riders are already making",
     "pointsChip": "{{n}} pts",
     "pointsChipEmpty": "Earn points",
     "stories": "Stories",
@@ -392,7 +394,8 @@
     "contactSupport": "Contact Support",
     "lightMode": "Light Mode",
     "darkMode": "Dark Mode",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "travelBuddy": "Travel Buddy (intercity)"
   },
   "status": {
     "pending": "Pending",

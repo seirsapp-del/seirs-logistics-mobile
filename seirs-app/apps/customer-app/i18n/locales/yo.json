@@ -72,6 +72,8 @@
     "sendTileHint": "Iwé sí firiji, okada sí ọkọ akẹ́rù",
     "rideTile": "Tẹ ìrìn",
     "rideTileHint": "Okada, Keke, Ọkọ ayọ́kẹ́lẹ́ tàbí Danfo",
+    "travelTile": "Alábàárìn Ìrìnàjò",
+    "travelTileHint": "Ìjókòó nínú ìrìnàjò tí àwọn awakọ̀ ń lọ",
     "pointsChip": "Ààmì {{n}}",
     "pointsChipEmpty": "Gba ààmì",
     "stories": "Àwọn Ìtàn",
@@ -381,7 +383,8 @@
     "contactSupport": "Kàn sí Ìrànlọ́wọ́",
     "lightMode": "Ìmọ́lẹ̀",
     "darkMode": "Òkùnkùn",
-    "signOut": "Jáde"
+    "signOut": "Jáde",
+    "travelBuddy": "Alábàárìn Ìrìnàjò (láàrin ìlú)"
   },
   "status": {
     "pending": "Ń dúró",

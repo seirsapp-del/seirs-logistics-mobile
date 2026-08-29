@@ -72,6 +72,8 @@
     "sendTileHint": "Daga takarda zuwa firij, okada zuwa babbar mota",
     "rideTile": "Yi odar tafiya",
     "rideTileHint": "Okada, Keke, Mota ko Danfo",
+    "travelTile": "Abokin Tafiya",
+    "travelTileHint": "Wurin zama a tafiye-tafiyen da direbobi ke yi",
     "pointsChip": "Maki {{n}}",
     "pointsChipEmpty": "Samu maki",
     "stories": "Labarai",
@@ -381,7 +383,8 @@
     "contactSupport": "Tuntubi Tallafi",
     "lightMode": "Haske",
     "darkMode": "Duhu",
-    "signOut": "Fita"
+    "signOut": "Fita",
+    "travelBuddy": "Abokin Tafiya (tsakanin birane)"
   },
   "status": {
     "pending": "Ana jira",

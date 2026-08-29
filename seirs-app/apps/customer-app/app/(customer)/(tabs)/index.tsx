@@ -22,6 +22,10 @@ import {
   AlignLeft, MapPin, Package, Car, Search,
   Bell, ChevronRight, Sparkles,
   Newspaper, Truck,
+  // Aliased: a bare `Map` import shadows the built-in Map constructor
+  // for the whole module, which is a trap waiting for the next person
+  // who reaches for one.
+  Map as MapIcon,
 } from 'lucide-react-native';
 
 type TripTab = 'in_progress' | 'delivered' | 'cancelled';
@@ -230,10 +234,16 @@ export default function CustomerHomeScreen() {
         </ScrollView>
 
         {/* ── Primary actions ──────────────────────────────────────────────
-            Two tiles in the content flow. These replaced the floating
+            Tiles in the content flow. These replaced the floating
             circles (founder 2026-08-12), which hovered over the Recent
-            Trips list and covered the delivery amounts. Same two
-            actions, nothing obscured. */}
+            Trips list and covered the delivery amounts.
+
+            Travel Buddy joins them on its own row directly below
+            (founder 2026-08-29). It is the thing SEIRS does that nobody
+            else does, and its only entry point in the entire app was
+            one line inside the hamburger: a user could hold the app for
+            a month and never learn it existed. The drawer entry stays,
+            so this is an addition, not a move. */}
         <View style={styles.actionRow}>
           <Pressable
             style={[styles.actionTile, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
@@ -256,7 +266,32 @@ export default function CustomerHomeScreen() {
             <Text style={[styles.actionTitle, { color: theme.text }]}>{t('home.rideTile')}</Text>
             <Text style={[styles.actionHint, { color: theme.textSecond }]}>{t('home.rideTileHint')}</Text>
           </Pressable>
+
         </View>
+
+        {/* Travel Buddy, its own full-width row under the pair.
+
+            Green rather than another blue: a third tile in the same blue
+            family reads as one control split in three.
+
+            It sits beside Send and Ride rather than inside the row
+            because it is a search, from a city to a city, not a one-tap
+            booking, and because three across on a 360dp phone leaves
+            66dp of content per tile, enough to wrap "Send a package"
+            onto three lines. Full width costs the other two nothing. */}
+        <Pressable
+          style={[styles.travelTile, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
+          onPress={() => router.push('/(customer)/travel-buddy' as any)}
+        >
+          <View style={[styles.actionIconWrap, { backgroundColor: theme.success + '15', marginBottom: 0 }]}>
+            <MapIcon size={28} color={theme.success} strokeWidth={1.75} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.travelTitle, { color: theme.text }]}>{t('home.travelTile')}</Text>
+            <Text style={[styles.travelHint, { color: theme.textSecond }]}>{t('home.travelTileHint')}</Text>
+          </View>
+          <ChevronRight size={18} color={theme.textThird} strokeWidth={2} />
+        </Pressable>
 
         {/* ── Recent Trips (3 tabs) ────────────────────────────────────────── */}
         <View style={styles.section}>
@@ -406,11 +441,20 @@ const styles = StyleSheet.create({
   cardWrap: { marginBottom: Spacing.md },
 
   // Primary action tiles: Send + Ride.
-  actionRow:        { flexDirection: 'row', gap: Spacing.md, paddingHorizontal: Spacing.md, marginBottom: Spacing.md },
+  actionRow:        { flexDirection: 'row', gap: Spacing.md, paddingHorizontal: Spacing.md, marginBottom: Spacing.sm },
   actionTile:       { flex: 1, borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: 6, minHeight: 130 },
   actionIconWrap:   { width: 52, height: 52, borderRadius: Radius.lg, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
   actionTitle:      { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   actionHint:       { fontSize: FontSize.xs },
+
+  // Travel Buddy sits on its own full-width row under the pair. Same
+  // tile language, laid out sideways because it has the room: icon,
+  // then the words, then a chevron that says this opens a search.
+  travelTile:       { flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+                      marginHorizontal: Spacing.md, marginBottom: Spacing.md,
+                      borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md },
+  travelTitle:      { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  travelHint:       { fontSize: FontSize.xs, marginTop: 2 },
 
   // Secondary chip row.
   chipsRow:  { paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingBottom: Spacing.sm, marginBottom: Spacing.md },

@@ -72,6 +72,8 @@
     "sendTileHint": "Site na akwụkwọ ruo na friji, okada ruo na nnukwu gwongworo",
     "rideTile": "Debe njem",
     "rideTileHint": "Okada, Keke, Ụgbọ ala ma ọ bụ Danfo",
+    "travelTile": "Enyi Njem",
+    "travelTileHint": "Oche na njem ndị ọkwọ ụgbọ na-agazi",
     "pointsChip": "Akara {{n}}",
     "pointsChipEmpty": "Nweta akara",
     "stories": "Akụkọ",
@@ -381,7 +383,8 @@
     "contactSupport": "Kpọtụrụ Nkwado",
     "lightMode": "Ọcha",
     "darkMode": "Oji",
-    "signOut": "Pụọ"
+    "signOut": "Pụọ",
+    "travelBuddy": "Enyi Njem (n’etiti obodo)"
   },
   "status": {
     "pending": "Na-eche",
