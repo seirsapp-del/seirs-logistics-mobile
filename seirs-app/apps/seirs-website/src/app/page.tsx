@@ -603,6 +603,24 @@ export default async function HomePage() {
               { slot: img.img_move_documents,   title: "Documents",          story: "Signed contracts across town the same trip",     slug: "moving-documents" },
               { slot: img.img_move_building,    title: "Building materials", story: "Cement and cable straight to site",           slug: "moving-building-materials" },
               { slot: img.img_move_animals,     title: "Live animals",       story: "Yes: even the Christmas chicken",             slug: "moving-live-animals" },
+              /* Three real categories added 2026-08-29 (website audit). Each
+                 is a seeded service category with its own vehicle set, dwell
+                 time and surcharge, and none of them was named anywhere on
+                 the public site:
+
+                   food_cold        Cold / Frozen food, van only, 30% surcharge
+                   house_move_full  Full relocation, large truck, 60 min dwell
+                   bulk_goods       Rice, grains, cement, sand
+
+                 A house move is among the largest jobs SEIRS prices and the
+                 site sold parcels only. The tiles render without an image
+                 (the slot is optional), so they are correct today and get
+                 better the day someone uploads img_move_cold, img_move_house
+                 and img_move_bulk. No story slug yet, so no link: an
+                 unwritten story would 404. */
+              { slot: img.img_move_cold,        title: "Cold & frozen",      story: "Ice cream that is still ice cream",           slug: "moving-cold-chain" },
+              { slot: img.img_move_house,       title: "House moves",        story: "A whole flat, one truck, one day",            slug: "moving-house" },
+              { slot: img.img_move_bulk,        title: "Bulk goods",         story: "Rice, cement and sand by the tonne",          slug: "moving-bulk-goods" },
             ].map((t, i) => {
               // Only a published story gets a link. An unpublished one still
               // shows its tile, because the category is real either way, it

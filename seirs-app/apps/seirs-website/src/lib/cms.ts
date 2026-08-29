@@ -107,6 +107,16 @@ export const SLOT_PLACEHOLDERS: Record<string, string> = {
   img_move_documents:   '/placeholders/move-documents.jpg',
   img_move_building:    '/placeholders/move-building.jpg',
   img_move_animals:     '/placeholders/move-animals.jpg',
+  /* THREE SLOTS WANTED, deliberately unregistered (2026-08-29 audit).
+     The homepage grid now carries Cold & frozen, House moves and Bulk
+     goods, three seeded service categories the site had never named. They
+     render as clean navy cards because the tile treats its image as
+     optional, and they are NOT listed here on purpose: every entry in this
+     map has a real file behind it in public/placeholders, and registering
+     img_move_cold / img_move_house / img_move_bulk before those files
+     exist would trade three imageless cards for three broken images.
+     Drop move-cold.jpg, move-house.jpg and move-bulk.jpg in, add the three
+     keys, and the tiles pick them up with no other change. */
 };
 
 // Admin-managed image slots: { img_hero_rider: url, ... }. Placeholders
