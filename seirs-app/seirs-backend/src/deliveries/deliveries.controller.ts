@@ -334,7 +334,13 @@ export class DeliveriesController {
   bookTripSeats(
     @Param('tripId') tripId: string,
     @CurrentUser() user: any,
-    @Body() body: { seats?: number; luggage?: string },
+    @Body() body: {
+      seats?: number; luggage?: string;
+      /** The segment this passenger is riding, when they are not taking
+       *  the whole trip. Both stops must belong to the trip and be in
+       *  order. Omit for an end-to-end booking. */
+      boardStopId?: string; alightStopId?: string;
+    },
   ) {
     return this.deliveriesService.bookTripSeats(tripId, user, body ?? {});
   }

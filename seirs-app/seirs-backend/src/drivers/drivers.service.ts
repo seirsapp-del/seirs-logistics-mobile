@@ -612,12 +612,15 @@ export class DriversService {
      * off, and how far that is.
      */
     const segByTrip = new Map<string, {
+      boardStopId: string; alightStopId: string;
       boardCity: string; alightCity: string; segmentKm: number | null;
     }>();
     if (trips.length > 0) {
       const rows: Array<any> = await this.tripStopsRepo.manager.query(
         `SELECT DISTINCT ON (s1."trip_id")
                 s1."trip_id"        AS "tripId",
+                s1."id"             AS "boardStopId",
+                s2."id"             AS "alightStopId",
                 s1."city"           AS "boardCity",
                 s2."city"           AS "alightCity",
                 s1."km_from_origin" AS "boardKm",
@@ -635,6 +638,11 @@ export class DriversService {
       for (const r of rows) {
         const a = Number(r.boardKm), b = Number(r.alightKm);
         segByTrip.set(r.tripId, {
+          // The booking needs the stops themselves, not just their names:
+          // two stops can share a city name on a long route, and the
+          // price and the boarding point both come from the row.
+          boardStopId:  r.boardStopId,
+          alightStopId: r.alightStopId,
           boardCity:  r.boardCity,
           alightCity: r.alightCity,
           segmentKm:  Number.isFinite(a) && Number.isFinite(b) && b > a

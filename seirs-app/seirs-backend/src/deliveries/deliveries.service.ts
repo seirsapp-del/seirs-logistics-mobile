@@ -866,7 +866,16 @@ export class DeliveriesService {
     return DeliveriesService.CITY_COORDS[String(city ?? '').trim().toLowerCase()] ?? null;
   }
 
-  async bookTripSeats(tripId: string, customer: User, body: { seats?: number; luggage?: string }) {
+  async bookTripSeats(
+    tripId: string,
+    customer: User,
+    body: {
+      seats?: number; luggage?: string;
+      /** The stops this passenger boards and alights at, when riding
+       *  part of the route. Validated against the trip below. */
+      boardStopId?: string; alightStopId?: string;
+    },
+  ) {
     if (!this.driversService) {
       const { ServiceUnavailableException } = await import('@nestjs/common');
       throw new ServiceUnavailableException('Marketplace not wired.');
@@ -874,7 +883,58 @@ export class DeliveriesService {
     const seats = Math.max(1, Math.min(Math.round(Number(body.seats ?? 1)), 14));
     const trip: any = await (this.driversService as any).getBookableTrip(tripId, seats);
 
-    const routeKm = Number(trip.routeKm ?? 0);
+    /**
+     * Price and board the SEGMENT the passenger actually booked.
+     *
+     * This priced trip.routeKm and set pickup from trip.fromCity, so a
+     * passenger who searched Ibadan to Lagos on a Jos to Ibadan to Lagos
+     * trip was quoted the whole 943.6 km at 30,431.10 and told to be at
+     * Bukuru Expressway in Jos, 791 km from where they get on. Found by
+     * booking it on the device (2026-08-29).
+     *
+     * Segments were designed everywhere else: trip_stops carries an
+     * ordered route with km_from_origin, and
+     * travel_buddy_min_segment_fare_ngn is a floor under ONE segment.
+     * Booking was the last place that only understood whole trips.
+     *
+     * Both stops are re-read from the database and re-validated here
+     * rather than trusted from the request: they must belong to THIS
+     * trip and be in ascending sequence, so a crafted body cannot buy a
+     * 943 km ride for the price of a 12 km hop, or board a trip it has
+     * nothing to do with.
+     */
+    let segment: {
+      boardCity: string; alightCity: string; segmentKm: number;
+      boardAddress: string; boardLat: number; boardLng: number;
+      alightAddress: string; alightLat: number; alightLng: number;
+    } | null = null;
+
+    if (body.boardStopId && body.alightStopId) {
+      const rows: Array<any> = await this.repo.manager.query(
+        `SELECT "id","trip_id","sequence","city","address","latitude","longitude","km_from_origin"
+           FROM "trip_stops" WHERE "id" = ANY($1) AND "trip_id" = $2`,
+        [[body.boardStopId, body.alightStopId], tripId],
+      ).catch(() => []);
+      const board  = rows.find(r => r.id === body.boardStopId);
+      const alight = rows.find(r => r.id === body.alightStopId);
+      if (!board || !alight) {
+        throw new BadRequestException('Those stops are not on this trip. Search again and pick the trip from the list.');
+      }
+      if (Number(alight.sequence) <= Number(board.sequence)) {
+        throw new BadRequestException('You cannot board after you get off. Pick the stops the other way round.');
+      }
+      const segKm = Math.round((Number(alight.km_from_origin) - Number(board.km_from_origin)) * 10) / 10;
+      if (!(segKm > 0)) {
+        throw new BadRequestException('That part of the route has no measured distance yet. Try again shortly.');
+      }
+      segment = {
+        boardCity: board.city, alightCity: alight.city, segmentKm: segKm,
+        boardAddress: board.address, boardLat: Number(board.latitude), boardLng: Number(board.longitude),
+        alightAddress: alight.address, alightLat: Number(alight.latitude), alightLng: Number(alight.longitude),
+      };
+    }
+
+    const routeKm = segment ? segment.segmentKm : Number(trip.routeKm ?? 0);
     if (!(routeKm > 0)) {
       throw new BadRequestException('That trip has no measured route yet. Try again shortly.');
     }
@@ -913,14 +973,18 @@ export class DeliveriesService {
       }
       const dto: any = {
         mode: 'ride',
-        pickupAddress: trip.pickupMode === 'fixed' && trip.pickupAddress
-          ? trip.pickupAddress
-          : `${trip.fromCity} (pickup along the route: agree in chat)`,
-        dropoffAddress: trip.toCity,
-        pickupLat:  pLat,
-        pickupLng:  pLng,
-        dropoffLat: toC.lat,
-        dropoffLng: toC.lng,
+        // A segment booking boards and alights at ITS OWN stops. Using
+        // the trip's endpoints sent the passenger to the wrong city.
+        pickupAddress: segment
+          ? `${segment.boardAddress} (agree the exact spot in chat)`
+          : trip.pickupMode === 'fixed' && trip.pickupAddress
+            ? trip.pickupAddress
+            : `${trip.fromCity} (pickup along the route: agree in chat)`,
+        dropoffAddress: segment ? segment.alightAddress : trip.toCity,
+        pickupLat:  segment ? segment.boardLat  : pLat,
+        pickupLng:  segment ? segment.boardLng  : pLng,
+        dropoffLat: segment ? segment.alightLat : toC.lat,
+        dropoffLng: segment ? segment.alightLng : toC.lng,
         vehicleType: trip.driver.vehicleType,
         paymentMethod: 'card',
         luggage: body.luggage,

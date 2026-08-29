@@ -343,8 +343,24 @@ export const deliveriesApi = {
   // ── Travel Buddy: browse declared intercity trips, book seats ─────────
   travelBuddyTrips: (from: string, to: string) =>
     request<any[]>('GET', `/deliveries/travel-buddy/trips?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
-  bookTripSeats: (tripId: string, seats: number, luggage?: string) =>
-    request<any>('POST', `/deliveries/travel-buddy/trips/${tripId}/book`, { seats, luggage }),
+  /**
+   * Book seats. `segment` is the pair of stops the passenger is riding
+   * when they are not taking the whole trip: without it the server
+   * prices the entire route and boards them at its origin, which on a
+   * Jos to Ibadan to Lagos trip meant quoting 943.6 km to somebody
+   * getting on at Ibadan.
+   */
+  bookTripSeats: (
+    tripId: string,
+    seats: number,
+    luggage?: string,
+    segment?: { boardStopId: string; alightStopId: string } | null,
+  ) =>
+    request<any>('POST', `/deliveries/travel-buddy/trips/${tripId}/book`, {
+      seats, luggage,
+      boardStopId:  segment?.boardStopId,
+      alightStopId: segment?.alightStopId,
+    }),
 
   /** Declared driver declines a seat booking: customer refunded 100%. */
   declineTripOffer: (id: string) =>

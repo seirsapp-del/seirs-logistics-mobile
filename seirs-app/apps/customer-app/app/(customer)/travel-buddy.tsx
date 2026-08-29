@@ -149,7 +149,13 @@ export default function TravelBuddyScreen() {
   const doBook = async (trip: any, seats: number, luggage: string) => {
     setBooking(trip.id);
     try {
-      const created = await deliveriesApi.bookTripSeats(trip.id, seats, luggage);
+      // Book the leg they searched for, not the whole trip.
+      const created = await deliveriesApi.bookTripSeats(
+        trip.id, seats, luggage,
+        trip.segment
+          ? { boardStopId: trip.segment.boardStopId, alightStopId: trip.segment.alightStopId }
+          : null,
+      );
       router.push({
         pathname: '/(customer)/payment/[deliveryId]',
         params: {
