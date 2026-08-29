@@ -339,10 +339,23 @@ export default function TravelBuddyScreen() {
               ) : (
                 <Text style={[styles.seatsLeft, { color: theme.textThird }]}>Packages only on this trip</Text>
               )}
+              {/*
+                This read "Send a package →" beside a specific rider's
+                trip, which promises a booking onto THAT trip. It pushes
+                the ordinary Send wizard with no trip attached at all
+                (2026-08-29).
+
+                Packages are never booked onto a trip, by design: the
+                empty state on this very screen says to "send your
+                package the normal way and it can still ride with an
+                intercity driver", and matching is what puts them
+                together. So the wording now says what actually happens,
+                rather than implying a link the code does not make.
+              */}
               {trip.acceptsPackages && (
                 <Pressable onPress={() => router.push('/(customer)/send' as any)}>
                   <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: '600' }}>
-                    Send a package →
+                    Sending a parcel? →
                   </Text>
                 </Pressable>
               )}

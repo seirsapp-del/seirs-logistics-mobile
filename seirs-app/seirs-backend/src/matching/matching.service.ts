@@ -121,12 +121,18 @@ export class MatchingService {
       .catch(() => [] as any[]);
     const interBonus = await this.feesService.getValueOr('interstate_match_bonus', 0.25).catch(() => 0.25);
 
+    /* What each candidate is already carrying, one query for the whole
+       pass. Feeds the spare-capacity test below. */
+    const committedByDriver = await this.driversService
+      .committedLoadKgFor(candidates.map(d => d.id), delivery.id)
+      .catch(() => new Map<string, number>());
+
     const scored = candidates
       .map((driver) => {
         const scored = this.scoreDriver(driver, delivery, premiumSet.has(driver.id), corridorCfg);
         // Declared-trip route match: both cities named in the booking.
         const trip = interTrips.find((tr: any) => String(tr.driverId ?? tr.driver?.id) === driver.id);
-        if (trip && this.tripCanCarry(trip, delivery)) {
+        if (trip && this.tripCanCarry(trip, delivery, committedByDriver.get(driver.id) ?? 0)) {
           const up = String(delivery.pickupAddress ?? '').toLowerCase();
           const dn = String(delivery.dropoffAddress ?? '').toLowerCase();
           if (up.includes(String(trip.fromCity).toLowerCase()) && dn.includes(String(trip.toCity).toLowerCase())) {
@@ -173,7 +179,7 @@ export class MatchingService {
    * field is null would quietly disable the corridor feature on every
    * booking that predates the column.
    */
-  private tripCanCarry(trip: any, delivery: any): boolean {
+  private tripCanCarry(trip: any, delivery: any, committedKg: number): boolean {
     if (trip.acceptsPackages === false) return false;
 
     const spareKg = Number(trip.spareCapacityKg ?? 0);
@@ -181,9 +187,29 @@ export class MatchingService {
     // A trip that declared no spare capacity is not refusing packages,
     // it simply never filled the field in. Only compare when the rider
     // gave us a real number to compare against.
-    if (spareKg > 0 && loadKg > spareKg) return false;
+    if (!(spareKg > 0)) return true;
 
-    return true;
+    /**
+     * Capacity is what is LEFT, not what was declared (2026-08-29).
+     *
+     * This compared each package against the full declared figure on its
+     * own, so a trip advertising 1 kg free boosted for a 1 kg parcel,
+     * and again for the next, and the next. Five separate 1 kg parcels
+     * every one of them "fits" a 1 kg trip, and the rider arrives to
+     * five.
+     *
+     * Packages are never attached to a trip, deliberately: the empty
+     * state tells a sender to "send your package the normal way and it
+     * can still ride with an intercity driver", and matching is what
+     * puts them together. So the load already committed is counted from
+     * the rider's live work, fetched once per matching pass rather than
+     * per candidate.
+     *
+     * A failure here still only withholds the corridor bonus. The rider
+     * stays in the pool on proximity, because spareCapacityKg is their
+     * own estimate and not a certified payload rating.
+     */
+    return committedKg + loadKg <= spareKg;
   }
 
   /**

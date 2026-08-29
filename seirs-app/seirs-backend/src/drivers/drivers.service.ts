@@ -565,6 +565,29 @@ export class DriversService {
    * The endpoint test stays as an OR, so a trip declared without stop
    * rows still appears.
    */
+  /**
+   * Weight each rider is already committed to carry, by driver id.
+   *
+   * Used by the corridor bonus so a trip advertising 1 kg free is not
+   * boosted for a 1 kg parcel five times over. Live work only: anything
+   * assigned and not yet delivered or cancelled.
+   */
+  async committedLoadKgFor(driverIds: string[], excludeDeliveryId?: string): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    if (!driverIds.length) return out;
+    const rows: Array<any> = await this.tripsRepo.manager.query(
+      `SELECT d."driverId" AS "driverId", COALESCE(SUM(d."weightKg"), 0) AS "kg"
+         FROM "deliveries" d
+        WHERE d."driverId" = ANY($1)
+          AND d."status" IN ('assigned','accepted','picked_up','in_transit')
+          AND ($2::uuid IS NULL OR d."id" <> $2::uuid)
+        GROUP BY d."driverId"`,
+      [driverIds, excludeDeliveryId ?? null],
+    ).catch(() => []);
+    for (const r of rows) out.set(String(r.driverId), Number(r.kg) || 0);
+    return out;
+  }
+
   async browseTrips(fromCity: string, toCity: string) {
     const from = `%${(fromCity ?? '').trim()}%`;
     const to   = `%${(toCity ?? '').trim()}%`;
