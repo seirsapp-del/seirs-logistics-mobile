@@ -388,6 +388,19 @@ export default function DeliveryDetailScreen() {
                   {paying ? 'Opening…' : `Pay ${naira(d.price)}`}
                 </Text>
               </Pressable>
+              {/* Same reasoning as the customer app: this screen is where
+                  a sender lands from the card, so correcting the order
+                  has to be possible from here and not only from the list
+                  tab (founder 2026-08-29). */}
+              <Pressable
+                onPress={() => router.push(`/(business)/edit-delivery/${d.id}` as any)}
+                style={{ marginTop: 10, paddingVertical: 6, alignItems: 'center' }}
+                hitSlop={8}
+              >
+                <Text style={{ color: colors.textSecond, fontWeight: '600', fontSize: FontSize.sm }}>
+                  Something wrong? Edit this order
+                </Text>
+              </Pressable>
             </>
           )}
         </View>

@@ -316,6 +316,28 @@ export default function TripDetailsScreen() {
                 Pay {naira(d.price)}
               </Text>
             </Pressable>
+            {/*
+              Edit belongs HERE, not only on the Bookings list.
+
+              The home screen's "Waiting for payment" banner lands on this
+              screen, so this card is where a sender actually arrives when
+              they notice something is wrong, and it offered one way out:
+              pay. Correcting a wrong address meant backing out to
+              Bookings and finding the same booking again (founder
+              2026-08-29).
+
+              Quiet, under the yellow button: paying is still the action
+              this card is for.
+            */}
+            <Pressable
+              onPress={() => router.push({ pathname: '/(customer)/edit-booking/[id]', params: { id: String(d.id) } } as any)}
+              style={{ marginTop: 10, paddingVertical: 6, alignItems: 'center' }}
+              hitSlop={8}
+            >
+              <Text style={{ color: colors.textSecond, fontWeight: '600', fontSize: 14 }}>
+                Something wrong? Edit this booking
+              </Text>
+            </Pressable>
           </View>
         )}
 

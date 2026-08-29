@@ -5,6 +5,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FeesService } from '../fees/fees.service';
+import { aVehicle } from '../common/vehicle-labels';
 import { RateCard } from './rate-card.entity';
 import { ServiceCategory } from './service-category.entity';
 import { DEFAULT_RATE_CARD, DEFAULT_SERVICE_CATEGORIES } from './pricing.seed';
@@ -873,7 +874,10 @@ export class PricingService implements OnModuleInit {
   }) {
     const card = await this.getActiveRateCard();
     const rate = Number((card as any).seatRates?.[input.vehicleType] ?? 0);
-    if (!(rate > 0)) throw new BadRequestException(`${input.vehicleType} has no seat rate on the card.`);
+    if (!(rate > 0)) {
+      // Reads by a passenger, so it says okada and not motorcycle.
+      throw new BadRequestException(`${aVehicle(input.vehicleType)} cannot sell seats on this route.`.replace(/^./, c => c.toUpperCase()));
+    }
     const seats = Math.max(1, Math.round(Number(input.seats) || 1));
     const km = Math.max(0, Number(input.routeKm) || 0);
 
@@ -881,7 +885,12 @@ export class PricingService implements OnModuleInit {
     let luggageFee = 0;
     if (input.luggage === 'large') {
       const lf = (card as any).luggageFees?.[input.vehicleType];
-      if (lf == null) throw new BadRequestException(`${input.vehicleType} cannot take large luggage.`);
+      if (lf == null) {
+        throw new BadRequestException(
+          `${aVehicle(input.vehicleType)} cannot take large luggage. Pick a small bag, or no luggage.`
+            .replace(/^./, c => c.toUpperCase()),
+        );
+      }
       luggageFee = Math.max(0, Number(lf));
     }
     const serviceFee = Math.max(0, Number((card as any).serviceFees?.rideNgn ?? 0));

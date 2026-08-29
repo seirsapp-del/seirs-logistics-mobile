@@ -34,7 +34,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Save, Package, Car, Users, Info } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { deliveriesApi } from '@/services/api';
+import { deliveriesApi, configApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
 
@@ -73,6 +73,17 @@ export default function EditBooking() {
   const [rcvFirst,    setRcvFirst]    = useState('');
   const [rcvLast,     setRcvLast]     = useState('');
   const [rcvPhone,    setRcvPhone]    = useState('');
+  /**
+   * Which luggage sizes this vehicle can actually take.
+   *
+   * "Large" was offered on an okada and the server refused it on save
+   * (device QA 2026-08-29). The founder's standing rule is that a
+   * control either works or it is not there, so the option is removed
+   * for vehicles the card has no luggage fee for rather than shown and
+   * then refused. Defaults to all three until the card lands, because
+   * the server is the one that decides either way.
+   */
+  const [luggageOk, setLuggageOk] = useState<string[]>(['none', 'small', 'large']);
 
   const isSeat = !!row?.tripId;
   const isRide = row?.kind === 'ride';
@@ -93,6 +104,13 @@ export default function EditBooking() {
         setRcvFirst(d.receiverFirstName ?? '');
         setRcvLast(d.receiverLastName ?? '');
         setRcvPhone(d.receiverPhone ?? '');
+        if (d.tripId) {
+          try {
+            const card: any = await configApi.rateCard();
+            const fee = card?.luggageFees?.[d.vehicleType];
+            setLuggageOk(fee == null ? ['none', 'small'] : ['none', 'small', 'large']);
+          } catch { /* leave all three: the server still decides */ }
+        }
       } catch (e: any) {
         setError(e?.message ?? 'Could not open this booking.');
       } finally {
@@ -235,7 +253,7 @@ export default function EditBooking() {
               ))}
               {field('Luggage', (
                 <View style={styles.row}>
-                  {LUGGAGE.map(l => (
+                  {LUGGAGE.filter(l => luggageOk.includes(l.id)).map(l => (
                     <Pressable
                       key={l.id}
                       onPress={() => setLuggage(l.id)}

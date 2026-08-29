@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { aVehicle } from '../common/vehicle-labels';
 import { TicketTopic } from '../support/support-ticket.entity';
 import { SupportService } from '../support/support.service';
 import { RoutingService } from '../routing/routing.service';
@@ -965,13 +966,10 @@ export class DeliveriesService {
            imported from @seirs/shared: nothing else in the backend
            resolves that package, and a message must not depend on a
            module that may not load. */
-        const LABEL: Record<string, string> = {
-          bicycle: 'bicycle', motorcycle: 'okada', tricycle: 'keke',
-          car: 'car', van: 'danfo', truck_small: 'small truck', truck_large: 'large truck',
-        };
-        const label = LABEL[trip.driver.vehicleType] ?? trip.driver.vehicleType;
         throw new BadRequestException(
-          `A ${label} does not carry passengers further than ${maxKm} km. This ride is ${Math.round(routeKm)} km, so it cannot be booked.`,
+          `${aVehicle(trip.driver.vehicleType)} does not carry passengers further than ${maxKm} km. `
+            .replace(/^./, c => c.toUpperCase()) +
+          `This ride is ${Math.round(routeKm)} km, so it cannot be booked.`,
         );
       }
     } catch (e: any) {
@@ -4613,8 +4611,34 @@ export class DeliveriesService {
 
       const delta = wantSeats - currentSeats;
       if (delta > 0) {
-        // Claim the extra seats through the same guarded increment that
-        // refuses to oversell, so an edit cannot do what a booking cannot.
+        /**
+         * Say what is actually true before claiming.
+         *
+         * reserveSeats refuses correctly but its message is written for
+         * a race: "Those seats were just taken." On a one-seat okada
+         * whose only seat is the passenger's own, that is simply untrue
+         * and reads as though a stranger beat them to it (device QA
+         * 2026-08-29, founder watching). The trip is read first so the
+         * refusal can name the real number.
+         */
+        const [t] = await this.repo.manager.query(
+          `SELECT "seatsTotal", "seatsBooked" FROM "driver_trips" WHERE "id" = $1`,
+          [delivery.tripId],
+        ).catch(() => []);
+        if (t) {
+          // This booking's own seats are already inside seatsBooked, so
+          // they are added back to get what this passenger could hold.
+          const ceiling = Number(t.seatsTotal ?? 0) - Number(t.seatsBooked ?? 0) + currentSeats;
+          if (wantSeats > ceiling) {
+            throw new BadRequestException(
+              ceiling <= currentSeats
+                ? `This trip has no more seats: you already hold ${currentSeats === 1 ? 'the last one' : `all ${currentSeats}`}.`
+                : `Only ${ceiling} seat${ceiling === 1 ? '' : 's'} can be held on this trip.`,
+            );
+          }
+        }
+        // Claim through the same guarded increment that refuses to
+        // oversell, so an edit cannot do what a booking cannot.
         await (this.driversService as any).reserveSeats(delivery.tripId, delta);
       }
 

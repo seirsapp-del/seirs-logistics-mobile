@@ -55,6 +55,28 @@ const vehicleSummary = (driver: any): string => {
   return `This driver has not listed the colour or plate. Ask them in chat before you board.`;
 };
 
+/**
+ * Corridors people actually travel, as one-tap chips.
+ *
+ * The screen was two empty boxes and a button over two thirds of blank
+ * space. It read as an unfinished form rather than a marketplace, and
+ * it asked a first-time user to know both the feature AND their route
+ * before anything happened (founder 2026-08-29, raised while looking at
+ * it for pitch-deck screenshots).
+ *
+ * Same list the driver app offers a rider when they declare a trip, so
+ * both sides of the marketplace are pointed at the same corridors and
+ * the pool on each one is not split by wording.
+ */
+const POPULAR_ROUTES: Array<{ from: string; to: string }> = [
+  { from: 'Lagos',   to: 'Ibadan' },
+  { from: 'Lagos',   to: 'Abuja' },
+  { from: 'Ibadan',  to: 'Abuja' },
+  { from: 'Lagos',   to: 'Benin' },
+  { from: 'Abuja',   to: 'Kano' },
+  { from: 'Lagos',   to: 'Port Harcourt' },
+];
+
 export default function TravelBuddyScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
@@ -247,6 +269,32 @@ export default function TravelBuddyScreen() {
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.searchBtnText}>Find trips</Text>}
         </Pressable>
 
+        {/* Corridors, until a search has been run. They fill a screen that
+            was otherwise empty, teach what Travel Buddy is without
+            reading the paragraph above, and turn two typed cities into
+            one tap. They step aside the moment there are results. */}
+        {!searched && (
+          <View style={styles.routesWrap}>
+            <Text style={[styles.routesLabel, { color: theme.textSecond }]}>POPULAR ROUTES</Text>
+            <View style={styles.routesRow}>
+              {POPULAR_ROUTES.map(r => (
+                <Pressable
+                  key={`${r.from}-${r.to}`}
+                  onPress={() => { setFrom(r.from); setTo(r.to); }}
+                  style={[styles.routeChip, { borderColor: theme.border, backgroundColor: theme.surfaceSecond }]}
+                >
+                  <Text style={[styles.routeChipText, { color: theme.text }]}>
+                    {r.from} <Text style={{ color: theme.textThird }}>→</Text> {r.to}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={[styles.routesNote, { color: theme.textThird }]}>
+              Tap one to fill the boxes, then Find trips. Any other route works too: type it in.
+            </Text>
+          </View>
+        )}
+
         {searched && !loading && trips.length === 0 && (
           <View style={styles.empty}>
             <Ionicons name="calendar-outline" size={40} color={theme.textThird} />
@@ -413,6 +461,12 @@ const styles = StyleSheet.create({
 
   formRow: { gap: Spacing.sm },
   input:   { borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: FontSize.base },
+  routesWrap:    { marginTop: Spacing.lg, gap: Spacing.sm },
+  routesLabel:   { fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 0.5 },
+  routesRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  routeChip:     { paddingHorizontal: 12, paddingVertical: 9, borderRadius: Radius.full, borderWidth: 1 },
+  routeChipText: { fontSize: FontSize.sm, fontWeight: '600' },
+  routesNote:    { fontSize: FontSize.xs, lineHeight: 16, marginTop: 2 },
   searchBtn:     { height: 50, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   searchBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: '700' },
 
