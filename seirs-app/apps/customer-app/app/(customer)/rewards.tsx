@@ -247,7 +247,7 @@ export default function RewardsScreen() {
         {expiring > 0 && (
           <View style={[styles.expiryCard, { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' }]}>
             <Ionicons name="time-outline" size={16} color="#92400E" />
-            <Text style={[styles.expiryText, { color: '#78350F' }]}>
+            <Text style={[styles.expiryText, { color: '#92400E' }]}>
               {expiring.toLocaleString()} points expire in the next 30 days. Redeem or book a delivery to keep them.
             </Text>
           </View>
@@ -313,7 +313,7 @@ export default function RewardsScreen() {
                 key={tier.key}
                 style={[
                   styles.tierRow,
-                  isActive && { backgroundColor: isDark ? '#111' : '#F8FAFC', borderRadius: Radius.lg, paddingHorizontal: Spacing.sm },
+                  isActive && { backgroundColor: isDark ? '#161B22' : '#F9FAFB', borderRadius: Radius.lg, paddingHorizontal: Spacing.sm },
                   i < TIERS.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
                 ]}
               >

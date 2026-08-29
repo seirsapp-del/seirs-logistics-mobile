@@ -209,7 +209,7 @@ export default function PromoScreen() {
             <View style={{ flex: 1 }}>
               <View style={styles.promoTop}>
                 <Text style={[styles.promoLabel, { color: theme.text }]}>{describePromo(promo)}</Text>
-                <View style={[styles.codePill, { backgroundColor: isDark ? '#111' : '#F1F5F9', borderColor: theme.border }]}>
+                <View style={[styles.codePill, { backgroundColor: isDark ? '#161B22' : '#F1F5F9', borderColor: theme.border }]}>
                   <Text style={[styles.codePillText, { color: theme.primary }]}>{promo.code}</Text>
                 </View>
               </View>

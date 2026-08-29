@@ -146,7 +146,7 @@ export default function PrivacyScreen() {
         value={value}
         onValueChange={onChange}
         trackColor={{ false: theme.border, true: theme.primary + '80' }}
-        thumbColor={value ? theme.primary : (isDark ? '#555' : '#ddd')}
+        thumbColor={value ? theme.primary : (isDark ? '#555' : '#E5E7EB')}
       />
     </View>
   );

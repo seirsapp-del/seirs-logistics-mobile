@@ -203,7 +203,7 @@ export default function AddBankScreen() {
 
           {/* Pending change banner */}
           {current?.pendingBankAccountNumber ? (
-            <View style={[styles.currentCard, { backgroundColor: isDark ? '#1F1500' : '#FFFBEB', borderColor: '#D9770640' }]}>
+            <View style={[styles.currentCard, { backgroundColor: isDark ? '#D9770622' : '#FFFBEB', borderColor: '#D9770640' }]}>
               <Ionicons name="hourglass-outline" size={20} color="#D97706" />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.currentLabel, { color: '#D97706' }]}>Change under review</Text>

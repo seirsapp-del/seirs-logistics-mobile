@@ -37,7 +37,7 @@ interface DocItem {
 }
 
 const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; Icon: any }> = {
-  not_uploaded: { label: 'Not Uploaded', color: '#A1A1AA', Icon: UploadCloud   },
+  not_uploaded: { label: 'Not Uploaded', color: '#9CA3AF', Icon: UploadCloud   },
   uploaded:     { label: 'Under Review', color: '#D97706', Icon: Clock         },
   verified:     { label: 'Verified',     color: '#16A34A', Icon: CheckCircle   },
   rejected:     { label: 'Rejected',     color: '#EF4444', Icon: XCircle       },
@@ -298,9 +298,9 @@ export default function KycScreen() {
               <Text style={[styles.statusText, { color: '#16A34A' }]}>Declared</Text>
             </View>
           ) : (
-            <View style={[styles.statusChip, { backgroundColor: '#A1A1AA18' }]}>
-              <ChevronRight size={13} color="#A1A1AA" strokeWidth={1.75} />
-              <Text style={[styles.statusText, { color: '#A1A1AA' }]}>Answer</Text>
+            <View style={[styles.statusChip, { backgroundColor: '#9CA3AF18' }]}>
+              <ChevronRight size={13} color="#9CA3AF" strokeWidth={1.75} />
+              <Text style={[styles.statusText, { color: '#9CA3AF' }]}>Answer</Text>
             </View>
           )}
         </Pressable>

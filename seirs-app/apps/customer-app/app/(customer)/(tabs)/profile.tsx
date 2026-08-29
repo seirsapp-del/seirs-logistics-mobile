@@ -177,16 +177,16 @@ export default function ProfileScreen() {
                     submission (user.identityVerifiedAt is set). Silent when
                     unverified. see [[project_seirs_identity_policy]]. */}
                 {/* Theme audit 2026-08-24: the label was a fixed
-                    #065F46, a near-black green picked while looking at
+                    #14532D, a near-black green picked while looking at
                     light mode. Over the same 9%-alpha green on the dark
                     surface it measures 1.96:1, which is not a dim badge,
                     it is an invisible one, and dark is the default
                     theme. The tint stays translucent because it reads
                     correctly over both surfaces; only the ink moves. */}
                 {(user as any)?.identityVerifiedAt && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#10B98118', borderColor: '#10B98140', borderWidth: 1, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 }}>
-                    <Ionicons name="shield-checkmark" size={11} color={isDark ? '#34D399' : '#059669'} />
-                    <Text style={{ color: isDark ? '#6EE7B7' : '#065F46', fontSize: 10, fontWeight: '700', letterSpacing: 0.3 }}>Verified</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#16A34A18', borderColor: '#16A34A40', borderWidth: 1, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <Ionicons name="shield-checkmark" size={11} color={isDark ? '#86EFAC' : '#14532D'} />
+                    <Text style={{ color: isDark ? '#86EFAC' : '#14532D', fontSize: 10, fontWeight: '700', letterSpacing: 0.3 }}>Verified</Text>
                   </View>
                 )}
               </View>
@@ -198,7 +198,7 @@ export default function ProfileScreen() {
                 visual noise for the ~90% who haven't unlocked anything).
                 Silver / Gold / Platinum are aspirational and worth showing. */}
             {/* Theme audit 2026-08-24: this pill was broken in BOTH
-                directions. The amber label (#B45309) measures 2.67:1 on
+                directions. The amber label (#92400E) measures 2.67:1 on
                 the dark surface, and the brand-yellow medal measures
                 1.56:1 on the light one, so whichever theme you opened,
                 half the pill had all but disappeared. Each half now
@@ -206,8 +206,8 @@ export default function ProfileScreen() {
                 sitting on. */}
             {loyaltyTier && loyaltyTier.toLowerCase() !== 'bronze' && (
               <View style={[styles.tierPill, { backgroundColor: '#FFBE0B20', borderColor: '#FFBE0B40' }]}>
-                <Ionicons name="medal" size={13} color={isDark ? '#FFBE0B' : '#B45309'} />
-                <Text style={[styles.tierText, { color: isDark ? '#FCD34D' : '#B45309' }]}>{loyaltyTier}</Text>
+                <Ionicons name="medal" size={13} color={isDark ? '#FFBE0B' : '#92400E'} />
+                <Text style={[styles.tierText, { color: isDark ? '#FCD34D' : '#92400E' }]}>{loyaltyTier}</Text>
               </View>
             )}
           </View>

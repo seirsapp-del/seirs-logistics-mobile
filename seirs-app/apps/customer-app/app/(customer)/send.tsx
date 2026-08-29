@@ -1269,7 +1269,7 @@ export default function SendScreen() {
 
   const highlight = (active: boolean) => ({
     borderColor:     active ? theme.accent : theme.border,
-    backgroundColor: active ? (isDark ? '#1A2E44' : '#EBF5FF') : theme.surface,
+    backgroundColor: active ? (isDark ? '#163050' : '#EBF5FF') : theme.surface,
   });
 
   const showSuggestions = activeField !== null && predictions.length > 0;

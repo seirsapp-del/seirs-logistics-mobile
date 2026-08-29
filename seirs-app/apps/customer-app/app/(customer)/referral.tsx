@@ -90,7 +90,7 @@ export default function ReferralScreen() {
 
         {/* Hero */}
         <LinearGradient
-          colors={isDark ? ['#FF6B00', '#0A0A0A'] : ['#3A86FF', '#2EC4B6']}
+          colors={isDark ? ['#FF6B00', '#0A0A0A'] : ['#3A7BD5', '#2EC4B6']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}

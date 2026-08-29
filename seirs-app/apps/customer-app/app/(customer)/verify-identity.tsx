@@ -255,10 +255,10 @@ export default function VerifyIdentityScreen() {
               {expired && (
                 <View style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 6 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Clock size={16} color="#B45309" />
-                    <Text style={{ color: '#78350F', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Your ID has expired</Text>
+                    <Clock size={16} color="#92400E" />
+                    <Text style={{ color: '#92400E', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Your ID has expired</Text>
                   </View>
-                  <Text style={{ color: '#78350F', fontSize: FontSize.xs, lineHeight: 18 }}>
+                  <Text style={{ color: '#92400E', fontSize: FontSize.xs, lineHeight: 18 }}>
                     Verified status has been paused. Submit a current, unexpired ID below to restore it.
                   </Text>
                 </View>
@@ -389,15 +389,15 @@ function VerifiedCard({ theme, verifiedAt, docType }: any) {
     : docType === 'pvc'           ? 'PVC'
     : 'Government ID';
   return (
-    <View style={{ backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center', gap: Spacing.sm }}>
-      <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ backgroundColor: '#ECFDF5', borderColor: '#BBF7D0', borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center', gap: Spacing.sm }}>
+      <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#16A34A', alignItems: 'center', justifyContent: 'center' }}>
         <ShieldCheck size={28} color="#fff" />
       </View>
-      <Text style={{ color: '#065F46', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>You’re verified</Text>
-      <Text style={{ color: '#065F46', fontSize: FontSize.sm, textAlign: 'center' }}>
+      <Text style={{ color: '#14532D', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>You’re verified</Text>
+      <Text style={{ color: '#14532D', fontSize: FontSize.sm, textAlign: 'center' }}>
         Verified on {new Date(verifiedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })} using your {label}.
       </Text>
-      <Text style={{ color: '#065F46', fontSize: FontSize.xs, opacity: 0.7, textAlign: 'center', marginTop: 4 }}>
+      <Text style={{ color: '#14532D', fontSize: FontSize.xs, opacity: 0.7, textAlign: 'center', marginTop: 4 }}>
         Enjoy higher limits, insured deliveries, interstate access, and priority support.
       </Text>
     </View>
@@ -411,11 +411,11 @@ function PendingCard({ theme, submittedAt }: any) {
       <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#F59E0B', alignItems: 'center', justifyContent: 'center' }}>
         <Clock size={28} color="#fff" />
       </View>
-      <Text style={{ color: '#78350F', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>Under review</Text>
-      <Text style={{ color: '#78350F', fontSize: FontSize.sm, textAlign: 'center' }}>
+      <Text style={{ color: '#92400E', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>Under review</Text>
+      <Text style={{ color: '#92400E', fontSize: FontSize.sm, textAlign: 'center' }}>
         Submitted {hoursAgo === 0 ? 'just now' : `${hoursAgo} hour${hoursAgo === 1 ? '' : 's'} ago`}. Reviews take 24 hours to 3 business days.
       </Text>
-      <Text style={{ color: '#78350F', fontSize: FontSize.xs, opacity: 0.7, textAlign: 'center', marginTop: 4 }}>
+      <Text style={{ color: '#92400E', fontSize: FontSize.xs, opacity: 0.7, textAlign: 'center', marginTop: 4 }}>
         You’ll get a notification when a decision is made. Meanwhile you can keep using the app normally.
       </Text>
     </View>

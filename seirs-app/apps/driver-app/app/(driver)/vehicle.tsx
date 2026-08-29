@@ -322,7 +322,7 @@ export default function VehicleScreen() {
             </View>
 
             {!!error && (
-              <View style={[styles.errBox, { borderColor: theme.error, backgroundColor: isDark ? '#2A0F0F' : '#FEF2F2' }]}>
+              <View style={[styles.errBox, { borderColor: theme.error, backgroundColor: isDark ? '#3F1F1F' : '#FEF2F2' }]}>
                 <Ionicons name="alert-circle-outline" size={18} color={theme.error} />
                 <Text style={[styles.errText, { color: theme.error }]}>{error}</Text>
               </View>
@@ -332,7 +332,7 @@ export default function VehicleScreen() {
               /* One request at a time. Re-rendering the form under a
                  pending review invites a rider to fill it all in again and
                  then be told no. */
-              <View style={[styles.pendingCard, { backgroundColor: isDark ? '#1F1500' : '#FFFBEB', borderColor: theme.warning }]}>
+              <View style={[styles.pendingCard, { backgroundColor: isDark ? '#D9770622' : '#FFFBEB', borderColor: theme.warning }]}>
                 <View style={styles.pendingHead}>
                   <Ionicons name="hourglass-outline" size={20} color={theme.warning} />
                   <Text style={[styles.pendingTitle, { color: theme.warning }]}>Change under review</Text>
@@ -516,7 +516,7 @@ export default function VehicleScreen() {
                 </View>
 
                 {problems.length > 0 && (
-                  <View style={[styles.problems, { borderColor: theme.warning, backgroundColor: isDark ? '#1F1500' : '#FFFBEB' }]}>
+                  <View style={[styles.problems, { borderColor: theme.warning, backgroundColor: isDark ? '#D9770622' : '#FFFBEB' }]}>
                     <Text style={[styles.problemsTitle, { color: theme.warning }]}>Still needed</Text>
                     {problems.map(p => (
                       <Text key={p} style={[styles.problemLine, { color: theme.textSecond }]}>{'•'}  {p}</Text>

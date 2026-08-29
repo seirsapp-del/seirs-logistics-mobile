@@ -253,7 +253,7 @@ export default function WithdrawalScreen() {
 
           {/* Withdrawals frozen while a bank change is under review */}
           {frozen && (
-            <View style={[styles.frozenCard, { backgroundColor: isDark ? '#1F1500' : '#FFFBEB', borderColor: '#D9770640' }]}>
+            <View style={[styles.frozenCard, { backgroundColor: isDark ? '#D9770622' : '#FFFBEB', borderColor: '#D9770640' }]}>
               <Ionicons name="lock-closed-outline" size={20} color="#D97706" />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.frozenTitle, { color: '#D97706' }]}>Withdrawals paused</Text>

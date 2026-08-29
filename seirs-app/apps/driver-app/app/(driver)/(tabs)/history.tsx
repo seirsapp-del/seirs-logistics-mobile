@@ -196,7 +196,7 @@ export default function DriverHistoryScreen() {
           )
         }
         renderItem={({ item }) => {
-          const sc = STATUS_CONFIG[item.status] ?? { label: item.status, color: '#A1A1AA', icon: 'ellipse-outline' };
+          const sc = STATUS_CONFIG[item.status] ?? { label: item.status, color: '#9CA3AF', icon: 'ellipse-outline' };
           return (
             <Pressable
               style={({ pressed }) => [styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm, pressed && { opacity: 0.85 }]}

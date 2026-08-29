@@ -179,20 +179,20 @@ export default function ReceiptScreen() {
               Theme audit 2026-08-24. Two faults, one line apart. The
               banner was a hardcoded mint (#F0FDF4 on #BBF7D0), so in
               dark mode it was a bright light-mode island in the middle
-              of a dark screen. And the date under it was #4ADE80 on
+              of a dark screen. And the date under it was #86EFAC on
               that mint, which measures 1.66:1: unreadable in EVERY
               theme, not just one, since both colours were fixed. The
               surface now follows the theme and the date takes ordinary
               secondary text, which is what a timestamp should have been
               all along. */}
           <View style={[styles.successBanner, {
-            backgroundColor: isDark ? '#0F2A1B' : '#F0FDF4',
-            borderColor:     isDark ? '#1B4A2E' : '#BBF7D0',
+            backgroundColor: isDark ? '#14351F' : '#F0FDF4',
+            borderColor:     isDark ? '#14532D' : '#BBF7D0',
           }]}>
             <View style={[styles.successIcon, { backgroundColor: '#22C55E20' }]}>
-              <Ionicons name="checkmark-circle" size={36} color={isDark ? '#4ADE80' : '#22C55E'} />
+              <Ionicons name="checkmark-circle" size={36} color={isDark ? '#86EFAC' : '#22C55E'} />
             </View>
-            <Text style={[styles.successTitle, { color: isDark ? '#4ADE80' : '#15803D' }]}>
+            <Text style={[styles.successTitle, { color: isDark ? '#86EFAC' : '#15803D' }]}>
               {isRide ? 'Trip Completed' : 'Delivery Completed'}
             </Text>
             <Text style={[styles.successDate,  { color: isDark ? '#8B949E' : '#4B5563' }]}>{formatDate(completedDate)}</Text>

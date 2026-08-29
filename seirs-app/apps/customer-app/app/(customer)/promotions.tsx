@@ -21,7 +21,7 @@ function promoLabel(p: PromoDTO): string {
 }
 
 const PROMO_GRADIENTS = [
-  ['#3A86FF', '#1D6AE5'],
+  ['#3A7BD5', '#1E4F8C'],
   ['#FF6B00', '#C2410C'],
   ['#2EC4B6', '#0D9488'],
   ['#0F2B4C', '#1A3A63'],
@@ -88,7 +88,7 @@ export default function PromotionsScreen() {
         ListHeaderComponent={
           <View style={styles.bannerWrap}>
             <LinearGradient
-              colors={['#3A86FF', '#2EC4B6']}
+              colors={['#3A7BD5', '#2EC4B6']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.banner}
@@ -98,7 +98,7 @@ export default function PromotionsScreen() {
                 <Text style={styles.bannerDesc}>{t('promotions2.bannerDesc')}</Text>
                 <Pressable style={styles.bannerBtn} onPress={() => router.push('/(customer)/promo')}>
                   <Text style={styles.bannerBtnText}>Apply Code</Text>
-                  <Ionicons name="arrow-forward" size={14} color="#3A86FF" />
+                  <Ionicons name="arrow-forward" size={14} color="#3A7BD5" />
                 </Pressable>
               </View>
               <Ionicons name="ticket" size={80} color="rgba(255,255,255,0.15)" style={styles.bannerIcon} />
@@ -123,7 +123,7 @@ export default function PromotionsScreen() {
               <View style={styles.promoInfo}>
                 <Text style={[styles.promoDesc, { color: theme.text }]}>{promo.description ?? promo.code}</Text>
                 <View style={styles.promoMeta}>
-                  <View style={[styles.expiryBadge, { backgroundColor: daysLeft <= 3 ? '#FEF2F2' : isDark ? '#111' : '#F1F5F9', borderColor: daysLeft <= 3 ? '#FECACA' : theme.border }]}>
+                  <View style={[styles.expiryBadge, { backgroundColor: daysLeft <= 3 ? '#FEF2F2' : isDark ? '#161B22' : '#F1F5F9', borderColor: daysLeft <= 3 ? '#FECACA' : theme.border }]}>
                     <Ionicons name="time-outline" size={11} color={daysLeft <= 3 ? '#EF4444' : theme.textThird} />
                     <Text style={[styles.expiryText, { color: daysLeft <= 3 ? '#EF4444' : theme.textThird }]}>
                       {daysLeft === 0 ? 'Expires today' : `${daysLeft}d left`}
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   bannerTitle:  { color: '#fff', fontSize: FontSize.xl, fontWeight: FontWeight.bold },
   bannerDesc:   { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.sm, lineHeight: 20 },
   bannerBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff', alignSelf: 'flex-start', paddingHorizontal: Spacing.md, paddingVertical: 8, borderRadius: Radius.full, marginTop: Spacing.xs },
-  bannerBtnText:{ color: '#3A86FF', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  bannerBtnText:{ color: '#3A7BD5', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
   bannerIcon:   { position: 'absolute', right: -10, bottom: -10 },
 
   promoCard:    { flexDirection: 'row', borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden' },

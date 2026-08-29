@@ -94,7 +94,7 @@ export default function DriverRatingsScreen() {
 
         {/* Hero score */}
         <View style={[styles.heroCard, {
-          backgroundColor: isDark ? '#1A1000' : '#FFFBEB',
+          backgroundColor: isDark ? '#D9770622' : '#FFFBEB',
           borderColor: belowThreshold ? '#EF444430' : '#FFBE0B30',
         }]}>
           <Text style={[styles.heroScore, { color: belowThreshold ? '#EF4444' : theme.text }]}>

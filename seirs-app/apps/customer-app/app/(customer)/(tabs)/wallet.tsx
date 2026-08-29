@@ -129,7 +129,7 @@ export default function WalletScreen() {
     { key: 'silver',   label: 'Silver tier',     icon: Award,    color: '#C0C0C0', earned: tier === 'silver' || tier === 'gold' || tier === 'platinum' },
     { key: 'gold',     label: 'Gold tier',       icon: Award,    color: '#FFD700', earned: tier === 'gold' || tier === 'platinum' },
     { key: 'platinum', label: 'Platinum tier',   icon: Award,    color: '#E5E4E2', earned: tier === 'platinum' },
-    { key: 'streak',   label: '4-week streak',   icon: Flame,    color: '#F97316', earned: streak >= 4 },
+    { key: 'streak',   label: '4-week streak',   icon: Flame,    color: '#D97706', earned: streak >= 4 },
     // Earned on a referral that actually PAID OUT. Counting sign-ups
     // would award this for an invite that never completed a delivery,
     // which is not what the badge says. Until this was wired the flag was
@@ -231,7 +231,7 @@ export default function WalletScreen() {
         {streak >= 1 && (
           <View style={[styles.subtleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={[styles.streakIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Flame size={18} color="#F97316" strokeWidth={2} />
+              <Flame size={18} color="#D97706" strokeWidth={2} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.streakTitle, { color: theme.text }]}>
@@ -254,7 +254,7 @@ export default function WalletScreen() {
             style={[styles.promoCard, { borderColor: theme.primary }]}
           >
             <LinearGradient
-              colors={['#3A7BD5', '#5DA0FF']}
+              colors={['#3A7BD5', '#58A6FF']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={styles.promoInner}
             >

@@ -37,7 +37,7 @@ const STATUS_CONFIG: Record<string, {
   // "finding a rider" yet and this screen must not pretend otherwise.
   awaiting_payment: { labelKey: 'tracking.stepAwaitingPayment', step: 0, gradient: ['#FFBE0B', '#E0A800'], icon: 'card' },
   pending:    { labelKey: 'tracking.stepPending',   step: 1, gradient: ['#3A7BD5', '#2A5FA8'], icon: 'search' },
-  assigned:   { labelKey: 'tracking.stepAssigned',  step: 2, gradient: ['#3A7BD5', '#1F4E8C'], icon: 'navigate' },
+  assigned:   { labelKey: 'tracking.stepAssigned',  step: 2, gradient: ['#3A7BD5', '#1E4F8C'], icon: 'navigate' },
   picked_up:  { labelKey: 'tracking.stepPickedUp',  step: 3, gradient: ['#FFBE0B', '#D99E00'], icon: 'cube' },
   in_transit: { labelKey: 'tracking.stepInTransit', step: 4, gradient: ['#0F2B4C', '#1A3A63'], icon: 'navigate' },
   delivered:  { labelKey: 'tracking.stepDelivered', step: 5, gradient: ['#16A34A', '#15803D'], icon: 'checkmark-circle' },

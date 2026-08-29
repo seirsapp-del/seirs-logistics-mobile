@@ -281,7 +281,7 @@ export default function VehicleSelectScreen() {
                 style={[
                   styles.card,
                   { backgroundColor: theme.surface, borderColor: isSelected ? theme.primary : theme.border },
-                  isSelected && { backgroundColor: isDark ? '#0A0A0A' : '#F0F7FF' },
+                  isSelected && { backgroundColor: isDark ? '#0A0A0A' : '#EBF5FF' },
                   Shadows.sm,
                 ]}
                 disabled={isRide && largeBlocked(v.id)}
@@ -377,7 +377,7 @@ export default function VehicleSelectScreen() {
           {showOkadaNightWarning && (
             <View style={[styles.warnRow, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
               <Ionicons name="warning-outline" size={18} color="#92400E" />
-              <Text style={[styles.warnText, { color: '#78350F' }]}>{t('vehicleSelect2.okadaNightWarning')}</Text>
+              <Text style={[styles.warnText, { color: '#92400E' }]}>{t('vehicleSelect2.okadaNightWarning')}</Text>
             </View>
           )}
 

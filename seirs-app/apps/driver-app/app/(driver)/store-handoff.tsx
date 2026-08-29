@@ -401,7 +401,7 @@ export default function StoreHandoffScreen() {
               </Pressable>
 
               {!!error && (
-                <View style={[styles.errBox, { borderColor: theme.error, backgroundColor: isDark ? '#2A0F0F' : '#FEF2F2' }]}>
+                <View style={[styles.errBox, { borderColor: theme.error, backgroundColor: isDark ? '#3F1F1F' : '#FEF2F2' }]}>
                   <Ionicons name="alert-circle-outline" size={18} color={theme.error} />
                   <Text style={[styles.errText, { color: theme.error }]}>{error}</Text>
                 </View>

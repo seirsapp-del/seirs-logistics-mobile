@@ -761,7 +761,7 @@ export default function InterstateScreen() {
   const renderStop = (stop: StopDraft, index: number) => {
     const isOrigin = index === 0;
     const isDest   = index === stops.length - 1;
-    const dot      = isOrigin ? '#2F6F4E' : isDest ? '#A8342A' : '#B8790C';
+    const dot      = isOrigin ? '#16A34A' : isDest ? '#EF4444' : '#D97706';
     const role     = isOrigin ? 'STARTING POINT' : isDest ? 'DESTINATION' : `STOP ${index}`;
     const fromOrigin = legKm[index];
 
@@ -837,13 +837,13 @@ export default function InterstateScreen() {
         </View>
 
         {!!stop.query.trim() && !stop.place && (
-          <Text style={[styles.warn, { color: '#B26A00' }]}>
+          <Text style={[styles.warn, { color: '#D97706' }]}>
             Tap a suggestion so this stop gets a real pin. Typed on its own it is
             only words, and words cannot settle where you actually waited.
           </Text>
         )}
         {stop.cityGuessed && !!stop.city && (
-          <Text style={[styles.warn, { color: '#B26A00' }]}>
+          <Text style={[styles.warn, { color: '#D97706' }]}>
             We read {stop.city} off the address text because the map lookup did not
             answer. Check that reads right before you declare.
           </Text>
@@ -1075,7 +1075,7 @@ export default function InterstateScreen() {
                     <Marker
                       key={s.key}
                       coordinate={{ latitude: s.place.lat, longitude: s.place.lng }}
-                      pinColor={isOrigin ? '#2F6F4E' : isDest ? '#A8342A' : '#B8790C'}
+                      pinColor={isOrigin ? '#16A34A' : isDest ? '#EF4444' : '#D97706'}
                       title={s.city || s.place.primary}
                       /**
                        * The rider's own words on the pin, because that is
