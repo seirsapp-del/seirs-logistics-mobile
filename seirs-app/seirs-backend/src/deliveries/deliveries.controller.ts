@@ -364,6 +364,23 @@ export class DeliveriesController {
     return this.deliveriesService.driverCancel(id, user.id, String(body?.reason ?? ''), body?.note);
   }
 
+  /**
+   * PATCH /api/v1/deliveries/:id - change a booking before paying for it.
+   *
+   * Only while nothing has been paid and no driver is assigned. The
+   * server re-prices every edit through the active rate card and returns
+   * the before and after, so the app can show what the change cost
+   * before the customer pays.
+   */
+  @Patch(':id')
+  editUnpaid(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: any,
+  ) {
+    return this.deliveriesService.editUnpaidBooking(id, user.id, body ?? {});
+  }
+
   // POST /api/v1/deliveries/:id/cancel - customer cancels their own booking
   @Post(':id/cancel')
   cancel(

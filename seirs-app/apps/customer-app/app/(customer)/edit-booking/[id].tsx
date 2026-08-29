@@ -1,0 +1,350 @@
+/**
+ * Edit a booking that has not been paid for.
+ *
+ * Founder, 2026-08-29: "why can't a user edit their previous booking
+ * since they haven't paid", and then "the same goes for sending a
+ * package", and then "what about booking a ride". The answer was that
+ * an unpaid booking had exactly two actions, Pay now and Cancel, so a
+ * wrong flat number or a mistyped weight meant throwing the booking
+ * away and rebuilding it from the first screen. The tracking code went
+ * with it, which matters when the sender has already passed it on.
+ *
+ * One screen, three shapes, because the three kinds are genuinely
+ * different objects and pretending otherwise would show a passenger a
+ * weight field:
+ *
+ *   Travel Buddy seat  seats and luggage. Board and alight belong to
+ *                      the rider's trip and are not the passenger's to
+ *                      retype.
+ *   Book-a-Ride        where they are going, and in what.
+ *   Package            everything about the parcel and the receiver.
+ *
+ * The price is never computed here. The server re-prices the row
+ * through the active rate card and hands back the before and after, so
+ * a change that costs more says so in the confirmation rather than
+ * appearing as a surprise on the payment screen.
+ */
+import { useEffect, useState, useCallback } from 'react';
+import {
+  View, Text, TextInput, Pressable, StyleSheet, ScrollView,
+  ActivityIndicator, KeyboardAvoidingView, Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, Save, Package, Car, Users, Info } from 'lucide-react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { deliveriesApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
+import InlineAddressPicker from '@/components/InlineAddressPicker';
+
+/* The same input filters the Send wizard uses. Typed on a phone, a
+   decimal field will happily take "3Chidinma" unless something stops
+   it. */
+const onlyDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+const onlyDigits  = (v: string) => v.replace(/[^0-9+]/g, '');
+const onlyName    = (v: string) => v.replace(/[^\p{L} .'\-]/gu, '');
+
+const LUGGAGE: Array<{ id: string; label: string; note: string }> = [
+  { id: 'none',  label: 'No luggage', note: 'Just you' },
+  { id: 'small', label: 'Small bag',  note: 'Rides free' },
+  { id: 'large', label: 'Large',      note: 'Adds a fee' },
+];
+
+export default function EditBooking() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const scheme = useColorScheme();
+  const theme  = Colors[scheme ?? 'light'];
+
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [row,     setRow]     = useState<any>(null);
+  const [error,   setError]   = useState('');
+
+  // Editable state, filled from the row once it lands.
+  const [seats,       setSeats]       = useState(1);
+  const [luggage,     setLuggage]     = useState('none');
+  const [pickup,      setPickup]      = useState<{ address: string; lat: number; lng: number } | null>(null);
+  const [dropoff,     setDropoff]     = useState<{ address: string; lat: number; lng: number } | null>(null);
+  const [weightKg,    setWeightKg]    = useState('');
+  const [description, setDescription] = useState('');
+  const [declared,    setDeclared]    = useState('');
+  const [rcvFirst,    setRcvFirst]    = useState('');
+  const [rcvLast,     setRcvLast]     = useState('');
+  const [rcvPhone,    setRcvPhone]    = useState('');
+
+  const isSeat = !!row?.tripId;
+  const isRide = row?.kind === 'ride';
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const d = await deliveriesApi.get(String(id));
+        setRow(d);
+        setSeats(Number(d.seatCount ?? 0) || 1);
+        const desc = String(d.packageDescription ?? '');
+        setLuggage(/large luggage/.test(desc) ? 'large' : /small bag/.test(desc) ? 'small' : 'none');
+        setPickup({ address: d.pickupAddress ?? '',  lat: Number(d.pickupLat),  lng: Number(d.pickupLng) });
+        setDropoff({ address: d.dropoffAddress ?? '', lat: Number(d.dropoffLat), lng: Number(d.dropoffLng) });
+        setWeightKg(d.weightKg != null ? String(d.weightKg) : '');
+        setDescription(d.tripId ? '' : (d.packageDescription ?? ''));
+        setDeclared(d.declaredValueNgn != null ? String(d.declaredValueNgn) : '');
+        setRcvFirst(d.receiverFirstName ?? '');
+        setRcvLast(d.receiverLastName ?? '');
+        setRcvPhone(d.receiverPhone ?? '');
+      } catch (e: any) {
+        setError(e?.message ?? 'Could not open this booking.');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  const save = useCallback(async () => {
+    setError('');
+
+    // Only send what this kind actually owns. A passenger has no weight
+    // and a rider's trip stops are not the passenger's to move.
+    let patch: Record<string, any>;
+    if (isSeat) {
+      patch = { seats, luggage };
+    } else if (isRide) {
+      if (!pickup?.address || !dropoff?.address) {
+        setError('Both the pickup and the destination are needed.');
+        return;
+      }
+      patch = {
+        pickupAddress: pickup.address,  pickupLat: pickup.lat,  pickupLng: pickup.lng,
+        dropoffAddress: dropoff.address, dropoffLat: dropoff.lat, dropoffLng: dropoff.lng,
+      };
+    } else {
+      const kg = parseFloat(weightKg);
+      if (!(kg > 0)) {
+        setError('Enter the weight in kilograms.');
+        return;
+      }
+      if (!pickup?.address || !dropoff?.address) {
+        setError('Both the pickup and the delivery address are needed.');
+        return;
+      }
+      patch = {
+        pickupAddress: pickup.address,  pickupLat: pickup.lat,  pickupLng: pickup.lng,
+        dropoffAddress: dropoff.address, dropoffLat: dropoff.lat, dropoffLng: dropoff.lng,
+        weightKg: kg,
+        packageDescription: description.trim(),
+        declaredValueNgn: declared.trim() ? Number(declared) : 0,
+        receiverFirstName: rcvFirst.trim(),
+        receiverLastName:  rcvLast.trim(),
+        receiverPhone:     rcvPhone.trim(),
+      };
+    }
+
+    setSaving(true);
+    try {
+      const res = await deliveriesApi.editUnpaid(String(id), patch);
+      const money = (n: number) =>
+        `NGN ${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      alertDialog(
+        'Booking updated',
+        res.priceChanged
+          ? `The price changed from ${money(res.priceBeforeNgn)} to ${money(res.priceAfterNgn)}. Nothing has been charged yet.`
+          : `Your changes are saved. The price is still ${money(res.priceAfterNgn)}.`,
+        [{ text: 'Done', onPress: () => router.back() }],
+      );
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not save your changes.');
+    } finally {
+      setSaving(false);
+    }
+  }, [isSeat, isRide, seats, luggage, pickup, dropoff, weightKg, description, declared, rcvFirst, rcvLast, rcvPhone, id, router]);
+
+  /* ---------------------------------------------------------------- */
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.flex, { backgroundColor: theme.background }]}>
+        <View style={styles.centre}><ActivityIndicator color={theme.primary} /></View>
+      </SafeAreaView>
+    );
+  }
+
+  const Kind = isSeat ? Users : isRide ? Car : Package;
+  const kindLabel = isSeat ? 'Travel Buddy seat' : isRide ? 'Ride' : 'Package';
+
+  const field = (label: string, node: React.ReactNode) => (
+    <View style={styles.field}>
+      <Text style={[styles.label, { color: theme.textSecond }]}>{label}</Text>
+      {node}
+    </View>
+  );
+  const input = (value: string, onChange: (v: string) => void, placeholder: string, extra: object = {}) => (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      placeholderTextColor={theme.textThird}
+      style={[styles.input, { backgroundColor: theme.surfaceSecond, color: theme.text, borderColor: theme.border }]}
+      {...extra}
+    />
+  );
+
+  return (
+    <SafeAreaView style={[styles.flex, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <Pressable onPress={() => router.back()} hitSlop={10} style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]}>
+          <ArrowLeft size={20} color={theme.text} />
+        </Pressable>
+        <Text style={[styles.title, { color: theme.text }]}>Edit booking</Text>
+        <View style={styles.backBtn} />
+      </View>
+
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+
+          <View style={[styles.banner, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+            <Kind size={18} color={theme.primary} />
+            <View style={styles.flex}>
+              <Text style={[styles.bannerTitle, { color: theme.text }]}>
+                {kindLabel} · {row?.trackingCode}
+              </Text>
+              <Text style={[styles.bannerNote, { color: theme.textSecond }]}>
+                Nothing has been paid yet, so this can still change. We work the price out again when you save.
+              </Text>
+            </View>
+          </View>
+
+          {isSeat ? (
+            <>
+              {field('How many seats', (
+                <View style={styles.row}>
+                  {[1, 2, 3, 4].map(n => (
+                    <Pressable
+                      key={n}
+                      onPress={() => setSeats(n)}
+                      style={[
+                        styles.chip,
+                        { borderColor: theme.border, backgroundColor: theme.surfaceSecond },
+                        seats === n && { borderColor: theme.primary, backgroundColor: theme.primary + '18' },
+                      ]}
+                    >
+                      <Text style={[styles.chipText, { color: seats === n ? theme.primary : theme.text }]}>{n}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ))}
+              {field('Luggage', (
+                <View style={styles.row}>
+                  {LUGGAGE.map(l => (
+                    <Pressable
+                      key={l.id}
+                      onPress={() => setLuggage(l.id)}
+                      style={[
+                        styles.wideChip,
+                        { borderColor: theme.border, backgroundColor: theme.surfaceSecond },
+                        luggage === l.id && { borderColor: theme.primary, backgroundColor: theme.primary + '18' },
+                      ]}
+                    >
+                      <Text style={[styles.chipText, { color: luggage === l.id ? theme.primary : theme.text }]}>{l.label}</Text>
+                      <Text style={[styles.chipNote, { color: theme.textThird }]}>{l.note}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ))}
+              <View style={styles.noteRow}>
+                <Info size={14} color={theme.textThird} />
+                <Text style={[styles.note, { color: theme.textThird }]}>
+                  Where you board and get off belong to the rider's trip, so they are not changed here. Cancel and search again to ride a different leg.
+                </Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <InlineAddressPicker
+                label={isRide ? 'Pick you up at' : 'Collect from'}
+                dotColor={theme.primary}
+                value={pickup?.address ?? ''}
+                onSelect={(p: any) => setPickup({ address: p.address, lat: p.lat, lng: p.lng })}
+              />
+              <InlineAddressPicker
+                label={isRide ? 'Going to' : 'Deliver to'}
+                dotColor={theme.error}
+                value={dropoff?.address ?? ''}
+                onSelect={(p: any) => setDropoff({ address: p.address, lat: p.lat, lng: p.lng })}
+              />
+
+              {!isRide && (
+                <>
+                  {field('Weight (kg)', input(weightKg, v => setWeightKg(onlyDecimal(v)), 'e.g. 2.5', { keyboardType: 'decimal-pad' }))}
+                  {field('What is inside', input(description, setDescription, 'e.g. Two cartons of books', { multiline: true }))}
+                  {field('Declared value (NGN)', input(declared, v => setDeclared(onlyDecimal(v)), 'Leave blank if not insured', { keyboardType: 'number-pad' }))}
+                  {field('Receiver first name', input(rcvFirst, v => setRcvFirst(onlyName(v)), 'e.g. Chidinma'))}
+                  {field('Receiver last name',  input(rcvLast,  v => setRcvLast(onlyName(v)),  'e.g. Okafor'))}
+                  {field('Receiver phone',      input(rcvPhone, v => setRcvPhone(onlyDigits(v)), '08012345678', { keyboardType: 'phone-pad' }))}
+                </>
+              )}
+            </>
+          )}
+
+          {!!error && (
+            <Text style={[styles.error, { color: theme.error }]}>{error}</Text>
+          )}
+
+          <Pressable
+            onPress={save}
+            disabled={saving}
+            style={[styles.saveBtn, { backgroundColor: theme.primary }, saving && { opacity: 0.6 }]}
+          >
+            {saving
+              ? <ActivityIndicator color="#fff" size="small" />
+              : (<><Save size={18} color="#fff" /><Text style={styles.saveText}>Save changes</Text></>)}
+          </Pressable>
+
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex:   { flex: 1 },
+  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  backBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  title:   { fontSize: FontSize.lg, fontWeight: FontWeight.semibold as any },
+  body:    { padding: Spacing.md, gap: Spacing.md, paddingBottom: Spacing.xl },
+  banner:  {
+    flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start',
+    padding: Spacing.md, borderRadius: Radius.md, borderWidth: StyleSheet.hairlineWidth,
+  },
+  bannerTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+  bannerNote:  { fontSize: FontSize.xs, marginTop: 2, lineHeight: 17 },
+  field: { gap: 6 },
+  label: { fontSize: FontSize.xs },
+  input: {
+    borderWidth: StyleSheet.hairlineWidth, borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: FontSize.md,
+  },
+  row:   { flexDirection: 'row', gap: Spacing.sm },
+  chip:  {
+    flex: 1, alignItems: 'center', paddingVertical: Spacing.sm,
+    borderWidth: 1, borderRadius: Radius.md,
+  },
+  wideChip: {
+    flex: 1, alignItems: 'center', paddingVertical: Spacing.sm, paddingHorizontal: 4,
+    borderWidth: 1, borderRadius: Radius.md,
+  },
+  chipText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+  chipNote: { fontSize: FontSize.xs, marginTop: 2 },
+  noteRow:  { flexDirection: 'row', gap: 6, alignItems: 'flex-start' },
+  note:     { flex: 1, fontSize: FontSize.xs, lineHeight: 17 },
+  error:    { fontSize: FontSize.sm },
+  saveBtn:  {
+    flexDirection: 'row', gap: Spacing.sm, alignItems: 'center', justifyContent: 'center',
+    paddingVertical: Spacing.md, borderRadius: Radius.lg, marginTop: Spacing.sm,
+  },
+  saveText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
+});

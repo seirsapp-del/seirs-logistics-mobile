@@ -327,6 +327,21 @@ export const deliveriesApi = {
     request<{ ok: true; disputedAt: string; reason: string; ticketId: string | null }>(
       'POST', `/deliveries/${id}/report-issue`, body,
     ),
+  /**
+   * Change a booking before paying for it.
+   *
+   * The server re-prices every edit through the active rate card and
+   * never trusts a total from the app, so the response carries the
+   * before and after for the screen to show.
+   */
+  editUnpaid: (id: string, body: Record<string, any>) =>
+    request<{
+      ok: true;
+      delivery: any;
+      priceBeforeNgn: number;
+      priceAfterNgn:  number;
+      priceChanged:   boolean;
+    }>('PATCH', `/deliveries/${id}`, body),
   cancelQuote: (id: string) =>
     request<{
       cancellable: boolean;

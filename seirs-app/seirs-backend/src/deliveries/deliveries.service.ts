@@ -4515,6 +4515,231 @@ export class DeliveriesService {
     await (this.driversService as any).releaseSeats(tripId, seats).catch(() => {});
   }
 
+  /**
+   * Edit a booking that has not been paid for.
+   *
+   * Founder, 2026-08-29: "why can't a user edit their previous booking
+   * since they haven't paid". There was no answer. The only actions on
+   * an unpaid booking were Pay now and Cancel, so fixing a wrong flat
+   * number or a mistyped weight meant throwing the booking away and
+   * building it again from the first screen, losing the tracking code
+   * the sender may already have passed to the receiver.
+   *
+   * Three kinds book through three different engines, so the edit
+   * branches the same way rather than pretending they are one thing:
+   *
+   *   package            -> computePrice     (category, weight, distance)
+   *   ride, no trip      -> computeRidePrice (Book-a-Ride, in-city)
+   *   ride, with a trip  -> computeSeatPrice (Travel Buddy seat)
+   *
+   * The price is ALWAYS recomputed here and never accepted from the
+   * app. Editing is the one place where a client could otherwise
+   * resubmit an old total against new, more expensive details, so the
+   * row is re-priced through the same versioned card that create()
+   * uses and the caller is told what it now costs.
+   */
+  private static readonly EDITABLE_STATES: DeliveryStatus[] = [DeliveryStatus.PENDING];
+
+  async editUnpaidBooking(
+    deliveryId: string,
+    userId: string,
+    body: {
+      pickupAddress?: string; pickupLat?: number; pickupLng?: number;
+      dropoffAddress?: string; dropoffLat?: number; dropoffLng?: number;
+      weightKg?: number; categoryCode?: string; vehicleType?: string;
+      declaredValueNgn?: number; packageDescription?: string; notes?: string;
+      receiverFirstName?: string; receiverLastName?: string; receiverPhone?: string;
+      scheduledFor?: string | null;
+      seats?: number; luggage?: string;
+    },
+  ) {
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer', 'driver', 'stops'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    // Ownership, not just identity: the token proves who is asking, it
+    // does not prove this booking is theirs.
+    if (delivery.customer?.id !== userId) {
+      throw new NotFoundException('Delivery not found.'); // no oracle
+    }
+
+    if (!DeliveriesService.EDITABLE_STATES.includes(delivery.status)) {
+      throw new BadRequestException(
+        'This booking is already under way, so it can no longer be edited. Cancel it or message support.',
+      );
+    }
+    if (delivery.paymentHeldAt) {
+      throw new BadRequestException(
+        'This booking is already paid for. Cancel it to make changes, and the refund rules on the cancellation screen apply.',
+      );
+    }
+    if (delivery.driver) {
+      throw new BadRequestException('A driver has already been assigned. Cancel the booking to make changes.');
+    }
+    // A multi-package run is a parent plus a DeliveryStop row per
+    // parcel, each with its own receiver, tracking code and state. It is
+    // edited stop by stop, not through this single-row path, and
+    // silently repricing the parent would leave the stops behind.
+    if (Array.isArray(delivery.stops) && delivery.stops.length > 1) {
+      throw new BadRequestException(
+        'A multi-package run is edited one package at a time. Open the package you want to change.',
+      );
+    }
+
+    const isSeat = !!delivery.tripId;
+    const isRide = delivery.kind === 'ride';
+    const before = Number(delivery.price ?? 0);
+
+    if (isSeat) {
+      /* ---- Travel Buddy seat: seats and luggage, nothing else ----
+         Board and alight are the trip's own stops. Letting a passenger
+         retype them here would put an address on the booking that the
+         trip does not actually pass. */
+      const currentSeats = Number(delivery.seatCount ?? 0) || 1;
+      const wantSeats = body.seats == null
+        ? currentSeats
+        : Math.max(1, Math.round(Number(body.seats) || 1));
+
+      // The luggage choice has never had a column: it lives inside
+      // packageDescription as "large luggage". Read the current value
+      // from there so an edit that only changes the seat count does not
+      // silently drop luggage the passenger already chose.
+      const desc = String(delivery.packageDescription ?? '');
+      const currentLuggage = /large luggage/.test(desc) ? 'large'
+                           : /small bag/.test(desc)     ? 'small'
+                           : 'none';
+      const wantLuggage = body.luggage ?? currentLuggage;
+
+      const delta = wantSeats - currentSeats;
+      if (delta > 0) {
+        // Claim the extra seats through the same guarded increment that
+        // refuses to oversell, so an edit cannot do what a booking cannot.
+        await (this.driversService as any).reserveSeats(delivery.tripId, delta);
+      }
+
+      let priced: any;
+      try {
+        priced = await this.rateCardPricing.computeSeatPrice({
+          vehicleType: delivery.vehicleType,
+          routeKm:     Number(delivery.distanceKm ?? 0),
+          seats:       wantSeats,
+          luggage:     wantLuggage,
+        });
+      } catch (e) {
+        // Give the extra seats straight back: nobody should hold seats
+        // for a change that did not go through.
+        if (delta > 0) {
+          await (this.driversService as any).releaseSeats(delivery.tripId, delta).catch(() => {});
+        }
+        throw e;
+      }
+      if (delta < 0) {
+        await (this.driversService as any).releaseSeats(delivery.tripId, -delta).catch(() => {});
+      }
+
+      const leg = desc.split('\u00b7')[1]?.trim();
+      delivery.seatCount = wantSeats;
+      delivery.packageDescription =
+        `Seat x${wantSeats}` + (leg ? ` \u00b7 ${leg}` : '') +
+        (wantLuggage === 'large' ? ' \u00b7 large luggage' : wantLuggage === 'small' ? ' \u00b7 small bag' : '');
+      delivery.price          = +Number(priced.price ?? priced.total ?? 0).toFixed(2);
+      delivery.driverEarnings = +Number(priced.driverEarnings ?? 0).toFixed(2);
+    } else {
+      /* ---- Package or Book-a-Ride: re-measure, then re-price ---- */
+      if (body.pickupAddress  !== undefined) delivery.pickupAddress  = String(body.pickupAddress).trim();
+      if (body.dropoffAddress !== undefined) delivery.dropoffAddress = String(body.dropoffAddress).trim();
+      const num = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : undefined);
+      if (num(body.pickupLat)  !== undefined) delivery.pickupLat  = num(body.pickupLat)!;
+      if (num(body.pickupLng)  !== undefined) delivery.pickupLng  = num(body.pickupLng)!;
+      if (num(body.dropoffLat) !== undefined) delivery.dropoffLat = num(body.dropoffLat)!;
+      if (num(body.dropoffLng) !== undefined) delivery.dropoffLng = num(body.dropoffLng)!;
+      if (body.vehicleType !== undefined)     delivery.vehicleType = String(body.vehicleType);
+      if (body.scheduledFor !== undefined) {
+        delivery.scheduledFor = body.scheduledFor ? new Date(body.scheduledFor) : null;
+      }
+
+      if (!isRide) {
+        if (body.weightKg !== undefined) {
+          const kg = Number(body.weightKg);
+          if (!(kg > 0)) throw new BadRequestException('Enter the weight in kilograms.');
+          delivery.weightKg = kg;
+        }
+        if (body.categoryCode       !== undefined) delivery.categoryCode       = String(body.categoryCode);
+        if (body.declaredValueNgn   !== undefined) delivery.declaredValueNgn   = Number(body.declaredValueNgn) || null;
+        if (body.packageDescription !== undefined) delivery.packageDescription = String(body.packageDescription).trim();
+        if (body.receiverFirstName  !== undefined) delivery.receiverFirstName  = String(body.receiverFirstName).trim() || null;
+        if (body.receiverLastName   !== undefined) delivery.receiverLastName   = String(body.receiverLastName).trim() || null;
+        if (body.receiverPhone      !== undefined) delivery.receiverPhone      = String(body.receiverPhone).trim() || null;
+      }
+
+      // Re-measure. An edited address that kept the old distance is the
+      // same class of bug as pricing a run on its straight leg.
+      const road = await this.routeDistance.getRoadDistance(
+        delivery.pickupLat, delivery.pickupLng,
+        delivery.dropoffLat, delivery.dropoffLng,
+      );
+      delivery.distanceKm           = road.km;
+      delivery.quotedDistanceSource = road.source;
+      delivery.quotedDurationMin    = road.durationMin ?? null;
+
+      const card: any = await this.rateCardPricing.getActiveRateCard();
+      const maxKm = Number(card?.vehicleRates?.[delivery.vehicleType]?.maxRouteKm ?? 0);
+      if (maxKm > 0 && road.km > maxKm) {
+        throw new BadRequestException(
+          `That vehicle does not run further than ${maxKm} km. This route is ${Math.round(road.km)} km, so pick a bigger vehicle.`,
+        );
+      }
+
+      const breakdown: any = isRide
+        ? await this.rateCardPricing.computeRidePrice({
+            vehicleType: delivery.vehicleType,
+            km: road.km,
+            scheduledAt: delivery.scheduledFor ?? undefined,
+            pickupCoords:  { latitude: delivery.pickupLat,  longitude: delivery.pickupLng },
+            dropoffCoords: { latitude: delivery.dropoffLat, longitude: delivery.dropoffLng },
+          } as any)
+        : await this.rateCardPricing.computePrice({
+            vehicleType: delivery.vehicleType,
+            categoryCode: toCategoryCode(delivery.categoryCode),
+            km: road.km,
+            stopCount: 1,
+            weightKg: Number(delivery.weightKg ?? 0),
+            declaredValueNgn: Number(delivery.declaredValueNgn ?? 0) || undefined,
+            estimatedDwellMinutes: 0,
+            scheduledAt: delivery.scheduledFor ?? undefined,
+            // latitude/longitude, not lat/lng: the same mismatch that
+            // once priced every Lagos booking at national rates.
+            pickupCoords:  { latitude: delivery.pickupLat,  longitude: delivery.pickupLng },
+            dropoffCoords: { latitude: delivery.dropoffLat, longitude: delivery.dropoffLng },
+          } as any);
+
+      delivery.price          = +Number(breakdown.customer.total).toFixed(2);
+      delivery.driverEarnings = +Number(breakdown.driver.total).toFixed(2);
+      delivery.nightFeeNgn    = Number(breakdown.customer?.nightSurcharge ?? 0) > 0
+        ? +Number(breakdown.customer.nightSurcharge).toFixed(2)
+        : null;
+      delivery.rateCardSnapshotId = card.id;
+    }
+
+    if (body.notes !== undefined) (delivery as any).notes = String(body.notes).trim() || null;
+
+    const saved = await this.repo.save(delivery);
+    const after = Number(saved.price ?? 0);
+    this.logger.log(
+      `EDIT_UNPAID deliveryId=${deliveryId} user=${userId} kind=${delivery.kind} ` +
+      `seat=${isSeat} priceBefore=${before.toFixed(2)} priceAfter=${after.toFixed(2)}`,
+    );
+
+    return {
+      ok: true as const,
+      delivery: saved,
+      priceBeforeNgn: +before.toFixed(2),
+      priceAfterNgn:  +after.toFixed(2),
+      priceChanged:   Math.abs(after - before) >= 0.01,
+    };
+  }
+
   async cancelByCustomer(deliveryId: string, userId: string, reason?: string) {
     const quote = await this.getCancellationQuote(deliveryId, userId);
     if (!quote.cancellable) {

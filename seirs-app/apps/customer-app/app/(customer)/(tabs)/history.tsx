@@ -276,6 +276,23 @@ export default function HistoryScreen() {
                 </Text>
               </Pressable>
             )}
+            {/*
+              Edit sits between Pay and Cancel on purpose: it is the
+              middle answer to "this is wrong". Before it existed the
+              only way to fix a mistyped weight or a wrong flat number
+              was to cancel and rebuild the whole booking, losing the
+              tracking code the sender may already have passed on
+              (founder 2026-08-29).
+            */}
+            {isUnpaid && (
+              <Pressable
+                onPress={() => router.push({ pathname: '/(customer)/edit-booking/[id]', params: { id: item.id } } as any)}
+                hitSlop={8}
+                style={[styles.payLink, { borderColor: theme.border }]}
+              >
+                <Text style={[styles.payLinkText, { color: theme.text }]}>Edit</Text>
+              </Pressable>
+            )}
             {isActive && (
               <Pressable
                 onPress={() => router.push({ pathname: '/(customer)/track', params: { code: item.trackingCode } } as any)}
