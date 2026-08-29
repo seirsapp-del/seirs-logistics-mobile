@@ -175,7 +175,14 @@ export default async function ForBusinessPage() {
             />
             <FeatureCard
               icon={Clock}
-              title="Same-day & scheduled"
+              /* "Same-day & scheduled" retitled 2026-08-29. The body was
+                 always accurate, but the heading sold a delivery-day
+                 promise, and the standing rule is that SEIRS never
+                 promises arrival: Lagos traffic, NEPA and checkpoints
+                 decide it, and a promise we cannot keep is a refund
+                 magnet. "Send now or schedule" says the same true thing
+                 about WHEN YOU BOOK rather than when it lands. */
+              title="Send now or schedule"
               body="Send Now dispatches around the clock. Scheduled pickups book up to 7 days ahead, within daily pickup hours of 5 AM to 9 PM."
             />
             <FeatureCard

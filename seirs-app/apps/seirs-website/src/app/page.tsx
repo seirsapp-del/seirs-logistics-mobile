@@ -465,6 +465,10 @@ export default async function HomePage() {
                   n: 2,
                   icon: Truck,
                   title: "Driver Picks Up",
+                  // "Signed contracts across town in an hour" went the same
+                  // way on 2026-08-29: the tile below promised an arrival
+                  // time on a page that had already removed one, which is
+                  // the inconsistency an audit is for.
                   // "dispatched to your pickup in minutes" removed 2026-08-23. It is a
                   // soft arrival-time promise on a platform whose whole position is
                   // that it does not make them, and Lagos traffic decides this, not
@@ -596,7 +600,7 @@ export default async function HomePage() {
               { slot: img.img_move_food,        title: "Hot food",           story: "Amala that arrives still steaming",           slug: "moving-hot-food" },
               { slot: img.img_move_medical,     title: "Medical supplies",   story: "Prescriptions that cannot wait",              slug: "moving-medical-supplies" },
               { slot: img.img_move_electronics, title: "Electronics",        story: "Phones and laptops, handled like eggs",       slug: "moving-electronics" },
-              { slot: img.img_move_documents,   title: "Documents",          story: "Signed contracts across town in an hour",     slug: "moving-documents" },
+              { slot: img.img_move_documents,   title: "Documents",          story: "Signed contracts across town the same trip",     slug: "moving-documents" },
               { slot: img.img_move_building,    title: "Building materials", story: "Cement and cable straight to site",           slug: "moving-building-materials" },
               { slot: img.img_move_animals,     title: "Live animals",       story: "Yes: even the Christmas chicken",             slug: "moving-live-animals" },
             ].map((t, i) => {
@@ -646,6 +650,93 @@ export default async function HomePage() {
               editable by the team.
             </p>
           )}
+        </div>
+      </section>
+
+      {/* ── TRAVEL BUDDY ──
+          Added 2026-08-29 (website audit). The site sold packages on every
+          screen and did not mention, anywhere, that SEIRS moves PEOPLE.
+          Travel Buddy had exactly two occurrences in this codebase and both
+          were inside lib/launch.ts, an internal registry no visitor reads.
+          passenger_ride is a seeded service category, the ride engine is
+          live, and the founder calls it one of the platform's selling
+          points, so a public site that never names it is selling half the
+          product.
+
+          Deliberately NOT a tile in "What Nigeria moves": that grid is
+          cargo, and a person is not freight. It gets its own section, in
+          the same two-column idiom as the receiver system above.
+
+          Every claim here is one the engine can back: seats are priced by
+          SEIRS rather than haggled, the seat ledger refuses to oversell,
+          drivers are the same KYC-cleared riders as the parcel side, and
+          payment runs through the same escrow. No arrival time is
+          promised, per the standing rule. ── */}
+      <section className="py-section-sm lg:py-section-lg bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-center">
+            <Reveal className="lg:col-span-5">
+              <div>
+                <p className="section-label mb-3">Travelling, not sending</p>
+                <h2 className="section-title mb-4">Ride with someone already going</h2>
+                <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-8">
+                  Drivers making an intercity run declare the seats they
+                  genuinely have spare. You search the route you are
+                  travelling, see who is going and in what, and book a seat
+                  on the same rails as everything else here: SEIRS sets the
+                  fare, the money sits in escrow, and the vehicle cannot be
+                  overloaded to fit you in.
+                </p>
+
+                <div className="space-y-6">
+                  {[
+                    {
+                      icon: Users,
+                      title: "Board where you actually are",
+                      body: "A Lagos to Abuja run that stops in Ibadan sells the Ibadan leg too. You pay for the part of the road you ride, not the whole trip.",
+                    },
+                    {
+                      icon: Shield,
+                      title: "You know the vehicle before you walk up",
+                      body: "Colour, make, model and plate, not just \u201cokada\u201d. At a park at 5am that is the difference between your rider and a stranger offering a lift.",
+                    },
+                    {
+                      icon: CreditCard,
+                      title: "The fare is ours, not a haggle",
+                      body: "Drivers never set their own numbers. The seat price comes off the same published rate card as every delivery, and it is the same before and after you get in.",
+                    },
+                  ].map((r) => (
+                    <div key={r.title} className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-sky/10 flex items-center justify-center flex-shrink-0">
+                        <r.icon size={18} className="text-sky" strokeWidth={1.75} />
+                      </div>
+                      <div>
+                        <h3 className="text-navy font-bold text-base mb-1">{r.title}</h3>
+                        <p className="text-text-muted text-sm leading-relaxed">{r.body}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-8">
+                  <GetAppButton
+                    app="customer"
+                    className="inline-flex items-center gap-2 bg-navy text-white font-bold px-6 py-3 rounded-btn hover:bg-navy/90 transition-colors text-body-sm"
+                  >
+                    Find a trip
+                    <ArrowRight size={16} />
+                  </GetAppButton>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={120} className="lg:col-span-7">
+              <AppScreenshot
+                screen="customerTravelBuddy"
+                alt="Searching intercity trips in the SEIRS app"
+              />
+            </Reveal>
+          </div>
         </div>
       </section>
 

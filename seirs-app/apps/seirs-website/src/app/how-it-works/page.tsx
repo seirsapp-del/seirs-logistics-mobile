@@ -175,7 +175,11 @@ export default async function HowItWorksPage() {
               title="Create the order"
               lead="Drop your pickup and dropoff pins, pick a vehicle that fits the load, and see the price before you commit."
               points={[
-                "Send a package or request a ride, from the same screen.",
+                // "request a ride" was the ONLY mention of the passenger side
+                // anywhere on the site before 2026-08-29, and it did not
+                // distinguish an in-city ride from an intercity seat. Both
+                // are live products with their own engines.
+                "Send a package, book a ride across town, or take a seat on an intercity trip: same screen, same account.",
                 "Auto-quoted from zone pricing and a fuel index, not a guess.",
                 "The quote is locked when you book: you are charged the number you saw, or we refuse the booking and show you the new price first.",
                 "Later-stage fees exist and we say so: counter storage, a redirect, a return. Each one is shown and agreed before it is incurred, never added afterwards.",

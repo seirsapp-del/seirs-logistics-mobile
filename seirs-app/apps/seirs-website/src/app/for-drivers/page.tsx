@@ -154,7 +154,28 @@ export default async function ForDriversPage() {
               alt="Rider checking his earnings"
               eyebrow="The money"
               title="Your money moves when you do"
-              body="Every completed delivery credits your wallet immediately: no waiting for a Friday batch, no minimum balance, no calling anyone to ask where your money is. Withdraw to your bank whenever you want, or let the daily payout run send it for you."
+              /* Rewritten 2026-08-29 (website audit). Four claims in one
+                 sentence, three of them false against the payout engine:
+
+                   "no minimum balance"          driver_min_payout_ngn is
+                                                 1,000. There is a minimum.
+                   "credits your wallet
+                    immediately"                 earnings land as PENDING
+                                                 until availableAt, and a
+                                                 rider in their first
+                                                 driver_new_period_days (30)
+                                                 has driver_new_holdback_pct
+                                                 (10%) held back on top.
+                   "Withdraw whenever you want"  driver_daily_cap_ngn is
+                                                 200,000, and 50,000 while
+                                                 the rider is still new.
+
+                 The Terms of Service said "processed within 3-5 business
+                 days" on the same product at the same time, so the site
+                 contradicted itself as well as the code. What is left below
+                 is true today and stays true if an admin retunes the rows,
+                 because it names no number the catalogue owns. */
+              body="Every completed delivery is credited to your earnings the moment it clears, with the platform cut shown plainly beside it. No Friday batch, no calling anyone to ask where your money is. Withdraw to your bank when you want it, or let the daily payout run send it for you."
               points={[
                 'Earnings visible per trip, with the platform cut shown plainly',
                 // Restored 2026-08-15, same day it was weakened. The claim
@@ -167,7 +188,16 @@ export default async function ForDriversPage() {
                 // (timeSurcharges.night.driverSharePercent), not 100%. "In
                 // full" was a recruitment promise the engine contradicts.
                 'Night pickups carry a night fee, and most of it is yours',
-                'Instant withdrawal available once earnings are a day old',
+                // "Instant withdrawal available once earnings are a day
+                // old" was wrong in both directions: the clearance window
+                // is an admin row (driver_clearance_business_days), the
+                // code default is 2 business days, and production has it
+                // at 0. A page cannot assert "a day" for a number the
+                // founder retunes from a dashboard, so it now describes
+                // the mechanism instead of guessing its setting.
+                'A clearance window applies before a job can be withdrawn, shown on every trip in the app',
+                'New riders have a small share held back for their first weeks, released automatically',
+                'Minimum withdrawal and daily limits apply, both shown in the app before you request one',
               ]}
             />
             <StoryRow

@@ -113,7 +113,8 @@ export type ScreenKey =
   | 'customerTracking'
   | 'driverHome'
   | 'driverEarnings'
-  | 'businessDashboard';
+  | 'businessDashboard'
+  | 'customerTravelBuddy';
 
 export const APP_SCREENSHOTS: Record<ScreenKey, string | null> = {
   // LIVE since the 2026-08-15 capture session: real screens off the real
@@ -127,7 +128,21 @@ export const APP_SCREENSHOTS: Record<ScreenKey, string | null> = {
   driverHome: '/app-shots/driver-home.png',
   driverEarnings: '/app-shots/driver-earnings.png',
   businessDashboard: '/app-shots/business-dashboard.png',
+  // Captured 2026-08-29 off the same A30: the Travel Buddy search with the
+  // popular corridors, added the day the homepage started selling the
+  // passenger side at all.
+  customerTravelBuddy: '/app-shots/customer-travel-buddy.png',
 };
+
+/**
+ * THREE CAPTURES ARE SITTING UNUSED (noted 2026-08-29, website audit):
+ * customer-home.png, customer-rewards.png and customer-vehicle.png are in
+ * public/app-shots/ and appear in no ScreenKey, so nothing on the site can
+ * render them. They are real screens someone took the trouble to capture.
+ * Either give them a key and a section that wants them, or delete the files:
+ * an asset folder that disagrees with the registry is how the wrong-app
+ * stand-ins survived as long as they did.
+ */
 
 // ── Where SEIRS actually operates ───────────────────────────────────────────
 // NEEDS_DATA. Empty on purpose. The contact page used to state "Operations
