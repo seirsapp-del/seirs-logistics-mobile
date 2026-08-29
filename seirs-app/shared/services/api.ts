@@ -334,7 +334,10 @@ export const deliveriesApi = {
    * never trusts a total from the app, so the response carries the
    * before and after for the screen to show.
    */
-  editUnpaid: (id: string, body: Record<string, any>) =>
+  editUnpaid: (id: string, body: Record<string, any> & {
+    /** Travel Buddy: ride a different leg of the same trip. */
+    boardStopId?: string; alightStopId?: string;
+  }) =>
     request<{
       ok: true;
       delivery: any;
@@ -812,6 +815,17 @@ export const driversApi = {
    * is booked: more seats and more capacity yes, a new departure time
    * no, because a passenger arranged their day around the old one.
    */
+  /**
+   * The declared route as an ordered line of stops. A passenger picks
+   * their board and alight points from this, which is the only way the
+   * two ends of a seat booking can be changed: the rider is not going
+   * to an address the passenger types.
+   */
+  interstateTripStops: (id: string) =>
+    request<Array<{
+      id: string; sequence: number; city: string; address: string;
+      latitude: number; longitude: number; kmFromOrigin: number;
+    }>>('GET', `/drivers/interstate-trips/${id}/stops`),
   editInterstateTrip: (id: string, body: {
     departAt?: string; seatsTotal?: number; spareCapacityKg?: number;
     acceptsPassengers?: boolean; acceptsPackages?: boolean;

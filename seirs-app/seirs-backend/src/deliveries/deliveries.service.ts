@@ -4549,6 +4549,8 @@ export class DeliveriesService {
       receiverFirstName?: string; receiverLastName?: string; receiverPhone?: string;
       scheduledFor?: string | null;
       seats?: number; luggage?: string;
+      /** Travel Buddy: ride a different leg of the same trip. */
+      boardStopId?: string; alightStopId?: string;
     },
   ) {
     const delivery = await this.repo.findOne({
@@ -4590,10 +4592,46 @@ export class DeliveriesService {
     const before = Number(delivery.price ?? 0);
 
     if (isSeat) {
-      /* ---- Travel Buddy seat: seats and luggage, nothing else ----
-         Board and alight are the trip's own stops. Letting a passenger
-         retype them here would put an address on the booking that the
-         trip does not actually pass. */
+      /* ---- Travel Buddy seat: seats, luggage, and which leg ----
+         The board and alight points are NOT free text. A passenger
+         cannot type an address, because the rider is not going there;
+         they pick from the stops the rider actually declared. That is
+         also why this reads them back out of the database rather than
+         trusting the request: the pair must belong to THIS trip and be
+         in travel order, or a crafted body buys a 943 km ride for the
+         price of a 12 km hop (founder 2026-08-29, "can you edit the
+         address too"). */
+      let segment: {
+        boardCity: string; alightCity: string; segmentKm: number;
+        boardAddress: string; boardLat: number; boardLng: number;
+        alightAddress: string; alightLat: number; alightLng: number;
+      } | null = null;
+
+      if (body.boardStopId && body.alightStopId) {
+        const rows: Array<any> = await this.repo.manager.query(
+          `SELECT "id","trip_id","sequence","city","address","latitude","longitude","km_from_origin"
+             FROM "trip_stops" WHERE "id" = ANY($1) AND "trip_id" = $2`,
+          [[body.boardStopId, body.alightStopId], delivery.tripId],
+        ).catch(() => []);
+        const board  = rows.find(r => r.id === body.boardStopId);
+        const alight = rows.find(r => r.id === body.alightStopId);
+        if (!board || !alight) {
+          throw new BadRequestException('Those stops are not on this trip.');
+        }
+        if (Number(alight.sequence) <= Number(board.sequence)) {
+          throw new BadRequestException('You cannot board after you get off. Pick the stops the other way round.');
+        }
+        const segKm = Math.round((Number(alight.km_from_origin) - Number(board.km_from_origin)) * 10) / 10;
+        if (!(segKm > 0)) {
+          throw new BadRequestException('That part of the route has no measured distance yet. Try again shortly.');
+        }
+        segment = {
+          boardCity: board.city, alightCity: alight.city, segmentKm: segKm,
+          boardAddress: board.address, boardLat: Number(board.latitude), boardLng: Number(board.longitude),
+          alightAddress: alight.address, alightLat: Number(alight.latitude), alightLng: Number(alight.longitude),
+        };
+      }
+
       const currentSeats = Number(delivery.seatCount ?? 0) || 1;
       const wantSeats = body.seats == null
         ? currentSeats
@@ -4646,7 +4684,8 @@ export class DeliveriesService {
       try {
         priced = await this.rateCardPricing.computeSeatPrice({
           vehicleType: delivery.vehicleType,
-          routeKm:     Number(delivery.distanceKm ?? 0),
+          // A changed leg is a changed distance, and the fare follows it.
+          routeKm:     segment ? segment.segmentKm : Number(delivery.distanceKm ?? 0),
           seats:       wantSeats,
           luggage:     wantLuggage,
         });
@@ -4662,13 +4701,44 @@ export class DeliveriesService {
         await (this.driversService as any).releaseSeats(delivery.tripId, -delta).catch(() => {});
       }
 
-      const leg = desc.split('\u00b7')[1]?.trim();
+      if (segment) {
+        delivery.distanceKm     = segment.segmentKm;
+        delivery.pickupAddress  = `${segment.boardAddress} (agree the exact spot in chat)`;
+        delivery.pickupLat      = segment.boardLat;
+        delivery.pickupLng      = segment.boardLng;
+        delivery.dropoffAddress = segment.alightAddress;
+        delivery.dropoffLat     = segment.alightLat;
+        delivery.dropoffLng     = segment.alightLng;
+      }
+
+      const leg = segment
+        ? `${segment.boardCity} \u2192 ${segment.alightCity}`
+        : desc.split('\u00b7')[1]?.trim();
       delivery.seatCount = wantSeats;
       delivery.packageDescription =
         `Seat x${wantSeats}` + (leg ? ` \u00b7 ${leg}` : '') +
         (wantLuggage === 'large' ? ' \u00b7 large luggage' : wantLuggage === 'small' ? ' \u00b7 small bag' : '');
-      delivery.price          = +Number(priced.price ?? priced.total ?? 0).toFixed(2);
-      delivery.driverEarnings = +Number(priced.driverEarnings ?? 0).toFixed(2);
+      /**
+       * computeSeatPrice returns { customer: { total }, driver: { total } },
+       * the same shape computePrice uses. This read priced.price and
+       * priced.total, neither of which exists, so both fell through to
+       * the zero default and an edited leg saved as a FREE RIDE. Caught
+       * on the device changing Jos->Lagos to Ibadan->Lagos and watching
+       * 30,431.10 become 0.00 (2026-08-29).
+       *
+       * The guard below is the belt: a seat that prices at nothing is a
+       * bug every time, never a discount, so it refuses rather than
+       * writing it. bookTripSeats reads price.driver.total correctly and
+       * was never affected.
+       */
+      const seatTotal  = Number(priced?.customer?.total ?? 0);
+      const seatDriver = Number(priced?.driver?.total ?? 0);
+      if (!(seatTotal > 0)) {
+        throw new BadRequestException('We could not price that change. Nothing was altered: try again in a moment.');
+      }
+      delivery.price          = +seatTotal.toFixed(2);
+      delivery.driverEarnings = +seatDriver.toFixed(2);
+      if (priced?.rateCardSnapshotId) delivery.rateCardSnapshotId = priced.rateCardSnapshotId;
     } else {
       /* ---- Package or Book-a-Ride: re-measure, then re-price ---- */
       if (body.pickupAddress  !== undefined) delivery.pickupAddress  = String(body.pickupAddress).trim();

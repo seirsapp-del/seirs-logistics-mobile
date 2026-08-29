@@ -24,7 +24,7 @@
  * a change that costs more says so in the confirmation rather than
  * appearing as a surprise on the payment screen.
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
   ActivityIndicator, KeyboardAvoidingView, Platform,
@@ -34,7 +34,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Save, Package, Car, Users, Info } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { deliveriesApi, configApi } from '@/services/api';
+import { deliveriesApi, configApi, driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
 
@@ -84,6 +84,24 @@ export default function EditBooking() {
    * the server is the one that decides either way.
    */
   const [luggageOk, setLuggageOk] = useState<string[]>(['none', 'small', 'large']);
+  /**
+   * The trip's declared stops, and which two this passenger is riding
+   * between.
+   *
+   * "Can you edit the address too" (founder 2026-08-29). On a parcel or
+   * a ride, yes, and it always could. On a seat it cannot be a text box,
+   * because the rider is not going to an address the passenger types.
+   * What a passenger genuinely needs is a different LEG of the same
+   * trip, and the stops are already an ordered line with measured
+   * distances, so they are offered as a choice instead.
+   */
+  const [stops,  setStops]  = useState<any[]>([]);
+  const [board,  setBoard]  = useState<string | null>(null);
+  const [alight, setAlight] = useState<string | null>(null);
+
+  // What the booking was riding when this screen opened, so an
+  // untouched picker does not count as a change.
+  const initialLeg = useRef<{ board: string | null; alight: string | null }>({ board: null, alight: null });
 
   const isSeat = !!row?.tripId;
   const isRide = row?.kind === 'ride';
@@ -110,6 +128,20 @@ export default function EditBooking() {
             const fee = card?.luggageFees?.[d.vehicleType];
             setLuggageOk(fee == null ? ['none', 'small'] : ['none', 'small', 'large']);
           } catch { /* leave all three: the server still decides */ }
+          try {
+            const rows = await driversApi.interstateTripStops(String(d.tripId));
+            const ordered = (rows ?? []).slice().sort((a: any, b: any) => a.sequence - b.sequence);
+            setStops(ordered);
+            // Pre-select the leg they are on by matching the stored
+            // addresses back to stops. The pickup carries a trailing
+            // "(agree the exact spot in chat)", so compare on the start.
+            const pick = (addr: string) =>
+              ordered.find((st: any) => addr && String(addr).startsWith(String(st.address)))?.id ?? null;
+            const b = pick(d.pickupAddress);
+            const a = pick(d.dropoffAddress);
+            setBoard(b); setAlight(a);
+            initialLeg.current = { board: b, alight: a };
+          } catch { /* no stops: the leg simply cannot be changed */ }
         }
       } catch (e: any) {
         setError(e?.message ?? 'Could not open this booking.');
@@ -127,6 +159,19 @@ export default function EditBooking() {
     let patch: Record<string, any>;
     if (isSeat) {
       patch = { seats, luggage };
+      // Only when both ends are chosen AND they actually differ from
+      // where this booking already boards, so an untouched screen does
+      // not re-price a leg nobody changed.
+      if (board && alight && (board !== initialLeg.current.board || alight !== initialLeg.current.alight)) {
+        const bi = stops.findIndex(st => st.id === board);
+        const ai = stops.findIndex(st => st.id === alight);
+        if (bi >= 0 && ai >= 0 && ai <= bi) {
+          setError('You cannot board after you get off. Pick the stops the other way round.');
+          return;
+        }
+        patch.boardStopId  = board;
+        patch.alightStopId = alight;
+      }
     } else if (isRide) {
       if (!pickup?.address || !dropoff?.address) {
         setError('Both the pickup and the destination are needed.');
@@ -175,7 +220,7 @@ export default function EditBooking() {
     } finally {
       setSaving(false);
     }
-  }, [isSeat, isRide, seats, luggage, pickup, dropoff, weightKg, description, declared, rcvFirst, rcvLast, rcvPhone, id, router]);
+  }, [isSeat, isRide, seats, luggage, board, alight, stops, pickup, dropoff, weightKg, description, declared, rcvFirst, rcvLast, rcvPhone, id, router]);
 
   /* ---------------------------------------------------------------- */
 
@@ -269,12 +314,74 @@ export default function EditBooking() {
                   ))}
                 </View>
               ))}
-              <View style={styles.noteRow}>
-                <Info size={14} color={theme.textThird} />
-                <Text style={[styles.note, { color: theme.textThird }]}>
-                  Where you board and get off belong to the rider's trip, so they are not changed here. Cancel and search again to ride a different leg.
-                </Text>
-              </View>
+              {stops.length > 1 ? (
+                <>
+                  {field('Where you board', (
+                    <View style={styles.stopList}>
+                      {stops.slice(0, -1).map(st => (
+                        <Pressable
+                          key={`b-${st.id}`}
+                          onPress={() => setBoard(st.id)}
+                          style={[
+                            styles.stopRow,
+                            { borderColor: theme.border, backgroundColor: theme.surfaceSecond },
+                            board === st.id && { borderColor: theme.primary, backgroundColor: theme.primary + '18' },
+                          ]}
+                        >
+                          <Text style={[styles.stopCity, { color: board === st.id ? theme.primary : theme.text }]}>
+                            {st.city}
+                          </Text>
+                          <Text style={[styles.stopAddr, { color: theme.textThird }]} numberOfLines={1}>
+                            {st.address}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ))}
+                  {field('Where you get off', (
+                    <View style={styles.stopList}>
+                      {stops.slice(1).map(st => {
+                        // A stop at or before the boarding point cannot be
+                        // a destination, so it is not offered as one.
+                        const bi = stops.findIndex(x => x.id === board);
+                        const si = stops.findIndex(x => x.id === st.id);
+                        if (bi >= 0 && si <= bi) return null;
+                        return (
+                          <Pressable
+                            key={`a-${st.id}`}
+                            onPress={() => setAlight(st.id)}
+                            style={[
+                              styles.stopRow,
+                              { borderColor: theme.border, backgroundColor: theme.surfaceSecond },
+                              alight === st.id && { borderColor: theme.primary, backgroundColor: theme.primary + '18' },
+                            ]}
+                          >
+                            <Text style={[styles.stopCity, { color: alight === st.id ? theme.primary : theme.text }]}>
+                              {st.city}
+                            </Text>
+                            <Text style={[styles.stopAddr, { color: theme.textThird }]} numberOfLines={1}>
+                              {st.address}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ))}
+                  <View style={styles.noteRow}>
+                    <Info size={14} color={theme.textThird} />
+                    <Text style={[styles.note, { color: theme.textThird }]}>
+                      These are the rider's own stops, so the fare changes with the leg you pick. Agree the exact spot with them in chat.
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.noteRow}>
+                  <Info size={14} color={theme.textThird} />
+                  <Text style={[styles.note, { color: theme.textThird }]}>
+                    This trip runs straight through with no stops in between, so there is no other leg to ride. Cancel and search again to travel a different route.
+                  </Text>
+                </View>
+              )}
             </>
           ) : (
             <>
@@ -357,6 +464,10 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
   chipNote: { fontSize: FontSize.xs, marginTop: 2 },
+  stopList: { gap: 6 },
+  stopRow:  { borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  stopCity: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+  stopAddr: { fontSize: FontSize.xs, marginTop: 1 },
   noteRow:  { flexDirection: 'row', gap: 6, alignItems: 'flex-start' },
   note:     { flex: 1, fontSize: FontSize.xs, lineHeight: 17 },
   error:    { fontSize: FontSize.sm },

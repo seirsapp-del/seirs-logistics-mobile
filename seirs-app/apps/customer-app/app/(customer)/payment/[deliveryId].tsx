@@ -162,8 +162,10 @@ export default function PaymentScreen() {
           <Text style={[styles.title, { color: theme.text }]}>Payment</Text>
         </View>
 
-        {/* Amount card: one number, whole naira, same figure as the trip
-            card. Kobo belongs on the receipt, not here. */}
+        {/* Amount card: one number, the same figure as the trip card.
+            Shown to the kobo, like every other money line in the apps:
+            the old whole-naira rule was reversed so the arithmetic
+            reconciles wherever a customer checks it. */}
         <View style={[styles.amountCard, { backgroundColor: theme.primary }]}>
           <Text style={styles.amountLabel}>Amount to pay</Text>
           <Text style={styles.amount}>{naira(displayPrice)}</Text>
@@ -173,7 +175,31 @@ export default function PaymentScreen() {
         {/* What this pays for: same card language as the Review step. */}
         {delivery && (
           <View style={[styles.sumCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-            <Text style={[styles.sumTitle, { color: theme.text }]}>Order Summary</Text>
+            {/*
+              Edit lives on the summary, not just the screen before it.
+
+              Founder 2026-08-29: "after reaching the payment screen the
+              user should be able to go back and edit their whole
+              booking". Back only returned to wherever they came from,
+              which for a Travel Buddy booking is the search results, so
+              the details they were reading right here were the one thing
+              they could not touch.
+
+              On the summary card on purpose: this is the list of what
+              they are about to pay for, so it is where a wrong line gets
+              noticed.
+            */}
+            <View style={styles.sumHead}>
+              <Text style={[styles.sumTitle, { color: theme.text, marginBottom: 0 }]}>Order Summary</Text>
+              {!alreadyPaid && (
+                <Pressable
+                  onPress={() => router.push({ pathname: '/(customer)/edit-booking/[id]', params: { id: String(deliveryId) } } as any)}
+                  hitSlop={8}
+                >
+                  <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: '700' }}>Edit</Text>
+                </Pressable>
+              )}
+            </View>
             {summaryRows.map(([lbl, val]) => (
               <View key={lbl} style={styles.sumRow}>
                 <Text style={[styles.sumLabel, { color: theme.textThird }]}>{lbl}</Text>
@@ -295,6 +321,7 @@ const styles = StyleSheet.create({
   amount:       { color: '#fff', fontSize: FontSize['4xl'], fontWeight: FontWeight.bold, marginBottom: Spacing.xs },
   amountNote:   { color: 'rgba(255,255,255,0.7)', fontSize: FontSize.xs, textAlign: 'center' },
   // Order Summary: same values as the Review step's summary card.
+  sumHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   sumCard:      { marginHorizontal: Spacing.xl, borderRadius: Radius.md, borderWidth: 1, padding: Spacing.md, marginBottom: Spacing.md },
   sumTitle:     { fontSize: 17, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
   sumRow:       { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
