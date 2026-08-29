@@ -7,11 +7,11 @@
  * seat ledger refuses to oversell, and payment + escrow + tracking are
  * the same rails as every other booking.
  */
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator, Image, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
@@ -67,6 +67,41 @@ export default function TravelBuddyScreen() {
   const [searched, setSearched] = useState(false);
   const [trips,    setTrips]    = useState<any[]>([]);
   const [booking,  setBooking]  = useState<string | null>(null);
+
+  /**
+   * Re-read the seat counts every time this screen comes back.
+   *
+   * The list was fetched once and never again. Booking pushes straight
+   * to payment, so a passenger who backs out, or who simply returns,
+   * came back to a card still reading "1 seat left" with a live "Book a
+   * seat" button on a trip that was now full: seat picker, luggage
+   * picker, then a refusal from the server three taps later. Worse on a
+   * one-seat okada, where the passenger holding the unpaid booking is
+   * usually the same person looking at the stale button (2026-08-29).
+   *
+   * The server was never at risk, its claim is a guarded increment and
+   * refuses cleanly. This is about not offering a seat that is gone.
+   *
+   * Silent: no spinner, no empty state, no dialog on failure. A failed
+   * refresh leaves the last known list rather than blanking the screen
+   * on someone who has not asked for anything.
+   */
+  const refresh = useCallback(async () => {
+    if (!from.trim() || !to.trim()) return;
+    try {
+      const rows = await deliveriesApi.travelBuddyTrips(from.trim(), to.trim());
+      setTrips(rows ?? []);
+    } catch { /* keep what is on screen */ }
+  }, [from, to]);
+
+  const firstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      // The first focus is the mount, and nothing has been searched yet.
+      if (firstFocus.current) { firstFocus.current = false; return; }
+      refresh();
+    }, [refresh]),
+  );
 
   const search = async () => {
     /**
