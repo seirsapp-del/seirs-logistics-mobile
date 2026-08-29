@@ -938,6 +938,48 @@ export class DeliveriesService {
     if (!(routeKm > 0)) {
       throw new BadRequestException('That trip has no measured route yet. Try again shortly.');
     }
+
+    /**
+     * The vehicle's distance ceiling, enforced where the money moves.
+     *
+     * vehicleRates[type].maxRouteKm has been editable in the admin rate
+     * card the whole time, and the customer and business package flows
+     * both refuse a run that exceeds it. Travel Buddy never checked it,
+     * so an okada could sell a passenger seat for Jos to Lagos: 943.6 km
+     * on the back of a motorcycle, roughly fifteen hours (2026-08-29).
+     *
+     * The seat cap was doing its job, motorcycle: 1, agreed by client
+     * and server. Nothing capped the DISTANCE that one seat could cover.
+     *
+     * Checked here rather than only in the driver app, because this is
+     * the point where a passenger is charged and it is the only side the
+     * founder controls. Silent while the value is unset, which is how it
+     * stands today: setting it is the founder's decision, and this makes
+     * that decision take effect.
+     */
+    try {
+      const card: any = await this.rateCardPricing.getActiveRateCard();
+      const maxKm = Number(card?.vehicleRates?.[trip.driver.vehicleType]?.maxRouteKm ?? 0);
+      if (maxKm > 0 && routeKm > maxKm) {
+        /* Nigerian vocabulary, matching the apps. Kept local rather than
+           imported from @seirs/shared: nothing else in the backend
+           resolves that package, and a message must not depend on a
+           module that may not load. */
+        const LABEL: Record<string, string> = {
+          bicycle: 'bicycle', motorcycle: 'okada', tricycle: 'keke',
+          car: 'car', van: 'danfo', truck_small: 'small truck', truck_large: 'large truck',
+        };
+        const label = LABEL[trip.driver.vehicleType] ?? trip.driver.vehicleType;
+        throw new BadRequestException(
+          `A ${label} does not carry passengers further than ${maxKm} km. This ride is ${Math.round(routeKm)} km, so it cannot be booked.`,
+        );
+      }
+    } catch (e: any) {
+      // A BadRequest here is the rule firing and must reach the caller.
+      // Anything else means the card could not be read, and a booking
+      // must not fail because of that.
+      if (e?.status === 400 || e?.name === 'BadRequestException') throw e;
+    }
     const price = await this.rateCardPricing.computeSeatPrice({
       vehicleType: trip.driver.vehicleType,
       routeKm,

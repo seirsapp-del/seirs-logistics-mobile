@@ -65,6 +65,19 @@ export class RateCard {
     kmPerLitre:          number;   // efficiency - used to compute fuel ₦/km
     fuelType:            'petrol' | 'diesel' | 'none';
     maxPayloadKg:        number;
+    /** Most packages of this class in one run. Read by the pickers. */
+    maxPackages?:        number;
+    /**
+     * Longest route this vehicle may be booked for, in km. 0 or absent
+     * means no ceiling.
+     *
+     * Neither of these two was declared here even though both are
+     * stored, edited in the admin rate-card table and read by the apps
+     * (2026-08-29). Undeclared fields on a jsonb column still persist,
+     * which is exactly why the gap survived: nothing broke, the value
+     * simply never arrived anywhere it mattered.
+     */
+    maxRouteKm?:         number;
   }>;
 
   /** Multi-stop bonuses + dwell-time charging. */

@@ -42,6 +42,20 @@ function publicVehicleRate(v: AnyRec): AnyRec {
     // physically take or it will offer an okada for a house move.
     maxPayloadKg:        v.maxPayloadKg,
     maxPackages:         v.maxPackages,
+    /**
+     * The distance ceiling, for the same reason as payload (2026-08-29).
+     *
+     * The admin editor has offered a maxRouteKm box per vehicle the
+     * whole time, and both the customer and business apps read
+     * vehicleRates[type].maxRouteKm to refuse an over-long run. This
+     * function stripped it, so the value reached the database and never
+     * reached an app: a founder could set "okada, 30km", publish, and
+     * watch an okada quote a 944 km trip anyway.
+     *
+     * It is a capability, not a cost. Telling a customer that an okada
+     * does not do cross-country gives away nothing about margin.
+     */
+    maxRouteKm:          v.maxRouteKm,
     // kmPerLitre and fuelType stay: fuel is a pass-through the customer
     // is charged for and is entitled to see itemised on the quote.
     kmPerLitre:          v.kmPerLitre,
