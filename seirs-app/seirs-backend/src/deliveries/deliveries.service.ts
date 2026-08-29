@@ -4494,12 +4494,24 @@ export class DeliveriesService {
    * chat system message, the event log and partner webhooks all hang off
    * the transition.
    */
-  /** Release Travel Buddy seats when a trip booking dies. */
+  /**
+   * Release Travel Buddy seats when a trip booking dies.
+   *
+   * Reads the seatCount column, falling back to parsing "Seat x2" out of
+   * packageDescription only for rows booked before that column existed.
+   * The regex was the sole source here while the expiry sweep already
+   * used the column, so the two paths that give a seat back disagreed
+   * about where the number lives (2026-08-29). A description that gets
+   * reworded would have silently released one seat instead of three.
+   */
   private async releaseTripSeatsFor(delivery: any) {
     const tripId = delivery?.tripId;
     if (!tripId || !this.driversService) return;
-    const m = /Seat x(\d+)/.exec(String(delivery.packageDescription ?? ''));
-    const seats = Math.max(1, Number(m?.[1] ?? 1));
+    let seats = Number(delivery.seatCount ?? 0);
+    if (!(seats > 0)) {
+      const m = /Seat x(\d+)/.exec(String(delivery.packageDescription ?? ''));
+      seats = Math.max(1, Number(m?.[1] ?? 1));
+    }
     await (this.driversService as any).releaseSeats(tripId, seats).catch(() => {});
   }
 
