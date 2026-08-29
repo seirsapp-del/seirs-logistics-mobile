@@ -807,6 +807,15 @@ export const driversApi = {
     }>;
   }) => request<any>('POST', '/drivers/interstate-trips', body),
   myInterstateTrips: () => request<any[]>('GET', '/drivers/interstate-trips/me'),
+  /**
+   * Change a declared trip. What the server allows narrows once a seat
+   * is booked: more seats and more capacity yes, a new departure time
+   * no, because a passenger arranged their day around the old one.
+   */
+  editInterstateTrip: (id: string, body: {
+    departAt?: string; seatsTotal?: number; spareCapacityKg?: number;
+    acceptsPassengers?: boolean; acceptsPackages?: boolean;
+  }) => request<any>('PATCH', `/drivers/interstate-trips/${id}`, body),
   cancelInterstateTrip: (id: string) =>
     request<any>('PATCH', `/drivers/interstate-trips/${id}/cancel`),
 

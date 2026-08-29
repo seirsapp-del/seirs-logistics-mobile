@@ -238,6 +238,20 @@ export class DriversController {
     return this.driversService.tripStops(id);
   }
 
+  /**
+   * PATCH /api/v1/drivers/interstate-trips/:id
+   * Change a declared trip. What is allowed narrows once a seat is
+   * booked: see editInterstateTrip for the rules and their reasons.
+   */
+  @Patch('interstate-trips/:id')
+  editInterstateTrip(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
+    return this.driversService.editInterstateTrip(user.id, id, body ?? {});
+  }
+
   @Patch('interstate-trips/:id/cancel')
   cancelInterstateTrip(@CurrentUser() user: User, @Param('id') id: string) {
     return this.driversService.cancelInterstateTrip(user.id, id);

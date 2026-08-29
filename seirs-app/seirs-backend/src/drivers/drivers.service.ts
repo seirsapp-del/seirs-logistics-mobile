@@ -927,6 +927,113 @@ export class DriversService {
    * cancels and every holder is told immediately and by name, with the
    * reason, so they can go and book another trip.
    */
+  /**
+   * Change a declared trip that nobody has committed to yet.
+   *
+   * The rider could create a trip and cancel it, and nothing in
+   * between. A wrong departure time or a seat count typed one too low
+   * meant cancelling and re-declaring, which is the same complaint the
+   * customer side had about unpaid bookings (founder 2026-08-29).
+   *
+   * What may change depends on whether anyone has booked:
+   *
+   *   nobody booked   departure time, seats, spare capacity, and
+   *                   whether the trip takes passengers or packages.
+   *   someone booked  only changes that cannot strand them: more seats,
+   *                   more spare capacity. The departure time is frozen
+   *                   because a passenger arranged their day around it,
+   *                   and passengers cannot be switched off underneath
+   *                   a booking that already exists.
+   *
+   * The route itself is never edited here. Cities and stops carry
+   * measured distances that every segment fare is computed from, so a
+   * different route is a different trip: cancel and declare it.
+   */
+  async editInterstateTrip(
+    userId: string,
+    tripId: string,
+    body: {
+      departAt?: string;
+      seatsTotal?: number;
+      spareCapacityKg?: number;
+      acceptsPassengers?: boolean;
+      acceptsPackages?: boolean;
+    },
+  ) {
+    const trip = await this.tripsRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.driver', 'd')
+      .leftJoinAndSelect('d.user', 'u')
+      .where('t.id = :tripId', { tripId })
+      .getOne();
+    if (!trip) throw new NotFoundException('Trip not found.');
+    if (trip.driver.user.id !== userId) {
+      throw new ForbiddenException('Not your trip.');
+    }
+    if (trip.status !== DriverTripStatus.ACTIVE) {
+      throw new BadRequestException('This trip is no longer active, so it cannot be changed.');
+    }
+    if (new Date(trip.departAt) < new Date()) {
+      throw new BadRequestException('This trip has already departed.');
+    }
+
+    const booked = Number(trip.seatsBooked ?? 0);
+    const hasPassengers = booked > 0;
+
+    if (body.departAt !== undefined) {
+      const when = new Date(body.departAt);
+      if (Number.isNaN(when.getTime())) {
+        throw new BadRequestException('That departure time is not a real date.');
+      }
+      if (when < new Date()) {
+        throw new BadRequestException('A trip cannot depart in the past.');
+      }
+      if (hasPassengers) {
+        throw new BadRequestException(
+          `${booked} seat${booked === 1 ? ' is' : 's are'} already booked on this trip, so the departure time is fixed: ` +
+          'your passengers arranged their day around it. Cancel the trip if you can no longer make it.',
+        );
+      }
+      trip.departAt = when;
+    }
+
+    if (body.seatsTotal !== undefined) {
+      const seats = Math.max(0, Math.round(Number(body.seatsTotal) || 0));
+      if (seats < booked) {
+        throw new BadRequestException(
+          `You cannot drop below ${booked} seat${booked === 1 ? '' : 's'}: that many are already booked.`,
+        );
+      }
+      trip.seatsTotal = seats;
+    }
+
+    if (body.spareCapacityKg !== undefined) {
+      const kg = Number(body.spareCapacityKg);
+      if (!(kg >= 0)) throw new BadRequestException('Spare capacity cannot be negative.');
+      trip.spareCapacityKg = kg;
+    }
+
+    if (body.acceptsPassengers !== undefined) {
+      if (!body.acceptsPassengers && hasPassengers) {
+        throw new BadRequestException(
+          'Someone has already booked a seat, so this trip cannot stop taking passengers. Cancel it instead.',
+        );
+      }
+      trip.acceptsPassengers = !!body.acceptsPassengers;
+    }
+
+    if (body.acceptsPackages !== undefined) {
+      trip.acceptsPackages = !!body.acceptsPackages;
+    }
+
+    const saved = await this.tripsRepo.save(trip);
+    this.logger.log(
+      `TRIP_EDIT tripId=${tripId} driverUser=${userId} seatsTotal=${saved.seatsTotal} ` +
+      `seatsBooked=${booked} spareKg=${saved.spareCapacityKg} departAt=${new Date(saved.departAt).toISOString()}`,
+    );
+    return saved;
+  }
+
   async cancelInterstateTrip(userId: string, tripId: string) {
     const trip = await this.tripsRepo
       .createQueryBuilder('t')

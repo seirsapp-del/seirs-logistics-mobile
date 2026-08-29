@@ -942,9 +942,21 @@ export default function InterstateScreen() {
                         </Text>
                       )}
                     </View>
-                    <Pressable onPress={() => cancelTrip(tr)} hitSlop={8}>
-                      <Text style={{ color: '#DC2626', fontSize: FontSize.sm, fontWeight: '700' }}>Cancel</Text>
-                    </Pressable>
+                    {/* Edit above Cancel: a wrong departure or a seat
+                        count one too low used to mean cancelling the
+                        whole route and declaring it again, stops and
+                        all (founder 2026-08-29). */}
+                    <View style={{ alignItems: 'flex-end', gap: 8 }}>
+                      <Pressable
+                        onPress={() => router.push(`/(driver)/edit-trip/${tr.id}` as any)}
+                        hitSlop={8}
+                      >
+                        <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: '700' }}>Edit</Text>
+                      </Pressable>
+                      <Pressable onPress={() => cancelTrip(tr)} hitSlop={8}>
+                        <Text style={{ color: '#DC2626', fontSize: FontSize.sm, fontWeight: '700' }}>Cancel</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 );
               })}
