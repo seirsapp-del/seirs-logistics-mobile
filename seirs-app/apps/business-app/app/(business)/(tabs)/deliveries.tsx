@@ -277,6 +277,19 @@ export default function DeliveriesScreen() {
               </Text>
             </Pressable>
           )}
+          {/* Edit sits between Pay and Cancel: the middle answer to "this
+              is wrong". Until now the only way to correct a wrong
+              address or receiver was to cancel and rebook the whole
+              order (founder 2026-08-29). */}
+          {isUnpaid && (
+            <Pressable
+              onPress={() => router.push(`/(business)/edit-delivery/${item.id}` as any)}
+              hitSlop={8}
+              style={[styles.payLink, { borderColor: colors.border }]}
+            >
+              <Text style={[styles.payLinkText, { color: colors.text }]}>Edit</Text>
+            </Pressable>
+          )}
           {isCancellable && (
             <Pressable
               onPress={() => handleCancel(item)}

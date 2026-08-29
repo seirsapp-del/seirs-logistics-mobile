@@ -1251,29 +1251,83 @@ export class BusinessService {
       );
     }
 
-    const updates: Record<string, any> = {};
-    if (!paid) {
-      if (patch.dropoffAddress !== undefined) updates.dropoffAddress = patch.dropoffAddress.trim();
-      if (patch.dropoffLat !== undefined)     updates.dropoffLat = patch.dropoffLat;
-      if (patch.dropoffLng !== undefined)     updates.dropoffLng = patch.dropoffLng;
-      if (patch.recipientName !== undefined)  updates.recipientName = patch.recipientName.trim();
-      if (patch.recipientPhone !== undefined) updates.recipientPhone = patch.recipientPhone.trim();
-    }
-    // Instructions stay open until pickup: they change nothing that was
-    // priced, and the driver reads them on arrival.
-    if (patch.deliveryInstructions !== undefined) {
-      updates.deliveryInstructions = patch.deliveryInstructions.trim();
+    /**
+     * Two bugs lived in this block until 2026-08-29, both found while
+     * giving the customer app the same ability.
+     *
+     * 1. IT NEVER RE-PRICED. An unpaid order could have its dropoff
+     *    moved anywhere and the raw column write left distanceKm and
+     *    price exactly as booked. Book Ikeja to Yaba for twelve
+     *    kilometres, edit the destination to Abuja, pay the twelve
+     *    kilometre fare, and a rider is dispatched to drive seven
+     *    hundred kilometres for it. The fare has to follow the journey.
+     *
+     * 2. IT WROTE COLUMNS THAT DO NOT EXIST. recipientName and
+     *    recipientPhone belong to DeliveryStop, not Delivery, whose own
+     *    fields are receiverFirstName, receiverLastName and
+     *    receiverPhone. TypeORM rejects an unknown property, so every
+     *    receiver edit threw. Nothing caught it because no screen has
+     *    ever called this endpoint: businessApi.editDelivery has been
+     *    wiring with nothing on the end of it.
+     *
+     * Anything that changes what was priced now goes through
+     * DeliveriesService.editUnpaidBooking, the single path that
+     * re-measures the route and re-prices through the active rate card.
+     * Instructions stay here: they change nothing that was priced and
+     * remain open until pickup, which is the whole point of the staged
+     * policy above.
+     */
+    const updated: string[] = [];
+    let priceBeforeNgn: number | null = null;
+    let priceAfterNgn:  number | null = null;
+
+    if (!paid && wantsJourneyChange) {
+      const mapped: Record<string, any> = {};
+      if (patch.dropoffAddress !== undefined) mapped.dropoffAddress = patch.dropoffAddress.trim();
+      if (patch.dropoffLat     !== undefined) mapped.dropoffLat     = patch.dropoffLat;
+      if (patch.dropoffLng     !== undefined) mapped.dropoffLng     = patch.dropoffLng;
+      if (patch.recipientPhone !== undefined) mapped.receiverPhone  = patch.recipientPhone.trim();
+      if (patch.recipientName  !== undefined) {
+        // One field on the way in, two columns on the way out. Everything
+        // after the first space is the surname; a single word leaves the
+        // surname empty rather than duplicating the first name.
+        const whole = patch.recipientName.trim().replace(/\s+/g, ' ');
+        const cut   = whole.indexOf(' ');
+        mapped.receiverFirstName = cut === -1 ? whole : whole.slice(0, cut);
+        mapped.receiverLastName  = cut === -1 ? ''    : whole.slice(cut + 1);
+      }
+
+      const res = await this.deliveriesService.editUnpaidBooking(
+        deliveryId,
+        delivery.customer!.id,
+        mapped,
+      );
+      priceBeforeNgn = res.priceBeforeNgn;
+      priceAfterNgn  = res.priceAfterNgn;
+      updated.push(...Object.keys(patch).filter(k => k !== 'deliveryInstructions'));
     }
 
-    if (Object.keys(updates).length === 0) {
+    // Instructions are not priced, so they are written directly and stay
+    // editable after payment, right up to pickup.
+    if (patch.deliveryInstructions !== undefined) {
+      await this.deliveriesRepo.update(deliveryId, {
+        deliveryInstructions: patch.deliveryInstructions.trim(),
+      } as any);
+      updated.push('deliveryInstructions');
+    }
+
+    if (updated.length === 0) {
       throw new BadRequestException('Nothing to change.');
     }
 
-    await this.deliveriesRepo.update(deliveryId, updates);
-
     return {
-      updated: Object.keys(updates),
+      updated,
       editableNow: paid ? ['deliveryInstructions'] : ['everything'],
+      priceBeforeNgn,
+      priceAfterNgn,
+      priceChanged:
+        priceBeforeNgn != null && priceAfterNgn != null &&
+        Math.abs(priceAfterNgn - priceBeforeNgn) >= 0.01,
     };
   }
 
