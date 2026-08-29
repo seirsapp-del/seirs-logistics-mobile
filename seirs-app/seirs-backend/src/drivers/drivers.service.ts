@@ -533,23 +533,122 @@ export class DriversService {
    * driver FULLY identified (drivers never get anonymity: that is the
    * deal of the job).
    */
+  /**
+   * Find trips somebody can ride, INCLUDING part of the way.
+   *
+   * This matched only t.fromCity and t.toCity, so a trip was findable
+   * only by its two endpoints. Reproduced on the device against a real
+   * declared trip, Jos to Ibadan to Lagos:
+   *
+   *   Jos to Lagos     found it
+   *   Ibadan to Lagos  "No trips on this route yet"
+   *   Jos to Ibadan    "No trips on this route yet"
+   *
+   * Which defeats the entire premise printed at the top of the screen:
+   * "Drivers already making an intercity trip sell their real spare
+   * seats." Almost nobody travelling Jos to Lagos wants the whole 944
+   * km; the passengers are the ones going part of the way, and they were
+   * the only ones who could not find the trip.
+   *
+   * The data was always there. trip_stops holds an ordered route with a
+   * city per stop, and its own entity comment says "The city is what the
+   * browse list shows and what matching" depends on. The seat pricing is
+   * per segment too: travel_buddy_min_segment_fare_ngn is a floor under
+   * ONE segment. Segments were designed throughout and the search was
+   * the one place that ignored them.
+   *
+   * A trip now matches when any stop matching `from` comes BEFORE any
+   * stop matching `to` in its own sequence, which is what riding part of
+   * the way means. Direction is preserved: searching Lagos to Jos does
+   * not match a trip driving Jos to Lagos.
+   *
+   * The endpoint test stays as an OR, so a trip declared without stop
+   * rows still appears.
+   */
   async browseTrips(fromCity: string, toCity: string) {
     const from = `%${(fromCity ?? '').trim()}%`;
     const to   = `%${(toCity ?? '').trim()}%`;
     const trips = await this.tripsRepo
       .createQueryBuilder('t')
-      .leftJoinAndSelect('t.driver', 'd')
-      .leftJoinAndSelect('d.user', 'u')
+      .leftJoin('t.driver', 'd')
+      // Exactly the columns vehicleIdentityForPassenger reads, and no
+      // more: make, model and colour live inside vehicleDetails, they
+      // are not columns of their own.
+      .addSelect([
+        'd.id', 'd.rating', 'd.vehicleType', 'd.vehiclePlate',
+        'd.vehiclePhotoUrl', 'd.vehicleDetails',
+      ])
+      .leftJoin('d.user', 'u')
+      .addSelect(['u.id', 'u.name'])
       .where('t.status = :status', { status: DriverTripStatus.ACTIVE })
       .andWhere('t.departAt > NOW()')
-      .andWhere('t.fromCity ILIKE :from', { from })
-      .andWhere('t.toCity ILIKE :to', { to })
+      .andWhere(
+        `(
+           (t."fromCity" ILIKE :from AND t."toCity" ILIKE :to)
+           OR EXISTS (
+             SELECT 1
+               FROM "trip_stops" s1
+               JOIN "trip_stops" s2
+                 ON s2."trip_id" = s1."trip_id"
+                AND s2."sequence" > s1."sequence"
+              WHERE s1."trip_id" = t."id"
+                AND s1."city" ILIKE :from
+                AND s2."city" ILIKE :to
+           )
+         )`,
+        { from, to },
+      )
       .orderBy('t.departAt', 'ASC')
       .take(30)
       .getMany();
+
+    /**
+     * Which part of the route the search actually matched.
+     *
+     * Without this the card is headed "Jos to Lagos" with a Jos pickup
+     * address even when the passenger searched Ibadan to Lagos, so they
+     * would book believing they board in Jos. The matched segment is
+     * returned so the screen can say where this passenger gets on and
+     * off, and how far that is.
+     */
+    const segByTrip = new Map<string, {
+      boardCity: string; alightCity: string; segmentKm: number | null;
+    }>();
+    if (trips.length > 0) {
+      const rows: Array<any> = await this.tripStopsRepo.manager.query(
+        `SELECT DISTINCT ON (s1."trip_id")
+                s1."trip_id"        AS "tripId",
+                s1."city"           AS "boardCity",
+                s2."city"           AS "alightCity",
+                s1."km_from_origin" AS "boardKm",
+                s2."km_from_origin" AS "alightKm"
+           FROM "trip_stops" s1
+           JOIN "trip_stops" s2
+             ON s2."trip_id" = s1."trip_id"
+            AND s2."sequence" > s1."sequence"
+          WHERE s1."trip_id" = ANY($1)
+            AND s1."city" ILIKE $2
+            AND s2."city" ILIKE $3
+          ORDER BY s1."trip_id", s1."sequence" ASC, s2."sequence" DESC`,
+        [trips.map(t => t.id), from, to],
+      ).catch(() => []);
+      for (const r of rows) {
+        const a = Number(r.boardKm), b = Number(r.alightKm);
+        segByTrip.set(r.tripId, {
+          boardCity:  r.boardCity,
+          alightCity: r.alightCity,
+          segmentKm:  Number.isFinite(a) && Number.isFinite(b) && b > a
+            ? Math.round((b - a) * 10) / 10
+            : null,
+        });
+      }
+    }
     return trips.map((t: any) => ({
       id: t.id,
       fromCity: t.fromCity, toCity: t.toCity, departAt: t.departAt,
+      /** Where THIS passenger boards and alights, when they matched a
+       *  segment rather than the whole trip. Null for an endpoint match. */
+      segment: segByTrip.get(t.id) ?? null,
       pickupMode: t.pickupMode, pickupAddress: t.pickupAddress,
       routeKm: t.routeKm != null ? Number(t.routeKm) : null,
       destLat: t.destLat != null ? Number(t.destLat) : null,

@@ -229,9 +229,32 @@ export default function TravelBuddyScreen() {
                 </View>
               )}
               <View style={{ flex: 1 }}>
+                {/*
+                  Head the card with the part of the route THIS passenger
+                  is riding (2026-08-29).
+
+                  The search now matches intermediate stops, so somebody
+                  searching Ibadan to Lagos can find a trip that runs Jos
+                  to Ibadan to Lagos. Showing that trip's endpoints would
+                  head their card "Jos → Lagos" with a Jos pickup
+                  address, and they would book believing they board in
+                  Jos, 791 km from where they actually get on.
+
+                  Their own segment leads. The full route stays underneath
+                  as context, because it is still useful to know the
+                  driver is coming all the way from Jos.
+                */}
                 <Text style={[styles.tripRoute, { color: theme.text }]}>
-                  {trip.fromCity} → {trip.toCity}
+                  {trip.segment
+                    ? `${trip.segment.boardCity} → ${trip.segment.alightCity}`
+                    : `${trip.fromCity} → ${trip.toCity}`}
                 </Text>
+                {trip.segment && (
+                  <Text style={[styles.tripMeta, { color: theme.textThird }]}>
+                    part of {trip.fromCity} → {trip.toCity}
+                    {trip.segment.segmentKm ? ` · ${trip.segment.segmentKm} km` : ''}
+                  </Text>
+                )}
                 <Text style={[styles.tripMeta, { color: theme.textSecond }]}>
                   {new Date(trip.departAt).toLocaleString('en-NG', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </Text>
@@ -245,10 +268,15 @@ export default function TravelBuddyScreen() {
                   {VEHICLE_LABEL[trip.driver?.vehicleType] ?? trip.driver?.vehicleType}
                   {trip.driver?.rating ? ` · ★ ${Number(trip.driver.rating).toFixed(1)}` : ''}
                 </Text>
+                {/* The fixed pickup point belongs to the trip's ORIGIN.
+                    Showing it to somebody boarding at a later stop would
+                    send them to the wrong city. */}
                 <Text style={[styles.tripMeta, { color: theme.textThird }]}>
-                  {trip.pickupMode === 'fixed' && trip.pickupAddress
-                    ? `Pickup: ${trip.pickupAddress}`
-                    : 'Pickup along the route (agree in chat)'}
+                  {trip.segment
+                    ? `Board at ${trip.segment.boardCity} (agree the exact spot in chat)`
+                    : trip.pickupMode === 'fixed' && trip.pickupAddress
+                      ? `Pickup: ${trip.pickupAddress}`
+                      : 'Pickup along the route (agree in chat)'}
                 </Text>
               </View>
             </View>
