@@ -163,6 +163,18 @@ export class Delivery {
   @Column({ type: 'uuid', nullable: true })
   tripId: string | null;
 
+  /**
+   * Seats held on that trip, for a Travel Buddy booking.
+   *
+   * The count lived only inside packageDescription as "Seat x1", so
+   * nothing could give the seats back without parsing a sentence. An
+   * abandoned unpaid booking therefore held its seat for ever: the
+   * five-minute sweep that releases unpaid holds reads seat_bookings
+   * rows, and this path never creates one (2026-08-29).
+   */
+  @Column({ type: 'int', nullable: true })
+  seatCount: number | null;
+
   /** When the seat booking was offered to the declared driver. */
   @Column({ type: 'timestamptz', nullable: true })
   tripOfferedAt: Date | null;
@@ -280,8 +292,10 @@ export class Delivery {
   redirectFeeNgn: number | null;
 
   @Column({ type: 'timestamptz', nullable: true })
-  redirectFeePaidAt: Date | null;
-
+  redirectFeePaidAt: Date | null;
+
+
+
   // Who owes the redirect fee, which decides whether collection is
   // locked. 'receiver' when the package went to a counter because nobody
   // was home: they settle it and the store stays masked until they do.
@@ -289,8 +303,10 @@ export class Delivery {
   // handling fee they were always meant to pay and never hides anything
   // from them.
   @Column({ type: 'varchar', length: 10, nullable: true })
-  redirectFeePayer: string | null;
-
+  redirectFeePayer: string | null;
+
+
+
   // What the rider is owed for a trip that could not complete, on top of
   // nothing else. Set when a rider reports a problem, so the money is
   // decided at the moment they did the right thing rather than argued
@@ -301,8 +317,10 @@ export class Delivery {
   // Set once a rider-reported dispute has been escalated for lack of a
   // support decision, so the sweep never escalates the same one twice.
   @Column({ type: 'timestamptz', nullable: true })
-  disputeEscalatedAt: Date | null;
-
+  disputeEscalatedAt: Date | null;
+
+
+
   // ── Return to sender (founder 2026-08-21) ───────────────────────────
   // Priced from wherever the package currently is back to the ORIGINAL
   // pickup. There is deliberately no "return address" column: the
@@ -330,8 +348,10 @@ export class Delivery {
   returnDecisionNote: string | null;
 
   @Column({ type: 'timestamptz', nullable: true })
-  returnPaidAt: Date | null;
-
+  returnPaidAt: Date | null;
+
+
+
   // ── Disposal (Terms 8.4 / 8.5) ──────────────────────────────────────
   // Recorded by the rider with a photo, never by a timer. The evidence is
   // the whole point: disposing of someone else's property is the single
@@ -349,8 +369,10 @@ export class Delivery {
   // checkbox used to gate the button and then vanish; a dispute needs
   // the timestamp, not a memory of a UI state (founder 2026-08-21).
   @Column({ type: 'timestamptz', nullable: true })
-  termsAcceptedAt: Date | null;
-
+  termsAcceptedAt: Date | null;
+
+
+
   // ── Mid-delivery address change (founder 2026-08-21) ────────────────
   // A sender who gave the wrong address can ask for it to be corrected
   // while the rider is still carrying the package. Support decides;

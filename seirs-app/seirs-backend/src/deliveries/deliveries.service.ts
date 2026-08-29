@@ -1044,9 +1044,10 @@ export class DeliveriesService {
         ...dto,
         kind: 'ride',
         tripId,
+        seatCount: seats,
         customer,
         trackingCode,
-        packageDescription: `Seat x${seats} · ${trip.fromCity} → ${trip.toCity}${body.luggage === 'large' ? ' · large luggage' : body.luggage === 'small' ? ' · small bag' : ''}`,
+        packageDescription: `Seat x${seats} · ${segment ? `${segment.boardCity} → ${segment.alightCity}` : `${trip.fromCity} → ${trip.toCity}`}${body.luggage === 'large' ? ' · large luggage' : body.luggage === 'small' ? ' · small bag' : ''}`,
         categoryCode: null,
         weightKg: null,
         distanceKm: routeKm,
@@ -4053,6 +4054,32 @@ export class DeliveriesService {
       // until later cycles) must never block the remaining refunds.
       try {
         await this.repo.update(d.id, { status: DeliveryStatus.CANCELLED });
+
+        /**
+         * Give the seat back (2026-08-29).
+         *
+         * A Travel Buddy booking reserves against driver_trips.seatsBooked
+         * the moment it is created, before any payment. Nothing ever
+         * released it: the five-minute sweep that expires unpaid holds
+         * reads seat_bookings rows, and this path creates none.
+         *
+         * So one abandoned unpaid booking took the last seat on a trip
+         * and kept it. Reproduced on the device: the trip went to "Trip
+         * is full" and stayed there, unbookable by anybody, for a
+         * booking that was never paid for.
+         *
+         * The Fee Catalogue says the opposite in plain words, that an
+         * unpaid hold is "how long the quoted fare lasts, not a
+         * reservation" and "the segment stays SELLABLE throughout". This
+         * makes the code agree with the policy it already published.
+         */
+        if (d.tripId && this.driversService) {
+          const seats = Number((d as any).seatCount ?? 0) || 1;
+          await (this.driversService as any).releaseSeats(d.tripId, seats)
+            .catch((err: any) =>
+              this.logger.error(`Seat release failed for ${d.trackingCode}: ${err?.message ?? err}`));
+        }
+
         if (this.trackingGateway) {
           try { this.trackingGateway.broadcastStatusChange(d.id, DeliveryStatus.CANCELLED); } catch { /* ws only */ }
         }

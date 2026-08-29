@@ -159,6 +159,13 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "delivery_stops"
           ADD COLUMN IF NOT EXISTS "legKm" numeric(8,2) NULL
       `);
+
+      // Seats held by a Travel Buddy booking, so an abandoned unpaid one
+      // can be released instead of holding the seat for ever.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "seatCount" integer NULL
+      `);
       // Paid-dispatch gate (2026-08-16): dispatch waits for money.
       await this.ds.query(`
         ALTER TABLE "deliveries"
@@ -264,7 +271,8 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "arrivalIssueAt" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "senderResponseBy" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "arrivalResolution" varchar(12) NULL,
-          ADD COLUMN IF NOT EXISTS "redirectFeeNgn" numeric(12,2) NULL,
+          ADD COLUMN IF NOT EXISTS "redirectFeeNgn" numeric(12,2) NULL,
+
           ADD COLUMN IF NOT EXISTS "redirectFeePaidAt" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "redirectFeePayer" varchar(10) NULL,
           ADD COLUMN IF NOT EXISTS "driverFailedTripNgn" numeric(12,2) NULL,
@@ -283,8 +291,10 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "termsAcceptedAt" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "kind" varchar(10) NOT NULL DEFAULT 'package',
           ADD COLUMN IF NOT EXISTS "tripId" uuid NULL,
-          ADD COLUMN IF NOT EXISTS "tripOfferedAt" timestamptz NULL
-      `);
+          ADD COLUMN IF NOT EXISTS "tripOfferedAt" timestamptz NULL
+
+      `);
+
       // Mid-delivery address change (2026-08-21): support-decided, paid
       // before it applies.
       await this.ds.query(`
