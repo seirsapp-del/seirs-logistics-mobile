@@ -108,7 +108,7 @@ export default async function ForDriversPage() {
     <>
       <PageHero
         heroImageUrl={hero?.coverImageUrl ?? null}
-        eyebrow="Earn on Your Terms"
+        eyebrow="Drive With SEIRS"
         title={
           <>
             Drive with SEIRS.

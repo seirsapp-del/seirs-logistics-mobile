@@ -308,7 +308,7 @@ export default async function HomePage() {
                     sell one either. Matches the OG description in layout.tsx
                     word for word, deliberately. */}
                 {hero?.excerpt ??
-                  'Send thousands of packages with one click. Real-time tracking, multi-stop runs, and a network of verified drivers and partner stores across Nigeria.'}
+                  'Send many packages in one booking. Real-time tracking, multi-stop runs, and a network of verified drivers and partner stores across Nigeria.'}
               </p>
             </div>
 

@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     siteName: "SEIRS Logistics",
     title: "SEIRS Logistics, Nigeria's Smartest Last-Mile Delivery Platform",
     description:
-      "Send thousands of packages with one click. Real-time tracking, multi-stop runs, and a network of verified drivers across Nigeria.",
+      "Send many packages in one booking. Real-time tracking, multi-stop runs, and a network of verified drivers across Nigeria.",
     // Resolved against metadataBase above. Brand card: the okada mark on the
     // navy gradient the hero uses, no invented statistics on it.
     images: [
