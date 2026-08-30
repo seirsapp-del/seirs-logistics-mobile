@@ -531,6 +531,24 @@ export const adminApi = {
     remove: (id: string)      => req<any>(`/admin/promotions/${id}`, { method: 'DELETE' }),
   },
 
+  /**
+   * Website contact form inbox.
+   *
+   * The endpoint has existed since the form shipped, but nothing in this
+   * dashboard ever called it and there was no page, so every message
+   * anyone sent through seirs.co/contact landed in the table and was
+   * invisible. The founder sent one on 2026-08-30 and could not find it;
+   * it was in the database the whole time. No email fans out either, so
+   * this page is currently the ONLY way to see them.
+   */
+  contactSubmissions: {
+    list:   (status?: string, page = 1) =>
+      req<{ items: any[]; total: number; page: number; take: number }>(
+        `/admin/contact-submissions?page=${page}${status ? `&status=${status}` : ''}`),
+    update: (id: string, body: { status?: string; internalNote?: string }) =>
+      req<any>(`/admin/contact-submissions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  },
+
   // Spec V8 §3.13. suggestions inbox.
   suggestions: {
     /* The server has always paged this at 30 and the client never sent a

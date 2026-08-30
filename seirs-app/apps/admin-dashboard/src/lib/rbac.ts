@@ -268,6 +268,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   // fall through the gate entirely.
   '/tickets':                 'tickets',
   '/suggestions':             'suggestions',
+  '/contact-submissions':     'support',
 
   '/website':                 'cms',
   '/promotions':              'promotions',
@@ -621,6 +622,11 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
       // of the same support_tickets data that Support Inbox serves. The
       // route still redirects there for old links.
       { href: '/support',     label: 'Support Inbox',    icon: 'Inbox',     badge: 'tickets' },
+      // Added 2026-08-30. The website contact form has been saving rows
+      // since it shipped and nothing in this dashboard ever read them, so
+      // every message sent through seirs.co was invisible. No email fans
+      // out either, which makes this page the only place they surface.
+      { href: '/contact-submissions', label: 'Website Messages', icon: 'Mail' },
       { href: '/suggestions', label: 'User Suggestions', icon: 'Lightbulb' },
     ],
   },
