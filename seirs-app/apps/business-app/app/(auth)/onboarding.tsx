@@ -17,7 +17,7 @@ const SLIDES = [
     key:     'bulk',
     icon:    'Package' as const,
     title:   'Ship in Bulk',
-    body:    'Create multi-stop deliveries, upload a CSV, and send hundreds of packages in minutes.',
+    body:    'Create multi-stop deliveries and send many packages in one booking, each with its own receiver and tracking code.',
     gradient: ['#0F2B4C', '#1a4070'] as [string, string],
   },
   {
@@ -42,8 +42,8 @@ const SLIDES = [
   {
     key:     'team',
     icon:    'Users' as const,
-    title:   'Team Access',
-    body:    'Add Managers and Dispatchers to your account. Everyone works together in one place.',
+    title:   'One Account, Many Branches',
+    body:    'Ikeja, Lekki, Apapa: each dispatches independently from the same account, on one itemised statement.',
     gradient: ['#0F2B4C', '#0a1f38'] as [string, string],
   },
 ];

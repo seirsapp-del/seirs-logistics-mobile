@@ -19,12 +19,31 @@ const { width: W, height: H } = Dimensions.get('window');
 
 // Driver-focused slides: different copy from customer onboarding but
 // the same animated cross-fade pattern (gold-standard from customer-app).
+/*
+ * Copy corrected on device, 2026-08-30. Four of the six slides claimed
+ * things the code does not do:
+ *
+ *   "insured" / "Insured trips" / "Every trip is covered"
+ *       SEIRS does not insure anything. The insurance partners in admin
+ *       are a DIRECTORY of external insurers a rider can buy from.
+ *   "No waiting" / "withdraw anytime"
+ *       Earnings land pending until availableAt, the minimum withdrawal
+ *       is 1,000, daily caps apply, and a new rider has 10% held for 30
+ *       days. Same false promise the website carried until last night.
+ *   "Every customer is identity-verified"
+ *       identityVerifiedAt is nullable and unverified users keep full
+ *       access. Verification is a trust upgrade, not a gate.
+ *   "Top drivers earn more. Period."
+ *       Nothing in earnings.service reads a rating.
+ *
+ * The design, the slide count and the animation are untouched.
+ */
 const SLIDES = [
   {
     id: 'brand',
     Icon: Truck,
     headline: 'Drive with SEIRS.\nEarn on your terms.',
-    sub: 'Join Nigeria\'s smartest delivery platform: verified, insured, fairly paid.',
+    sub: 'Join Nigeria\'s smartest delivery platform: verified riders, fair pay, real support.',
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -32,8 +51,8 @@ const SLIDES = [
   {
     id: 'earnings',
     Icon: Wallet,
-    headline: 'Daily payouts.\nNo waiting.',
-    sub: 'Earnings credited to your SEIRS wallet after every trip: withdraw anytime.',
+    headline: 'Daily payouts.\nEvery naira tracked.',
+    sub: 'Every trip credited with the platform cut shown plainly, and a daily payout run that sends it to your bank.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#58A6FF',
@@ -59,8 +78,8 @@ const SLIDES = [
   {
     id: 'safety',
     Icon: Shield,
-    headline: 'Verified senders.\nInsured trips.',
-    sub: 'Every customer is identity-verified. Every trip is covered: you\'re never alone.',
+    headline: 'Every job\non the record.',
+    sub: 'Scans, photos and one-time codes at every handoff, so a dispute is settled by the record instead of argument.',
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -68,8 +87,8 @@ const SLIDES = [
   {
     id: 'rewards',
     Icon: Award,
-    headline: 'Top drivers earn\nmore. Period.',
-    sub: 'Keep your rating high and your completed trips growing: your reputation travels with you on every job.',
+    headline: 'Your reputation\ntravels with you.',
+    sub: 'Ratings and completed trips build a record senders can see, and it follows you onto every job.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#79B8FF',
