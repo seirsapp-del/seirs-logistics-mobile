@@ -72,7 +72,9 @@ interface PublicDelivery {
   pickedUpAt:     string | null;
   deliveredAt:    string | null;
   createdAt:      string;
-  driver:         { name: string; vehicleType: string | null; rating: number | null } | null;
+  // rating arrives from Postgres as a decimal STRING ("4.87"), not a
+  // number. Typing it as number is what let .toFixed() ship.
+  driver:         { name: string; vehicleType: string | null; rating: number | string | null } | null;
   etaMinutes:     number | null;
   etaAsOf:        string | null;
   events:         DeliveryEventDTO[];
@@ -467,7 +469,7 @@ export function TrackingView() {
                 <div className="text-sm font-bold text-slate-900">{delivery.driver.name}</div>
                 <div className="mt-0.5 text-xs text-slate-500">
                   {delivery.driver.vehicleType ?? 'Vehicle'}
-                  {delivery.driver.rating != null && ` · ${delivery.driver.rating.toFixed(1)}★`}
+                  {delivery.driver.rating != null && ` · ${Number(delivery.driver.rating).toFixed(1)}★`}
                 </div>
               </div>
             </div>

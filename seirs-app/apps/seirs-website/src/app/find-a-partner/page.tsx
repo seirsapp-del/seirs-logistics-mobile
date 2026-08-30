@@ -256,9 +256,14 @@ export default function FindAPartnerPage() {
                     <div className="flex items-center gap-1.5">
                       <span className="inline-flex items-center gap-1 rounded-full bg-sky/10 px-2 py-0.5 font-semibold text-sky">
                         <Navigation size={10} />
-                        {s.distanceKm < 1
-                          ? `${Math.round(s.distanceKm * 1000)} m away`
-                          : `${s.distanceKm.toFixed(1)} km away`}
+                        {/* Coerced for the same reason the tracking page
+                            crashed on 2026-08-30: the API hands decimals
+                            back as strings, and .toFixed does not exist on
+                            a string. The type says number; the wire does
+                            not always agree. */}
+                        {Number(s.distanceKm) < 1
+                          ? `${Math.round(Number(s.distanceKm) * 1000)} m away`
+                          : `${Number(s.distanceKm).toFixed(1)} km away`}
                       </span>
                     </div>
                   )}
