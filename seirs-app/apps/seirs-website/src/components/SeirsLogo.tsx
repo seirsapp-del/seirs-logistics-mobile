@@ -72,14 +72,17 @@ function SeirsMark({
    * the same mark, which is the drift this file already suffers from with
    * its second navy.
    *
-   * Geometry is now identical to SeirsMarkBold in the apps: stroke 6.5,
-   * solid wheels r7.6 with r2.6 hubs, torso run to 15.94, head r4.8. The
+   * Geometry matches the cut assets: the A3 weight, stroke 5.5, solid
+   * wheels r7.0 with r2.4 hubs, torso 6.0, head r4.3. The founder compared
+   * A3 against A4 on a real phone on 2026-08-30 and took the lighter set;
+   * A4 was 6.5 / 7.0 / 7.6 / 2.6 / 4.8. Line coordinates are unchanged
+   * between the two weights, only the radii and stroke widths move. The
    * viewBox is cropped to the ink, which is why it is no longer 0 0 48 32
    * -- the stretched rider's head sits above y=0.
    */
-  const VB_X = 2.4, VB_Y = -6.06, VB_W = 43.2, VB_H = 37.66;
+  const VB_X = 3.0, VB_Y = -5.56, VB_W = 42.0, VB_H = 36.56;
   const height = size * (VB_H / VB_W);
-  const SW = 6.5;
+  const SW = 5.5;
 
   return (
     <svg
@@ -94,13 +97,13 @@ function SeirsMark({
         stroke={color} strokeWidth={SW} fill="none"
         strokeLinecap="round" strokeLinejoin="round"
       />
-      <circle cx={10} cy={24} r={7.6} fill={color} />
-      <circle cx={10} cy={24} r={2.6} fill={hubColor} />
-      <circle cx={38} cy={24} r={7.6} fill={color} />
-      <circle cx={38} cy={24} r={2.6} fill={hubColor} />
+      <circle cx={10} cy={24} r={7.0} fill={color} />
+      <circle cx={10} cy={24} r={2.4} fill={hubColor} />
+      <circle cx={38} cy={24} r={7.0} fill={color} />
+      <circle cx={38} cy={24} r={2.4} fill={hubColor} />
       <line x1={37} y1={12} x2={42} y2={9} stroke={color} strokeWidth={SW} strokeLinecap="round" />
-      <line x1={24} y1={16} x2={31.13} y2={1.74} stroke={color} strokeWidth={7} strokeLinecap="round" />
-      <circle cx={31.13} cy={-1.26} r={4.8} fill={color} />
+      <line x1={24} y1={16} x2={31.13} y2={1.74} stroke={color} strokeWidth={6} strokeLinecap="round" />
+      <circle cx={31.13} cy={-1.26} r={4.3} fill={color} />
       <line x1={29.35} y1={5.30} x2={37} y2={12} stroke={color} strokeWidth={SW} strokeLinecap="round" />
     </svg>
   );
