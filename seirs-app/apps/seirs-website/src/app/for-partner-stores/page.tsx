@@ -134,7 +134,16 @@ export default async function ForPartnerStoresPage() {
             body="Packages sit on your shelf with a clock running on each one. The capacity board shows how many you hold, how long each has been there, and which ones need to move: no guessing, no packages lost behind the fridge for three weeks."
             points={[
               'Set your own capacity so you are never over-filled',
-              'Pause new drop-offs with one tap on a busy day',
+              /* "Pause new drop-offs with one tap on a busy day" removed
+                 2026-08-30, and it was the dangerous kind of wrong. A partner
+                 cannot pause for a busy day: acceptingNew exists on the store
+                 row but is NOT in the allowed list for /partner/settings, so
+                 nothing can set it. The only pause reachable in the app is
+                 storeSetStatus('paused'), whose own dialog says it "removes
+                 you from the customer map and starts the offboarding
+                 workflow". A partner following this copy would tap the only
+                 pause they could find and begin closing their account. */
+              'A full shelf stops new drop-offs on its own, so the capacity you set is the ceiling',
               'Storage beyond the free window earns you a holding fee',
             ]}
           />
