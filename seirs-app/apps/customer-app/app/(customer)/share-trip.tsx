@@ -83,9 +83,9 @@ export default function ShareTripScreen() {
   // the delivery we just fetched. Never off the mock table for a real id.
   const trackingCode: string | null = code ?? trip?.trackingCode ?? null;
 
-  // Public tracking page lives on the marketing website: seirs.app/track/{code}.
+  // Public tracking page lives on the marketing website: seirs.co/track/{code}.
   // Anyone with the code can open this in any browser without a login.
-  const shareLink = trackingCode ? `https://seirs.app/track/${trackingCode}` : null;
+  const shareLink = trackingCode ? `https://seirs.co/track/${trackingCode}` : null;
 
   // "Live Tracking Active" was rendered unconditionally, including when the
   // screen was opened with no delivery at all (sweep C-5.11).

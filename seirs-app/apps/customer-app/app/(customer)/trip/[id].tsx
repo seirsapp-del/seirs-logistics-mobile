@@ -182,7 +182,7 @@ export default function TripDetailsScreen() {
         message:
           `Package ${code} is waiting at a SEIRS partner store. ` +
           `Settle the collection fee and get the pickup address here: ` +
-          `https://seirs.app/collect/${code}`,
+          `https://seirs.co/collect/${code}`,
       });
     } catch { /* share sheet dismissed */ }
   };

@@ -91,8 +91,8 @@ export default function DriverHelpScreen() {
               onPress: () => router.push('/(driver)/support/new' as any) },
             { icon: 'call-outline',                label: 'Call Us',   sub: '0700-SEIRS-01',    color: '#16A34A',
               onPress: () => Linking.openURL('tel:07007347701').catch(() => {}) },
-            { icon: 'mail-outline',                label: 'Email',     sub: 'drivers@seirs.app',color: '#0F2B4C',
-              onPress: () => Linking.openURL('mailto:drivers@seirs.app').catch(() => {}) },
+            { icon: 'mail-outline',                label: 'Email',     sub: 'drivers@seirs.co',color: '#0F2B4C',
+              onPress: () => Linking.openURL('mailto:drivers@seirs.co').catch(() => {}) },
           ].map(c => (
             <Pressable
               key={c.label}

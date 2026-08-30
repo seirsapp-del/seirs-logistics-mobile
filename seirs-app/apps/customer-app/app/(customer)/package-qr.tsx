@@ -107,7 +107,7 @@ export default function PackageQrScreen() {
           `Tracking code: ${code}\n` +
           (description ? `Package: ${description}\n` : '') +
           `\nShow this code to the rider at handover, or let them scan the ` +
-          `QR image. Follow it here: https://seirs.app/track/${code}`,
+          `QR image. Follow it here: https://seirs.co/track/${code}`,
       });
     } catch { /* the share sheet was dismissed */ }
   };

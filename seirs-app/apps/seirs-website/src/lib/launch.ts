@@ -90,17 +90,17 @@ export const CONTACT = {
 //
 // The platform-wide split is NOT fixed and cannot be fixed from here. The
 // backend reads the same idea under four other names, defaulting two ways:
-//   NEXT_PUBLIC_SITE_URL  this app                  -> seirs.app
-//   PUBLIC_SITE_URL       deliveries, payments      -> seirs.app
+//   NEXT_PUBLIC_SITE_URL  this app                  -> seirs.co
+//   PUBLIC_SITE_URL       deliveries, payments      -> seirs.co
 //   WEBSITE_URL           mail                      -> seirs-website.vercel.app
 //   PUBLIC_WEB_URL        statements                -> seirs-website.vercel.app
 //   WEB_URL               one further backend read
-// So today a WhatsApp collect link goes to seirs.app/collect while the
+// So today a WhatsApp collect link goes to seirs.co/collect while the
 // password-reset email from the same backend goes to vercel.app/reset-password.
 // Setting the Vercel env var moves this app only. Settling the domain means
 // one shared constant the backend imports too (register item W-4).
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://seirs.app';
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://seirs.co';
 
 // ── App screenshots ─────────────────────────────────────────────────────────
 // Real captures from the running apps, used in the How it Works story and the

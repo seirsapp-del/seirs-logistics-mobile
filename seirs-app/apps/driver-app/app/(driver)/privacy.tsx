@@ -91,7 +91,7 @@ export default function DriverPrivacyScreen() {
       await usersApi.exportData();
       alertDialog('Export queued', 'Your data export has been requested. You will receive an email with the download link within 24 hours.');
     } catch {
-      alertDialog('Export failed', 'Please try again later or contact support@seirs.app');
+      alertDialog('Export failed', 'Please try again later or contact support@seirs.co');
     }
   };
 
@@ -105,10 +105,10 @@ export default function DriverPrivacyScreen() {
   ];
 
   const LEGAL_ITEMS = [
-    { label: 'Privacy Policy',     icon: 'document-text-outline',          url: 'https://seirs.app/privacy-policy'    },
-    { label: 'Terms of Service',   icon: 'reader-outline',                  url: 'https://seirs.app/terms-of-service'  },
+    { label: 'Privacy Policy',     icon: 'document-text-outline',          url: 'https://seirs.co/privacy-policy'    },
+    { label: 'Terms of Service',   icon: 'reader-outline',                  url: 'https://seirs.co/terms-of-service'  },
     // /dispute-resolution has never existed: this row 404'd (2026-08-23).
-    { label: 'Dispute Resolution', icon: 'information-circle-outline',      url: 'https://seirs.app/terms-of-service' },
+    { label: 'Dispute Resolution', icon: 'information-circle-outline',      url: 'https://seirs.co/terms-of-service' },
   ];
 
   const renderPermRow = (label: string, sub: string, granted: boolean | null, isLast: boolean) => (

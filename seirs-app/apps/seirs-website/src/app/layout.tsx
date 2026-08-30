@@ -10,7 +10,7 @@ import { SITE_URL } from "@/lib/launch";
  * Canonical host comes from launch.ts, never from a literal here.
  *
  * Until 2026-08-23 this file hardcoded https://seirs-website.vercel.app for
- * OpenGraph while sitemap.ts and launch.ts defaulted to https://seirs.app,
+ * OpenGraph while sitemap.ts and launch.ts defaulted to https://seirs.co,
  * so setting NEXT_PUBLIC_SITE_URL on Vercel moved two of the three and left
  * every share card pointing at the other domain. The wider split across the
  * backend (WEBSITE_URL, PUBLIC_SITE_URL, PUBLIC_WEB_URL) is W-4 and is not

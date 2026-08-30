@@ -247,7 +247,7 @@ export default function ConfirmRideScreen() {
               policy.{' '}
               <Text
                 style={{ color: theme.primary, fontWeight: '600' }}
-                onPress={() => Linking.openURL('https://seirs.app/terms-of-service')}
+                onPress={() => Linking.openURL('https://seirs.co/terms-of-service')}
               >
                 Read them
               </Text>

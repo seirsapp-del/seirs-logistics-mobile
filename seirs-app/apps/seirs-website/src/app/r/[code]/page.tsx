@@ -4,7 +4,7 @@ import { ReferralLanding } from './ReferralLanding';
 /**
  * /r/[code]: the landing page every shared referral link points at.
  *
- * The customer app has built `https://seirs.app/r/<code>` since referrals
+ * The customer app has built `https://seirs.co/r/<code>` since referrals
  * shipped (customer-app referral.tsx WEB_REFERRAL_BASE) and this route did
  * not exist, so every link a user shared landed on the 404 page. The
  * referral engine itself is fully wired; this page was the only missing

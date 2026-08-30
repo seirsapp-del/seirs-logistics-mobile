@@ -216,7 +216,7 @@ export default function PrivacyScreen() {
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {[
             { icon: 'download-outline',   label: 'Download My Data',      sub: 'NDPR Article 24: export profile, trips, payments', color: theme.primary, onPress: handleDataDownload },
-            { icon: 'document-text-outline', label: 'View Privacy Policy', sub: 'Read how we handle your data',                       color: theme.textSecond, onPress: () => Linking.openURL('https://seirs.app/privacy-policy') },
+            { icon: 'document-text-outline', label: 'View Privacy Policy', sub: 'Read how we handle your data',                       color: theme.textSecond, onPress: () => Linking.openURL('https://seirs.co/privacy-policy') },
           ].map((item, i, arr) => (
             <Pressable
               key={item.label}
@@ -239,11 +239,11 @@ export default function PrivacyScreen() {
         <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>Legal</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {[
-            { label: 'Privacy Policy',    url: 'https://seirs.app/privacy-policy'    },
-            { label: 'Terms of Service',  url: 'https://seirs.app/terms-of-service'  },
+            { label: 'Privacy Policy',    url: 'https://seirs.co/privacy-policy'    },
+            { label: 'Terms of Service',  url: 'https://seirs.co/terms-of-service'  },
             // /dispute-resolution has never existed on the site: this row
             // 404'd. Disputes are covered in the Terms (2026-08-23).
-            { label: 'Dispute Resolution', url: 'https://seirs.app/terms-of-service' },
+            { label: 'Dispute Resolution', url: 'https://seirs.co/terms-of-service' },
           ].map((item, i, arr) => (
             <Pressable
               key={item.label}

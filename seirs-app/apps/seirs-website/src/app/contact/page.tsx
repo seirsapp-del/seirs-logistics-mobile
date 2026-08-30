@@ -62,7 +62,7 @@ const contactCards = [
     label: "Delivery Issues",
     value: "support@seirs.co",
     href: "mailto:support@seirs.co",
-    desc: "Email us with your tracking code and we will pick it up directly. In-app tickets arrive when the apps launch.",
+    desc: "Email us with your tracking code and we will pick it up directly. You can also raise a ticket from inside any SEIRS app.",
     color: "bg-warning-amber/10",
     iconColor: "text-warning-amber",
   },

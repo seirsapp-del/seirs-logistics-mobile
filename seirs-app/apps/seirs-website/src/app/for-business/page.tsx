@@ -22,7 +22,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "For Business",
   description:
-    "Send hundreds of packages with one click. SEIRS Business gives Nigerian companies a single dashboard for multi-package dispatch, multi-stop routing, saved routes, and itemised receipts.",
+    "Send many packages in one booking. SEIRS Business gives Nigerian companies a single dashboard for multi-package dispatch, multi-stop routing, saved runs, and itemised receipts.",
 };
 
 function FeatureCard({
@@ -67,9 +67,9 @@ export default async function ForBusinessPage() {
         eyebrow="Built for Volume"
         title={
           <>
-            Send thousands of packages
+            Send many packages
             <br />
-            <span className="text-sky">with one click.</span>
+            <span className="text-sky">in one booking.</span>
           </>
         }
         subtitle="SEIRS Business is for traders, e-commerce shops, restaurants, and SMEs who dispatch dozens to hundreds of packages a day. Multi-package send, multi-stop routes, saved routes, all from one dashboard."
@@ -129,8 +129,8 @@ export default async function ForBusinessPage() {
               imageUrl={img.img_business_csv}
               alt="Preparing the morning's orders"
               eyebrow="The morning rush"
-              title="One upload instead of one hundred bookings"
-              body="Most shops start the day the same way: a list of orders on paper or WhatsApp, and someone spending an hour arranging riders. Drop that list in as a spreadsheet and every delivery is created, priced, and dispatched together."
+              title="One booking instead of one hundred"
+              body="Most shops start the day the same way: a list of orders on paper or WhatsApp, and someone arranging riders one at a time. Add every package to a single booking instead, each with its own receiver, and send them together. Every delivery is created, priced, and dispatched together."
               points={[
                 'Nigerian phone formats and addresses validated before dispatch',
                 'Recurring routes saved once and rebooked in two taps',
@@ -160,7 +160,7 @@ export default async function ForBusinessPage() {
                    otherwise. The statement IS theirs (2026-08-30). */
                 'Every booking on one itemised statement you can pull any time',
                 'Every receipt itemised line by line, ready for your books',
-                'One account, many pickup addresses: branches dispatch independently',
+                'One account, and any pickup address you need',
               ]}
             />
           </div>
@@ -184,7 +184,7 @@ export default async function ForBusinessPage() {
             <FeatureCard
               icon={CreditCard}
               title="Pay per booking"
-              body="No float parked with us and nothing to reconcile at month end. Each dispatch is paid when it is booked, through Flutterwave, and lands on one itemised statement."
+              body="No float parked with us and nothing to reconcile at month end. Each dispatch is paid when it is booked, and lands on one itemised statement."
             />
             <FeatureCard
               icon={Clock}
@@ -205,8 +205,8 @@ export default async function ForBusinessPage() {
             />
             <FeatureCard
               icon={Building2}
-              title="Multiple branches"
-              body="One business account, multiple pickup addresses, branch in Ikeja, branch in Lekki, warehouse in Apapa. Each can dispatch independently."
+              title="Send from any address"
+              body="One business account, and every booking starts from whichever address you are sending from: the Ikeja shop today, the Apapa warehouse tomorrow."
             />
           </div>
         </div>
@@ -259,7 +259,7 @@ export default async function ForBusinessPage() {
                 <CheckRow>Earn a per-package fee on every handoff</CheckRow>
                 <CheckRow>Capacity dashboard, accept what you have room for</CheckRow>
                 <CheckRow>QR scan-in / scan-out for every package</CheckRow>
-                <CheckRow>Weekly automatic payout to your bank</CheckRow>
+                <CheckRow>Withdraw your earnings to your bank</CheckRow>
                 <CheckRow>Foot traffic boost, customers come to your shop</CheckRow>
                 <CheckRow>Pause acceptance during stock days or closures</CheckRow>
               </ul>

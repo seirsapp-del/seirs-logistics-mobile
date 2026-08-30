@@ -12,7 +12,7 @@ import { HeroBackdrop } from "@/components/HeroBackdrop";
  * /track/[code] has been live, working and polling for status the whole time,
  * and nothing on the site linked to it. There was no index, so the only way
  * in was to hand-type a deep URL, and the one on-page reference to
- * "seirs.app/track" on Find a Partner was plain text pointing at a 404.
+ * "seirs.co/track" on Find a Partner was plain text pointing at a 404.
  *
  * This matters more than its size suggests. Recipients are the largest
  * audience a Nigerian logistics site gets: they arrive already holding a

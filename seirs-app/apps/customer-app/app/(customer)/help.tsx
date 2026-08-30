@@ -87,8 +87,8 @@ export default function HelpScreen() {
               onPress: () => router.push('/(customer)/support/new' as any) },
             { icon: 'call-outline',                label: 'Call Us',    sub: '0700-SEIRS-01',    color: '#16A34A',
               onPress: () => Linking.openURL('tel:07007347701').catch(() => alertDialog('Could not open dialer')) },
-            { icon: 'mail-outline',                label: 'Email',      sub: 'support@seirs.app', color: '#0F2B4C',
-              onPress: () => Linking.openURL('mailto:support@seirs.app').catch(() => alertDialog('Could not open email')) },
+            { icon: 'mail-outline',                label: 'Email',      sub: 'support@seirs.co', color: '#0F2B4C',
+              onPress: () => Linking.openURL('mailto:support@seirs.co').catch(() => alertDialog('Could not open email')) },
           ].map(c => (
             <Pressable
               key={c.label}

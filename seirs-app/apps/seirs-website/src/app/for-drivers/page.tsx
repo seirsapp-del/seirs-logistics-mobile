@@ -24,7 +24,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "For Drivers",
   description:
-    "Drive with SEIRS and earn on your terms. Daily wallet payouts, smart routing, real support. Join Nigeria's smartest last-mile delivery network.",
+    "Drive with SEIRS. Every naira tracked, smart routing and real support. Join Nigeria's smartest last-mile delivery network.",
 };
 
 function FeatureCard({
@@ -228,7 +228,7 @@ export default async function ForDriversPage() {
             <FeatureCard
               icon={MapPin}
               title="Smart routing"
-              body="Multi-stop matching groups nearby orders so you're paid for one trip but deliver multiple packages, your earnings per litre of fuel go up."
+              body="Multi-stop matching groups nearby orders, so one trip can carry several drops instead of criss-crossing the city for each one."
             />
             {/* "Top-driver rewards" removed 2026-08-15. It promised weekly
                 bonus payouts based on completion rate (no such system exists
@@ -392,7 +392,7 @@ export default async function ForDriversPage() {
             <StepRow
               step={3}
               title="Add your bank account"
-              body="Link your Nigerian bank account in the app. Earnings flow there automatically. We never ask for your card details or password."
+              body="Link your Nigerian bank account in the app. Cleared earnings go there, and we never ask for your card details or password."
             />
             <StepRow
               step={4}

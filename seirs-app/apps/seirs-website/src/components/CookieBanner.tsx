@@ -30,7 +30,7 @@ import { SITE_URL } from '@/lib/launch';
 const STORAGE_KEY = 'seirs.cookie_consent';
 
 // The host is shown in the heading, so it reads as "this site" rather than
-// some other property. It used to be the literal string "seirs.app", which
+// some other property. It used to be the literal string "seirs.co", which
 // is one of the three places the canonical domain was hardcoded (W-M9).
 const HOST = (() => {
   try {

@@ -298,7 +298,7 @@ export default function FindAPartnerPage() {
         <div className="mt-16 rounded-2xl bg-gradient-to-br from-navy to-navy-dark p-8 text-center text-white sm:p-10">
           <h2 className="text-2xl font-black sm:text-3xl">Ready to send with SEIRS?</h2>
           <p className="mx-auto mt-3 max-w-xl text-white/70">
-            {/* Was the plain text "seirs.app/track", which was not a link and
+            {/* Was the plain text "seirs.co/track", which was not a link and
                 pointed at a URL that 404'd because no /track index existed.
                 Now a real link to the page built 2026-08-15. */}
             Choose a partner drop-off in the customer app to save on pickup fees,

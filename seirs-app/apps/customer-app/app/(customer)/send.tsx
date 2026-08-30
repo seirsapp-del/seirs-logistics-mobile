@@ -2340,7 +2340,7 @@ export default function SendScreen() {
                   {' '}
                   <Text
                     style={{ color: theme.primary, fontWeight: '600' }}
-                    onPress={() => Linking.openURL('https://seirs.app/terms-of-service')}
+                    onPress={() => Linking.openURL('https://seirs.co/terms-of-service')}
                   >
                     {t('send.tcRead', { defaultValue: 'Read them' })}
                   </Text>

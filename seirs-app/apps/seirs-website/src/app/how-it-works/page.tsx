@@ -180,7 +180,7 @@ export default async function HowItWorksPage() {
                 // distinguish an in-city ride from an intercity seat. Both
                 // are live products with their own engines.
                 "Send a package, book a ride across town, or take a seat on an intercity trip: same screen, same account.",
-                "Auto-quoted from zone pricing and a fuel index, not a guess.",
+                "Quoted up front from the distance and the load, not a guess.",
                 "The quote is locked when you book: you are charged the number you saw, or we refuse the booking and show you the new price first.",
                 "Later-stage fees exist and we say so: counter storage, a redirect, a return. Each one is shown and agreed before it is incurred, never added afterwards.",
               ]}
@@ -191,7 +191,7 @@ export default async function HowItWorksPage() {
               step={2}
               icon={Truck}
               title="A verified driver accepts"
-              lead="The job goes to nearby online drivers, ranked by rating, vehicle fit and route. You meet yours the moment they accept."
+              lead="The job goes to online drivers nearby who suit the load. You meet yours the moment they accept."
               points={[
                 "Every driver is identity-verified and KYC-reviewed before going online.",
                 "Licence and vehicle papers checked, not just uploaded.",
@@ -252,7 +252,7 @@ export default async function HowItWorksPage() {
             <FeatureBlock
               icon={MapPin}
               title="Live location, audit trail"
-              body="GPS pings every five seconds during a trip, all stored as an immutable handoff record. If anything goes wrong, our support team has the full chain of custody."
+              body="The rider's position updates as they move, and every handoff is stored with its photos, codes and timestamps. If anything goes wrong, support has the full chain of custody."
             />
             <FeatureBlock
               icon={Receipt}
@@ -261,8 +261,8 @@ export default async function HowItWorksPage() {
             />
             <FeatureBlock
               icon={Truck}
-              title="Backup driver auto-assignment"
-              body="If a driver goes offline mid-trip without warning, the delivery is reassigned to a nearby driver: your package keeps moving."
+              title="A driver cannot walk away"
+              body="The server refuses to take a driver offline while they are holding your package. If a trip does stall, our team can hand it to another driver."
             />
           </div>
         </div>

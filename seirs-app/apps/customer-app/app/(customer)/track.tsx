@@ -208,7 +208,7 @@ export default function TrackScreen() {
   const shareCollectLink = async () => {
     const code = deliveryData?.trackingCode;
     if (!code) return;
-    const url = `https://seirs.app/collect/${code}`;
+    const url = `https://seirs.co/collect/${code}`;
     try {
       await Share.share({
         message:
@@ -713,7 +713,7 @@ export default function TrackScreen() {
                       <Pressable
                         style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.surfaceSecond, borderRadius: 10, paddingVertical: 11 }}
                         onPress={() => Share.share({
-                          message: `I'm on a SEIRS ride (${deliveryData.trackingCode}). Follow my trip live: https://seirs.app/track/${deliveryData.trackingCode}`,
+                          message: `I'm on a SEIRS ride (${deliveryData.trackingCode}). Follow my trip live: https://seirs.co/track/${deliveryData.trackingCode}`,
                         }).catch(() => {})}
                       >
                         <Ionicons name="share-social-outline" size={16} color={theme.text} />
