@@ -145,7 +145,11 @@ export default function DriverHistoryScreen() {
   // Server-computed over the whole ledger, so it does not go stale past
   // the 50-row history cap. Falls back to the loaded rows only while the
   // dashboard call is in flight or has failed.
-  const totalEarned = lifetime ?? items.reduce((s, d) => s + d.driverEarnings, 0);
+  // driverEarnings is a Postgres `decimal`, which crosses the wire as a
+  // STRING despite the entity typing it number. Unguarded, 0 + "150.00"
+  // concatenates to "0150.00" and the driver's lifetime total renders as
+  // nonsense. Same class of bug that killed the tracking page 2026-08-30.
+  const totalEarned = lifetime ?? items.reduce((s, d) => s + Number(d.driverEarnings ?? 0), 0);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>

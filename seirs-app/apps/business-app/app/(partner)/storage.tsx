@@ -75,7 +75,9 @@ export default function PartnerStorageScreen() {
   const onRefresh = () => { setRefreshing(true); load(); };
 
   const filtered = tab === 'all' ? items : items.filter(i => i.tier === tab);
-  const totalAccrued = items.reduce((s, i) => s + (i.storageFeesAccruedNgn ?? 0), 0);
+  // storageFeesAccruedNgn is a decimal column, so it arrives as a string
+  // and ?? 0 does not help: the concatenation happens on a real value.
+  const totalAccrued = items.reduce((s, i) => s + Number(i.storageFeesAccruedNgn ?? 0), 0);
 
   return (
     <ScrollView

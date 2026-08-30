@@ -68,7 +68,9 @@ export default function MultiLegScreen() {
             : (d.customer?.name ?? d.recipientName),
         }));
         setLegs(mapped);
-        setPoolKm(mapped.reduce((s, l) => s + l.distanceKm, 0));
+        // distanceKm is a decimal column: string on the wire, so this sum
+        // concatenated instead of adding.
+        setPoolKm(mapped.reduce((s, l) => s + Number(l.distanceKm ?? 0), 0));
       } catch { setLegs([]); }
       finally { setLoading(false); }
     })();
