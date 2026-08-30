@@ -12,14 +12,18 @@
  * mark still pops on the off-white marketing background (#F5F5F0).
  */
 
-export const NAVY_REFINED = '#0E2540';
+// The single SEIRS navy, 2026-08-30. #0E2540 lived here and in the
+// app's SeirsLogoV2 while the palette said #0F2B4C, so the mark had
+// one navy and the UI another. The founder picked #0A1F38 for the
+// mark; the palette keeps #0F2B4C as the UI primary.
+export const NAVY_REFINED = '#0A1F38';
 
 interface SeirsLogoProps {
   variant?:    'lockup' | 'mark' | 'wordmark';
   size?:       number;   // pixel width of the whole logo (or the mark, for `mark` variant)
   color?:      string;   // stroke + fill; defaults to refined navy
   className?:  string;
-  bold?:       boolean;  // Uses the thicker "SeirsMarkBold" strokes + solid wheels
+  hubColor?:   string;   // what shows through the wheel hubs; set to the ground
 }
 
 export default function SeirsLogo({
@@ -27,9 +31,9 @@ export default function SeirsLogo({
   size    = 140,
   color   = NAVY_REFINED,
   className,
-  bold    = false,
+  hubColor,
 }: SeirsLogoProps) {
-  if (variant === 'mark')     return <SeirsMark    size={size} color={color} bold={bold} className={className} />;
+  if (variant === 'mark')     return <SeirsMark    size={size} color={color} hubColor={hubColor} className={className} />;
   if (variant === 'wordmark') return <SeirsWordmark size={size} color={color} className={className} />;
 
   const markW = size * 0.30;
@@ -42,7 +46,7 @@ export default function SeirsLogo({
       style={{ gap }}
       aria-label="SEIRS Logistics"
     >
-      <SeirsMark    size={markW} color={color} bold={bold} />
+      <SeirsMark    size={markW} color={color} hubColor={hubColor} />
       <SeirsWordmark size={wordW} color={color} />
     </span>
   );
@@ -51,61 +55,53 @@ export default function SeirsLogo({
 function SeirsMark({
   size,
   color,
-  bold,
+  hubColor = '#F5F5F0',
   className,
-}: { size: number; color: string; bold?: boolean; className?: string }) {
-  const VB_W = 48;
-  const VB_H = 32;
+}: { size: number; color: string; bold?: boolean; hubColor?: string; className?: string }) {
+  /**
+   * THE mark, matched to the apps on 2026-08-30.
+   *
+   * Two things were wrong here. The `bold` prop defaulted to FALSE and every
+   * caller omitted it, so the site rendered a thin, spoke-wheeled variant
+   * that exists nowhere in the apps: the founder said the website logo did
+   * not look like the phone one and he was right. And the bold branch it
+   * would have drawn was the OLD geometry anyway, before the torso was
+   * stretched.
+   *
+   * The thin variant is gone rather than fixed. It was a second drawing of
+   * the same mark, which is the drift this file already suffers from with
+   * its second navy.
+   *
+   * Geometry is now identical to SeirsMarkBold in the apps: stroke 6.5,
+   * solid wheels r7.6 with r2.6 hubs, torso run to 15.94, head r4.8. The
+   * viewBox is cropped to the ink, which is why it is no longer 0 0 48 32
+   * -- the stretched rider's head sits above y=0.
+   */
+  const VB_X = 2.4, VB_Y = -6.06, VB_W = 43.2, VB_H = 37.66;
   const height = size * (VB_H / VB_W);
-  const stroke = bold ? 3.5 : 2;
+  const SW = 6.5;
 
   return (
     <svg
       width={size}
       height={height}
-      viewBox={`0 0 ${VB_W} ${VB_H}`}
+      viewBox={`${VB_X} ${VB_Y} ${VB_W} ${VB_H}`}
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      {/* Frame: rear hub -> saddle-left -> saddle-right -> front hub */}
       <path
         d="M 10 24 L 18 16 L 30 16 L 38 24"
-        stroke={color}
-        strokeWidth={stroke}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke={color} strokeWidth={SW} fill="none"
+        strokeLinecap="round" strokeLinejoin="round"
       />
-
-      {bold ? (
-        <>
-          <circle cx={10} cy={24} r={6} fill={color} />
-          <circle cx={10} cy={24} r={2} fill="#FFFFFF" />
-          <circle cx={38} cy={24} r={6} fill={color} />
-          <circle cx={38} cy={24} r={2} fill="#FFFFFF" />
-        </>
-      ) : (
-        <>
-          <circle cx={10} cy={24} r={5} stroke={color} strokeWidth={stroke} fill="none" />
-          <line x1={6}  y1={24} x2={14} y2={24} stroke={color} strokeWidth={stroke} strokeLinecap="round" />
-          <line x1={10} y1={20} x2={10} y2={28} stroke={color} strokeWidth={stroke} strokeLinecap="round" />
-          <circle cx={38} cy={24} r={5} stroke={color} strokeWidth={stroke} fill="none" />
-          <line x1={34} y1={24} x2={42} y2={24} stroke={color} strokeWidth={stroke} strokeLinecap="round" />
-          <line x1={38} y1={20} x2={38} y2={28} stroke={color} strokeWidth={stroke} strokeLinecap="round" />
-        </>
-      )}
-
-      {/* Handlebar reaching forward-up from the rider's hand */}
-      <line x1={37} y1={12} x2={42} y2={9} stroke={color} strokeWidth={stroke} strokeLinecap="round" />
-
-      {/* Rider torso, angled forward */}
-      <line x1={24} y1={16} x2={28} y2={8} stroke={color} strokeWidth={bold ? 4 : stroke} strokeLinecap="round" />
-
-      {/* Rider head */}
-      <circle cx={28} cy={5} r={bold ? 3.5 : 3} fill={color} />
-
-      {/* Arm to handlebar */}
-      <line x1={27} y1={10} x2={37} y2={12} stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+      <circle cx={10} cy={24} r={7.6} fill={color} />
+      <circle cx={10} cy={24} r={2.6} fill={hubColor} />
+      <circle cx={38} cy={24} r={7.6} fill={color} />
+      <circle cx={38} cy={24} r={2.6} fill={hubColor} />
+      <line x1={37} y1={12} x2={42} y2={9} stroke={color} strokeWidth={SW} strokeLinecap="round" />
+      <line x1={24} y1={16} x2={31.13} y2={1.74} stroke={color} strokeWidth={7} strokeLinecap="round" />
+      <circle cx={31.13} cy={-1.26} r={4.8} fill={color} />
+      <line x1={29.35} y1={5.30} x2={37} y2={12} stroke={color} strokeWidth={SW} strokeLinecap="round" />
     </svg>
   );
 }

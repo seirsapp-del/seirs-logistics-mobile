@@ -12,7 +12,9 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <Link href="/" className="inline-flex items-center mb-4" aria-label="SEIRS Logistics home">
               {/* Footer background is navy, so render logo in white */}
-              <SeirsLogo variant="lockup" size={150} color="#FFFFFF" />
+              {/* hubColor is the ground the wheels sit on, so the axle holes read.
+                  White-on-navy needs navy hubs; the default is the light one. */}
+              <SeirsLogo variant="lockup" size={150} color="#FFFFFF" hubColor="#0F2B4C" />
             </Link>
             <p className="text-white/60 text-sm leading-relaxed mb-5">
               Nigeria&apos;s smartest last-mile delivery platform. Connecting businesses, drivers, and partner stores across Nigeria.

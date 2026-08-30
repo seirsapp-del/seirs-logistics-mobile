@@ -320,7 +320,10 @@ export default async function HowItWorksPage() {
                 <h3 className="text-navy font-bold text-lg">Business App</h3>
               </div>
               <p className="text-text-muted text-sm leading-relaxed">
-                Bulk dispatch, CSV upload, multi-stop routing, team access and
+                {/* CSV upload was deleted 2026-08-24 and team access has
+                    never existed; both were still advertised here on
+                    2026-08-30. */}
+                Multi-package dispatch, multi-stop routing, saved routes and
                 partner-store dashboards. Sender or Partner Store accounts.
               </p>
             </div>

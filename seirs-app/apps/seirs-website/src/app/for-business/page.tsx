@@ -22,7 +22,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "For Business",
   description:
-    "Send hundreds of packages with one click. SEIRS Business gives Nigerian companies a single dashboard for bulk dispatch, multi-stop routing, team access, and itemised receipts.",
+    "Send hundreds of packages with one click. SEIRS Business gives Nigerian companies a single dashboard for multi-package dispatch, multi-stop routing, saved routes, and itemised receipts.",
 };
 
 function FeatureCard({
@@ -72,7 +72,7 @@ export default async function ForBusinessPage() {
             <span className="text-sky">with one click.</span>
           </>
         }
-        subtitle="SEIRS Business is for traders, e-commerce shops, restaurants, and SMEs who dispatch dozens to hundreds of packages a day. Bulk send, multi-stop routes, team access, all from one dashboard."
+        subtitle="SEIRS Business is for traders, e-commerce shops, restaurants, and SMEs who dispatch dozens to hundreds of packages a day. Multi-package send, multi-stop routes, saved routes, all from one dashboard."
         icon={Briefcase}
         primaryCtaLabel="Talk to our team"
         primaryCtaHref="/contact?subject=business"
@@ -141,13 +141,20 @@ export default async function ForBusinessPage() {
               imageUrl={img.img_business_team}
               alt="Team reviewing orders together"
               flip
-              eyebrow="Your team"
-              title="Everyone dispatches, nobody guesses"
-              body="Add your manager and dispatchers with their own logins and permissions. Every booking is attributed to whoever made it and paid for at the moment it is made, and the whole month lands in one itemised statement."
+              /* Rewritten 2026-08-30. This section described a team
+                 feature that does not exist in any form: there is no team
+                 endpoint on the business controller, no invite, no member
+                 list, no role assignment, and nothing computes spend per
+                 person. The account row returns myTeamRole and nothing can
+                 set it. What IS true is the statement and the audit trail,
+                 so the section is now about those. */
+              eyebrow="Your books"
+              title="Every naira accounted for"
+              body="Every booking is paid for at the moment it is made and lands in one itemised statement, so the month reconciles without anyone reconstructing it from memory."
               points={[
-                'Roles from owner to viewer, with spending visibility per person',
                 'Every action carries an audit trail for your records',
                 'Every receipt itemised line by line, ready for your books',
+                'One account, many pickup addresses: branches dispatch independently',
               ]}
             />
           </div>
@@ -218,11 +225,18 @@ export default async function ForBusinessPage() {
                 customers.
               </p>
               <ul className="space-y-3">
-                <CheckRow>Bulk dispatch + CSV upload</CheckRow>
+                {/* Three of these six were false on 2026-08-30. CSV upload
+                    was deleted 2026-08-24; team logins have never existed;
+                    notifications are not branded, nothing in the notification
+                    service takes a sender's name or mark. The three that
+                    survive are real: Directions returns and we store
+                    optimizedWaypointOrder, recurring-templates has four live
+                    endpoints, and the v1 API creates orders behind a key. */}
+                <CheckRow>Many packages in one booking, each with its own tracking</CheckRow>
                 <CheckRow>Multi-stop route optimisation</CheckRow>
-                <CheckRow>Team logins with roles and spend visibility</CheckRow>
+                <CheckRow>Many pickup addresses on one account</CheckRow>
                 <CheckRow>Recurring deliveries + scheduling</CheckRow>
-                <CheckRow>Branded delivery notifications to recipients</CheckRow>
+                <CheckRow>Delivery notifications to recipients</CheckRow>
                 <CheckRow>API access for shop integrations (Shopify, custom)</CheckRow>
               </ul>
             </div>
@@ -267,10 +281,15 @@ export default async function ForBusinessPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* "Spreadsheet workflows" removed 2026-08-30. It claimed CSV
+                export and CRM import; the business controller has neither.
+                CSV export exists for ADMIN only, and no import path exists
+                anywhere. Replaced with the address book, which is real:
+                frequentAddresses ranks a sender's own history. */}
             <FeatureCard
               icon={FileSpreadsheet}
-              title="Spreadsheet workflows"
-              body="Export delivery history as CSV. Import customer addresses from your existing CRM. Compatible with Google Sheets and Excel."
+              title="Your addresses, remembered"
+              body="Addresses you send to often come back ranked by how much you use them, so a repeat drop is a tap rather than a retype."
             />
             <FeatureCard
               icon={Upload}

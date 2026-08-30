@@ -459,7 +459,7 @@ export default async function HomePage() {
                   n: 1,
                   icon: Package,
                   title: "Create a Delivery",
-                  body: "Add your pickup and drop-off address, describe your package, and pay by card. Bulk orders? Upload a CSV and process hundreds at once.",
+                  body: "Add your pickup and drop-off address, describe your package, and pay by card. Sending several at once? Add them all to one booking, each with its own receiver and tracking code.",
                 },
                 {
                   n: 2,
@@ -527,10 +527,27 @@ export default async function HomePage() {
                     promising: a sender handing SEIRS money in advance is
                     deposit-taking, and we are not a bank. Booking-time card
                     payment through Flutterwave is what actually happens. */}
+                {/* Two of these six were false, found 2026-08-30 when the
+                    founder spotted "Bulk CSV upload" on this very list.
+
+                    CSV upload was REMOVED on 2026-08-24 by his own decision:
+                    business.controller.ts carries the note, and the comment
+                    there says the parser never worked because it read columns
+                    by position. The multi-package Send flow replaced it, so
+                    that is what this now names.
+
+                    "Your team, your limits" promised something that does not
+                    exist at all. There is no team endpoint on the business
+                    controller: no invite, no member list, no role assignment,
+                    and nothing anywhere computes spend per person. The
+                    account row returns a myTeamRole field and nothing can
+                    set it. Replaced with multiple pickup addresses, which is
+                    real and is the thing multi-branch senders actually ask
+                    for. */}
                 {[
-                  { icon: Upload, label: "Bulk CSV upload" },
+                  { icon: Upload, label: "Many packages, one booking" },
                   { icon: CreditCard, label: "Pay per booking" },
-                  { icon: Users, label: "Your team, your limits" },
+                  { icon: Users, label: "Many pickup addresses" },
                   { icon: Zap, label: "Saved routes" },
                   { icon: MapPin, label: "Multi-stop runs" },
                   { icon: Headphones, label: "A human on support" },
