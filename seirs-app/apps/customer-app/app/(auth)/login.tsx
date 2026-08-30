@@ -12,9 +12,8 @@ import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
-import { GoogleIcon } from '@/components/GoogleIcon';
 import {
-  ArrowLeft, Mail, ArrowRight, Apple as AppleIcon, Truck,
+  ArrowLeft, Mail, ArrowRight, Truck,
 } from 'lucide-react-native';
 
 export default function LoginScreen() {
@@ -63,25 +62,7 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogle = async () => {
-    setError('');
-    try {
-      const res = await authApi.googleLogin();
-      await login({ ...res.user, token: res.token, rememberMe, pendingDeletion: (res as any).pendingDeletion ?? null });
-    } catch (e: any) {
-      setError(e.message ?? 'Google sign-in failed.');
-    }
-  };
 
-  const handleApple = async () => {
-    setError('');
-    try {
-      const res = await authApi.appleLogin();
-      await login({ ...res.user, token: res.token, rememberMe, pendingDeletion: (res as any).pendingDeletion ?? null });
-    } catch (e: any) {
-      setError(e.message ?? 'Apple sign-in failed.');
-    }
-  };
 
   return (
     <KeyboardAvoidingView
@@ -189,34 +170,23 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
-        {/* Divider */}
-        <View style={styles.dividerRow}>
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <Text style={[styles.dividerText, { color: theme.textThird }]}>{t('auth.orContinueWith')}</Text>
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        </View>
+        {/*
+          GOOGLE AND APPLE REMOVED 2026-08-30.
 
-        {/* Social buttons */}
-        <View style={styles.socialRow}>
-          <Pressable
-            style={[styles.socialBtn, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
-            onPress={handleGoogle}
-          >
-            <GoogleIcon size={20} />
-            <Text style={[styles.socialText, { color: theme.text }]}>Continue with Google</Text>
-          </Pressable>
+          They were dead. authApi.googleLogin POSTs to /auth/google with an
+          EMPTY body; the backend's SocialLoginDto requires an idToken and
+          verifies it against GOOGLE_CLIENT_ID, so every tap returned 400
+          then 401. No Google or Apple auth package was installed in any of
+          the three apps, so there was never a token to send. Two dead
+          buttons on the first screen a new user meets, two days before
+          launch.
 
-          {Platform.OS === 'ios' && (
-            <Pressable
-              style={[styles.socialBtn, { backgroundColor: isDark ? '#FFFFFF' : '#000000', borderColor: 'transparent' }, Shadows.xs]}
-              onPress={handleApple}
-            >
-              <AppleIcon size={20} color={isDark ? '#000000' : '#FFFFFF'} strokeWidth={1.75} />
-              <Text style={[styles.socialText, { color: isDark ? '#000000' : '#FFFFFF' }]}>Apple</Text>
-            </Pressable>
-          )}
-        </View>
-
+          The backend endpoints are correct and stay. Wiring the client
+          needs a Google Cloud OAuth client, google-services.json, an Apple
+          Service ID and a signing key, all of which live in the founder's
+          accounts, so it is a post-launch job and a native change when it
+          happens.
+        */}
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecond }]}>Don't have an account?</Text>
@@ -275,17 +245,7 @@ const styles = StyleSheet.create({
   submitBtn: { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },
   submitRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   submitText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold },
-
-  dividerRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.lg },
-  divider:     { flex: 1, height: 1 },
   dividerText: { fontSize: FontSize.xs, whiteSpace: 'nowrap' } as any,
-
-  socialRow: { flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.xl },
-  socialBtn: {
-    flex: 1, height: 52, borderRadius: Radius.lg, borderWidth: 1.5,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
-  },
-  socialText: { fontSize: FontSize.base, fontWeight: FontWeight.medium },
 
   footer:     { flexDirection: 'row', justifyContent: 'center' },
   footerText: { fontSize: FontSize.base },
