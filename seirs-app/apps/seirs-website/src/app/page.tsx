@@ -459,7 +459,7 @@ export default async function HomePage() {
                   n: 1,
                   icon: Package,
                   title: "Create a Delivery",
-                  body: "Add your pickup and drop-off address, describe your package, and pay by card. Sending several at once? Add them all to one booking, each with its own receiver and tracking code.",
+                  body: "Add your pickup and drop-off address, describe your package, and pay by card, bank transfer or USSD. Sending several at once? Add them all to one booking, each with its own receiver and tracking code.",
                 },
                 {
                   n: 2,
@@ -513,7 +513,7 @@ export default async function HomePage() {
                 Built for Nigerian Businesses
               </h2>
               <p className="text-text-muted text-lg leading-relaxed mb-6">
-                Whether you ship 10 parcels a day or 10,000 a month, SEIRS scales with you. Manage your entire logistics operation from one dashboard, no spreadsheets, no chasing drivers.
+                Whether you send a few parcels a day or hundreds a week, SEIRS grows with you. Run your dispatch from one dashboard, no spreadsheets, no chasing drivers.
               </p>
               {/* Founder 2026-08-14: fold the six feature cards into where the
                   rate-card paragraph sat, and make them terser still. That
@@ -604,18 +604,18 @@ export default async function HomePage() {
               <h2 className="section-title mb-4">What Nigeria moves, we move</h2>
               <p className="section-sub max-w-2xl mx-auto">
                 These are not stock categories: every one of them is a real option in the
-                app, priced on its own rate card, handled its own way.
+                app, priced for what it is and handled its own way.
               </p>
             </div>
           </Reveal>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { slot: img.img_move_farm,        title: "Farm produce",       story: "Mile 12 baskets, still fresh at the door",   slug: "moving-farm-produce" },
+              { slot: img.img_move_farm,        title: "Farm produce",       story: "Mile 12 baskets, straight to the buyer",   slug: "moving-farm-produce" },
               { slot: img.img_move_trader,      title: "Market traders",     story: "Balogun stalls shipping city-wide",           slug: "moving-market-traders" },
-              { slot: img.img_move_tailor,      title: "Tailors & fashion",  story: "Aso-ebi delivered before the party",          slug: "moving-tailors-fashion" },
+              { slot: img.img_move_tailor,      title: "Tailors & fashion",  story: "Aso-ebi, tracked to the celebrant",          slug: "moving-tailors-fashion" },
               { slot: img.img_move_wood,        title: "Furniture & wood",   story: "From the sawmill bench to the new flat",      slug: "moving-furniture-woodwork" },
-              { slot: img.img_move_food,        title: "Hot food",           story: "Amala that arrives still steaming",           slug: "moving-hot-food" },
-              { slot: img.img_move_medical,     title: "Medical supplies",   story: "Prescriptions that cannot wait",              slug: "moving-medical-supplies" },
+              { slot: img.img_move_food,        title: "Hot food",           story: "Buka runs, tracked door to door",           slug: "moving-hot-food" },
+              { slot: img.img_move_medical,     title: "Medical supplies",   story: "Prescriptions and supplies, on the record",              slug: "moving-medical-supplies" },
               { slot: img.img_move_electronics, title: "Electronics",        story: "Phones and laptops, handled like eggs",       slug: "moving-electronics" },
               { slot: img.img_move_documents,   title: "Documents",          story: "Signed contracts across town the same trip",     slug: "moving-documents" },
               { slot: img.img_move_building,    title: "Building materials", story: "Cement and cable straight to site",           slug: "moving-building-materials" },
@@ -635,8 +635,8 @@ export default async function HomePage() {
                  better the day someone uploads img_move_cold, img_move_house
                  and img_move_bulk. No story slug yet, so no link: an
                  unwritten story would 404. */
-              { slot: img.img_move_cold,        title: "Cold & frozen",      story: "Ice cream that is still ice cream",           slug: "moving-cold-chain" },
-              { slot: img.img_move_house,       title: "House moves",        story: "A whole flat, one truck, one day",            slug: "moving-house" },
+              { slot: img.img_move_cold,        title: "Cold & frozen",      story: "Frozen goods, in the right vehicle",           slug: "moving-cold-chain" },
+              { slot: img.img_move_house,       title: "House moves",        story: "A whole flat, one truck",            slug: "moving-house" },
               { slot: img.img_move_bulk,        title: "Bulk goods",         story: "Rice, cement and sand by the tonne",          slug: "moving-bulk-goods" },
             ].map((t, i) => {
               // Only a published story gets a link. An unpublished one still
@@ -715,12 +715,10 @@ export default async function HomePage() {
                 <p className="section-label mb-3">Travelling, not sending</p>
                 <h2 className="section-title mb-4">Ride with someone already going</h2>
                 <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-8">
-                  Drivers making an intercity run declare the seats they
-                  genuinely have spare. You search the route you are
-                  travelling, see who is going and in what, and book a seat
-                  on the same rails as everything else here: SEIRS sets the
-                  fare, the money sits in escrow, and the vehicle cannot be
-                  overloaded to fit you in.
+                  Someone is already driving to Abuja this morning. Search
+                  your route, see who is going and in what, and book a seat.
+                  The fare is set before you get in, and your money is held
+                  until you arrive.
                 </p>
 
                 <div className="space-y-6">
@@ -728,7 +726,7 @@ export default async function HomePage() {
                     {
                       icon: Users,
                       title: "Board where you actually are",
-                      body: "A Lagos to Abuja run that stops in Ibadan sells the Ibadan leg too. You pay for the part of the road you ride, not the whole trip.",
+                      body: "Join partway. You pay for the part of the road you ride, not the whole trip.",
                     },
                     {
                       icon: Shield,
@@ -738,7 +736,7 @@ export default async function HomePage() {
                     {
                       icon: CreditCard,
                       title: "The fare is ours, not a haggle",
-                      body: "Drivers never set their own numbers. The seat price comes off the same published rate card as every delivery, and it is the same before and after you get in.",
+                      body: "Drivers never set their own numbers. The price you see is the price you pay, before and after you get in.",
                     },
                   ].map((r) => (
                     <div key={r.title} className="flex gap-4">
@@ -931,7 +929,7 @@ export default async function HomePage() {
             <PartnerBenefit
               icon={Users}
               title="No Extra Staff Needed"
-              description="Our scanning app is dead simple. Any existing staff member can be trained in under 10 minutes. No dedicated resource required."
+              description="Our scanning app is dead simple. Any existing staff member can be trained in minutes. No dedicated resource required."
             />
             <PartnerBenefit
               icon={Smartphone}

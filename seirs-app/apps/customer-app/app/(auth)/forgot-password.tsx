@@ -26,7 +26,15 @@ export default function ForgotPasswordScreen() {
   const [error,   setError]   = useState('');
 
   const handleSubmit = async () => {
-    if (!email.trim()) { setError(t('auth.enterEmail')); return; }
+    /* Format, not just emptiness: "notanemail" was accepted and the
+       confirmation told the user to check an inbox that cannot exist
+       (found on the driver app, device QA 2026-08-30). */
+    const addr = email.trim().toLowerCase();
+    if (!addr) { setError(t('auth.enterEmail')); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(addr)) {
+      setError(t('auth.invalidEmail', { defaultValue: 'That does not look like an email address. Check it and try again.' }));
+      return;
+    }
     setError('');
     setLoading(true);
     try {
@@ -50,8 +58,10 @@ export default function ForgotPasswordScreen() {
             </View>
           </Pressable>
           <View style={[styles.sentCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-            <View style={[styles.sentIconWrap, { backgroundColor: '#22C55E18' }]}>
-              <Ionicons name="mail-open-outline" size={52} color="#22C55E" />
+            {/* Was success green; nothing succeeded, and we deliberately
+                do not reveal whether the account exists. */}
+            <View style={[styles.sentIconWrap, { backgroundColor: theme.primary + '18' }]}>
+              <Ionicons name="mail-open-outline" size={52} color={theme.primary} />
             </View>
             <Text style={[styles.sentTitle, { color: theme.text }]}>{t('auth.checkInbox')}</Text>
             <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
@@ -65,7 +75,7 @@ export default function ForgotPasswordScreen() {
             style={[styles.btn, { backgroundColor: theme.primary }]}
             onPress={() => router.back()}
           >
-            <Ionicons name="arrow-back" size={18} color="#fff" />
+            {/* the same glyph already sits in the circle at the top */}
             <Text style={styles.btnText}>{t('auth.backToSignIn')}</Text>
           </Pressable>
         </ScrollView>

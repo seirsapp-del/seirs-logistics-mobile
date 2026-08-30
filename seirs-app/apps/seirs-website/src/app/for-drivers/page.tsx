@@ -113,10 +113,10 @@ export default async function ForDriversPage() {
           <>
             Drive with SEIRS.
             <br />
-            <span className="text-sky">Get paid daily.</span>
+            <span className="text-sky">Get paid to your bank.</span>
           </>
         }
-        subtitle="Join Nigeria's smartest last-mile delivery network. Okada, keke, car, van: bring what you have. Daily wallet payouts, smart routing, real support."
+        subtitle="Join Nigeria's smartest last-mile delivery network. Okada, keke, car, van: bring what you have. Every naira tracked, smart routing, real support."
         icon={Truck}
         primaryCtaLabel="Apply to drive"
         primaryCtaHref={STORE.play('driver')}
@@ -175,7 +175,7 @@ export default async function ForDriversPage() {
                  contradicted itself as well as the code. What is left below
                  is true today and stays true if an admin retunes the rows,
                  because it names no number the catalogue owns. */
-              body="Every completed delivery is credited to your earnings the moment it clears, with the platform cut shown plainly beside it. No Friday batch, no calling anyone to ask where your money is. Withdraw to your bank when you want it, or let the daily payout run send it for you."
+              body="Every completed delivery is credited to your earnings with the platform cut shown plainly beside it. No Friday batch, no calling anyone to ask where your money is. Once earnings clear you can withdraw to your bank, or let the next payout run send it for you."
               points={[
                 'Earnings visible per trip, with the platform cut shown plainly',
                 // Restored 2026-08-15, same day it was weakened. The claim
@@ -403,7 +403,7 @@ export default async function ForDriversPage() {
               // up), payouts only run once the balance passes the minimum,
               // and new drivers carry a partial holdback for their first
               // month. Same-day was contradicted by our own copy.
-              body="Tap 'Go Online' in the app. Jobs near you start appearing. Accept the ones you want, and earnings become withdrawable a day after each trip clears."
+              body="Tap 'Go Online' in the app. Jobs start appearing. Accept the ones you want, and earnings become withdrawable once they clear."
             />
           </div>
         </div>

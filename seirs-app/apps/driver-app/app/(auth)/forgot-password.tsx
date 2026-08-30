@@ -24,11 +24,24 @@ export default function ForgotPasswordScreen() {
   const [error,   setError]   = useState('');
 
   const handleSubmit = async () => {
-    if (!email.trim()) { setError('Please enter your email address.'); return; }
+    /**
+     * Format, not just emptiness (found on device 2026-08-30).
+     *
+     * This only checked .trim(), so typing "notanemail" sailed through and
+     * the confirmation screen said "If notanemail is registered, you'll
+     * receive a reset link". A rider who mistypes their address gets a
+     * screen telling them to go and check an inbox that cannot exist.
+     */
+    const addr = email.trim().toLowerCase();
+    if (!addr) { setError('Please enter your email address.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(addr)) {
+      setError('That does not look like an email address. Check it and try again.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
-      await authApi.forgotPassword(email.trim().toLowerCase());
+      await authApi.forgotPassword(addr);
       setSent(true);
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong. Please try again.');
@@ -48,13 +61,17 @@ export default function ForgotPasswordScreen() {
             </View>
           </Pressable>
           <View style={[styles.sentCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-            <View style={[styles.sentIconWrap, { backgroundColor: '#22C55E18' }]}>
-              <Ionicons name="mail-open-outline" size={52} color="#22C55E" />
+            {/* Was success green. Nothing succeeded: we deliberately do
+                not say whether the account exists, so a green tick reads as
+                a confirmation we have not given. Brand blue is the honest
+                colour for "we have done our part". */}
+            <View style={[styles.sentIconWrap, { backgroundColor: theme.primary + '18' }]}>
+              <Ionicons name="mail-open-outline" size={52} color={theme.primary} />
             </View>
             <Text style={[styles.sentTitle, { color: theme.text }]}>Check your inbox</Text>
             <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
               If <Text style={{ fontWeight: FontWeight.semibold, color: theme.text }}>{email}</Text> is registered,
-              you'll receive a reset link within a few minutes.
+              you'll receive a reset link by email.
             </Text>
             <Text style={[styles.sentHint, { color: theme.textThird }]}>
               Check your spam folder if you don't see it.
@@ -64,7 +81,10 @@ export default function ForgotPasswordScreen() {
             style={[styles.btn, { backgroundColor: theme.primary }]}
             onPress={() => router.back()}
           >
-            <Ionicons name="arrow-back" size={18} color="#fff" />
+            {/* The arrow lived here AND in the circle at the top of the
+                screen, so two controls with the same glyph did the same
+                thing. The button keeps the words, the circle keeps the
+                glyph. */}
             <Text style={styles.btnText}>Back to Sign In</Text>
           </Pressable>
         </ScrollView>

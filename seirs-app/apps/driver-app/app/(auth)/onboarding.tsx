@@ -42,8 +42,8 @@ const SLIDES = [
   {
     id: 'brand',
     Icon: Truck,
-    headline: 'Drive with SEIRS.\nEarn on your terms.',
-    sub: 'Join Nigeria\'s smartest delivery platform: verified riders, fair pay, real support.',
+    headline: 'Drive with SEIRS.',
+    sub: 'Deliveries, rides and intercity runs. Prices set by us, so you never haggle.',
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -51,8 +51,8 @@ const SLIDES = [
   {
     id: 'earnings',
     Icon: Wallet,
-    headline: 'Daily payouts.\nEvery naira tracked.',
-    sub: 'Every trip credited with the platform cut shown plainly, and a daily payout run that sends it to your bank.',
+    headline: 'Paid to your bank.',
+    sub: 'Earnings clear, then go out to your account in the next payout run.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#58A6FF',
@@ -60,8 +60,8 @@ const SLIDES = [
   {
     id: 'flex',
     Icon: Clock,
-    headline: 'Drive when\nyou want.',
-    sub: 'Go online, take jobs that fit your schedule, go offline when you\'re done.',
+    headline: 'Online when you choose.',
+    sub: 'No shifts, no quotas. Finish the job in your hand, then go.',
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1E4A80',
     accentColor:   '#79B8FF',
@@ -69,8 +69,8 @@ const SLIDES = [
   {
     id: 'routes',
     Icon: MapPin,
-    headline: 'Smart routing.\nMore drops, less fuel.',
-    sub: 'Multi-stop matching and route optimization keep your earnings per litre high.',
+    headline: 'Smart routing.',
+    sub: 'Your drops come sorted into the order that keeps the distance down.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#2D72CC',
     accentColor:   '#58A6FF',
@@ -78,8 +78,8 @@ const SLIDES = [
   {
     id: 'safety',
     Icon: Shield,
-    headline: 'Every job\non the record.',
-    sub: 'Scans, photos and one-time codes at every handoff, so a dispute is settled by the record instead of argument.',
+    headline: 'Every job on the record.',
+    sub: 'Scans, photos and one-time codes at every handoff.',
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -87,8 +87,8 @@ const SLIDES = [
   {
     id: 'rewards',
     Icon: Award,
-    headline: 'Your reputation\ntravels with you.',
-    sub: 'Ratings and completed trips build a record senders can see, and it follows you onto every job.',
+    headline: 'Your record travels.',
+    sub: 'Ratings and completed trips follow you onto every job.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#79B8FF',
@@ -168,7 +168,7 @@ export default function OnboardingScreen() {
 
           {/* Slide icon */}
           <View style={[styles.iconWrap, { borderColor: `${slide.accentColor}40`, backgroundColor: `${slide.accentColor}18` }]}>
-            <SlideIcon size={52} color={slide.accentColor} strokeWidth={1.5} />
+            <SlideIcon size={44} color={slide.accentColor} strokeWidth={1.5} />
           </View>
 
           {/* Slide text */}
@@ -236,7 +236,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.xl,
   },
   topBar: {
     position: 'absolute',
@@ -268,9 +267,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   iconWrap: {
-    width: 110,
-    height: 110,
-    borderRadius: 32,
+    width: 94,
+    height: 94,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.xl,

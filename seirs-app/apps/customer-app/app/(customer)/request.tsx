@@ -10,7 +10,7 @@ import BottomSheet, {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useRouter, useNavigation } from 'expo-router';
+import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -109,9 +109,34 @@ export default function RequestDriverScreen() {
   }, [navigation, pickup, dropoff]);
 
   // Inline autocomplete state: replaces the old modal AddressPicker.
+  /**
+   * "Book again" on a finished ride routes here with the old route's
+   * coordinates (founder 2026-08-30: a rider who takes the same trip every
+   * morning should not retype both ends of it). Seeded once on mount so a
+   * later edit is never clobbered; the fare is quoted fresh either way.
+   */
+  const repeat = useLocalSearchParams<{
+    pickupAddress?: string; pickupLat?: string; pickupLng?: string;
+    dropAddress?:   string; dropLat?:   string; dropLng?:   string;
+  }>();
+
   const [pickupQuery,  setPickupQuery]  = useState('');
   const [dropoffQuery, setDropoffQuery] = useState('');
   const [activeField,  setActiveField]  = useState<Field | null>(null);
+
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current) return;
+    seeded.current = true;
+    if (repeat.pickupAddress && repeat.pickupLat && repeat.pickupLng) {
+      const p = { address: String(repeat.pickupAddress), lat: Number(repeat.pickupLat), lng: Number(repeat.pickupLng) };
+      setPickup(p); setPickupQuery(p.address);
+    }
+    if (repeat.dropAddress && repeat.dropLat && repeat.dropLng) {
+      const dz = { address: String(repeat.dropAddress), lat: Number(repeat.dropLat), lng: Number(repeat.dropLng) };
+      setDropoff(dz); setDropoffQuery(dz.address);
+    }
+  }, []);
   const [predictions,  setPredictions]  = useState<Prediction[]>([]);
   const [searching,    setSearching]    = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);

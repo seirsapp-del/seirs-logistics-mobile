@@ -21,8 +21,8 @@ const SLIDES = [
   {
     id: 'brand',
     Icon: Truck,
-    headline: "Nigeria's smartest\ndelivery platform.",
-    sub: 'Fast, verified, and every handoff on the record. Built for every corner of Nigeria.',
+    headline: "Send, ride, travel.",
+    sub: 'Parcels, in-city rides and intercity seats, all in one app.',
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -30,8 +30,8 @@ const SLIDES = [
   {
     id: 'send',
     Icon: Package,
-    headline: 'Send anything,\nanywhere in Nigeria.',
-    sub: 'Documents, parcels, food: handed to a verified rider who is already nearby.',
+    headline: 'Sent by a verified rider.',
+    sub: 'Documents, parcels, hot food or fragile goods, each on the right vehicle.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#58A6FF',
@@ -39,8 +39,8 @@ const SLIDES = [
   {
     id: 'track',
     Icon: MapPin,
-    headline: 'Watch your delivery\nmove: live.',
-    sub: 'Real-time map tracking. Know exactly where your package is at all times.',
+    headline: 'See where it is.',
+    sub: 'Live map tracking, and a proof photo the moment it lands.',
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1E4A80',
     accentColor:   '#79B8FF',
@@ -48,8 +48,8 @@ const SLIDES = [
   {
     id: 'ride',
     Icon: Users,
-    headline: 'Travelling between\ncities? Take a seat.',
-    sub: 'Buy a seat with a driver already making the trip. You pay for the leg you ride, not the whole route.',
+    headline: 'Travelling between cities?',
+    sub: 'Buy a seat with a driver already going, and pay for the leg you ride.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#2D72CC',
     accentColor:   '#58A6FF',
@@ -57,8 +57,8 @@ const SLIDES = [
   {
     id: 'business',
     Icon: ShoppingBag,
-    headline: 'For traders, farmers,\nand businesses too.',
-    sub: 'Bulk deliveries, agricultural produce, building materials: we handle it all.',
+    headline: 'Farm loads to house moves.',
+    sub: 'Produce, building materials and machine parts, on a vehicle that fits.',
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -66,8 +66,8 @@ const SLIDES = [
   {
     id: 'partner',
     Icon: Store,
-    headline: 'Drop-off points\neverywhere.',
-    sub: 'Partner stores near you. Never miss a delivery: even if you\'re not home.',
+    headline: 'Collect on your time.',
+    sub: 'Drop off or pick up at a partner store, whenever it suits you.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#79B8FF',
@@ -143,7 +143,7 @@ export default function OnboardingScreen() {
 
           {/* Slide icon */}
           <View style={[styles.iconWrap, { borderColor: `${slide.accentColor}40`, backgroundColor: `${slide.accentColor}18` }]}>
-            <SlideIcon size={52} color={slide.accentColor} strokeWidth={1.5} />
+            <SlideIcon size={44} color={slide.accentColor} strokeWidth={1.5} />
           </View>
 
           {/* Slide text */}
@@ -214,7 +214,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.xl,
   },
   topBar: {
     position: 'absolute',
@@ -246,9 +245,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   iconWrap: {
-    width: 110,
-    height: 110,
-    borderRadius: 32,
+    width: 94,
+    height: 94,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.xl,

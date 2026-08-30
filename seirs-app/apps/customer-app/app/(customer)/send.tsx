@@ -1173,6 +1173,12 @@ export default function SendScreen() {
       for (const pk of packages) {
         const forThis: string[] = [];
         for (const uri of pk.photos) {
+          // "Send again" prefills a package with the photos of the run it
+          // was copied from, and those are already on our CDN. Passing an
+          // https URL to uploadApi.file treats it as a local file handle
+          // and fails, so an already-hosted photo rides through as-is and
+          // only camera or library URIs are uploaded.
+          if (/^https?:\/\//i.test(uri)) { forThis.push(uri); continue; }
           const { url } = await uploadApi.file(uri);
           forThis.push(url);
         }

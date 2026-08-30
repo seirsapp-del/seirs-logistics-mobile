@@ -122,7 +122,7 @@ export default function PaymentMethodsScreen() {
           <Text style={[styles.emptyFootnote, { color: theme.textThird }]}>
             Your card is saved automatically the first time you pay for a
             delivery, so the next order is one tap. We never store your card
-            number: Flutterwave handles tokenization securely.
+            number: our payment processor tokenises it securely.
           </Text>
         </ScrollView>
       ) : (
@@ -171,7 +171,7 @@ export default function PaymentMethodsScreen() {
             <Ionicons name="lock-closed" size={14} color={theme.textSecond} />
             <Text style={[styles.infoText, { color: theme.textSecond }]}>
               New cards are saved automatically when you pay for a delivery
-              with them. Flutterwave tokenizes them securely: SEIRS never sees
+              with them. They are tokenised securely: SEIRS never sees
               your full card number.
             </Text>
           </View>

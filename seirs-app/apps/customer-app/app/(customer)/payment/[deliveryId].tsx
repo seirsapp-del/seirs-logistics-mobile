@@ -169,7 +169,7 @@ export default function PaymentScreen() {
         <View style={[styles.amountCard, { backgroundColor: theme.primary }]}>
           <Text style={styles.amountLabel}>Amount to pay</Text>
           <Text style={styles.amount}>{naira(displayPrice)}</Text>
-          <Text style={styles.amountNote}>Card processing is added at checkout by Flutterwave.</Text>
+          <Text style={styles.amountNote}>Card processing is added at checkout.</Text>
         </View>
 
         {/* What this pays for: same card language as the Review step. */}
@@ -222,7 +222,7 @@ export default function PaymentScreen() {
         ) : (
           <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
-              You will be taken to Flutterwave&apos;s secure checkout, where you can pay by card, bank
+              You will be taken to our secure checkout, where you can pay by card, bank
               transfer or USSD. Come back to the app afterwards and we confirm it automatically.
             </Text>
             <Text style={[styles.noticeText, { color: theme.textSecond, marginTop: 6, fontSize: 12 }]}>

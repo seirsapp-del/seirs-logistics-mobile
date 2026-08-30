@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/Icon';
 import { Avatar } from '@/components/ui/Avatar';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useSendDraftStore } from '@/store/useSendDraftStore';
 import { Colors } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
@@ -65,6 +66,7 @@ export default function TripDetailsScreen() {
   const isDark = cs === 'dark';
   const colors = Colors[cs ?? 'light'];
   const { t }  = useTranslation();
+  const { patchDraft } = useSendDraftStore();
 
   const [d, setD] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -490,9 +492,14 @@ export default function TripDetailsScreen() {
                 </Text>
               </View>
 
-              {d.deliveredAt && (isDone || String(st.status) === 'delivered') && (
+              {/* Was fmtWhen(d.deliveredAt), the whole run's timestamp, so
+                  every package in a five-drop run claimed the same delivery
+                  time even when the drops landed hours apart. The stop
+                  carries its own deliveredAt; the run's is only the
+                  fallback for a single-package booking. */}
+              {(st.deliveredAt ?? d.deliveredAt) && (isDone || String(st.status) === 'delivered') && (
                 <Text style={[styles.pkgMeta, { color: colors.textSecond }]}>
-                  Delivered {fmtWhen(d.deliveredAt)}
+                  Delivered {fmtWhen(st.deliveredAt ?? d.deliveredAt)}
                   {d.receivedByRelation && d.receivedByRelation !== 'recipient' && d.receivedByName
                     ? ` · left with ${d.receivedByName}` : ''}
                 </Text>
@@ -576,6 +583,89 @@ export default function TripDetailsScreen() {
             </View>
           );
         })}
+
+        {/* Send again. The founder's point (2026-08-30): nobody wants to
+            retype fifty packages to repeat a run they make every week.
+            This does not book anything. It writes the old run into the
+            send draft and drops the sender into the normal send flow, so
+            every detail stays editable: drop a package, change an address,
+            swap a photo, cut fifty down to thirty. Payment is unchanged,
+            and a saved card makes it one tap at the end. */}
+        {isDone && d.kind !== 'ride' && stops.length > 0 && (
+          <Pressable
+            onPress={() => {
+              patchDraft({
+                step:     0,
+                packages: stops.map((st: any) => ({
+                  photos:        Array.isArray(st.packagePhotoUrls) ? st.packagePhotoUrls : [],
+                  description:   st.packageDescription ?? '',
+                  category:      (st.categoryCode ?? null) as any,
+                  weightKg:      st.weightKg != null ? String(st.weightKg) : '',
+                  receiverFirst: st.receiverFirstName ?? '',
+                  receiverLast:  st.receiverLastName ?? '',
+                  receiverPhone: st.recipientPhone ?? '',
+                  destMode:      st.destinationStoreId ? 'store' : 'address',
+                  dropoff:       st.lat != null && st.lng != null
+                    ? { address: st.address ?? '', lat: Number(st.lat), lng: Number(st.lng) }
+                    : null,
+                  dropoffQuery:  st.address ?? '',
+                  fallbackPref:  st.fallbackPref ?? 'hand_only',
+                  neighbourName: st.fallbackNeighbourName ?? '',
+                  declaredValue: st.declaredValueNgn != null ? String(st.declaredValueNgn) : '',
+                  instructions:  st.notes ?? '',
+                })),
+                pickup: d.pickupLat != null && d.pickupLng != null
+                  ? { address: d.pickupAddress ?? '', lat: Number(d.pickupLat), lng: Number(d.pickupLng) }
+                  : null,
+                pickupQuery:   d.pickupAddress ?? '',
+                vehicleId:     String(d.vehicleType ?? ''),
+                // Never carried over: the run is priced fresh, and the old
+                // schedule and payment choice must not silently reapply.
+                scheduleNow:   true,
+                scheduledDate: '',
+                scheduledHour: null,
+                paymentId:     '',
+                savedAt:       Date.now(),
+              });
+              router.push('/(customer)/send' as any);
+            }}
+            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}
+          >
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>
+              Send again
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
+              {stops.length > 1
+                ? `Reuse all ${stops.length} packages, then edit anything`
+                : 'Reuse these details, then edit anything'}
+            </Text>
+          </Pressable>
+        )}
+
+        {/* Rides repeat too: the same commute, both ends already filled.
+            Routes to the normal request screen with the old coordinates,
+            so the map, the vehicle choice and the fare are all live. */}
+        {isDone && d.kind === 'ride' && d.pickupLat != null && stops[0]?.lat != null && (
+          <Pressable
+            onPress={() => router.push({
+              pathname: '/(customer)/request',
+              params: {
+                pickupAddress: String(d.pickupAddress ?? ''),
+                pickupLat:     String(d.pickupLat),
+                pickupLng:     String(d.pickupLng),
+                dropAddress:   String(stops[0].address ?? ''),
+                dropLat:       String(stops[0].lat),
+                dropLng:       String(stops[0].lng),
+              },
+            } as any)}
+            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}
+          >
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>Book again</Text>
+            <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
+              Same route, priced fresh
+            </Text>
+          </Pressable>
+        )}
 
         {/* Live actions, in the business centered-card idiom. */}
         {isActive && !isUnpaid && (

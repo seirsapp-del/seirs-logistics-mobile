@@ -27,7 +27,10 @@ export default function ForgotPasswordScreen() {
   const [sent,    setSent]    = useState(false);
   const [error,   setError]   = useState('');
 
-  const canSubmit = email.trim().length > 3 && !loading;
+  /* Was length > 3, so "notanemail" submitted happily and the next
+     screen told them to check an inbox that cannot exist. */
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const canSubmit = EMAIL_RE.test(email.trim().toLowerCase()) && !loading;
 
   const handleSubmit = async () => {
     setError('');
@@ -63,8 +66,8 @@ export default function ForgotPasswordScreen() {
         {sent ? (
           <>
             <View style={styles.sentWrap}>
-              <View style={[styles.sentIcon, { backgroundColor: isDark ? '#14351F' : '#F0FDF4' }]}>
-                <Icon name="Mail" size={40} color="#16A34A" />
+              <View style={[styles.sentIcon, { backgroundColor: theme.primary + (isDark ? '26' : '18') }]}>
+                <Icon name="Mail" size={40} color={theme.primary} />
               </View>
               <Text style={[styles.heading, { textAlign: 'center', color: theme.text }]}>Check your inbox</Text>
               <Text style={[styles.sentDesc, { color: theme.textSecond }]}>

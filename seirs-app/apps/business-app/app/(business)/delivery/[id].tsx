@@ -12,10 +12,11 @@
  */
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Share, Linking,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Share, Linking, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useBusinessStore } from '@/store/businessStore';
 import * as Clipboard from 'expo-clipboard';
 import { Icon } from '@/components/Icon';
 import { useSeirsDialog } from '@/components/SeirsDialog';
@@ -47,6 +48,7 @@ export default function DeliveryDetailScreen() {
   // silently discarding the fourth.
   const dialog = useSeirsDialog();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { setDraft, resetDraft } = useBusinessStore();
 
   /**
    * Live rider position. The business app carried no tracking at all
@@ -167,6 +169,9 @@ export default function DeliveryDetailScreen() {
   }
 
   const stops: any[] = Array.isArray(d.stops) ? d.stops : [];
+
+  const fmtWhen = (iso: string) =>
+    new Date(iso).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const runTint = statusTint(d.status, isDark);
 
   /**
@@ -556,6 +561,40 @@ export default function DeliveryDetailScreen() {
                   </Pressable>
                 </>
               )}
+
+              {/* Business ran behind customer here: the sender who paid for
+                  the run got a status badge and nothing else, while the
+                  customer app has shown photos and proof per package since
+                  2026-08-24. Every stop carries its own deliveredAt, its own
+                  packagePhotoUrls and its own proofPhotoUrls, so each package
+                  in a run now proves itself independently. */}
+              {!!st.deliveredAt && (
+                <Text style={[styles.pkgMeta, { color: colors.textSecond }]}>
+                  Delivered {fmtWhen(st.deliveredAt)}
+                </Text>
+              )}
+
+              {Array.isArray(st.packagePhotoUrls) && st.packagePhotoUrls.length > 0 && (
+                <View style={styles.photoBlock}>
+                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>WHAT YOU SENT</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {st.packagePhotoUrls.map((u: string, k: number) => (
+                      <Image key={k} source={{ uri: u }} style={[styles.photoThumb, { borderColor: colors.border }]} resizeMode="cover" />
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+              {Array.isArray(st.proofPhotoUrls) && st.proofPhotoUrls.length > 0 && (
+                <View style={styles.photoBlock}>
+                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>PROOF OF DELIVERY</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {st.proofPhotoUrls.map((u: string, k: number) => (
+                      <Image key={k} source={{ uri: u }} style={[styles.photoThumb, { borderColor: colors.border }]} resizeMode="cover" />
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
           );
         })}
@@ -583,6 +622,58 @@ export default function DeliveryDetailScreen() {
               </Pressable>
             )}
           </View>
+        )}
+
+        {/* Send again (founder 2026-08-30): a sender who runs the same
+            fifty-package route every week should not retype it. This books
+            nothing. It loads the old run into the send draft and opens the
+            normal send flow, so every package stays editable: drop some,
+            change an address, swap a photo, cut fifty to thirty. The run is
+            priced fresh and gets brand-new tracking codes, run and package
+            alike, because codes are minted server-side at create. */}
+        {['delivered', 'cancelled', 'failed'].includes(String(d.status)) && stops.length > 0 && (
+          <Pressable
+            onPress={() => {
+              resetDraft();
+              setDraft({
+                pickupMode:    d.pickupStoreId ? 'store' : 'door',
+                pickupStoreId: d.pickupStoreId ?? undefined,
+                pickupAddress: d.pickupAddress ?? '',
+                pickupLat:     d.pickupLat != null ? Number(d.pickupLat) : undefined,
+                pickupLng:     d.pickupLng != null ? Number(d.pickupLng) : undefined,
+                vehicleType:   d.vehicleType ?? undefined,
+                stops: stops.map((st: any) => ({
+                  address:               st.address ?? '',
+                  lat:                   st.lat != null ? Number(st.lat) : undefined,
+                  lng:                   st.lng != null ? Number(st.lng) : undefined,
+                  recipientName:         st.recipientName ?? [st.receiverFirstName, st.receiverLastName].filter(Boolean).join(' '),
+                  recipientPhone:        st.recipientPhone ?? '',
+                  note:                  st.notes ?? undefined,
+                  photoUris:             Array.isArray(st.packagePhotoUrls) ? st.packagePhotoUrls : [],
+                  packageDescription:    st.packageDescription ?? undefined,
+                  categoryCode:          st.categoryCode ?? undefined,
+                  weightKg:              st.weightKg != null ? Number(st.weightKg) : undefined,
+                  receiverFirstName:     st.receiverFirstName ?? undefined,
+                  receiverLastName:      st.receiverLastName ?? undefined,
+                  declaredValueNgn:      st.declaredValueNgn != null ? Number(st.declaredValueNgn) : undefined,
+                  fallbackPref:          st.fallbackPref ?? undefined,
+                  fallbackNeighbourName: st.fallbackNeighbourName ?? undefined,
+                  destinationMode:       st.destinationStoreId ? 'store' : 'address',
+                  destinationStoreId:    st.destinationStoreId ?? undefined,
+                  destinationStoreName:  st.destinationStoreName ?? undefined,
+                })),
+              } as any);
+              router.push('/(business)/send-package' as any);
+            }}
+            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}
+          >
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>Send again</Text>
+            <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
+              {stops.length > 1
+                ? `Reuse all ${stops.length} packages, then edit anything`
+                : 'Reuse these details, then edit anything'}
+            </Text>
+          </Pressable>
         )}
 
         {/* Same entry the customer Trip Details has (founder 2026-08-22:
@@ -619,6 +710,9 @@ const styles = StyleSheet.create({
   sectionTitle:{ fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 8, marginTop: 6 },
   pkgTitle: { fontSize: 15, fontWeight: '700', flex: 1 },
   pkgMeta:  { fontSize: 13 },
+  photoBlock: { gap: 6, marginTop: 4 },
+  photoLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+  photoThumb: { width: 72, height: 72, borderRadius: 8, borderWidth: 1 },
   pkgRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   codeRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, paddingTop: 10, marginTop: 4 },
   code:     { flex: 1, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },

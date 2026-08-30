@@ -16,8 +16,8 @@ const SLIDES = [
   {
     key:     'bulk',
     icon:    'Package' as const,
-    title:   'Ship in Bulk',
-    body:    'Create multi-stop deliveries and send many packages in one booking, each with its own receiver and tracking code.',
+    title:   'Many Packages, One Booking',
+    body:    'Each with its own receiver, its own tracking code, and its own photo.',
     gradient: ['#0F2B4C', '#1a4070'] as [string, string],
   },
   {
@@ -28,22 +28,22 @@ const SLIDES = [
     // the true part, so they stay.
     key:     'wallet',
     icon:    'Receipt' as const,
-    title:   'Every Naira Accounted',
-    body:    'Pay per booking with your card. Itemised receipts on every delivery, and loyalty points on each one.',
+    title:   'Pay As You Send',
+    body:    'Card, transfer or USSD per booking, with an itemised receipt each time.',
     gradient: ['#1a3a5c', '#3A7BD5'] as [string, string],
   },
   {
     key:     'partner',
     icon:    'Store' as const,
-    title:   'Partner Store',
-    body:    'Operate a collection point. Manage incoming packages, scan QR codes, and earn weekly payouts.',
+    title:   'Your Shop, Our Network',
+    body:    'Run a partner store: take packages in, scan them out, and earn on every one.',
     gradient: ['#163050', '#0F2B4C'] as [string, string],
   },
   {
-    key:     'team',
-    icon:    'Users' as const,
-    title:   'One Account, Many Branches',
-    body:    'Ikeja, Lekki, Apapa: each dispatches independently from the same account, on one itemised statement.',
+    key:     'recurring',
+    icon:    'Repeat' as const,
+    title:   'Send the Same Run Again',
+    body:    'Save a delivery you make often and repeat it in a couple of taps.',
     gradient: ['#0F2B4C', '#0a1f38'] as [string, string],
   },
 ];
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   brandSub:  { color: '#FFBE0B', fontSize: 12, fontWeight: '800', letterSpacing: 2, marginLeft: 2 },
   slide:     { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingTop: 40 },
   iconWrap:  {
-    width: 100, height: 100, borderRadius: 28,
+    width: 88, height: 88, borderRadius: 26,
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center', justifyContent: 'center', marginBottom: 40,
   },

@@ -873,6 +873,11 @@ export default function SendPackageScreen() {
       for (const s of draft.stops) {
         const urls: string[] = [];
         for (const uri of (s.photoUris ?? [])) {
+          // "Send again" prefills a run with photos already on our CDN.
+          // uploadApi.file treats its argument as a local file handle, so
+          // an https URL rides through untouched and only fresh camera or
+          // library picks are uploaded.
+          if (/^https?:\/\//i.test(uri)) { urls.push(uri); continue; }
           const up = await uploadApi.file(uri, 'image/jpeg', 'packages');
           urls.push(up.url);
         }
