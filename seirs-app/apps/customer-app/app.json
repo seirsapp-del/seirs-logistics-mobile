@@ -27,11 +27,6 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.POST_NOTIFICATIONS"
       ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM"
-        }
-      },
       "versionCode": 1
     },
     "plugins": [
@@ -40,7 +35,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 175,
+          "imageWidth": 159,
           "resizeMode": "contain",
           "backgroundColor": "#F5F5F0",
           "dark": {
@@ -70,7 +65,8 @@
           "icon": "./assets/images/icon.png",
           "color": "#0F2B4C"
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true

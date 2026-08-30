@@ -169,11 +169,16 @@ export const authApi = {
   login: (email: string, password: string) =>
     request<{ token: string; user: any }>('POST', '/auth/login', { email, password }, false),
 
-  googleLogin: () =>
-    request<{ token: string; user: any }>('POST', '/auth/google', {}, false),
+  /**
+   * Both of these posted an EMPTY body until 2026-08-30, so every call hit
+   * SocialLoginDto's `idToken` requirement and came back 400, then 401.
+   * The token now travels; the caller gets it from the native SDK.
+   */
+  googleLogin: (idToken: string) =>
+    request<{ token: string; user: any }>('POST', '/auth/google', { idToken }, false),
 
-  appleLogin: () =>
-    request<{ token: string; user: any }>('POST', '/auth/apple', {}, false),
+  appleLogin: (idToken: string) =>
+    request<{ token: string; user: any }>('POST', '/auth/apple', { idToken }, false),
 
   me: () => request<{ user: any; driver?: any }>('GET', '/auth/me'),
 

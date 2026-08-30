@@ -39,5 +39,15 @@ module.exports = () => {
     ...expo.android,
     config: { ...(expo.android && expo.android.config), googleMaps: { apiKey: mapsKey } },
   };
+
+  // Google sign-in client ids. Kept out of the repo for the same reason as
+  // the Maps key, and read at runtime from expoConfig.extra so that adding
+  // the real values is a .env edit, NOT another native rebuild. The native
+  // module itself is already linked, which is the part that needs one.
+  expo.extra = {
+    ...expo.extra,
+    googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID ?? '',
+    googleIosClientId: process.env.GOOGLE_IOS_CLIENT_ID ?? '',
+  };
   return { expo };
 };

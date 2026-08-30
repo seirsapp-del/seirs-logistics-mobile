@@ -29,11 +29,6 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION"
       ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM"
-        }
-      },
       "versionCode": 1
     },
     "plugins": [
@@ -42,7 +37,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 175,
+          "imageWidth": 159,
           "resizeMode": "contain",
           "backgroundColor": "#F5F5F0",
           "dark": {
@@ -66,7 +61,8 @@
           "photosPermission": "Seirs Driver needs access to your photos for KYC documents.",
           "cameraPermission": "Seirs Driver needs camera access for proof of delivery photos."
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true

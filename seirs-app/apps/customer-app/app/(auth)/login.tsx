@@ -11,6 +11,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
+import { getGoogleIdToken, isGoogleConfigured, GoogleCancelled } from '@/lib/googleAuth';
 import { PasswordInput } from '@/components/PasswordInput';
 import {
   ArrowLeft, Mail, ArrowRight, Truck,
@@ -28,6 +29,7 @@ export default function LoginScreen() {
   const [password,   setPassword]   = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading,    setLoading]    = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error,      setError]      = useState('');
 
   // Hardware back button: mirror the on-screen arrow's behavior so users
@@ -40,6 +42,32 @@ export default function LoginScreen() {
     });
     return () => sub.remove();
   }, [router]));
+
+  /**
+   * Google sign-in. The button only exists when a client id is configured,
+   * so this cannot be the dead tap that got the old buttons removed.
+   *
+   * The backend verifies the idToken and mints a CUSTOMER for anyone new,
+   * which is exactly right here and exactly wrong in the driver and
+   * business apps: their signup also creates a Driver row or a
+   * BusinessAccount, so they need a follow-up profile step before a social
+   * button can go live there.
+   */
+  const handleGoogle = async () => {
+    setError('');
+    setGoogleBusy(true);
+    try {
+      const idToken = await getGoogleIdToken();
+      const res = await authApi.googleLogin(idToken);
+      await login({ ...res.user, token: res.token, rememberMe, pendingDeletion: (res as any).pendingDeletion ?? null });
+    } catch (e: any) {
+      // Backing out is a decision, not a failure. Say nothing.
+      if (e instanceof GoogleCancelled) return;
+      setError(e?.message ?? 'Could not sign in with Google. Try again.');
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password) { setError('Please fill in all fields.'); return; }
@@ -170,23 +198,30 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
-        {/*
-          GOOGLE AND APPLE REMOVED 2026-08-30.
-
-          They were dead. authApi.googleLogin POSTs to /auth/google with an
-          EMPTY body; the backend's SocialLoginDto requires an idToken and
-          verifies it against GOOGLE_CLIENT_ID, so every tap returned 400
-          then 401. No Google or Apple auth package was installed in any of
-          the three apps, so there was never a token to send. Two dead
-          buttons on the first screen a new user meets, two days before
-          launch.
-
-          The backend endpoints are correct and stay. Wiring the client
-          needs a Google Cloud OAuth client, google-services.json, an Apple
-          Service ID and a signing key, all of which live in the founder's
-          accounts, so it is a post-launch job and a native change when it
-          happens.
-        */}
+        {/* Google sign-in, restored 2026-08-30 with the native module
+            actually linked this time. It renders only when a client id is
+            present, so an unconfigured build shows nothing rather than the
+            dead button that was here this morning. Apple stays out until
+            iOS exists; note that adding Google makes Sign in with Apple
+            mandatory on iOS under guideline 4.8. */}
+        {isGoogleConfigured() && (
+          <Pressable
+            onPress={handleGoogle}
+            disabled={googleBusy || loading}
+            style={({ pressed }) => [
+              styles.googleBtn,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                opacity: pressed || googleBusy ? 0.7 : 1,
+              },
+            ]}
+          >
+            {googleBusy
+              ? <ActivityIndicator color={theme.text} />
+              : <Text style={[styles.googleText, { color: theme.text }]}>Continue with Google</Text>}
+          </Pressable>
+        )}
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecond }]}>Don't have an account?</Text>
@@ -200,6 +235,9 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  googleBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                borderWidth: 1, borderRadius: Radius.lg, paddingVertical: 14, marginTop: Spacing.md },
+  googleText: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
   container: {
     flexGrow: 1,
     paddingHorizontal: Spacing.md,
