@@ -152,7 +152,13 @@ export default async function ForBusinessPage() {
               title="Every naira accounted for"
               body="Every booking is paid for at the moment it is made and lands in one itemised statement, so the month reconciles without anyone reconstructing it from memory."
               points={[
-                'Every action carries an audit trail for your records',
+                /* Was "Every action carries an audit trail for your
+                   records". The trail is real, audit_logs is a live table,
+                   but it is ADMIN-only: nothing in the business controller
+                   reads it and the business app has no activity screen. It
+                   is our record, not theirs, and "for your records" says
+                   otherwise. The statement IS theirs (2026-08-30). */
+                'Every booking on one itemised statement you can pull any time',
                 'Every receipt itemised line by line, ready for your books',
                 'One account, many pickup addresses: branches dispatch independently',
               ]}
