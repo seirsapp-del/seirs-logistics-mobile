@@ -29,6 +29,7 @@
  * trade the founder chose: a rider whose battery dies stops earning,
  * and that cost lands on the person least able to absorb it.
  */
+import { Alert, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -168,10 +169,52 @@ export async function stopBackgroundLocation(): Promise<void> {
  * refuse the background prompt otherwise, which reads as the dialog
  * simply not appearing. Requesting them in order is the whole trick.
  */
+/**
+ * Google Play's prominent disclosure for background location.
+ *
+ * Play policy requires an in-app disclosure BEFORE the runtime prompt that
+ * names the data, says plainly that it is collected in the background, and
+ * ties it to the feature it enables. Burying it in the privacy policy does
+ * not count, and shipping without it is the single most common reason a
+ * delivery app is rejected. It lives here rather than at the call sites so
+ * every path into the background grant is covered by construction.
+ *
+ * Returns false if the rider declines, and the caller treats that exactly
+ * like a denied permission.
+ */
+function showBackgroundDisclosure(): Promise<boolean> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      'SEIRS needs your location in the background',
+      'While you are online with a job, SEIRS collects your location even when the app is ' +
+      'closed or not in use.\n\n' +
+      'It is used for one thing: to show the sender where their package is, and to keep the ' +
+      'route record that settles a dispute in your favour.\n\n' +
+      'It stops when you go offline. On the next screen, choose "Allow all the time".',
+      [
+        { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Continue', onPress: () => resolve(true) },
+      ],
+      { cancelable: false },
+    );
+  });
+}
+
 export async function requestBackgroundPermission(): Promise<boolean> {
   try {
     const fg = await Location.requestForegroundPermissionsAsync();
     if (fg.status !== 'granted') return false;
+
+    // Already granted: no prompt is coming, so no disclosure is owed.
+    const existing = await Location.getBackgroundPermissionsAsync();
+    if (existing.status === 'granted') return true;
+
+    // Android is the platform with the policy and the separate grant.
+    if (Platform.OS === 'android') {
+      const agreed = await showBackgroundDisclosure();
+      if (!agreed) return false;
+    }
+
     const bg = await Location.requestBackgroundPermissionsAsync();
     return bg.status === 'granted';
   } catch {

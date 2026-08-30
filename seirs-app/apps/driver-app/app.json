@@ -33,7 +33,8 @@
         "googleMaps": {
           "apiKey": "AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM"
         }
-      }
+      },
+      "versionCode": 1
     },
     "plugins": [
       "expo-router",

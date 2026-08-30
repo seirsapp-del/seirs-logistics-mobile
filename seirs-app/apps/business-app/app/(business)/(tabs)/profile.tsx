@@ -139,6 +139,10 @@ export default function BusinessProfileTab() {
         { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }), onPress: () => router.push('/(business)/support/new' as any) },
         { icon: 'HelpCircle',    label: t('drawer.help',           { defaultValue: 'Help & FAQ' }),      onPress: () => Linking.openURL(`${SITE}/faq`) },
         { icon: 'Lock',          label: t('drawer.privacy',        { defaultValue: 'Privacy Policy' }),  onPress: () => Linking.openURL(`${SITE}/privacy-policy`) },
+        // Google Play requires in-app account deletion wherever an app
+        // creates accounts. Customer and driver have had it; business had
+        // a register screen and no way out (store audit 2026-08-30).
+        { icon: 'Trash2',        label: t('drawer.deleteAccount',  { defaultValue: 'Delete Account' }),  onPress: () => router.push('/(business)/delete-account' as any) },
       ],
     },
   ];

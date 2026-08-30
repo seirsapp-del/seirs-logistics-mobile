@@ -35,6 +35,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/careers`,            changeFrequency: 'weekly',  priority: 0.7 },
     { url: `${BASE}/contact`,            changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE}/privacy-policy`,     changeFrequency: 'yearly',  priority: 0.3 },
+    // Play Console's Data Safety form points at this URL, so it has to
+    // be discoverable and stay reachable (store audit 2026-08-30).
+    { url: `${BASE}/delete-account`,     changeFrequency: 'yearly',  priority: 0.3 },
     { url: `${BASE}/terms-of-service`,   changeFrequency: 'yearly',  priority: 0.3 },
   ];
 

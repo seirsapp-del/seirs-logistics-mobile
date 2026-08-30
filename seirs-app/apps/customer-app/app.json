@@ -31,7 +31,8 @@
         "googleMaps": {
           "apiKey": "AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM"
         }
-      }
+      },
+      "versionCode": 1
     },
     "plugins": [
       "expo-router",
@@ -59,8 +60,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Seirs needs access to your photos.",
-          "cameraPermission": "Seirs needs camera access."
+          "photosPermission": "Seirs needs your photos so you can attach a picture of the package you are sending, which becomes proof of its condition at pickup.",
+          "cameraPermission": "Seirs uses your camera to photograph the package you are sending, so there is a record of its condition before a rider collects it."
         }
       ],
       [
