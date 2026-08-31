@@ -1105,6 +1105,23 @@ export class DriversService {
   // "are you OK?" push. Helps detect crashed phones, dead batteries,
   // signal black spots. Runs every 5 minutes; once a driver pings back
   // their locationUpdatedAt advances and they're cleared.
+  /**
+   * How often the same driver may be asked. The cron runs every 5 minutes
+   * and re-selects anyone still stale, so without this a rider who goes
+   * online and pockets the phone, or rides through a signal black spot,
+   * was asked "Are you OK?" every 5 minutes indefinitely. Found on device
+   * 2026-08-31: the demo driver had six identical pings, 5 minutes apart.
+   *
+   * That is how a driver ends up muting SEIRS notifications altogether,
+   * and then misses job offers, which is a far worse outcome than a
+   * missed check-in.
+   *
+   * In memory on purpose: it needs no migration, and losing the cooldown
+   * on a deploy costs one extra ping, not a storm.
+   */
+  private static readonly CHECK_IN_COOLDOWN_MS = 30 * 60 * 1000;
+  private readonly lastCheckInPing = new Map<string, number>();
+
   @Cron(CronExpression.EVERY_5_MINUTES)
   async pingStaleOnlineDrivers() {
     const cutoff = new Date(Date.now() - 5 * 60 * 1000);
@@ -1115,8 +1132,14 @@ export class DriversService {
     });
     if (!stale.length) return;
     let pinged = 0;
+    const now = Date.now();
     for (const d of stale) {
       if (!d.user?.id || !this.notificationsService) continue;
+
+      const last = this.lastCheckInPing.get(d.id) ?? 0;
+      if (now - last < DriversService.CHECK_IN_COOLDOWN_MS) continue;
+      this.lastCheckInPing.set(d.id, now);
+
       this.notificationsService.create(
         d.user.id,
         'Are you OK?',
@@ -1125,6 +1148,13 @@ export class DriversService {
       ).catch(() => {});
       pinged++;
     }
+    // Forget anyone no longer stale, so the map cannot grow without bound
+    // and a driver who comes back is eligible again immediately.
+    const stillStale = new Set(stale.map((d) => d.id));
+    for (const id of this.lastCheckInPing.keys()) {
+      if (!stillStale.has(id)) this.lastCheckInPing.delete(id);
+    }
+
     if (pinged) this.logger.log(`Auto check-in: pinged ${pinged} stale online drivers`);
   }
 

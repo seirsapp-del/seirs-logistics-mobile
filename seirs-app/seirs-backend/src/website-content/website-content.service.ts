@@ -7,6 +7,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebsiteContent, WebContentStatus, WebContentType } from './website-content.entity';
 import { ContactSubmission, ContactStatus, ContactSubject } from './contact-submission.entity';
 import { UploadService } from '../upload/upload.service';
+import { PlatformConfig } from '../admin/platform-config.entity';
+import { MailService } from '../mail/mail.service';
 
 // Slugs are URL-safe identifiers - lowercase alphanumerics + hyphens,
 // 2-120 chars. Keep it strict to avoid Next.js dynamic route ambiguity.
@@ -30,6 +32,8 @@ export class WebsiteContentService implements OnModuleInit {
   constructor(
     @InjectRepository(WebsiteContent)    private repo:        Repository<WebsiteContent>,
     @InjectRepository(ContactSubmission) private contactRepo: Repository<ContactSubmission>,
+    @InjectRepository(PlatformConfig)    private configRepo:  Repository<PlatformConfig>,
+    private readonly mail: MailService,
     private readonly uploadService: UploadService,
   ) {}
 
@@ -61,12 +65,55 @@ export class WebsiteContentService implements OnModuleInit {
     });
     const saved = await this.contactRepo.save(row);
 
-    // Email fan-out is a follow-up - for now the row sits in the table
-    // and admin can pull it from /admin/contact-submissions. When mail
-    // routing is wired, dispatch to subject-specific inboxes (support@
-    // business@ legal@ etc.) based on `subject`.
     this.logger.log(`CONTACT_SUBMISSION id=${saved.id} subject=${subject} from="${email}"`);
+
+    /**
+     * Tell somebody. Until 2026-08-30 this method saved the row and
+     * stopped, and nothing in the admin dashboard read the table either,
+     * so a message sent through the website reached nobody at all. The
+     * dashboard page exists now; this makes sure you do not have to be
+     * looking at it.
+     *
+     * Deliberately not awaited into the response path. If mail is down
+     * the message is still safely stored, and the person who wrote in
+     * should not see a failure for something that already worked.
+     */
+    void this.notifyContact(saved).catch((e) =>
+      this.logger.warn(`CONTACT_NOTIFY_FAILED id=${saved.id}: ${e?.message ?? e}`),
+    );
+
     return { ok: true, id: saved.id };
+  }
+
+  /** Where contact alerts land. Admin-editable, code fallback matches the seed. */
+  private async contactNotifyAddress(): Promise<string> {
+    try {
+      const row = await this.configRepo.findOne({ where: { key: 'support_email' } });
+      const v = row?.value?.trim();
+      if (v && /.+@.+\..+/.test(v)) return v;
+    } catch { /* fall through to the default */ }
+    return 'support@seirs.co';
+  }
+
+  private async notifyContact(row: ContactSubmission): Promise<void> {
+    const to = await this.contactNotifyAddress();
+    const lines = [
+      `From:    ${row.name} <${row.email}>`,
+      row.phone ? `Phone:   ${row.phone}` : null,
+      `Subject: ${row.subject}`,
+      '',
+      row.message,
+      '',
+      'Reply to this person directly at the address above.',
+      'Mark it handled in Admin, Website Messages.',
+    ].filter(Boolean).join('\n');
+
+    await this.mail.sendGeneric(
+      to,
+      'SEIRS',
+      `Website message: ${row.subject} from ${row.name}`,
+      lines,
+    );
   }
 
   listContactSubmissions(opts: { status?: ContactStatus; page?: number } = {}) {
