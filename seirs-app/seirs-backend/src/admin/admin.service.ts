@@ -3450,27 +3450,43 @@ export class AdminService {
       .select(['d.id', 'd.rating', 'd.totalDeliveries'])
       .getMany();
 
+    /**
+     * Two grouped queries for the whole fleet, not two per driver.
+     *
+     * The first version looped and referenced x.driver_id as a raw column,
+     * which threw a 500. Joining the relation lets TypeORM resolve the
+     * column name itself, whatever the naming strategy is.
+     */
+    const deliveredRows = await this.deliveriesRepo
+      .createQueryBuilder('x')
+      .innerJoin('x.driver', 'dv')
+      .select('dv.id', 'driverId')
+      .addSelect('COUNT(x.id)', 'n')
+      .where('x.status = :s', { s: 'delivered' })
+      .groupBy('dv.id')
+      .getRawMany<{ driverId: string; n: string }>();
+
+    const ratingRows = await this.deliveriesRepo
+      .createQueryBuilder('x')
+      .innerJoin('x.driver', 'dv')
+      .select('dv.id', 'driverId')
+      .addSelect('AVG(x.customerRating)', 'avg')
+      .addSelect('COUNT(x.customerRating)', 'n')
+      .where('x.customerRating IS NOT NULL')
+      .groupBy('dv.id')
+      .getRawMany<{ driverId: string; avg: string | null; n: string }>();
+
+    const deliveredBy = new Map(deliveredRows.map(r => [r.driverId, Number(r.n)]));
+    const ratedBy     = new Map(ratingRows.map(r => [r.driverId, r]));
+
     const rows: any[] = [];
-
     for (const d of drivers) {
-      // Same join the rating writer uses: deliveries carry driver_id, which
-      // is the DRIVER ROW id, not the user id.
-      const delivered = await this.deliveriesRepo
-        .createQueryBuilder('x')
-        .where('x.driver_id = :id', { id: d.id })
-        .andWhere('x.status = :s', { s: 'delivered' })
-        .getCount();
+      const delivered = deliveredBy.get(d.id) ?? 0;
+      const rated     = ratedBy.get(d.id);
 
-      const rated = await this.deliveriesRepo
-        .createQueryBuilder('x')
-        .select('AVG(x.customerRating)', 'avg')
-        .addSelect('COUNT(x.customerRating)', 'n')
-        .where('x.driver_id = :id', { id: d.id })
-        .andWhere('x.customerRating IS NOT NULL')
-        .getRawOne<{ avg: string | null; n: string }>();
-
-      // decimal and aggregate columns arrive as strings over the wire
-      const realRating = rated?.avg != null ? +Number(rated.avg).toFixed(2) : null;
+      // AVG and COUNT come back as strings; Number() them or the comparison
+      // is between a string and a number and always reports a difference.
+      const realRating  = rated?.avg != null ? +Number(rated.avg).toFixed(2) : null;
       const ratingsUsed = Number(rated?.n ?? 0);
 
       const storedRating = d.rating != null ? Number(d.rating) : null;
