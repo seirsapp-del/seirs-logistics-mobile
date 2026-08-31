@@ -371,6 +371,29 @@ export const deliveriesApi = {
    * freight (2026-08-31). Powers the business app's Cargo Space screen,
    * which must never show a trader a car with two seats free.
    */
+  /**
+   * Negotiating a parcel onto a declared trip, before any card is
+   * touched (2026-08-31). A request holds nothing and charges nothing;
+   * a decline costs the sender nothing and leaves no refund to chase.
+   */
+  requestParcelOnTrip: (tripId: string, body: object) =>
+    request<any>('POST', `/parcel-requests/trips/${tripId}`, body),
+  myParcelRequests: () => request<any[]>('GET', '/parcel-requests/mine'),
+  withdrawParcelRequest: (id: string) =>
+    request<any>('DELETE', `/parcel-requests/${id}`),
+  acceptParcelCounter: (id: string) =>
+    request<any>('POST', `/parcel-requests/${id}/accept-counter`, {}),
+  /** Driver side: the queue on one of their own trips, and the answers. */
+  parcelRequestInbox: (tripId: string) =>
+    request<any[]>('GET', `/parcel-requests/trips/${tripId}/inbox`),
+  acceptParcelRequest: (id: string) =>
+    request<any>('POST', `/parcel-requests/${id}/accept`, {}),
+  declineParcelRequest: (id: string, reason?: string) =>
+    request<any>('POST', `/parcel-requests/${id}/decline`, reason ? { reason } : {}),
+  counterParcelRequest: (id: string, body: {
+    dropAddress: string; dropLat: number; dropLng: number; note?: string;
+  }) => request<any>('POST', `/parcel-requests/${id}/counter`, body),
+
   cargoTrips: (from: string, to: string) =>
     request<any[]>('GET', `/deliveries/travel-buddy/trips?forPackages=1&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   /**

@@ -1321,6 +1321,48 @@ export default function SendScreen() {
         uploaded.push(forThis);
       }
       const urls = uploaded[0] ?? [];
+      /**
+       * Posting to a rider's trip is a REQUEST, not a booking
+       * (2026-08-31, founder).
+       *
+       * "once they pay then its irreversible with deductions, like
+       * charges from bank etc". A Flutterwave refund is a second
+       * transaction with its own cost, not a reversal, so charging for a
+       * job the rider has not agreed to means paying to undo something
+       * that should never have happened. Seat bookings have always
+       * worked this way; this brings parcels in line.
+       *
+       * Nothing is charged here. The rider accepts, declines, or offers
+       * a different drop-off at a fresh price, and only an agreement
+       * creates a booking to pay for.
+       */
+      if (postToTripId) {
+        const pkg0req = packages[0];
+        await deliveriesApi.requestParcelOnTrip(postToTripId, {
+          pickupAddress:  pickup?.address ?? '',
+          pickupLat:      pickup?.lat,
+          pickupLng:      pickup?.lng,
+          dropoffAddress: pkg0req?.dropoff?.address ?? pkg0req?.dropoffQuery ?? '',
+          dropoffLat:     pkg0req?.dropoff?.lat,
+          dropoffLng:     pkg0req?.dropoff?.lng,
+          weightKg:       parseFloat(pkg0req?.weightKg ?? '0') || 0,
+          categoryCode:   pkg0req?.category ?? undefined,
+          packageDescription: pkg0req?.description?.trim() || undefined,
+          declaredValueNgn: Number(pkg0req?.declaredValue) > 0 ? Number(pkg0req.declaredValue) : undefined,
+          preferredStoreId: pkg0req?.destStoreId ?? undefined,
+          senderInstructions: instructions.trim() || undefined,
+        });
+        clearDraft();
+        showDialog({
+          title: 'Request sent',
+          message:
+            'The driver will accept, decline, or offer a different drop-off point. '
+            + 'Nothing has been charged, and nothing will be until you both agree.',
+        });
+        router.replace('/(customer)/parcel-requests' as any);
+        return;
+      }
+
       const created: any = await deliveriesApi.create({
         // The signed pin makes the review's number the charged number.
         quoteToken: runQuote?.quotePin?.token,
