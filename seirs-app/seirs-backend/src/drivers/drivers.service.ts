@@ -2207,10 +2207,16 @@ export class DriversService {
 
   // ── Admin review queue ──────────────────────────────────────────────────
 
-  async listDriverDocuments(status?: DriverDocStatus, page = 1) {
+  async listDriverDocuments(status?: DriverDocStatus, page = 1, driverId?: string) {
     const take = 50;
+    // driverId lets the driver's own profile page show every document in
+    // one place. The founder's rule: everything about a driver lives on
+    // their profile, nobody should have to hunt across three pages.
+    const where: any = {};
+    if (status)   where.status   = status;
+    if (driverId) where.driverId = driverId;
     const [rows, total] = await this.docsRepo.findAndCount({
-      where: status ? { status } : {},
+      where,
       relations: ['driver', 'driver.user'],
       order: { createdAt: 'ASC' },   // oldest waiting first
       take,

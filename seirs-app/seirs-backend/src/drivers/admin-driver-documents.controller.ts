@@ -30,8 +30,9 @@ export class AdminDriverDocumentsController {
   list(
     @Query('status') status?: DriverDocStatus,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('driverId') driverId?: string,
   ) {
-    return this.drivers.listDriverDocuments(status, page);
+    return this.drivers.listDriverDocuments(status, page, driverId);
   }
 
   // POST /api/v1/admin/driver-documents/:id/approve

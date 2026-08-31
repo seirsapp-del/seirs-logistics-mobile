@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Bike, Car, Truck, FileText, Star, MapPin, IdCard, CheckCircle2, AlertTriangle, Copy, Download, XCircle, ArrowLeft } from 'lucide-react';
@@ -45,6 +45,63 @@ export default function DriverDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+
+  /** Documents live on the driver, not on a page he has to know exists
+      (founder 2026-08-31: "dont make the non technical user play hide and
+      seek"). */
+  const [docs,      setDocs]      = useState<any[] | null>(null);
+  const [docReason, setDocReason] = useState<Record<string, string>>({});
+  const [docBusy,   setDocBusy]   = useState<string | null>(null);
+  const docsWaiting = (docs ?? []).filter((d: any) => d.status === 'submitted').length;
+
+  const loadDocs = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await adminApi.driverDocuments.list(undefined, 1, String(id));
+      setDocs(res.items ?? []);
+    } catch {
+      setDocs([]);
+    }
+  }, [id]);
+
+  useEffect(() => { void loadDocs(); }, [loadDocs]);
+
+  const reviewDoc = async (d: any, decision: 'approved' | 'rejected') => {
+    const reason = (docReason[d.id] ?? '').trim();
+    if (decision === 'rejected' && !reason) {
+      setError('Say why. The driver sees this, and without it they send the same photo again.');
+      return;
+    }
+    setDocBusy(d.id);
+    try {
+      if (decision === 'approved') await adminApi.driverDocuments.approve(d.id);
+      else                          await adminApi.driverDocuments.reject(d.id, reason);
+      await loadDocs();
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not save that decision.');
+    } finally {
+      setDocBusy(null);
+    }
+  };
+
+  /** Spec V8 2.1 document ids, spelled how a person would say them. */
+  const DOC_LABEL: Record<string, string> = {
+    national_id_front: 'National ID, front',
+    national_id_back:  'National ID, back',
+    drivers_license:   "Driver's licence",
+    vehicle_document:  'Vehicle papers',
+    vehicle_photo:     'Photo of the vehicle',
+    ownership_proof:   'Proof of ownership',
+    insurance_cert:    'Insurance certificate',
+    selfie:            'Selfie',
+    guarantor:         'Guarantor form',
+    id_document:       'Identity document',
+  };
+  const DOC_STATUS_STYLE: Record<string, string> = {
+    submitted: 'bg-amber-50 text-amber-700 border-amber-200',
+    approved:  'bg-green-50 text-green-700 border-green-200',
+    rejected:  'bg-red-50 text-red-700 border-red-200',
+  };
   const confirm               = useConfirm();
 
   // Same gate as /users/[id]: the backend refuses NDPR export and
@@ -333,21 +390,81 @@ export default function DriverDetailPage() {
             </div>
           </div>
 
-          {/* Vehicle KYC docs kept inline (driver-specific business docs,
-              not customer PII). Identity docs go through the PII reveal
-              flow in the Identity section below. */}
+          {/* Documents, reviewed here.
+              Until 2026-08-31 this was one link to a vehicle document and
+              nothing else, while the documents themselves had no review
+              state at all. The founder's rule: everything about a driver
+              lives on the driver, so the decision happens here rather than
+              on a separate queue page he has to know exists. */}
           <div className="border-t border-gray-50 pt-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Vehicle KYC</h3>
-            <div className="flex gap-4">
-              {driver.vehicleDocumentUrl ? (
-                <a href={driver.vehicleDocumentUrl} target="_blank" rel="noreferrer"
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:underline bg-blue-50 px-3 py-2 rounded-lg">
-                  <FileText size={14} /> Vehicle Document
-                </a>
-              ) : (
-                <span className="flex items-center gap-2 text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg"><FileText size={14} /> Vehicle doc - not uploaded</span>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-700">Documents</h3>
+              {docsWaiting > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  {docsWaiting} waiting on you
+                </span>
               )}
             </div>
+
+            {docs === null ? (
+              <p className="text-sm text-gray-400">Loading documents...</p>
+            ) : docs.length === 0 ? (
+              <p className="text-sm text-gray-400">
+                This driver has not uploaded any documents yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {docs.map((d) => (
+                  <div key={d.id} className="flex items-start gap-3 border border-gray-100 rounded-lg p-3">
+                    <a href={d.url} target="_blank" rel="noreferrer"
+                       className="w-16 h-16 rounded-md overflow-hidden bg-gray-50 border border-gray-200 flex-shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={d.url} alt={DOC_LABEL[d.docId] ?? d.docId} className="w-full h-full object-cover" />
+                    </a>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-gray-800">{DOC_LABEL[d.docId] ?? d.docId}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${DOC_STATUS_STYLE[d.status] ?? ''}`}>
+                          {d.status === 'submitted' ? 'waiting' : d.status}
+                        </span>
+                        {d.version > 1 && (
+                          <span className="text-xs text-gray-400">re-uploaded &times;{d.version - 1}</span>
+                        )}
+                      </div>
+                      {d.rejectionReason && (
+                        <p className="mt-1 text-xs text-red-700">Rejected: {d.rejectionReason}</p>
+                      )}
+                      {d.status === 'submitted' && (
+                        <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                          <input
+                            value={docReason[d.id] ?? ''}
+                            onChange={(e) => setDocReason((r) => ({ ...r, [d.id]: e.target.value }))}
+                            placeholder="If rejecting, what must they fix?"
+                            className="flex-1 px-2 py-1.5 rounded border border-gray-200 text-xs"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              disabled={docBusy === d.id}
+                              onClick={() => void reviewDoc(d, 'rejected')}
+                              className="px-2.5 py-1.5 rounded text-xs border border-red-200 text-red-700 bg-white hover:bg-red-50 disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              disabled={docBusy === d.id}
+                              onClick={() => void reviewDoc(d, 'approved')}
+                              className="px-2.5 py-1.5 rounded text-xs bg-navy text-white hover:opacity-90 disabled:opacity-50"
+                            >
+                              Approve
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

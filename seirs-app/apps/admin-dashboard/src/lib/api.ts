@@ -549,9 +549,9 @@ export const adminApi = {
    * documents, the app said "Verified", and there was nothing here to open.
    */
   driverDocuments: {
-    list:    (status?: string, page = 1) =>
+    list:    (status?: string, page = 1, driverId?: string) =>
       req<{ items: any[]; total: number; page: number; take: number }>(
-        `/admin/driver-documents?page=${page}${status ? `&status=${status}` : ''}`),
+        `/admin/driver-documents?page=${page}${status ? `&status=${status}` : ''}${driverId ? `&driverId=${driverId}` : ''}`),
     approve: (id: string) =>
       req<any>(`/admin/driver-documents/${id}/approve`, { method: 'POST' }),
     reject:  (id: string, reason: string) =>

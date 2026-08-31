@@ -15,7 +15,7 @@
  * the fair order is the order they arrived.
  */
 import { useCallback, useEffect, useState } from 'react';
-import Image from 'next/image';
+import Link from 'next/link';
 import { FileCheck, Loader2, RefreshCw, AlertCircle, Check, X, Clock, ExternalLink } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { PageIntro } from '@/components/PageIntro';
@@ -123,7 +123,7 @@ export default function DriverDocumentsPage() {
     <div className="p-6 max-w-5xl mx-auto">
       <PageIntro
         title="Driver documents"
-        purpose="Licences, IDs and vehicle papers waiting on a decision. Oldest first, because a driver in this queue cannot earn."
+        purpose="Everything waiting on a decision, across all drivers, oldest first. You can also review a single driver from their own profile."
         storageKey="driver-documents"
         help={
           <>
@@ -217,7 +217,13 @@ export default function DriverDocumentsPage() {
                       )}
                     </div>
                     <div className="mt-1.5 text-sm text-gray-600">
-                      {d.driverName ?? 'Unknown driver'}
+                      {/* Straight through to the driver. This queue is the
+                          worklist; the profile is where everything about a
+                          driver lives, and the two should never be separate
+                          errands (founder 2026-08-31). */}
+                      <Link href={`/drivers/${d.driverId}`} className="text-sky-700 hover:underline font-medium">
+                        {d.driverName ?? 'Unknown driver'}
+                      </Link>
                       {d.driverEmail ? <span className="text-gray-400"> &middot; {d.driverEmail}</span> : null}
                       {d.driverStatus ? <span className="text-gray-400"> &middot; account {d.driverStatus}</span> : null}
                     </div>
