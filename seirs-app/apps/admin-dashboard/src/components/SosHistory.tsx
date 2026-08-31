@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Siren, AlertTriangle } from 'lucide-react';
+import { Siren, AlertTriangle, ChevronDown } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 /**
@@ -51,6 +51,11 @@ export function SosHistory({
   const history = Array.isArray(alerts) ? alerts : null;
   const [live,  setLive]  = useState<any[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Folded away by default: these profiles were one long scroll and this
+   * panel is usually empty. A live alert overrides it below.
+   */
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     /* Skip the request entirely when the detail payload already carries
@@ -78,35 +83,71 @@ export function SosHistory({
   const rows       = history ?? live;
   const activeRows = (rows ?? []).filter((a: any) => String(a?.status ?? 'active') === 'active');
 
+  /**
+   * A live alert pins this open and takes the toggle away entirely. A
+   * collapsed panel hiding an open SOS is precisely how somebody gets
+   * hurt, so that case is not allowed to be closed.
+   */
+  const forcedOpen = activeRows.length > 0;
+  const showBody   = forcedOpen || open;
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4">
-      <h3 className="text-sm font-bold text-[#0F2B4C] mb-3 flex items-center gap-1.5">
-        <Siren size={14} className={activeRows.length > 0 ? 'text-red-600' : 'text-gray-400'} />
-        Safety and SOS
-        {rows !== null && rows.length > 0 && (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700">
-            {rows.length} on record
-          </span>
-        )}
-        {activeRows.length > 0 && (
-          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
-            {activeRows.length} live now
-          </span>
-        )}
-      </h3>
+      {(() => {
+        const heading = (
+          <>
+            <Siren size={14} className={activeRows.length > 0 ? 'text-red-600' : 'text-gray-400'} />
+            Safety and SOS
+            {showBody && rows !== null && rows.length > 0 && (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700">
+                {rows.length} on record
+              </span>
+            )}
+            {activeRows.length > 0 && (
+              <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+                {activeRows.length} live now
+              </span>
+            )}
+          </>
+        );
 
-      {error && (
+        // No toggle while an alert is live: it stays open and says so.
+        if (forcedOpen) {
+          return (
+            <h3 className="text-sm font-bold text-[#0F2B4C] mb-3 flex items-center gap-1.5">
+              {heading}
+            </h3>
+          );
+        }
+
+        return (
+          <button
+            type="button"
+            onClick={() => setOpen(v => !v)}
+            aria-expanded={open}
+            className="mb-3 flex w-full items-center gap-1.5 text-left text-sm font-bold text-[#0F2B4C]"
+          >
+            {heading}
+            <ChevronDown
+              size={15}
+              className={`ml-auto shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+            />
+          </button>
+        );
+      })()}
+
+      {showBody && error && (
         <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
           <AlertTriangle size={14} className="mt-0.5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {rows === null && !error && (
+      {showBody && rows === null && !error && (
         <p className="text-sm text-gray-400">Reading their SOS record...</p>
       )}
 
-      {rows !== null && rows.length === 0 && (
+      {showBody && rows !== null && rows.length === 0 && (
         <p className="text-sm text-gray-500">{personLabel} has never pressed SOS.</p>
       )}
 
