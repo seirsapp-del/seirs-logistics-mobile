@@ -4535,6 +4535,62 @@ export class DeliveriesService {
       [deliveryId, driverId, reason, note?.trim() || null, stage, kind],
     );
 
+    /**
+     * Was this a job the rider was ASKED for by name and agreed to?
+     * (2026-08-31, founder: "they default of a signed contract")
+     *
+     * Backing out of a job the pool offered is ordinary attrition and
+     * the allowance below handles it. Backing out of one a sender chose
+     * you for, waited on your answer for, and paid for on the strength
+     * of that answer, is a different act and gets its own record with
+     * its own evidence.
+     *
+     * NOTHING HERE BANS ANYBODY, per instruction. It records, freezes
+     * the strike count so the evidence cannot drift, and leaves the
+     * decision to a person: a rider whose bike was seized at a
+     * checkpoint defaults in exactly the same row as one who could not
+     * be bothered, and only a human can tell those apart.
+     *
+     * Wrapped so an enforcement failure can never block a rider from
+     * cancelling. Trapping somebody in a job to protect an audit trail
+     * would be the worse bug.
+     */
+    try {
+      const agreed = await this.repo.manager.query(
+        `SELECT "id", "answeredAt" FROM "parcel_requests"
+          WHERE "deliveryId" = $1 AND "status" = 'accepted' LIMIT 1`,
+        [deliveryId],
+      );
+      if (agreed?.length) {
+        const windowDays = this.feesServiceRef
+          ? await this.feesServiceRef.getValueOr('agreement_breach_window_days', 90).catch(() => 90)
+          : 90;
+        const prior = await this.repo.manager.query(
+          `SELECT COUNT(*)::int AS c FROM "agreement_breaches"
+            WHERE "driverId" = $1 AND "createdAt" > NOW() - ($2 || ' days')::interval`,
+          [driverId, String(windowDays)],
+        );
+        const strike = Number(prior?.[0]?.c ?? 0) + 1;
+        await this.repo.manager.query(
+          `INSERT INTO "agreement_breaches"
+             ("driverId","deliveryId","parcelRequestId","agreedAt","stage","reason","note","fareNgn","strikeCount")
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [
+            driverId, deliveryId, agreed[0].id, agreed[0].answeredAt ?? null,
+            stage, reason, note?.trim() || null,
+            Number(delivery.price ?? 0) || null, strike,
+          ],
+        );
+        this.logger.warn(
+          `AGREEMENT_BREACH driver=${driverId} delivery=${deliveryId} ` +
+          `request=${agreed[0].id} stage=${stage} reason=${reason} strike=${strike} ` +
+          `(recorded for admin review; no automatic action taken)`,
+        );
+      }
+    } catch (e: any) {
+      this.logger.error(`agreement breach record failed: ${e?.message ?? e}`);
+    }
+
     // Allowance: safety is exempt, everything else counts.
     if (reason !== 'unsafe' && this.feesServiceRef) {
       try {

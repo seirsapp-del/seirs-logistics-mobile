@@ -35,6 +35,33 @@ export class AdminController {
   // ── Overview ──────────────────────────────────────────────────────────────
 
   // GET /api/v1/admin/stats
+  /**
+   * Riders who agreed to carry a load and then did not (2026-08-31).
+   *
+   * A queue for a person. Nothing anywhere in this feature bans anybody
+   * automatically, by founder instruction and because it is the only
+   * defensible design: a seized bike and a shrug produce the same row.
+   */
+  @Get('agreement-breaches')
+  agreementBreaches(
+    @Query('reviewed') reviewed?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getAgreementBreaches(
+      reviewed === '1' || reviewed === 'true',
+      limit ? Number(limit) : 50,
+    );
+  }
+
+  @Post('agreement-breaches/:id/review')
+  reviewAgreementBreach(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: { action?: string; note?: string },
+  ) {
+    return this.adminService.reviewAgreementBreach(id, user?.id, body ?? {});
+  }
+
   @Get('stats')
   getStats() { return this.adminService.getDashboardStats(); }
 

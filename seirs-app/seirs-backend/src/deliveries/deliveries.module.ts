@@ -155,6 +155,39 @@ export class DeliveriesModule implements OnModuleInit {
       await this.ds.query(`
         CREATE INDEX IF NOT EXISTS "idx_dc_driver_day" ON "driver_cancellations" ("driverId", "createdAt")
       `);
+      /**
+       * agreement_breaches (2026-08-31): a rider agreed to carry a
+       * specific load for a specific sender, then did not. Distinct from
+       * a cancellation because the sender chose them by name, waited on
+       * their answer, and paid on the strength of it. Records only;
+       * nothing here bans anybody.
+       */
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "agreement_breaches" (
+          "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "driverId" uuid NOT NULL,
+          "deliveryId" uuid NOT NULL,
+          "parcelRequestId" uuid NULL,
+          "agreedAt" timestamptz NULL,
+          "stage" varchar(20) NULL,
+          "reason" varchar(30) NULL,
+          "note" text NULL,
+          "fareNgn" numeric(12,2) NULL,
+          "strikeCount" integer NOT NULL DEFAULT 1,
+          "reviewedAt" timestamptz NULL,
+          "reviewedByUserId" uuid NULL,
+          "action" varchar(40) NULL,
+          "reviewNote" text NULL,
+          "createdAt" timestamptz NOT NULL DEFAULT now()
+        )
+      `);
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "idx_ab_driver" ON "agreement_breaches" ("driverId", "createdAt")
+      `);
+      /* The admin queue reads "what has nobody looked at yet". */
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "idx_ab_unreviewed" ON "agreement_breaches" ("reviewedAt")
+      `);
       // Per-stop verification codes for multi-drop runs (2026-08-09).
       await this.ds.query(`
         ALTER TABLE "delivery_stops"

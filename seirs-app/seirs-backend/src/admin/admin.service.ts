@@ -2107,6 +2107,62 @@ export class AdminService {
     return { drivers, total, page, limit };
   }
 
+  /**
+   * Riders who agreed to carry a specific load and then did not
+   * (2026-08-31).
+   *
+   * A queue for a HUMAN. Nothing in this system bans anybody: a rider
+   * whose bike was seized at a checkpoint appears in exactly the same
+   * row as one who could not be bothered, and no threshold can separate
+   * them. The strike count is shown because a pattern is meaningful; it
+   * is not an instruction.
+   */
+  async getAgreementBreaches(reviewed = false, limit = 50) {
+    const rows = await this.driversRepo.manager.query(
+      `SELECT b."id", b."driverId", b."deliveryId", b."parcelRequestId",
+              b."agreedAt", b."stage", b."reason", b."note", b."fareNgn",
+              b."strikeCount", b."reviewedAt", b."action", b."reviewNote",
+              b."createdAt",
+              u."name" AS "driverName", u."phone" AS "driverPhone",
+              d."vehicleType", d."vehiclePlate",
+              dl."trackingCode",
+              pr."pickupAddress", pr."dropoffAddress",
+              pr."senderInstructions", pr."counterDropAddress"
+         FROM "agreement_breaches" b
+         LEFT JOIN "drivers"    d  ON d."id"  = b."driverId"
+         LEFT JOIN "users"      u  ON u."id"  = d."userId"
+         LEFT JOIN "deliveries" dl ON dl."id" = b."deliveryId"
+         LEFT JOIN "parcel_requests" pr ON pr."id" = b."parcelRequestId"
+        WHERE ${reviewed ? 'b."reviewedAt" IS NOT NULL' : 'b."reviewedAt" IS NULL'}
+        ORDER BY b."createdAt" DESC
+        LIMIT $1`,
+      [Math.min(200, Math.max(1, Number(limit) || 50))],
+    ).catch(() => []);
+    return { items: rows ?? [] };
+  }
+
+  /**
+   * A person decides. `action` is free text on purpose: an enum here
+   * would be a list of punishments written by somebody who has never
+   * met the rider.
+   */
+  async reviewAgreementBreach(
+    id: string, adminUserId: string, body: { action?: string; note?: string },
+  ) {
+    const action = String(body?.action ?? '').trim().slice(0, 40);
+    if (!action) {
+      throw new BadRequestException('Say what you decided, even if the decision is to excuse it.');
+    }
+    await this.driversRepo.manager.query(
+      `UPDATE "agreement_breaches"
+          SET "reviewedAt" = NOW(), "reviewedByUserId" = $2,
+              "action" = $3, "reviewNote" = $4
+        WHERE "id" = $1`,
+      [id, adminUserId, action, (body?.note ?? '').trim() || null],
+    );
+    return { ok: true as const };
+  }
+
   async getDriverDetail(id: string) {
     const driver = await this.driversRepo.findOne({ where: { id }, relations: ['user'] });
     if (!driver) throw new NotFoundException('Driver not found');
