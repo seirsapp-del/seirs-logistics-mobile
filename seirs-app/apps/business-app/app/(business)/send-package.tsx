@@ -44,6 +44,7 @@ import { Icon } from '@/components/Icon';
 import { Illustration } from '@/components/Illustration';
 import {
   businessApi, configApi, mapsApi, uploadApi, pricingApi, dropoffApi, feesApi,
+  deliveriesApi,
   type ServiceCategory, type RateCard,
 } from '@/services/api';
 import { useBusinessStore, type StoreLite } from '@/store/businessStore';
@@ -909,10 +910,48 @@ export default function SendPackageScreen() {
       }
       const scheduledAt = scheduledAtIso;
 
+      /**
+       * Posting to a rider's trip is a REQUEST, not a booking
+       * (2026-08-31, founder). The customer app was converted first and
+       * this was left on the old path for an hour, which meant a trader
+       * using Cargo Space still paid up front and waited on a refund if
+       * the rider said no: exactly the thing being fixed.
+       *
+       * A Flutterwave refund is a second transaction with its own cost,
+       * not a reversal. Nothing is charged here. The rider accepts,
+       * declines, or offers a different drop-off at a fresh price, and
+       * only an agreement produces something to pay for.
+       */
+      if (postToTripId) {
+        const first: any = draft.stops[0] ?? {};
+        await deliveriesApi.requestParcelOnTrip(postToTripId, {
+          pickupAddress:  draft.pickupAddress,
+          pickupLat:      draft.pickupLat,
+          pickupLng:      draft.pickupLng,
+          dropoffAddress: first.address,
+          dropoffLat:     first.lat,
+          dropoffLng:     first.lng,
+          weightKg:       draft.stops.reduce(
+            (sum: number, st: any) => sum + (Number(st?.weightKg ?? 0) || 0), 0,
+          ),
+          categoryCode:   first.categoryCode ?? draft.categoryCode ?? undefined,
+          packageDescription: first.packageDescription?.trim() || undefined,
+          declaredValueNgn: first.declaredValueNgn ?? undefined,
+          preferredStoreId: first.destinationStoreId ?? undefined,
+          senderInstructions: first.note?.trim() || undefined,
+        });
+        resetDraft();
+        dialog.alert(
+          'Request sent',
+          'The driver will accept, decline, or offer a different drop-off point. '
+          + 'Nothing has been charged, and nothing will be until you both agree.',
+        );
+        router.replace('/(business)/trip-requests' as any);
+        return;
+      }
+
       const res = await businessApi.createDelivery({
         termsAccepted: tcAgreed,
-        // Offered to this one rider first, not to the open pool.
-        ...(postToTripId ? { tripId: postToTripId } : {}),
         // Signed quote pin: the review's number is the charged number.
         quoteToken: (quote as any)?.quotePin?.token,
         pickupAddress: draft.pickupAddress,

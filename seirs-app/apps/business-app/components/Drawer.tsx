@@ -70,6 +70,10 @@ export function Drawer({ visible, onClose }: Props) {
        100kg of yam should never be shown a car with two seats free,
        nor a product name that reads as lift-sharing. */
     { icon: 'Truck',           label: t('drawer.cargoSpace',      { defaultValue: 'Cargo Space' }),          onPress: () => navigate('/(business)/cargo-space') },
+    /* Answers to the loads you asked drivers to carry. Nothing is
+       charged while a request waits, so this is also where you
+       withdraw one for free. */
+    { icon: 'PackageCheck',    label: t('drawer.tripRequests',    { defaultValue: 'Trip Requests' }),        onPress: () => navigate('/(business)/trip-requests') },
     // B-8.1: recurring.tsx is a complete Spec V8 recurring-delivery
     // scheduler wired to a live backend cron, and nothing in the app
     // navigated to it. Same for the three developer screens below.
