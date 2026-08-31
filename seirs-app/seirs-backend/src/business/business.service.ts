@@ -26,6 +26,7 @@ import { secureCode } from '../common/utils/auth-codes';
 
 import { redactDriverForCustomer } from '../common/redact-driver';
 import { getState } from '../pricing/regions';
+import { breakdownForCustomer, breakdownForDriver } from '../deliveries/redact-breakdown';
 
 /**
  * Fallback only. The live rate is partner_store_handling_ngn in the Fee
@@ -560,6 +561,20 @@ export class BusinessService {
      * their own run still gets their own record untouched.
      */
     const shaped: any = isCustomer ? redactDriverForCustomer({ ...delivery } as any) : { ...delivery };
+    /**
+     * Split the money object by audience (2026-08-31).
+     *
+     * This route returned the stored priceBreakdown raw, so a business
+     * sender's phone received seirsNet, trueCosts.contribution,
+     * trueCosts.belowFloor and the rider's complete cost basis for the
+     * run. That is the per-job version of the public rate-card leak
+     * closed on 2026-08-27. A sender now gets their own itemised bill,
+     * a rider their own itemised pay. See redact-breakdown.ts.
+     */
+    shaped.priceBreakdown = isCustomer
+      ? breakdownForCustomer(shaped.priceBreakdown)
+      : breakdownForDriver(shaped.priceBreakdown);
+
     return {
       ...shaped,
       redirectFeeOwedNgn:

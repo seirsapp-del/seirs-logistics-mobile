@@ -16,6 +16,7 @@ import { PricingService } from './pricing.service';
 import { RouteDistanceService } from './route-distance.service';
 import { PricingService as RateCardPricing } from '../pricing/pricing.service';
 import { detectStateFromCoords, getState } from '../pricing/regions';
+import { breakdownForCustomer, breakdownForDriver } from './redact-breakdown';
 import { User } from '../users/user.entity';
 import { redactDriverForCustomer } from '../common/redact-driver';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
@@ -613,6 +614,20 @@ export class DeliveriesService {
       dropoffStateCode: (breakdown as any)?.route?.dropoffStateCode ?? null,
       zoneTier:         (breakdown as any)?.route?.zoneTier         ?? null,
       zoneTierNgn:      (breakdown as any)?.route?.tierSurchargeNgn ?? null,
+      /**
+       * Snapshot the priced breakdown (2026-08-31).
+       *
+       * Only the BUSINESS path ever wrote this column, so on a customer
+       * booking the driver's earnings card had nothing to render and a
+       * rider could not see how their own pay was built at all. The
+       * business path has snapshotted it since its rebuild for exactly
+       * this reason; the customer path simply never did.
+       *
+       * It is redacted per audience on the way out, in findByIdForUser
+       * and the business route, because the raw object carries seirsNet,
+       * trueCosts and the driver cost basis.
+       */
+      priceBreakdown:   breakdown,
       ...ridePassenger,
       scheduledFor,
       trackingCode,
@@ -1241,6 +1256,19 @@ export class DeliveriesService {
     }
 
     const [items, total] = await qb.getManyAndCount();
+    /**
+     * The list ships whole rows, so it needs the same split the detail
+     * route got (2026-08-31).
+     *
+     * This was harmless only while the customer path never wrote
+     * priceBreakdown. It writes one now, so without this the bookings
+     * LIST would hand every sender the seirsNet, trueCosts and driver
+     * cost basis for every booking they have ever made, which is a
+     * wider leak than the detail route ever had.
+     */
+    for (const it of items as any[]) {
+      it.priceBreakdown = breakdownForCustomer(it.priceBreakdown);
+    }
     return { items, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
@@ -1248,6 +1276,12 @@ export class DeliveriesService {
     return this.repo.find({
       where: { driver: { id: driverId } },
       order: { createdAt: 'DESC' },
+    }).then((rows) => {
+      // A rider's own list, so their own pay lines, never our margin.
+      for (const r of rows as any[]) {
+        r.priceBreakdown = breakdownForDriver(r.priceBreakdown);
+      }
+      return rows;
     });
   }
 
@@ -1296,7 +1330,11 @@ export class DeliveriesService {
       })
       .orderBy('d.assignedAt', 'DESC')
       .getMany();
-    return rows.map(r => this.redactCustomerForDriver(r as any));
+    return rows.map((r) => {
+      // Own pay lines only, same split as the detail route.
+      (r as any).priceBreakdown = breakdownForDriver((r as any).priceBreakdown);
+      return this.redactCustomerForDriver(r as any);
+    });
   }
 
   /**
@@ -5065,6 +5103,17 @@ export class DeliveriesService {
      */
     (delivery as any).pickupStateName  = getState((delivery as any).pickupStateCode)?.name  ?? null;
     (delivery as any).dropoffStateName = getState((delivery as any).dropoffStateCode)?.name ?? null;
+
+    /**
+     * The money object is split by audience (2026-08-31). Raw, it
+     * carries seirsNet, trueCosts and the full driver cost basis, and
+     * both delivery routes spread the row untouched. A sender gets their
+     * own itemised bill; a rider gets their own itemised pay; neither
+     * gets our margin. See redact-breakdown.ts.
+     */
+    (delivery as any).priceBreakdown = isCustomer
+      ? breakdownForCustomer((delivery as any).priceBreakdown)
+      : breakdownForDriver((delivery as any).priceBreakdown);
 
     return isCustomer
       ? redactDriverForCustomer(delivery as any)
