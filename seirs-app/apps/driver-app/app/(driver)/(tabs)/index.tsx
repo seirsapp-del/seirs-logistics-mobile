@@ -522,6 +522,22 @@ export default function DriverHomeScreen() {
             <Text style={[styles.widgetSub, { color: theme.textThird }]}>{tripCount} trips</Text>
           </Pressable>
 
+          {/* Interstate. Founder 2026-08-31: declaring a long-haul trip was
+              buried in the drawer, where a rider has no reason to look. It
+              is one of the few things on this screen that MAKES money
+              rather than reporting it, so it sits with the other cards. */}
+          <Pressable
+            style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            onPress={() => router.push('/(driver)/interstate' as any)}
+          >
+            <View style={styles.widgetIcon}>
+              <Navigation size={18} color={theme.primary} strokeWidth={1.75} />
+            </View>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Intercity</Text>
+            <Text style={[styles.widgetValue, { color: theme.text }]} numberOfLines={1}>Declare</Text>
+            <Text style={[styles.widgetSub, { color: theme.textThird }]} numberOfLines={1}>Long-haul trips</Text>
+          </Pressable>
+
         </ScrollView>
 
         {/* ── Available jobs ────────────────────────────────────────────── */}
