@@ -135,13 +135,69 @@ export class MatchingService {
       .committedLoadKgFor(candidates.map(d => d.id), delivery.id)
       .catch(() => new Map<string, number>());
 
-    const scored = candidates
+    /** Which candidates have a declared trip that genuinely fits this load. */
+    const goingThereIds = new Set(
+      candidates
+        .filter((driver) => {
+          const trip = interTrips.find((tr: any) => String(tr.driverId ?? tr.driver?.id) === driver.id);
+          return !!trip
+            && this.tripCanCarry(trip, delivery, committedByDriver.get(driver.id) ?? 0)
+            && this.tripRouteMatches(trip, delivery, corridorMatchKm);
+        })
+        .map((d) => d.id),
+    );
+
+    /**
+     * On an interstate run, somebody who is ACTUALLY GOING THERE wins
+     * (2026-08-31, closing G1).
+     *
+     * A declared trip used to be worth +0.25 on a 0-to-1 score, which
+     * proximity could and routinely did outscore. So a rider leaving for
+     * Kano in the morning lost a Kano parcel to somebody two streets
+     * from the pickup who was going nowhere, and that second rider then
+     * had an 800 km job they never intended to take. The bonus was a
+     * preference dressed up as a solution.
+     *
+     * When anybody in the pool is genuinely making this journey, the
+     * pool becomes those people. Not a nudge: a filter.
+     *
+     * It FALLS BACK rather than failing. If nobody has declared the
+     * route, the ordinary pool still gets the job, because a parcel that
+     * dispatches to an imperfect rider beats a parcel that dispatches to
+     * nobody. The fallback is logged so the gap between demand and
+     * declared trips is visible rather than silent.
+     *
+     * Local runs are untouched: this only narrows when the booking
+     * actually crosses a state line, which the row now records.
+     */
+    const from = (delivery as any).pickupStateCode;
+    const to   = (delivery as any).dropoffStateCode;
+    const isInterState = !!(from && to && from !== to);
+
+    let pool = candidates;
+    if (isInterState) {
+      if (goingThereIds.size > 0) {
+        pool = candidates.filter((d) => goingThereIds.has(d.id));
+        this.logger.log(
+          `Interstate ${from}->${to} on delivery ${delivery.id}: ` +
+          `${pool.length} of ${candidates.length} nearby drivers have declared this route. ` +
+          `Offering only to them.`,
+        );
+      } else {
+        this.logger.warn(
+          `Interstate ${from}->${to} on delivery ${delivery.id}: NOBODY nearby has declared ` +
+          `this route, so it falls back to the ordinary pool of ${candidates.length}. ` +
+          `A rider may be offered a long run they did not plan for.`,
+        );
+      }
+    }
+
+    const scored = pool
       .map((driver) => {
         const scored = this.scoreDriver(driver, delivery, premiumSet.has(driver.id), corridorCfg);
-        const trip = interTrips.find((tr: any) => String(tr.driverId ?? tr.driver?.id) === driver.id);
-        if (trip
-          && this.tripCanCarry(trip, delivery, committedByDriver.get(driver.id) ?? 0)
-          && this.tripRouteMatches(trip, delivery, corridorMatchKm)) {
+        // Still a bonus, for the intrastate long-hauls and for ordering
+        // within a pool that is now already the right people.
+        if (goingThereIds.has(driver.id)) {
           scored.score = Math.min(1, scored.score + interBonus);
         }
         return scored;
