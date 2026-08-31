@@ -663,6 +663,12 @@ export class DeliveriesService {
         declaredValueNgn:      st.declaredValueNgn ?? null,
         fallbackPref:          st.fallbackPref ?? null,
         fallbackNeighbourName: st.fallbackNeighbourName ?? null,
+        // The counter the recipient collects from, when they chose one
+        // instead of a door (2026-08-31). The business path has written
+        // this column since the partner network shipped and this one
+        // dropped it on the floor, so the same booking made from the two
+        // apps produced two different rows.
+        destinationStoreId:    (st as any).destinationStoreId ?? null,
         address:               st.address,
         lat:                   st.lat,
         lng:                   st.lng,
@@ -719,7 +725,18 @@ export class DeliveriesService {
       }
 
       await stopRepo.save(rows);
-      (saved as any).isMultiStop = true;
+      /**
+       * Multi-stop means MORE THAN ONE stop (2026-08-31).
+       *
+       * This was set true for any stop count, which was harmless only
+       * because nothing sent a single-element stops array down this
+       * path. A customer naming a collection counter now does, since
+       * destinationStoreId lives on the stop row, and flagging that one
+       * package as a multi-stop run would put it in front of the driver
+       * as a route with legs to sequence. The business path has always
+       * written `dto.stops.length > 1`; this now agrees with it.
+       */
+      (saved as any).isMultiStop = rows.length > 1;
       await this.repo.save(saved);
     }
 

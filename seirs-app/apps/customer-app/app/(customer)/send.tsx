@@ -126,6 +126,19 @@ export interface PackageDraft {
   destMode:      'address' | 'store';
   dropoff:       PickedAddress | null;
   dropoffQuery:  string;
+  /**
+   * The counter this package is collected from (2026-08-31).
+   *
+   * "To a partner store" used to push the sender out into the separate
+   * walk-in flow, which is a different product with its own drop code
+   * and QR, so choosing it abandoned the run they were halfway through
+   * building. The business app has picked a collection counter inline,
+   * per package, since its rebuild. This is the same thing: the typed
+   * address becomes the AREA to search, and the chosen counter becomes
+   * the stop's destination.
+   */
+  destStoreId:   string | null;
+  destStoreName: string | null;
   fallbackPref:  'hand_only' | 'neighbour' | 'gate' | 'store';
   neighbourName: string;
   declaredValue: string;
@@ -136,6 +149,7 @@ export const emptyPackage = (): PackageDraft => ({
   photos: [], description: '', category: null, weightKg: '',
   receiverFirst: '', receiverLast: '', receiverPhone: '',
   destMode: 'address', dropoff: null, dropoffQuery: '',
+  destStoreId: null, destStoreName: null,
   fallbackPref: 'hand_only', neighbourName: '', declaredValue: '',
   instructions: '',
 });
@@ -481,6 +495,68 @@ export default function SendScreen() {
       setPickupQuery(`${st.storeName}, ${st.storeAddress}`);
     }
   };
+
+  /**
+   * Collection counters near each package's destination, keyed by package
+   * index (2026-08-31).
+   *
+   * Per package rather than per run, because a two-package run can send
+   * one parcel to a door in Yaba and the other to a counter in Ikeja, and
+   * the business app has allowed exactly that since its rebuild.
+   */
+  const [destStores,     setDestStores]     = useState<Record<number, any[]>>({});
+  const [destStoresBusy, setDestStoresBusy] = useState<Record<number, boolean>>({});
+
+  const findDestStoresNear = async (idx: number, lat: number, lng: number) => {
+    setDestStoresBusy(b => ({ ...b, [idx]: true }));
+    try {
+      const res = await dropoffApi.directory(lat, lng);
+      setDestStores(s => ({ ...s, [idx]: (res?.items ?? []).slice(0, 6) }));
+    } catch {
+      setDestStores(s => ({ ...s, [idx]: [] }));
+    } finally {
+      setDestStoresBusy(b => ({ ...b, [idx]: false }));
+    }
+  };
+
+  /**
+   * The chosen counter becomes the package's destination, exactly as the
+   * chosen pickup counter becomes the run's origin. Distance, price and
+   * the driver's route all have to end at the shop rather than at the
+   * area the sender typed to find it.
+   */
+  const chooseDestStore = (idx: number, st: any) => {
+    const label = `${st.storeName}, ${st.storeAddress}`;
+    updatePkg(idx, {
+      destStoreId:   st.id,
+      destStoreName: st.storeName,
+      dropoff: st.storeLat != null && st.storeLng != null
+        ? { address: label, lat: Number(st.storeLat), lng: Number(st.storeLng) } as any
+        : null,
+      dropoffQuery: label,
+    });
+    setDestStores(s => ({ ...s, [idx]: [] }));
+  };
+
+  /**
+   * Counters follow the area the sender named.
+   *
+   * Keyed off the resolved coordinates rather than the autocomplete, so
+   * it behaves the same whether they typed an address, tapped a
+   * prediction or reused a recent one. Stops as soon as a counter is
+   * chosen, since the coordinates then belong to that counter.
+   */
+  const destSearchKey = packages
+    .map(p => `${p.destMode}|${p.destStoreId ?? ''}|${p.dropoff?.lat ?? ''},${p.dropoff?.lng ?? ''}`)
+    .join('#');
+  useEffect(() => {
+    packages.forEach((p, i) => {
+      if (p.destMode !== 'store' || p.destStoreId) return;
+      if (p.dropoff?.lat == null || p.dropoff?.lng == null) return;
+      void findDestStoresNear(i, p.dropoff.lat, p.dropoff.lng);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destSearchKey]);
 
   // Index-0 aliases. Everything outside the package cards (validation,
   // fare, review summary, booking payload) speaks about "the package",
@@ -1077,6 +1153,21 @@ export default function SendScreen() {
       return;
     }
     if (step === 0 && destMode === 'address' && !dropoff) { failField('dropoff', t('send.errDropoffMissing')); return; }
+    /**
+     * Counter mode is not chosen until a counter is (2026-08-31).
+     *
+     * Without this the run falls through with destStoreId null and
+     * quietly becomes an ordinary delivery to whatever area the sender
+     * typed in order to FIND the shop, which is a street corner, not an
+     * address anyone can hand a package to. Checked across every package
+     * because each one picks its own counter.
+     */
+    if (step === 0 && packages.some(p => p.destMode === 'store' && !p.destStoreId)) {
+      failField('dropoff', t('send.errDestCounterMissing', {
+        defaultValue: 'Pick the counter the receiver will collect from.',
+      }));
+      return;
+    }
     if (step === 1 && pickupMode === 'store' && !storePicked) {
       failField('pickup', t('send.errCounterMissing', { defaultValue: 'Pick the counter you will drop it at.' }));
       return;
@@ -1220,9 +1311,12 @@ export default function SendScreen() {
         fallbackPref,
         fallbackNeighbourName: fallbackPref === 'neighbour' ? (neighbourName.trim() || undefined) : undefined,
         // One run, one driver, one payment, one DeliveryStop per package,
-        // each with its own public tracking code. Omitted entirely for a
-        // single package so that path is byte-identical to before.
-        ...(packages.length > 1
+        // each with its own public tracking code. Omitted for a lone
+        // package so that path stays byte-identical to before, UNLESS it
+        // names a collection counter: destinationStoreId is a stop
+        // column, so a single package going to a counter has to carry a
+        // stop row to hold it (2026-08-31).
+        ...(packages.length > 1 || packages.some(p => p.destStoreId)
           ? {
               stops: packages.map((pk, i) => ({
                 address:        pk.dropoff?.address ?? pk.dropoffQuery,
@@ -1241,6 +1335,9 @@ export default function SendScreen() {
                   ? (pk.neighbourName.trim() || undefined) : undefined,
                 packagePhotoUrls: uploaded[i]?.length ? uploaded[i] : undefined,
                 notes:          pk.instructions.trim() || undefined,
+                // The counter this package is collected from, when the
+                // receiver is picking it up instead of taking it at a door.
+                destinationStoreId: pk.destStoreId ?? undefined,
               })),
             }
           : {}),
@@ -1373,7 +1470,8 @@ export default function SendScreen() {
               // card body below reads the same names whichever card it is.
               const { photos, description, category, weightKg, receiverFirst,
                       receiverLast, receiverPhone, destMode, dropoff,
-                      dropoffQuery, fallbackPref, neighbourName, declaredValue,
+                      dropoffQuery, destStoreId, destStoreName,
+                      fallbackPref, neighbourName, declaredValue,
                       instructions } = pk;
               return (
               <View key={pkgIndex} style={[styles.pkgCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -1529,11 +1627,23 @@ export default function SendScreen() {
                         borderColor:     active ? theme.primary : theme.border,
                       }]}
                       onPress={() => {
-                        updatePkg(pkgIndex, { destMode: opt.key });
-                        // Store drop is a different product (drop code + QR at
-                        // the counter), so it hands off to that flow rather
-                        // than pretending to handle it here.
-                        if (opt.key === 'store') router.push('/(customer)/drop-at-store' as any);
+                        /**
+                         * Counter drop is chosen HERE now (2026-08-31).
+                         *
+                         * This used to push the sender into the separate
+                         * walk-in flow, abandoning the run they were part
+                         * way through building, because that flow is a
+                         * different product with its own drop code and QR.
+                         * A counter as the DESTINATION is not that product:
+                         * it is this run, ending at a shop instead of a
+                         * door, which is what the business app has done per
+                         * package since its rebuild.
+                         */
+                        updatePkg(pkgIndex, {
+                          destMode: opt.key,
+                          destStoreId: null,
+                          destStoreName: null,
+                        });
                       }}
                     >
                       {opt.key === 'address'
@@ -1544,7 +1654,11 @@ export default function SendScreen() {
                   );
                 })}
               </View>
-              {destMode === 'address' && (
+              {/* One address box for both modes. In counter mode the place
+                  typed here is only the AREA to search: the counter chosen
+                  below becomes the actual destination, exactly as the
+                  business app does it. */}
+              {(
                 <>
                   <TextInput
                     style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: fieldBorder('dropoff'), borderWidth: invalidField === 'dropoff' ? 2 : 1, color: theme.text }]}
@@ -1552,14 +1666,16 @@ export default function SendScreen() {
                     onChangeText={(v) => { onChangeQuery(`pkg:${pkgIndex}`, v);
                       if (invalidField === 'dropoff') { setInvalidField(null); setError(''); } }}
                     onFocus={(e) => { setActiveField(`pkg:${pkgIndex}`); handleFieldFocus(e, 220); }}
-                    placeholder={t('send.destAddressPlaceholder', { defaultValue: 'Street, area, city' })}
+                    placeholder={destMode === 'store'
+                      ? t('send.destStoreAreaPlaceholder', { defaultValue: 'Area the receiver is in, e.g. Yaba' })
+                      : t('send.destAddressPlaceholder',   { defaultValue: 'Street, area, city' })}
                     placeholderTextColor={theme.textThird}
                   />
                   {invalidField === 'dropoff' && (
                     <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
                   )}
 
-                  {!dropoff && !dropoffQuery && recentDrops.length > 0 && (
+                  {destMode === 'address' && !dropoff && !dropoffQuery && recentDrops.length > 0 && (
                     <View style={styles.recentRow}>
                       <Text style={[styles.recentLabel, { color: theme.textThird }]}>
                         {t('send.recent', { defaultValue: 'RECENT' })}
@@ -1591,6 +1707,71 @@ export default function SendScreen() {
                             <Text style={[styles.suggMain, { color: theme.text }]} numberOfLines={1}>{pr.main_text}</Text>
                             {!!pr.secondary_text && <Text style={[styles.suggSub, { color: theme.textSecond }]} numberOfLines={1}>{pr.secondary_text}</Text>}
                           </View>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                  {/* The counter this package is collected from. Same card
+                      the pickup counter uses, so both ends of a run look
+                      like one control rather than two designs. */}
+                  {destMode === 'store' && destStoreId && (
+                    <Pressable style={[styles.scheduleOpt, highlight(true)]}>
+                      <Store size={20} color={theme.accent} strokeWidth={1.75} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.scheduleTitle, { color: theme.text }]} numberOfLines={1}>
+                          {destStoreName}
+                        </Text>
+                        <Text style={[styles.scheduleDesc, { color: theme.textSecond }]} numberOfLines={2}>
+                          {t('send.destStorePicked', { defaultValue: 'The receiver collects it here.' })}
+                        </Text>
+                      </View>
+                      <Pressable
+                        hitSlop={10}
+                        onPress={() => {
+                          updatePkg(pkgIndex, { destStoreId: null, destStoreName: null });
+                          if (dropoff?.lat != null && dropoff?.lng != null) {
+                            void findDestStoresNear(pkgIndex, dropoff.lat, dropoff.lng);
+                          }
+                        }}
+                      >
+                        <Ionicons name="close-circle" size={20} color={theme.textThird} />
+                      </Pressable>
+                    </Pressable>
+                  )}
+
+                  {destMode === 'store' && !destStoreId && (
+                    <View>
+                      {destStoresBusy[pkgIndex] && (
+                        <View style={{ paddingVertical: Spacing.md, alignItems: 'center' }}>
+                          <ActivityIndicator color={theme.primary} />
+                        </View>
+                      )}
+                      {!destStoresBusy[pkgIndex] && !dropoff && (
+                        <Text style={[styles.scheduleDesc, { color: theme.textThird, marginTop: Spacing.xs }]}>
+                          {t('send.destStoreFindHint', { defaultValue: 'Type the area the receiver is in to see counters near them.' })}
+                        </Text>
+                      )}
+                      {!destStoresBusy[pkgIndex] && !!dropoff && (destStores[pkgIndex]?.length ?? 0) === 0 && (
+                        <Text style={[styles.scheduleDesc, { color: theme.textThird, marginTop: Spacing.xs }]}>
+                          {t('send.destStoreNone', { defaultValue: 'No counter near there yet. Send to an address instead.' })}
+                        </Text>
+                      )}
+                      {!destStoresBusy[pkgIndex] && (destStores[pkgIndex] ?? []).map((st: any) => (
+                        <Pressable
+                          key={st.id}
+                          style={[styles.scheduleOpt, highlight(false), { marginBottom: Spacing.sm }]}
+                          onPress={() => chooseDestStore(pkgIndex, st)}
+                        >
+                          <Store size={20} color={theme.textSecond} strokeWidth={1.75} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.scheduleTitle, { color: theme.text }]} numberOfLines={1}>{st.storeName}</Text>
+                            <Text style={[styles.scheduleDesc, { color: theme.textSecond }]} numberOfLines={1}>{st.storeAddress}</Text>
+                          </View>
+                          {st.distanceKm != null && (
+                            <Text style={[styles.scheduleDesc, { color: theme.textThird }]}>
+                              {Number(st.distanceKm).toFixed(1)} km
+                            </Text>
+                          )}
                         </Pressable>
                       ))}
                     </View>
@@ -1857,6 +2038,32 @@ export default function SendScreen() {
                       {t('send.noCountersNearby')}
                     </Text>
                   )}
+
+                  {/*
+                    The way into the walk-in flow (2026-08-31).
+
+                    Choosing a counter HERE books a run now: a rider comes
+                    to collect from that counter on this booking. The
+                    walk-in flow is the other thing, and the only place a
+                    customer gets it: schedule a drop, carry it in whenever
+                    suits, hand over a QR, and it can end at a second
+                    counter for the receiver to collect.
+
+                    It used to be reached from the destination picker,
+                    which is now handled inline, so without this link the
+                    screen would be orphaned and counter-to-counter would
+                    become unreachable for customers.
+                  */}
+                  <Pressable
+                    style={{ paddingVertical: Spacing.sm }}
+                    onPress={() => router.push('/(customer)/drop-at-store' as any)}
+                  >
+                    <Text style={[styles.scheduleDesc, { color: theme.accent }]}>
+                      {t('send.walkInLink', {
+                        defaultValue: 'Rather drop it off in your own time? Schedule a counter drop-off instead.',
+                      })}
+                    </Text>
+                  </Pressable>
                 </View>
               )}
 

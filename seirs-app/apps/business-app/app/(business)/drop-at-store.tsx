@@ -56,6 +56,22 @@ export default function BusinessDropAtStoreScreen() {
   const [loadingStores, setLoadingStores] = useState(true);
   const [store, setStore] = useState<StoreOption | null>(null);
 
+  /**
+   * Where the package ends up (2026-08-31).
+   *
+   * This screen hardcoded 'store_to_door', so a business could drop at a
+   * counter but never send counter to counter, even though the backend
+   * has supported it since the partner network shipped and the customer
+   * app has offered it all along. A trader sending stock to another
+   * market had to book a door delivery to a shop address and pay the
+   * last-mile leg twice.
+   *
+   * Both counters come from the one nearby list already loaded for the
+   * pickup step, so choosing a destination costs no extra fetch.
+   */
+  const [mode,         setMode]         = useState<'store_to_door' | 'store_to_store'>('store_to_door');
+  const [dropoffStore, setDropoffStore] = useState<StoreOption | null>(null);
+
   const [recipientName,    setRecipientName]    = useState('');
   const [recipientPhone,   setRecipientPhone]   = useState('');
   const [recipientEmail,   setRecipientEmail]   = useState('');
@@ -79,10 +95,17 @@ export default function BusinessDropAtStoreScreen() {
   }, []);
   useEffect(() => { loadStores(); }, [loadStores]);
 
+  /** Counters that can receive: never the one being dropped at, never a full one. */
+  const destinationOptions = stores.filter(s => s.id !== store?.id && !s.full);
+
+  const destinationValid = mode === 'store_to_door'
+    ? recipientAddress.trim().length > 3
+    : !!dropoffStore;
+
   const detailsValid =
     recipientName.trim().length > 1 &&
     recipientPhone.trim().length > 5 &&
-    recipientAddress.trim().length > 3 &&
+    destinationValid &&
     parseFloat(weightKg) > 0;
 
   const submit = async () => {
@@ -91,8 +114,9 @@ export default function BusinessDropAtStoreScreen() {
     try {
       const res = await dropoffApi.schedule({
         pickupStoreId:      store.id,
-        mode:               'store_to_door',
-        recipientAddress:   recipientAddress.trim(),
+        mode,
+        dropoffStoreId:     mode === 'store_to_store' ? dropoffStore?.id : undefined,
+        recipientAddress:   mode === 'store_to_door'  ? recipientAddress.trim() : undefined,
         recipientName:      recipientName.trim(),
         recipientPhone:     recipientPhone.trim(),
         recipientEmail:     recipientEmail.trim() || undefined,
@@ -110,7 +134,10 @@ export default function BusinessDropAtStoreScreen() {
   };
 
   const addAnother = () => {
-    // Keep the store; clear per-package fields for fast bulk sessions.
+    // Keep both counters and the mode; clear per-package fields for fast
+    // bulk sessions. A trader shipping a shelf of stock to one market is
+    // sending the same route over and over, so re-picking the collection
+    // counter for every parcel would be the slow part of the whole flow.
     setRecipientName('');
     setRecipientPhone('');
     setRecipientEmail('');
@@ -127,6 +154,9 @@ export default function BusinessDropAtStoreScreen() {
       await Share.share({
         message:
           `SEIRS drop-off scheduled at ${store.storeName}.\n` +
+          (mode === 'store_to_store' && dropoffStore
+            ? `Collection counter: ${dropoffStore.storeName}.\n`
+            : '') +
           `Drop code: ${receipt.dropCode} (backup: ${receipt.backupCode}).\n` +
           `Show the QR or read out the code at the counter.`,
       });
@@ -181,7 +211,14 @@ export default function BusinessDropAtStoreScreen() {
                 <Pressable
                   key={s.id}
                   disabled={s.full}
-                  onPress={() => { setStore(s); setStep('details'); }}
+                  onPress={() => {
+                    setStore(s);
+                    // A counter cannot post to itself. Changing the pickup
+                    // to the counter already chosen as the destination has
+                    // to clear that choice, or submit sends both as one id.
+                    if (dropoffStore?.id === s.id) setDropoffStore(null);
+                    setStep('details');
+                  }}
                   style={[
                     styles.storeCard,
                     { backgroundColor: theme.surface, borderColor: theme.border, opacity: s.full ? 0.5 : 1 },
@@ -222,8 +259,80 @@ export default function BusinessDropAtStoreScreen() {
               placeholder="08012345678" keyboardType="phone-pad" theme={theme} />
             <Field label="Recipient email (optional)" value={recipientEmail} onChange={setRecipientEmail}
               placeholder="For collection OTP if they have no SEIRS account" keyboardType="email-address" theme={theme} />
-            <Field label="Delivery address" value={recipientAddress} onChange={setRecipientAddress}
-              placeholder="Street, area, city" theme={theme} />
+            <View>
+              <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>WHERE IS IT GOING?</Text>
+              <View style={styles.destRow}>
+                {([
+                  { key: 'store_to_door',  label: 'To an address',      icon: 'MapPin' },
+                  { key: 'store_to_store', label: 'To another counter', icon: 'Store'  },
+                ] as const).map(opt => {
+                  const active = mode === opt.key;
+                  return (
+                    <Pressable
+                      key={opt.key}
+                      onPress={() => setMode(opt.key)}
+                      style={[
+                        styles.destBtn,
+                        { backgroundColor: theme.surfaceSecond, borderColor: theme.border },
+                        active && { backgroundColor: theme.primary, borderColor: theme.primary },
+                      ]}
+                    >
+                      <Icon name={opt.icon} size={14} color={active ? '#fff' : theme.textSecond} />
+                      <Text style={[styles.destTxt, { color: theme.text }, active && { color: '#fff' }]}>
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {mode === 'store_to_door' ? (
+              <Field label="Delivery address" value={recipientAddress} onChange={setRecipientAddress}
+                placeholder="Street, area, city" theme={theme} />
+            ) : (
+              <View>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>COLLECTION COUNTER</Text>
+                {destinationOptions.length === 0 ? (
+                  <Text style={[styles.hint, { color: theme.textSecond }]}>
+                    No other counter has space right now. Send to an address instead.
+                  </Text>
+                ) : (
+                  <>
+                    <Text style={[styles.hint, { color: theme.textSecond }]}>
+                      The recipient collects it here. They get a code to show at the counter.
+                    </Text>
+                    {destinationOptions.map(s => {
+                      const bucket = BUCKET_META[s.bucket] ?? BUCKET_META.plenty;
+                      const picked = dropoffStore?.id === s.id;
+                      return (
+                        <Pressable
+                          key={s.id}
+                          onPress={() => setDropoffStore(s)}
+                          style={[
+                            styles.storeCard,
+                            { backgroundColor: theme.surface, borderColor: picked ? theme.primary : theme.border, marginTop: 8 },
+                          ]}
+                        >
+                          <View style={[styles.storeIcon, { backgroundColor: `${theme.primary}15` }]}>
+                            <Icon name="Store" size={20} color={theme.primary} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.storeName, { color: theme.text }]}>{s.storeName}</Text>
+                            <Text style={[styles.storeAddr, { color: theme.textSecond }]} numberOfLines={1}>
+                              {s.storeAddress}
+                            </Text>
+                            <Text style={[styles.bucket, { color: bucket.color }]}>{bucket.label}</Text>
+                          </View>
+                          {picked && <Icon name="Check" size={18} color={theme.primary} />}
+                        </Pressable>
+                      );
+                    })}
+                  </>
+                )}
+              </View>
+            )}
+
             <Field label="Weight (kg)" value={weightKg} onChange={setWeightKg}
               placeholder="e.g. 2.5" keyboardType="decimal-pad" theme={theme} />
             <Field label="Package description (optional)" value={description} onChange={setDescription}
@@ -255,6 +364,9 @@ export default function BusinessDropAtStoreScreen() {
               <Text style={[styles.codeMid, { color: theme.text }]}>{receipt.backupCode}</Text>
               <Text style={[styles.receiptHint, { color: theme.textSecond }]}>
                 {store.storeName} · staff scans the QR when you hand the package over.
+                {mode === 'store_to_store' && dropoffStore
+                  ? ` It travels to ${dropoffStore.storeName}, where the recipient collects it.`
+                  : ''}
               </Text>
             </View>
 
@@ -316,6 +428,13 @@ const styles = StyleSheet.create({
 
   fieldLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginBottom: 6 },
   input:      { borderWidth: 1, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, fontSize: 15 },
+  hint:       { fontSize: 12.5, lineHeight: 17 },
+
+  // Same segmented control the Send flow uses for "Where is it going?",
+  // so the two ways of sending look like one app.
+  destRow: { flexDirection: 'row', gap: 8 },
+  destBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
+  destTxt: { fontSize: 13, fontWeight: '600' },
 
   submitBtn:  { paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 6 },
   submitText: { color: '#fff', fontSize: 15, fontWeight: '700' },

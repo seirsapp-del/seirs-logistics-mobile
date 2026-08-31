@@ -56,6 +56,19 @@ export class CreateDeliveryPackageDto {
 
   @IsOptional() @IsString()
   notes?: string;
+
+  /**
+   * A partner counter the recipient collects this package from, instead
+   * of a door (2026-08-31).
+   *
+   * The column and the business path have carried this since the partner
+   * network shipped; the customer path never declared it, so a customer
+   * booking that named a collection counter had it stripped by the
+   * validation whitelist before the service could see it. Declared here
+   * and written in createDelivery so both senders produce the same row.
+   */
+  @IsOptional() @IsString()
+  destinationStoreId?: string;
 }
 
 export class CreateDeliveryDto {
