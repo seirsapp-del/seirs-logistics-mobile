@@ -1865,10 +1865,14 @@ export class AdminService {
      * check your email"; anything longer is convenience bought with the
      * most privileged accounts we issue.
      */
-    const inviteToken = crypto.randomBytes(32).toString('hex');
+    const inviteToken   = crypto.randomBytes(32).toString('hex');
+    // Admin-tunable, super admin only (PATCH /admin/fees/:key). Falls back to
+    // the hard-coded hour if the row is missing, so a fresh database still
+    // onboards people.
+    const inviteMinutes = await this.feesService.getValueOr('admin_invite_expiry_minutes', 60);
     await this.usersRepo.update(user.id, {
       passwordResetToken:  inviteToken,
-      passwordResetExpiry: new Date(Date.now() + 3600_000),
+      passwordResetExpiry: new Date(Date.now() + inviteMinutes * 60_000),
     });
 
     /**
@@ -1880,7 +1884,7 @@ export class AdminService {
      */
     let inviteSent = false;
     try {
-      await this.mailService.sendAdminInvite(email, fullName, inviteToken, user.accountId);
+      await this.mailService.sendAdminInvite(email, fullName, inviteToken, user.accountId, inviteMinutes);
       inviteSent = true;
     } catch (e: any) {
       this.logger.error(
@@ -3182,7 +3186,10 @@ export class AdminService {
     const { randomBytes, randomUUID } = await import('crypto');
     const unusable = await bcrypt.hash(randomBytes(32).toString('hex'), 12);
     const token = randomUUID();
-    const expiry = new Date(Date.now() + 60 * 60 * 1000);
+    // Same tunable row as the invite: both are links into the dashboard, and
+    // splitting them would let one drift away from the other.
+    const resetMinutes = await this.feesService.getValueOr('admin_invite_expiry_minutes', 60);
+    const expiry = new Date(Date.now() + resetMinutes * 60_000);
 
     await this.usersRepo.update(adminUserId, {
       password:            unusable,
@@ -3200,7 +3207,7 @@ export class AdminService {
     let emailSent = false;
     try {
       await this.mailService.sendPasswordReset(
-        target.email, target.name ?? 'there', token, 'admin',
+        target.email, target.name ?? 'there', token, 'admin', resetMinutes,
       );
       emailSent = true;
     } catch (e: any) {
@@ -3219,6 +3226,71 @@ export class AdminService {
         ? 'Their password no longer works. A reset link has been emailed to them.'
         : 'Their password no longer works, but the reset email could NOT be sent. '
           + 'They cannot sign in until you get a link to them another way.',
+    };
+  }
+
+  /**
+   * Send the staff invitation again, with the invitation email.
+   *
+   * Until now the only way to get a fresh link to somebody was
+   * resetAdminPassword, which sends the WRONG message: it opens with "we
+   * received a request to reset the password on your SEIRS account",
+   * which a new hire never made and cannot have, since they have never
+   * had a password. It also omits their staff ID, which the invite
+   * carries so they know what identifies them on every action they take.
+   * A mail that misdescribes itself gets read as phishing and ignored,
+   * which lands in the same place as sending nothing.
+   *
+   * The existing token is REPLACED, not reissued. A link that leaked
+   * before this call stops working the moment a new one goes out.
+   *
+   * Their current password is deliberately left alone. This is a delivery
+   * problem, not a compromise, and someone who has already onboarded
+   * should not be locked out because a colleague pressed resend.
+   */
+  async resendAdminInvite(adminUserId: string, requester: any, ip?: string) {
+    const target = await this.usersRepo.findOne({
+      where:  { id: adminUserId },
+      select: ['id', 'name', 'email', 'accountId'],
+    });
+    if (!target?.email) throw new NotFoundException('Admin not found');
+
+    const { randomBytes } = await import('crypto');
+    const token   = randomBytes(32).toString('hex');
+    const minutes = await this.feesService.getValueOr('admin_invite_expiry_minutes', 60);
+    const expiry  = new Date(Date.now() + minutes * 60_000);
+
+    await this.usersRepo.update(adminUserId, {
+      passwordResetToken:  token,
+      passwordResetExpiry: expiry,
+    } as any);
+
+    await this.logAudit(requester, 'resend_admin_invite', `user:${adminUserId}`, {
+      email: target.email,
+      // The token stays out of the audit row: a line a reader can use to
+      // take over the account is not an audit line.
+      expiresAt: expiry.toISOString(),
+    }, ip);
+
+    let emailSent = false;
+    try {
+      await this.mailService.sendAdminInvite(
+        target.email, target.name ?? 'there', token, target.accountId, minutes,
+      );
+      emailSent = true;
+    } catch (e: any) {
+      this.logger.error(
+        `Resent invite failed for ${target.email}: ${e?.message ?? e}. ` +
+        'The account is fine; only the email did not go.',
+      );
+    }
+
+    return {
+      emailSent,
+      message: emailSent
+        ? `A fresh invitation has been emailed to ${target.email}. It expires in ${minutes} minutes.`
+        : 'The invitation could NOT be sent, so nothing reached them. '
+          + 'Check the mail transport at /health before trying again.',
     };
   }
 

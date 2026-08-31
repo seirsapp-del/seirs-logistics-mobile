@@ -383,6 +383,16 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // Founder decision 2026-08-15: a PENDING booking that no driver takes
   // within this window is auto-cancelled and refunded IN FULL (the fare
   // was escrowed at booking; without this it sat locked forever).
+  // Founder 2026-08-31, after a new ops manager missed the window by two
+  // minutes: short is right for a key to the dashboard, but one hour is
+  // tight when two people have to coordinate across a working day. Editable
+  // by a super admin only, which PATCH /admin/fees/:key already enforces.
+  // Both invite emails read their wording from this number, so raising it
+  // never leaves the copy claiming something else.
+  { key: 'admin_invite_expiry_minutes', name: 'Staff Invite Link Expiry (minutes)',
+    description: 'Minutes a staff invitation or admin password-reset link stays valid. Short on purpose: this link opens the dashboard. 60 is the default.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 60 },
+
   { key: 'pending_booking_expiry_minutes', name: 'Pending Booking Expiry (minutes)',
     description: 'Minutes a paid booking may wait for a driver before it auto-cancels with a full refund.',
     category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 60 },

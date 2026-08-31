@@ -240,6 +240,11 @@ export const adminApi = {
     updateRole:    (id: string, adminRole: string) =>
       req<any>(`/admin/admins/${id}/role`, { method: 'PATCH', body: JSON.stringify({ adminRole }) }),
     resetPassword: (id: string)                => req<any>(`/admin/admins/${id}/reset-password`, { method: 'POST' }),
+    // Sends the INVITATION again, not a password reset. The reset copy
+    // asks a new hire about a request they never made and omits their
+    // staff ID, so it reads as phishing to the one person who most
+    // needs to trust it.
+    resendInvite:  (id: string)                => req<any>(`/admin/admins/${id}/resend-invite`, { method: 'POST' }),
     // deactivate was removed 2026-08-28. It called a route that never
     // existed, nothing in the UI used it, and building it would have
     // been the wrong shape: a plain deactivate leaves adminRole intact,

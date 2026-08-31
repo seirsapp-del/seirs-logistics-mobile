@@ -489,7 +489,9 @@ export class AuthService {
       user.role === UserRole.ADMIN  ? 'admin' :
       user.role === UserRole.DRIVER ? 'driver' :
       user.businessAccountId        ? 'business' : 'customer';
-    await this.mailService.sendPasswordReset(user.email, user.name, token, audience);
+    // 15, matching the token minted above. The template used to hard-code
+    // 30 and send real customers after a link that had already died.
+    await this.mailService.sendPasswordReset(user.email, user.name, token, audience, 15);
 
     return { message: 'If that email exists, a reset link has been sent.' };
   }

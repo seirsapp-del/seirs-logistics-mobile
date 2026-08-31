@@ -301,6 +301,19 @@ export class AdminController {
    * out, and a link alone leaves the old password working while a laptop
    * is missing. No plaintext credential is ever created or returned.
    */
+  /**
+   * Send the staff invitation again.
+   *
+   * Separate from reset-password on purpose: that route sends a
+   * password-reset notice, which a new hire never requested and which
+   * leaves out their staff ID.
+   */
+  @UseGuards(SuperAdminGuard)
+  @Post('admins/:id/resend-invite')
+  resendAdminInvite(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
+    return this.adminService.resendAdminInvite(id, admin, req.ip);
+  }
+
   @UseGuards(SuperAdminGuard)
   @Post('admins/:id/reset-password')
   resetAdminPassword(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {

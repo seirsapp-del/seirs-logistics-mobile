@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Pencil,
   KeyRound,
+  Mail,
 } from 'lucide-react';
 import { ConfirmDialog, useConfirm } from '@/components/ConfirmDialog';
 import { PageIntro } from '@/components/PageIntro';
@@ -262,7 +263,7 @@ function CreateDrawer({ onClose, onCreated, addToast, roles, permLabels }: Creat
         addToast(
           'error',
           `Account created, but the invitation email to ${form.email.trim().toLowerCase()} did NOT send. `
-          + 'They cannot sign in yet. Use Reset password on their row to try again.',
+          + 'They cannot sign in yet. Open their row and use Send their invitation again.',
         );
       } else {
         addToast('success', `Invitation emailed to ${form.email.trim().toLowerCase()}`);
@@ -468,6 +469,7 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles, permLabels }:
   const [selectedRoleId, setSelectedRoleId] = useState<string>(initialRoleId);
   const [savingRole, setSavingRole]         = useState(false);
   const [resetting, setResetting]           = useState(false);
+  const [resending, setResending]           = useState(false);
   const [confirm, setConfirm]               = useState<'offboard' | 'reactivate' | null>(null);
   const [actioning, setActioning]           = useState(false);
   // Offboarding wizard state
@@ -524,6 +526,29 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles, permLabels }:
       addToast('error', msg);
     } finally {
       setSavingRole(false);
+    }
+  };
+
+  const handleResendInvite = async () => {
+    const ok = await ask({
+      title:   `Send the invitation to ${getFullName(member)} again?`,
+      message: `A fresh invitation goes to ${member.email} now, carrying their staff ID and a link that lasts an hour. `
+             + 'Any earlier invitation link stops working. Their password, if they have set one, is untouched.',
+      confirmLabel: 'Send it again',
+    });
+    if (!ok) return;
+    setResending(true);
+    try {
+      const res = await adminApi.admins.resendInvite(member.id);
+      if (res?.emailSent === false) {
+        addToast('error', res?.message ?? `The invitation to ${member.email} did NOT send.`);
+      } else {
+        addToast('success', `Invitation re-sent to ${member.email}. It expires in an hour.`);
+      }
+    } catch (err: unknown) {
+      addToast('error', err instanceof Error ? err.message : 'The invitation was not sent.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -721,6 +746,20 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles, permLabels }:
               <h3 className="text-xs font-semibold uppercase tracking-wide text-[#0F2B4C]/40">
                 Their account
               </h3>
+
+              {/* Listed above the password reset because for anybody who
+                  has not signed in yet this is the correct button, and the
+                  reset copy asks them about a request they never made. */}
+              <button
+                onClick={handleResendInvite}
+                disabled={resending}
+                className="flex w-full items-center gap-2 rounded-xl border border-[#E5E7EB] px-4 py-3 text-left text-sm font-medium text-[#0F2B4C] transition-colors hover:bg-[#F5F5F0] disabled:opacity-50"
+              >
+                {resending
+                  ? <RefreshCw size={15} className="shrink-0 animate-spin text-[#3A7BD5]" />
+                  : <Mail size={15} className="shrink-0 text-[#3A7BD5]" />}
+                {resending ? 'Sending the invitation' : 'Send their invitation again'}
+              </button>
 
               <button
                 onClick={handleResetPassword}

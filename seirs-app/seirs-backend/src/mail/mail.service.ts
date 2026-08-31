@@ -98,6 +98,24 @@ export function baseTemplate(
   `;
 }
 
+/**
+ * Say a duration the way a person would, from the real number of minutes.
+ *
+ * Both reset emails used to hard-code a figure that did not match the token
+ * they carried. The admin one understated (60 minutes, said 30) and the
+ * customer one OVERSTATED (15 minutes, said 30), which is the harmful
+ * direction: somebody reads "30 minutes", waits twenty, and finds a dead
+ * link with nothing explaining why.
+ */
+function humanDuration(minutes: number): string {
+  const m = Math.max(1, Math.round(minutes));
+  if (m < 60) return `${m} minutes`;
+  const hours = Math.floor(m / 60);
+  const rest  = m % 60;
+  const head  = hours === 1 ? '1 hour' : `${hours} hours`;
+  return rest === 0 ? head : `${head} ${rest} minutes`;
+}
+
 function primaryButton(href: string, label: string): string {
   return `
     <a href="${href}"
@@ -420,6 +438,7 @@ export class MailService {
   async sendPasswordReset(
     to: string, name: string, token: string,
     audience: 'mobile' | 'admin' | 'customer' | 'driver' | 'business' = 'customer',
+    expiryMinutes = 15,
   ) {
     const app = audience === 'mobile' ? 'customer' : audience;
     const resetUrl = audience === 'admin'
@@ -432,7 +451,7 @@ export class MailService {
       <p>We received a request to reset the password on your SEIRS account. Tap the button below to choose a new one.</p>
       ${primaryButton(resetUrl, 'Reset Password')}
       <p style="font-size:13px;color:#6B7280;margin:4px 0 20px">
-        This link works once and expires in <strong>30 minutes</strong>.
+        This link works once and expires in <strong>${humanDuration(expiryMinutes)}</strong>.
         If the button doesn't open, copy this link into your browser:<br/>
         <a href="${resetUrl}" style="color:${BRAND_BLUE};font-size:12px;word-break:break-all">${resetUrl}</a>
       </p>
@@ -473,7 +492,10 @@ export class MailService {
    * The link carries the credential, so no password is ever put in the
    * body: the recipient sets their own and we never know it.
    */
-  async sendAdminInvite(to: string, name: string, token: string, accountId?: string | null) {
+  async sendAdminInvite(
+    to: string, name: string, token: string, accountId?: string | null,
+    expiryMinutes = 60,
+  ) {
     const setUrl = `${this.cfg.get<string>('ADMIN_WEB_URL', 'https://seirs-admin.vercel.app')}/reset-password?token=${token}`;
 
     const html = baseTemplate(`
@@ -482,7 +504,7 @@ export class MailService {
       <p>An administrator has created a SEIRS staff account for you. Choose your password below and you're in.</p>
       ${primaryButton(setUrl, 'Set My Password')}
       <p style="font-size:13px;color:#6B7280;margin:4px 0 20px">
-        This link works once and expires in <strong>1 hour</strong>.
+        This link works once and expires in <strong>${humanDuration(expiryMinutes)}</strong>.
         If it has expired, ask the administrator who added you to send a new invite.
         If the button doesn't open, copy this link into your browser:<br/>
         <a href="${setUrl}" style="color:${BRAND_BLUE};font-size:12px;word-break:break-all">${setUrl}</a>
