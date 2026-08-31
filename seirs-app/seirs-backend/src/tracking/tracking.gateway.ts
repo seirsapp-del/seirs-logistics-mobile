@@ -22,6 +22,10 @@ export const WsEvents = {
   DELIVERY_COMPLETE: 'delivery:completed',
   CHAT_MESSAGE:      'chat:message',
   SOS_ALERT:         'sos:alert',
+  /* A rider is holding somebody's parcel and has gone quiet
+     (2026-08-31). Not an emergency, but it should not wait for
+     somebody to happen to open a page. */
+  AGREEMENT_BREACH:  'agreement:breach',
   DRIVER_STATUS:     'driver:status',
 };
 
@@ -305,6 +309,31 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
       ...alert,
       createdAt: alert.createdAt instanceof Date ? alert.createdAt.toISOString() : alert.createdAt,
     });
+  }
+
+  /**
+   * A rider agreed to carry a load and then went quiet while holding it.
+   *
+   * Pushed to the admin room rather than left to be discovered, because
+   * the parcel is physically in somebody's hands and the page it lands
+   * on is not one anybody watches all day. Deliberately NOT the SOS
+   * channel: nobody is in danger, and blunting that alarm with
+   * operational noise would cost more than it saves.
+   */
+  broadcastAgreementBreach(payload: {
+    id:           string;
+    driverId:     string;
+    deliveryId:   string;
+    trackingCode: string | null;
+    reason:       string;
+    strikeCount:  number;
+  }) {
+    try {
+      this.server.to('admin').emit(WsEvents.AGREEMENT_BREACH, {
+        ...payload,
+        at: new Date().toISOString(),
+      });
+    } catch { /* a dropped alert must never break the sweep */ }
   }
 
   // Spec V8 §2.14 - driver status broadcast fan-out. Admin always

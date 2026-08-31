@@ -246,6 +246,11 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/kyc':                     'kyc',
   '/identity':                'identity',
   '/disputes':                'disputes',
+  // Broken agreements are driver CONDUCT, and the outcome may be a
+  // suspension, so it rides the drivers grant rather than disputes.
+  // driver_compliance already holds it, which is the role that should
+  // be reading these.
+  '/agreement-breaches':      'drivers',
   '/last-order-compliance':   'last-order-compliance',
   '/interstate':              'interstate',
   // Seat ops share the interstate grant: it is the same product and the
@@ -582,6 +587,7 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
       { href: '/kyc',                   label: 'Driver KYC Queue',      icon: 'ClipboardCheck' },
       { href: '/identity',              label: 'Customer ID Queue',     icon: 'ShieldCheck'    },
       { href: '/disputes',              label: 'Liability Disputes',    icon: 'ShieldCheck'    },
+      { href: '/agreement-breaches',    label: 'Broken Agreements',     icon: 'Handshake'      },
       { href: '/last-order-compliance', label: 'Last-Order Compliance', icon: 'MoonStar'       },
       { href: '/recycle-bin',           label: 'Recycle Bin',           icon: 'Trash2'         },
     ],

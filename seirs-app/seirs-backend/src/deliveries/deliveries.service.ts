@@ -1263,6 +1263,160 @@ export class DeliveriesService {
     return { ok: true };
   }
 
+  /**
+   * A rider agreed to carry a load and then went quiet (2026-08-31).
+   *
+   * The breach recorder on driverCancel only catches somebody who says
+   * they are backing out. The worse case says nothing at all: they
+   * accept, and then the parcel simply never moves. Nothing detected
+   * that, so the sender waited and no record existed.
+   *
+   * TWO CASES, and only one of them is safe to act on automatically.
+   *
+   * NEVER PICKED UP. The parcel is still with the sender, so nothing is
+   * at risk but time. The job is released back to the pool and
+   * re-dispatched, which is what the sender actually needs, and the fare
+   * stays in escrow so there is nothing to refund.
+   *
+   * HAS THE PARCEL AND GONE QUIET. Do NOT automate this. A rider holding
+   * somebody's goods on the Lagos to Kano road with no signal looks
+   * exactly like a rider who has stolen them, and cancelling the job
+   * would strand a parcel that is physically in someone's hands. It is
+   * recorded, flagged loudly, and left for a person. Automating the safe
+   * recovery and escalating the dangerous one is the whole design.
+   *
+   * A scheduled pickup's clock starts at its slot, not at booking, or
+   * every booking made the night before would breach by morning.
+   */
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async sweepSilentAgreements() {
+    try {
+      const noPickupHours = this.feesServiceRef
+        ? await this.feesServiceRef.getValueOr('agreement_no_pickup_hours', 6).catch(() => 6)
+        : 6;
+      const silentHours = this.feesServiceRef
+        ? await this.feesServiceRef.getValueOr('agreement_silent_hours', 12).catch(() => 12)
+        : 12;
+
+      /* Only bookings that came from an agreement, still open, still
+         assigned, and with no breach already recorded: the sweep runs
+         every half hour and must not file the same case twice. */
+      const rows: any[] = await this.repo.manager.query(
+        `SELECT d."id", d."status", d."assignedAt", d."pickedUpAt", d."scheduledFor",
+                d."trackingCode", d."price", d."customerId", d."driverId",
+                pr."id" AS "requestId", pr."answeredAt",
+                t."departAt" AS "tripDepartAt"
+           FROM "deliveries" d
+           JOIN "parcel_requests" pr
+             ON pr."deliveryId" = d."id" AND pr."status" = 'accepted'
+           LEFT JOIN "driver_trips" t ON t."id" = pr."tripId"
+          WHERE d."driverId" IS NOT NULL
+            AND d."status" IN ('assigned','picked_up','in_transit')
+            AND NOT EXISTS (
+              SELECT 1 FROM "agreement_breaches" ab WHERE ab."deliveryId" = d."id"
+            )
+          LIMIT 200`,
+      );
+      if (!rows?.length) return;
+
+      const now = Date.now();
+      const hoursSince = (t: any) => t ? (now - new Date(t).getTime()) / 3_600_000 : 0;
+
+      for (const r of rows) {
+        /**
+         * The clock starts when the rider could actually have collected,
+         * which is the LATEST of three things, not just assignment.
+         *
+         * Assignment alone was wrong and I caught it before this shipped:
+         * a rider who agrees today to a trip departing on Thursday is not
+         * failing anybody on Tuesday afternoon, and a six hour rule
+         * measured from assignment would have filed a breach against
+         * every single long-haul agreement. The trip's own departure is
+         * the honest start for a trip-bound load.
+         */
+        const candidates = [r.assignedAt, r.scheduledFor, r.tripDepartAt]
+          .filter(Boolean)
+          .map((t: any) => new Date(t).getTime())
+          .filter((n: number) => Number.isFinite(n));
+        const clockFrom = candidates.length ? new Date(Math.max(...candidates)) : r.assignedAt;
+
+        const neverCollected = String(r.status) === 'assigned';
+        const waited = hoursSince(clockFrom);
+
+        if (neverCollected && waited < Number(noPickupHours)) continue;
+        if (!neverCollected && hoursSince(r.pickedUpAt) < Number(silentHours)) continue;
+
+        const reason = neverCollected ? 'no_pickup' : 'went_silent';
+        const windowDays = this.feesServiceRef
+          ? await this.feesServiceRef.getValueOr('agreement_breach_window_days', 90).catch(() => 90)
+          : 90;
+        const prior = await this.repo.manager.query(
+          `SELECT COUNT(*)::int AS c FROM "agreement_breaches"
+            WHERE "driverId" = $1 AND "createdAt" > NOW() - ($2 || ' days')::interval`,
+          [r.driverId, String(windowDays)],
+        );
+        const strike = Number(prior?.[0]?.c ?? 0) + 1;
+
+        await this.repo.manager.query(
+          `INSERT INTO "agreement_breaches"
+             ("driverId","deliveryId","parcelRequestId","agreedAt","stage","reason","note","fareNgn","strikeCount")
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [
+            r.driverId, r.id, r.requestId, r.answeredAt ?? null,
+            String(r.status), reason,
+            neverCollected
+              ? `Agreed, then never collected the parcel. ${Math.round(waited)}h after they could have.`
+              : `Took the parcel, then no movement for ${Math.round(hoursSince(r.pickedUpAt))}h.`,
+            Number(r.price ?? 0) || null, strike,
+          ],
+        );
+
+        if (neverCollected) {
+          /* Safe to recover: the parcel never left the sender. Release it
+             and find somebody else, which is what they actually need. */
+          await this.repo.update(r.id, { driver: null, assignedAt: null } as any);
+          await this.updateStatus(r.id, DeliveryStatus.PENDING).catch(() => {});
+          const fresh = await this.repo.findOne({ where: { id: r.id }, relations: ['customer'] });
+          if (fresh) this.runAutoMatch(fresh).catch(() => {});
+          this.notificationsService?.create?.(
+            r.customerId,
+            'Finding you another driver',
+            'The driver who agreed to carry your parcel did not collect it. '
+              + 'Your payment is safe and we are matching somebody else now.',
+            'delivery_assigned' as any,
+            r.id,
+            r.trackingCode,
+          );
+          this.logger.warn(
+            `AGREEMENT_BREACH no_pickup driver=${r.driverId} delivery=${r.id} ` +
+            `waited=${Math.round(waited)}h strike=${strike}; released and re-dispatched`,
+          );
+        } else {
+          /* NOT automated. The parcel is in somebody's hands and only a
+             person should decide what that means. */
+          this.logger.error(
+            `AGREEMENT_BREACH went_silent driver=${r.driverId} delivery=${r.id} ` +
+            `tracking=${r.trackingCode} strike=${strike}; PARCEL IS WITH THE RIDER, ` +
+            `left assigned for human review, no automatic action taken`,
+          );
+          /* Push it at ops rather than waiting for somebody to open the
+             page. Not the SOS channel: nobody is in danger, and blunting
+             that alarm with operational noise would cost more than it
+             saves. */
+          try {
+            this.trackingGateway?.broadcastAgreementBreach?.({
+              id: r.id, driverId: r.driverId, deliveryId: r.id,
+              trackingCode: r.trackingCode ?? null,
+              reason, strikeCount: strike,
+            });
+          } catch { /* an alert must never break the sweep */ }
+        }
+      }
+    } catch (e: any) {
+      this.logger.error(`silent agreement sweep failed: ${e?.message ?? e}`);
+    }
+  }
+
   /** Unanswered offers expire: nobody's money waits on a silent phone. */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async expireTripOffers() {

@@ -67,6 +67,22 @@ export async function refreshAdminTokenIfPresent(): Promise<boolean> {
 }
 
 export const adminApi = {
+  /**
+   * Riders who agreed to carry a specific load and then did not
+   * (2026-08-31). A queue for a person: nothing in this feature takes an
+   * automatic action, by founder instruction and because a seized bike
+   * and a shrug produce the same row.
+   */
+  agreementBreaches: {
+    list: (reviewed = false, limit = 50) =>
+      req<{ items: any[] }>(`/admin/agreement-breaches?reviewed=${reviewed ? 1 : 0}&limit=${limit}`),
+    review: (id: string, action: string, note?: string) =>
+      req<any>(`/admin/agreement-breaches/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ action, note }),
+      }),
+  },
+
   login: (email: string, password: string) =>
     req<{ token: string; user: any; requiresTOTP?: boolean; tempToken?: string }>(
       '/auth/admin-login',

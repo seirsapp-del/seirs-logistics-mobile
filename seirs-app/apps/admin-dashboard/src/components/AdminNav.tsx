@@ -8,7 +8,7 @@ import {
   Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, ShieldCheck, Siren, Copy, ClipboardCheck,
   Ticket, Lightbulb, FileText, Percent, BarChart2, BarChart3, FileBarChart, Inbox,
   UserCog, ScrollText, Settings, LogOut, ChevronLeft, ChevronRight,
-  Activity, Send, MoonStar, Mail, Code2, BookOpen,
+  Activity, Send, MoonStar, Mail, Code2, BookOpen, Handshake,
   Globe, List, Trash2, Download, CircleDot, Rocket,
 } from 'lucide-react';
 import { canAccess, canAccessFromUser, isSuperAdmin, isSuperAdminFromUser, isNavItemVisible, ROLE_COLORS, ROLE_LABELS, NAV_SECTIONS } from '@/lib/rbac';
@@ -32,7 +32,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: 
   Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, ShieldCheck, Siren, Copy, ClipboardCheck,
   Ticket, Lightbulb, FileText, Percent, BarChart2, BarChart3, FileBarChart, Inbox,
   UserCog, ScrollText, Settings,
-  Activity, Send, MoonStar, Mail, Code2, BookOpen,
+  Activity, Send, MoonStar, Mail, Code2, BookOpen, Handshake,
   Globe, List, Trash2, Download, Rocket,
 };
 
