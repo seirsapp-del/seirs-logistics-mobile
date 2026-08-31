@@ -1,5 +1,6 @@
+import { useCallback } from 'react';
 import { Pressable, View, Text, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Bell } from 'lucide-react-native';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Colors } from '@/constants/theme';
@@ -17,7 +18,18 @@ export function NotificationBell({ size = 22, color }: NotificationBellProps = {
   const router      = useRouter();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
-  const { unreadCount } = useNotifications();
+  const { unreadCount, refresh } = useNotifications();
+
+  /**
+   * Re-ask on every focus.
+   *
+   * The count lives in a shared store that only the notifications screen
+   * ever refreshed, so the bell kept whatever number it last saw. The
+   * founder cleared his notifications, the server went to zero, and the
+   * badge sat on "99+" indefinitely (2026-08-31). Reading a stale number
+   * is worse than reading none: it trains a rider to ignore the bell.
+   */
+  useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
 
   return (
     <Pressable

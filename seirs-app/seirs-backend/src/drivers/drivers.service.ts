@@ -2173,10 +2173,24 @@ export class DriversService {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     // Round to ~1km grid (0.01 deg ≈ 1.1km in Nigeria latitudes)
+    /**
+     * Every identifier below is DOUBLE QUOTED on purpose.
+     *
+     * The columns are `@Column()` with no explicit name, so TypeORM created
+     * them as "pickupLat" / "pickupLng", camelCase. TypeORM rewrites a
+     * plain `d.pickupLat` property reference, but NOT one buried in a raw
+     * expression like ROUND() or radians(). Postgres then lowercases the
+     * unquoted identifier to pickuplat, finds no such column, and the whole
+     * endpoint 500s.
+     *
+     * Which is what it had been doing: Demand Hotspots never worked, on the
+     * home card or its own screen. Found 2026-08-31 when the founder asked
+     * whether it did. Every other raw query in this codebase quotes these.
+     */
     const rows = await this.deliveriesRepo
       .createQueryBuilder('d')
-      .select('ROUND(d.pickupLat::numeric, 2)', 'lat')
-      .addSelect('ROUND(d.pickupLng::numeric, 2)', 'lng')
+      .select('ROUND(d."pickupLat"::numeric, 2)', 'lat')
+      .addSelect('ROUND(d."pickupLng"::numeric, 2)', 'lng')
       .addSelect('COUNT(d.id)', 'count')
       .where('d.createdAt >= :since', { since })
       .andWhere('d.status IN (:...statuses)', {
@@ -2184,14 +2198,14 @@ export class DriversService {
       })
       .andWhere(
         '(6371 * acos(LEAST(1, GREATEST(-1, ' +
-          'cos(radians(:lat)) * cos(radians(d.pickupLat)) * ' +
-          'cos(radians(d.pickupLng) - radians(:lng)) + ' +
-          'sin(radians(:lat)) * sin(radians(d.pickupLat))' +
+          'cos(radians(:lat)) * cos(radians(d."pickupLat")) * ' +
+          'cos(radians(d."pickupLng") - radians(:lng)) + ' +
+          'sin(radians(:lat)) * sin(radians(d."pickupLat"))' +
         ')))) < :radius',
         { lat, lng, radius: 25 },
       )
-      .groupBy('ROUND(d.pickupLat::numeric, 2)')
-      .addGroupBy('ROUND(d.pickupLng::numeric, 2)')
+      .groupBy('ROUND(d."pickupLat"::numeric, 2)')
+      .addGroupBy('ROUND(d."pickupLng"::numeric, 2)')
       .orderBy('COUNT(d.id)', 'DESC')
       .limit(20)
       .getRawMany();
