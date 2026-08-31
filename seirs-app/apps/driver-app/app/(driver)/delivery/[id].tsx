@@ -270,8 +270,17 @@ export default function DeliveryDetailScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
+        {/* Was hardcoded to "Active trip" for every single-stop job, so a
+            rider opening a finished delivery out of their history was told
+            it was active and went looking for something to do. Found on
+            device 2026-08-31 on a delivery completed a week earlier. */}
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-          {delivery.isMultiStop ? `${delivery.stops.length}-stop trip` : 'Active trip'}
+          {delivery.isMultiStop
+            ? `${delivery.stops.length}-stop trip`
+            : delivery.status === 'delivered' ? 'Completed trip'
+            : delivery.status === 'cancelled' ? 'Cancelled trip'
+            : delivery.status === 'failed'    ? 'Failed trip'
+            : 'Active trip'}
         </Text>
         <Pressable
           style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]}
