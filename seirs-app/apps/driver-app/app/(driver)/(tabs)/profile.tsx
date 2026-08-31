@@ -58,7 +58,11 @@ export default function DriverProfileScreen() {
   // a driver with zero ratings shows a dash, not a fake five stars.
   const ratingCount = Number(ratings?.total ?? 0);
   const rating      = ratingCount > 0 ? Number(ratings?.average ?? 0) : 0;
-  const totalTrips  = Number(driverData?.totalTrips ?? 0);
+  // The Driver entity has `totalDeliveries` and no `totalTrips` field at
+  // all, so this read undefined and every driver's profile showed 0 trips
+  // forever while the home screen, which falls back correctly, showed the
+  // real number. Found on device 2026-08-31.
+  const totalTrips  = Number(driverData?.totalDeliveries ?? driverData?.totalTrips ?? 0);
   const available   = Number(dashboard?.available ?? 0);
   const allTime     = Number(dashboard?.allTime?.earned ?? 0);
   const isOnline    = !!driverData?.isOnline;
