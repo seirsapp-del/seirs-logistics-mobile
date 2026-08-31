@@ -349,6 +349,37 @@ export class DeliveriesService {
       dto.vehicleType && card.vehicleRates[dto.vehicleType]
         ? dto.vehicleType
         : weight > 100 ? 'van' : weight > 20 ? 'tricycle' : 'motorcycle';
+
+    /**
+     * The vehicle's distance ceiling, on the path that creates the
+     * booking (2026-08-31).
+     *
+     * vehicleRates[type].maxRouteKm has been editable in the admin rate
+     * card the whole time, and until now the ONLY places that enforced
+     * it on a package were the two Send screens. A comment further down
+     * this same file claimed "the customer and business package flows
+     * both refuse a run that exceeds it", which was true of the apps and
+     * false of the API. Anything not going through your own UI, the API
+     * keys the business app issues, the developer platform, a replayed
+     * request, sailed past the one check that existed.
+     *
+     * The seat sale, the address-change re-price and the counter flow
+     * all enforce it. This was the hole in the middle of them.
+     *
+     * Silent while the value is unset, which is how it stands today:
+     * setting it is the founder's decision, and this is what makes that
+     * decision take effect everywhere rather than only in the apps.
+     */
+    {
+      const maxKm = Number(card?.vehicleRates?.[vehicleType]?.maxRouteKm ?? 0);
+      if (maxKm > 0 && distanceKm > maxKm) {
+        throw new BadRequestException(
+          `${aVehicle(vehicleType)} does not run further than ${maxKm} km. `
+            .replace(/^./, c => c.toUpperCase()) +
+          `This route is ${Math.round(distanceKm)} km, so pick a bigger vehicle.`,
+        );
+      }
+    }
     /**
      * Quote pin (founder 2026-08-21). A valid pin from the review quote
      * makes that number the price, exactly. An expired or tampered pin
