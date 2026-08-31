@@ -83,6 +83,12 @@ interface DeliveryDetail {
   estimatedTotalMinutes?: number;
   routeWasAutoOptimized?: boolean;
   priceBreakdown?:   any;
+  /**
+   * Which zone tier charged on this run (2026-08-31). Used to say what
+   * the rider's surcharge share was FOR. Absent on bookings made before
+   * the column existed, so the label falls back to the bare wording.
+   */
+  zoneTier?:         string | null;
   stops:             Stop[];
 }
 
@@ -92,6 +98,19 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   arrived:   { label: 'Arrived',     color: '#0F2B4C' },
   delivered: { label: 'Delivered',   color: '#16A34A' },
   failed:    { label: 'Failed',      color: '#DC2626' },
+};
+
+/**
+ * The engine's zone tiers, in a rider's words. Shorter than the sender
+ * facing wording: this sits inside a bracket on an earnings line, and
+ * the rider only needs to know which kind of distance paid them.
+ */
+const ZONE_TIER_LABEL: Record<string, string> = {
+  intraStateLongHaul: 'long trip',
+  interStateAdjacent: 'next state',
+  interStateDistant:  'far state',
+  crossZone:          'cross-country',
+  interState:         'interstate',
 };
 
 export default function DeliveryDetailScreen() {
@@ -522,7 +541,26 @@ export default function DeliveryDetailScreen() {
               <BreakdownLine theme={theme} label="Stop bonuses" value={delivery.priceBreakdown.driver.stopBonuses} />
             )}
             {delivery.priceBreakdown.driver.surchargeShare > 0 && (
-              <BreakdownLine theme={theme} label="Surcharge share" value={delivery.priceBreakdown.driver.surchargeShare} />
+              /**
+               * Say what the share was FOR (2026-08-31).
+               *
+               * This read "Surcharge share" and a number. A rider on a
+               * Lagos to Kano run saw extra money with no reason attached,
+               * which is the same complaint the sender had about the
+               * unnamed zone line, pointing the other way: an unexplained
+               * credit reads like an error that might be clawed back.
+               *
+               * The tier is on the delivery itself now, so the label can
+               * name it. Falls back to the bare wording when the booking
+               * predates the column.
+               */
+              <BreakdownLine
+                theme={theme}
+                label={delivery.zoneTier
+                  ? `Surcharge share (${ZONE_TIER_LABEL[delivery.zoneTier] ?? 'distance'})`
+                  : 'Surcharge share'}
+                value={delivery.priceBreakdown.driver.surchargeShare}
+              />
             )}
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
             <BreakdownLine theme={theme} label="Total" value={delivery.priceBreakdown.driver.total} bold />

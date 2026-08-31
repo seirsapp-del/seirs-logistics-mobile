@@ -25,6 +25,7 @@ import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.en
 import { secureCode } from '../common/utils/auth-codes';
 
 import { redactDriverForCustomer } from '../common/redact-driver';
+import { getState } from '../pricing/regions';
 
 /**
  * Fallback only. The live rate is partner_store_handling_ngn in the Fee
@@ -563,6 +564,15 @@ export class BusinessService {
       ...shaped,
       redirectFeeOwedNgn:
         feeNgn > 0 && !delivery.redirectFeePaidAt ? feeNgn : null,
+      /**
+       * Readable state names beside the stored codes (2026-08-31), so a
+       * screen can write "Lagos to Kano" without three apps each
+       * shipping their own copy of the state table. Null when the
+       * booking predates the columns, which lets a client tell "not
+       * interstate" apart from "nobody measured it".
+       */
+      pickupStateName:  getState((delivery as any).pickupStateCode)?.name  ?? null,
+      dropoffStateName: getState((delivery as any).dropoffStateCode)?.name ?? null,
     };
   }
 

@@ -306,7 +306,8 @@ export class DeliveriesModule implements OnModuleInit {
              even named to the sender who paid it. */
           ADD COLUMN IF NOT EXISTS "pickupStateCode" varchar(2) NULL,
           ADD COLUMN IF NOT EXISTS "dropoffStateCode" varchar(2) NULL,
-          ADD COLUMN IF NOT EXISTS "zoneTier" varchar(30) NULL
+          ADD COLUMN IF NOT EXISTS "zoneTier" varchar(30) NULL,
+          ADD COLUMN IF NOT EXISTS "zoneTierNgn" numeric(12,2) NULL
 
       `);
       /* Admin filters interstate work by these two, and the ops board

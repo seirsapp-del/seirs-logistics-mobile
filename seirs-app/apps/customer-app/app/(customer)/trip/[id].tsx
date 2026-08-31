@@ -56,6 +56,18 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 // The names Nigerians use, not the backend enum.
 
+/**
+ * Zone tiers in the uppercase register this card's other fare labels
+ * use, so the new line does not look pasted in from another screen.
+ */
+const ZONE_TIER_LABEL: Record<string, string> = {
+  intraStateLongHaul: 'LONG TRIP SURCHARGE',
+  interStateAdjacent: 'NEXT-STATE SURCHARGE',
+  interStateDistant:  'FAR-STATE SURCHARGE',
+  crossZone:          'CROSS-COUNTRY SURCHARGE',
+  interState:         'INTERSTATE SURCHARGE',
+};
+
 export default function TripDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   // Bottom clearance for the system navigation bar. insets.bottom
@@ -156,8 +168,20 @@ export default function TripDetailsScreen() {
     new Date(iso).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   // Real fare lines only: absent values simply do not render.
+  /**
+   * The geography line (2026-08-31). Same reason the receipt carries it:
+   * a sender told at checkout why a run cost 40% more should still be
+   * able to see that reason on the booking afterwards. Read from the
+   * delivery's own columns, which every booking path writes, rather than
+   * priceBreakdown, which only the business path ever wrote.
+   */
+  const zoneTierLabel = d.zoneTier
+    ? (ZONE_TIER_LABEL[d.zoneTier] ?? 'DISTANCE SURCHARGE')
+    : null;
+
   const fareLines: Array<[string, number]> = ([
     ['NIGHT PICKUP FEE',  d.nightFeeNgn],
+    ...(zoneTierLabel ? [[zoneTierLabel, d.zoneTierNgn]] as Array<[string, any]> : []),
     ['REDIRECT FEE',      d.redirectFeeNgn],
     ['COUNTER HANDLING',  d.partnerHandlingNgn],
   ] as Array<[string, any]>)

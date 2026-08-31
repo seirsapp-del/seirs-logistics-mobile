@@ -189,6 +189,22 @@ export class Delivery {
   zoneTier: string | null;
 
   /**
+   * What that tier actually added, in naira (2026-08-31, same day).
+   *
+   * The tier NAME alone lets a screen say why a price rose but not by
+   * how much, and the receipt's own rule is that a line is real or it is
+   * absent: it will not invent an amount, and it should not have to.
+   * Stored beside the tier so a receipt read months later itemises the
+   * same number the sender agreed to at checkout.
+   *
+   * Only the business path ever wrote priceBreakdown, so the customer's
+   * receipt had no itemisation to read at all. This column is written on
+   * every booking, whichever app made it.
+   */
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  zoneTierNgn: number | null;
+
+  /**
    * Travel Buddy: when set, this booking belongs to a declared
    * intercity trip and dispatch assigns THAT driver, not the radius.
    */

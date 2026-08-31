@@ -612,6 +612,7 @@ export class DeliveriesService {
       pickupStateCode:  (breakdown as any)?.route?.pickupStateCode  ?? null,
       dropoffStateCode: (breakdown as any)?.route?.dropoffStateCode ?? null,
       zoneTier:         (breakdown as any)?.route?.zoneTier         ?? null,
+      zoneTierNgn:      (breakdown as any)?.route?.tierSurchargeNgn ?? null,
       ...ridePassenger,
       scheduledFor,
       trackingCode,

@@ -19,6 +19,19 @@ import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 
+/**
+ * The engine's zone tiers in the same words the Send screen used at
+ * checkout. A receipt that renames the charge is a receipt the sender
+ * cannot reconcile against what they agreed to.
+ */
+const ZONE_TIER_LABEL: Record<string, string> = {
+  intraStateLongHaul: 'Long trip within one state',
+  interStateAdjacent: 'Crossing into the next state',
+  interStateDistant:  'Crossing to a further state',
+  crossZone:          'Crossing to another part of the country',
+  interState:         'Crossing a state line',
+};
+
 export default function ReceiptScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
@@ -82,10 +95,35 @@ export default function ReceiptScreen() {
    * breakdown the receipt states the single total it genuinely knows.
    */
   const breakdown = (trip.breakdown ?? {}) as { base?: number; distance?: number; time?: number; service?: number };
+
+  /**
+   * The geography line (2026-08-31).
+   *
+   * The sender was told at checkout why a Lagos to Kano run cost 40% more
+   * than a local one, and then handed a receipt that could not account
+   * for the difference. A receipt is the document people keep, forward
+   * and dispute from, so it is the worst place for the reason to go
+   * missing.
+   *
+   * Read from the delivery's own columns rather than priceBreakdown,
+   * because only the BUSINESS booking path ever wrote priceBreakdown:
+   * a customer receipt had no itemisation to read at all. These columns
+   * are written on every booking whichever app made it.
+   */
+  const zoneTierNgn = Number(trip.zoneTierNgn ?? 0);
+  const zoneTierRow = trip.zoneTier && zoneTierNgn > 0
+    ? { label: ZONE_TIER_LABEL[trip.zoneTier] ?? 'Distance surcharge', amount: zoneTierNgn }
+    : null;
+  const routeStates = trip.pickupStateCode && trip.dropoffStateCode
+      && trip.pickupStateCode !== trip.dropoffStateCode
+    ? `${trip.pickupStateName ?? trip.pickupStateCode} to ${trip.dropoffStateName ?? trip.dropoffStateCode}`
+    : null;
+
   const fareRows = ([
     breakdown.base     != null ? { label: 'Base fare',    amount: Number(breakdown.base) }     : null,
     breakdown.distance != null ? { label: 'Distance fee', amount: Number(breakdown.distance) } : null,
     breakdown.time     != null ? { label: 'Time fee',     amount: Number(breakdown.time) }     : null,
+    zoneTierRow,
     breakdown.service  != null ? { label: 'Service fee',  amount: Number(breakdown.service) }  : null,
   ].filter(Boolean)) as Array<{ label: string; amount: number }>;
 
@@ -248,6 +286,14 @@ export default function ReceiptScreen() {
                   these rendered a bare dash on every receipt because
                   they read fields the API does not send. */}
               <View style={styles.routeMeta}>
+                {/* Which states this actually crossed. Present only when
+                    the booking recorded both and they differ. */}
+                {routeStates && (
+                <View style={styles.routeMetaItem}>
+                  <Ionicons name="map-outline" size={13} color={theme.textSecond} />
+                  <Text style={[styles.routeMetaText, { color: theme.textSecond }]}>{routeStates}</Text>
+                </View>
+                )}
                 {distance && (
                 <View style={styles.routeMetaItem}>
                   <Ionicons name="navigate-outline" size={13} color={theme.textSecond} />
