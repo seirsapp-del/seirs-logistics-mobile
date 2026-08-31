@@ -777,6 +777,54 @@ export class DriversService {
     return t;
   }
 
+  /**
+   * A trip that can take a PARCEL, and the checks that make that true
+   * (2026-08-31).
+   *
+   * The seat equivalent above has existed since Travel Buddy shipped.
+   * There was no parcel version, which is the entire reason a sender
+   * could not post a package to a declared trip: every other part of the
+   * offer lifecycle was already built and kind-agnostic. Only the trip's
+   * own driver sees the booking, only they can claim it, they can
+   * decline it, and an unanswered offer expires on a cron and refunds.
+   * Nothing could create one.
+   *
+   * Capacity is measured against what the rider is ALREADY carrying, not
+   * the figure they declared, for the same reason the matcher counts
+   * committed load: a 5 kg allowance is not 5 kg per parcel.
+   */
+  async getTripForParcel(tripId: string, weightKg: number) {
+    const t: any = await this.tripsRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.driver', 'd')
+      .leftJoinAndSelect('d.user', 'u')
+      .where('t.id = :tripId', { tripId })
+      .getOne();
+    if (!t) throw new NotFoundException('That trip is no longer listed.');
+    if (t.status !== DriverTripStatus.ACTIVE || new Date(t.departAt) < new Date()) {
+      throw new BadRequestException('That trip has departed or was cancelled.');
+    }
+    if (!t.acceptsPackages) {
+      throw new BadRequestException('That rider is not carrying packages on this trip.');
+    }
+
+    const declared = Number(t.spareCapacityKg ?? 0);
+    const load = Number(weightKg ?? 0);
+    const driverId = t.driver?.id;
+    if (declared > 0 && driverId) {
+      const committed = await this.committedLoadKgFor([driverId])
+        .then(m => Number(m.get(driverId) ?? 0))
+        .catch(() => 0);
+      const left = Math.max(0, declared - committed);
+      if (load > left) {
+        throw new BadRequestException(left <= 0
+          ? 'That rider has no space left on this trip.'
+          : `That rider has ${left} kg of space left on this trip.`);
+      }
+    }
+    return t;
+  }
+
   async reserveSeats(tripId: string, seats: number) {
     // Guarded increment: the WHERE clause makes overselling impossible
     // even under two simultaneous bookings.

@@ -11,7 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -480,6 +480,23 @@ export default function SendScreen() {
    * into a partner counter and the rider collects there, so the DELIVERY
    * pickup becomes the counter itself.
    */
+  /**
+   * Posting this parcel to a rider's declared intercity trip
+   * (2026-08-31).
+   *
+   * Travel Buddy used to end with "Sending a parcel?" beside a specific
+   * rider's trip, which pushed this screen with NO trip attached: the
+   * link implied a connection the code never made, and the wording was
+   * softened rather than fixed. Now the trip travels with the sender, so
+   * the parcel really is offered to that rider first.
+   *
+   * They can decline, and an unanswered offer expires and refunds, both
+   * of which already worked for seats.
+   */
+  const tripParams = useLocalSearchParams<{ tripId?: string; tripLabel?: string }>();
+  const postToTripId    = typeof tripParams.tripId === 'string' ? tripParams.tripId : undefined;
+  const postToTripLabel = typeof tripParams.tripLabel === 'string' ? tripParams.tripLabel : undefined;
+
   const [pickupMode, setPickupMode] = useState<'door' | 'store'>('door');
   const [nearStores, setNearStores] = useState<any[]>([]);
   const [storePicked, setStorePicked] = useState<any>(null);
@@ -1344,6 +1361,8 @@ export default function SendScreen() {
         // names a collection counter: destinationStoreId is a stop
         // column, so a single package going to a counter has to carry a
         // stop row to hold it (2026-08-31).
+        // Offered to this one rider first, not to the open pool.
+        ...(postToTripId ? { tripId: postToTripId } : {}),
         ...(packages.length > 1 || packages.some(p => p.destStoreId)
           ? {
               stops: packages.map((pk, i) => ({
@@ -1637,6 +1656,21 @@ export default function SendScreen() {
                 value={receiverPhone}
                 onChangeText={v => updatePkg(pkgIndex, { receiverPhone: onlyPhone(v) })}
               />
+
+              {/* Who this parcel is being offered to, when it came from a
+                  rider's declared trip. Shown on the package card because
+                  that is where the sender is deciding what to send. */}
+              {postToTripId && pkgIndex === 0 && (
+                <View style={[styles.tripBanner, { backgroundColor: theme.accent + '18', borderColor: theme.accent }]}>
+                  <Store size={14} color={theme.accent} strokeWidth={2} />
+                  <Text style={[styles.tripBannerTxt, { color: theme.text }]}>
+                    {t('send.postingToTrip', {
+                      defaultValue: 'Offered first to {{trip}}. They can accept or decline, and you are refunded in full if nobody takes it.',
+                      trip: postToTripLabel || 'this rider’s trip',
+                    })}
+                  </Text>
+                </View>
+              )}
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
                 {t('send.destinationLabel', { defaultValue: 'Where is it going?' })} <Text style={{ color: theme.error }}>*</Text>
@@ -2786,6 +2820,8 @@ const styles = StyleSheet.create({
 
   fareCard:      { borderRadius: Radius.xl, padding: Spacing.lg, borderWidth: 1 },
   fareTitle:     { fontSize: FontSize.md, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
+  tripBanner:    { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: Radius.md, borderWidth: 1, marginBottom: Spacing.sm },
+  tripBannerTxt: { flex: 1, fontSize: FontSize.xs, lineHeight: 17 },
   fareRow:       { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   fareLabel:     { fontSize: FontSize.sm },
   fareAmt:       { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, maxWidth: '55%', textAlign: 'right' },

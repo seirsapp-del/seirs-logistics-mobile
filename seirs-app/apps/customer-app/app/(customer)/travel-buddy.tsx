@@ -428,17 +428,31 @@ export default function TravelBuddyScreen() {
                 the ordinary Send wizard with no trip attached at all
                 (2026-08-29).
 
-                Packages are never booked onto a trip, by design: the
-                empty state on this very screen says to "send your
-                package the normal way and it can still ride with an
-                intercity driver", and matching is what puts them
-                together. So the wording now says what actually happens,
-                rather than implying a link the code does not make.
+                UPDATE 2026-08-31: packages ARE booked onto a trip now.
+                This link used to push the Send wizard with no trip
+                attached at all, so it promised a connection the code
+                never made, and the wording was softened rather than the
+                gap being closed.
+
+                The whole offer lifecycle already existed and never cared
+                what kind of booking it was: only this trip's driver sees
+                it, only they can claim it, they can decline it, and an
+                unanswered offer expires and refunds. The one missing
+                piece was a way to create a PACKAGE with a tripId, which
+                is what the params below now do.
               */}
               {trip.acceptsPackages && (
-                <Pressable onPress={() => router.push('/(customer)/send' as any)}>
+                <Pressable
+                  onPress={() => router.push({
+                    pathname: '/(customer)/send',
+                    params: {
+                      tripId: trip.id,
+                      tripLabel: `${trip.fromCity} to ${trip.toCity}`,
+                    },
+                  } as any)}
+                >
                   <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: '600' }}>
-                    Sending a parcel? →
+                    Send a parcel on this trip →
                   </Text>
                 </Pressable>
               )}

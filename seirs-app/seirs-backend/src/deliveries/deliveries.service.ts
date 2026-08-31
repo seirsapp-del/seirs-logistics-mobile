@@ -381,6 +381,38 @@ export class DeliveriesService {
       }
     }
     /**
+     * Posting a parcel to a declared trip (2026-08-31).
+     *
+     * Validated here, attached below. Every other part of the offer
+     * lifecycle already existed and never cared what KIND of booking it
+     * was: findAvailable hides a trip-bound row from the general pool,
+     * claimByDriver refuses it to anyone but that trip's driver,
+     * declineTripOffer lets them turn it down, and expireTripOffers
+     * releases and refunds an unanswered one. Only the seat path ever
+     * set tripId, so a parcel had no way in.
+     *
+     * Deliberately NOT a new price. A parcel on a trip is priced by the
+     * same engine as any other parcel, so this adds no money rules and
+     * no new way for a booking to be worth a different amount depending
+     * on how it was created. The only thing that changes is who is
+     * offered the job.
+     */
+    let postedTrip: any = null;
+    if ((dto as any).tripId) {
+      // Raw check, not isRideBooking: that is declared further down with
+      // the pricing, and this validation has to run before the money.
+      if ((dto as any).mode === 'ride') {
+        throw new BadRequestException('Book a seat on a trip, not a ride.');
+      }
+      if (!this.driversService?.getTripForParcel) {
+        throw new BadRequestException('Trip posting is unavailable right now.');
+      }
+      postedTrip = await this.driversService.getTripForParcel(
+        String((dto as any).tripId), weight,
+      );
+    }
+
+    /**
      * Quote pin (founder 2026-08-21). A valid pin from the review quote
      * makes that number the price, exactly. An expired or tampered pin
      * is refused with QUOTE_EXPIRED so the app must re-show the price:
@@ -674,6 +706,13 @@ export class DeliveriesService {
       // A ride's "recipient" is the passenger: the driver greets a
       // person by name, and the tracking page shows who is riding.
       kind: isRideBooking ? 'ride' : 'package',
+      /**
+       * A trip-bound parcel is offered to ONE rider, the one whose trip
+       * it is. tripOfferedAt starts the clock the expiry cron reads, so
+       * a sender's money never waits on a silent phone.
+       */
+      tripId:        postedTrip ? postedTrip.id : null,
+      tripOfferedAt: postedTrip ? new Date() : null,
       /**
        * The geography that justified the surcharge, stored beside the
        * charge (2026-08-31). Taken from the engine's own answer rather

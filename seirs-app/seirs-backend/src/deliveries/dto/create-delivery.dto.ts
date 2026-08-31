@@ -246,4 +246,21 @@ export class CreateDeliveryDto {
   /** Sender ticked the Terms of Service box at review. */
   @IsOptional()
   termsAccepted?: boolean;
+
+  /**
+   * Post this parcel to a rider's declared intercity trip (2026-08-31).
+   *
+   * The whole offer lifecycle already existed and was kind-agnostic:
+   * only the trip's own driver sees a trip-bound booking, only they can
+   * claim it, they can decline it, and an unanswered offer expires on a
+   * cron and refunds in full. Nothing could create one for a PACKAGE,
+   * because only the seat-booking path ever set tripId. This is that
+   * missing door.
+   *
+   * A parcel on a trip is priced exactly like any other parcel, so this
+   * introduces no new money rules. The only thing that changes is who
+   * gets offered the job.
+   */
+  @IsOptional() @IsString()
+  tripId?: string;
 }

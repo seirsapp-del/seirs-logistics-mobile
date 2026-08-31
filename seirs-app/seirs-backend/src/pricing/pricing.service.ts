@@ -868,6 +868,30 @@ export class PricingService implements OnModuleInit {
       kind: 'ride' as const,
       vehicleType: input.vehicleType,
       km,
+      /**
+       * Rides need the geography too (2026-08-31, same day, second pass).
+       *
+       * The route object was added to computePrice and NOT to this one,
+       * so every ride booked with no state codes at all: an interstate
+       * ride got no badge in the driver pool, told the passenger nothing
+       * about why it cost more, and slipped straight past the rider's
+       * standing interstate preference because the states read as
+       * unknown. Packages and people take the same roads and cross the
+       * same borders; they get the same disclosure.
+       */
+      route: {
+        pickupStateCode:  pickupState  ?? null,
+        dropoffStateCode: dropoffState ?? null,
+        pickupStateName:  getState(pickupState  as any)?.name ?? null,
+        dropoffStateName: getState(dropoffState as any)?.name ?? null,
+        zoneTier:         zr.labels.find(l =>
+          ['interState','interStateAdjacent','interStateDistant','crossZone','intraStateLongHaul'].includes(l)
+        ) ?? null,
+        isInterState:     (pickupState && dropoffState)
+                            ? pickupState !== dropoffState
+                            : null,
+        tierSurchargeNgn: Math.round(tierSur * 100) / 100,
+      },
       customer: {
         base: Math.round(base), distanceLabour: Math.round(distanceLabour), distanceFuel: Math.round(distanceFuel),
         timeSurcharges: { night: Math.round(nightSur), peak: Math.round(peakSur), weekend: Math.round(weekendSur) },
