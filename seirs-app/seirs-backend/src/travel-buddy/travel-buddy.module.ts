@@ -16,10 +16,14 @@ import { PaymentsService } from '../payments/payments.service';
 import { DeliveriesModule } from '../deliveries/deliveries.module';
 import { DeliveriesService } from '../deliveries/deliveries.service';
 import { DriversModule } from '../drivers/drivers.module';
+import { ParcelRequest } from './parcel-request.entity';
+import { ParcelRequestsService } from './parcel-requests.service';
+import { ParcelRequestsController } from './parcel-requests.controller';
+import { User } from '../users/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SeatBooking, SeatBookingEvent, DriverTrip, TripStop, Delivery]),
+    TypeOrmModule.forFeature([SeatBooking, SeatBookingEvent, DriverTrip, TripStop, Delivery, ParcelRequest, User]),
     FeesModule,
     PricingModule,
     NotificationsModule,
@@ -38,9 +42,9 @@ import { DriversModule } from '../drivers/drivers.module';
     forwardRef(() => PaymentsModule),
     forwardRef(() => DeliveriesModule),
   ],
-  controllers: [TravelBuddyController],
-  providers: [TravelBuddyService],
-  exports: [TravelBuddyService],
+  controllers: [TravelBuddyController, ParcelRequestsController],
+  providers: [TravelBuddyService, ParcelRequestsService],
+  exports: [TravelBuddyService, ParcelRequestsService],
 })
 export class TravelBuddyModule implements OnModuleInit {
   private readonly logger = new Logger(TravelBuddyModule.name);
@@ -55,6 +59,65 @@ export class TravelBuddyModule implements OnModuleInit {
   async onModuleInit() {
     // Refunds go out through the existing Flutterwave escrow path.
     this.travelBuddy.paymentsServiceRef = this.payments;
+
+    /**
+     * parcel_requests: the negotiation that happens BEFORE any money
+     * moves (2026-08-31). Created here rather than in a migration file,
+     * matching how every other module in this codebase adds its tables,
+     * because production runs with schema sync off.
+     */
+    try {
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "parcel_requests" (
+          "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "tripId" uuid NOT NULL,
+          "senderUserId" uuid NOT NULL,
+          "status" varchar(20) NOT NULL DEFAULT 'requested',
+          "pickupAddress" text NOT NULL,
+          "pickupLat" numeric(10,7) NOT NULL,
+          "pickupLng" numeric(10,7) NOT NULL,
+          "dropoffAddress" text NOT NULL,
+          "dropoffLat" numeric(10,7) NOT NULL,
+          "dropoffLng" numeric(10,7) NOT NULL,
+          "weightKg" numeric(10,2) NOT NULL DEFAULT 0,
+          "categoryCode" varchar(40) NULL,
+          "packageDescription" text NULL,
+          "declaredValueNgn" numeric(12,2) NULL,
+          "preferredStoreId" uuid NULL,
+          "senderInstructions" text NULL,
+          "quotedNgn" numeric(12,2) NULL,
+          "quotedKm" numeric(10,2) NULL,
+          "counterDropAddress" text NULL,
+          "counterDropLat" numeric(10,7) NULL,
+          "counterDropLng" numeric(10,7) NULL,
+          "counterNote" text NULL,
+          "counterQuotedNgn" numeric(12,2) NULL,
+          "counterQuotedKm" numeric(10,2) NULL,
+          "counteredAt" timestamptz NULL,
+          "answeredAt" timestamptz NULL,
+          "declineReason" text NULL,
+          "deliveryId" uuid NULL,
+          "expiresAt" timestamptz NOT NULL,
+          "createdAt" timestamptz NOT NULL DEFAULT now(),
+          "updatedAt" timestamptz NOT NULL DEFAULT now()
+        )
+      `);
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "idx_parcel_requests_trip"
+          ON "parcel_requests" ("tripId", "status")
+      `);
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "idx_parcel_requests_sender"
+          ON "parcel_requests" ("senderUserId", "status")
+      `);
+      // The expiry cron scans on this.
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "idx_parcel_requests_expiry"
+          ON "parcel_requests" ("status", "expiresAt")
+      `);
+    } catch (e: any) {
+      this.logger.error(`parcel_requests self-heal failed: ${e?.message ?? e}`);
+    }
 
     /**
      * The payment hook.
