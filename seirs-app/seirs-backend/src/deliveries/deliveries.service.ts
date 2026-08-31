@@ -1330,6 +1330,32 @@ export class DeliveriesService {
       // hours early (night-ops build 2026-08-11).
       .andWhere(`(d.scheduledFor IS NULL OR d.scheduledFor <= NOW() + interval '15 minutes')`);
 
+    /**
+     * A ride is only offered to the class the passenger booked
+     * (2026-08-31, the same founder rule claimByDriver now enforces).
+     *
+     * Without this the list advertises work the server will refuse: an
+     * okada rider sees "RIDE · passenger (Car)", taps in, accepts, and
+     * gets an error. Showing a job nobody can take is worse than not
+     * showing it.
+     *
+     * Fails OPEN. If the driver row cannot be resolved the list is
+     * unchanged rather than empty, because a rider seeing no work at all
+     * is a far worse failure than a rider seeing one they cannot claim.
+     * Packages are untouched: vehicle fit is a matching score, not a
+     * hard filter, and a rider may judge their own load.
+     */
+    let driverVehicle: string | null = null;
+    if (userId && this.driversService) {
+      try {
+        const me = await this.driversService.findByUserId(userId);
+        driverVehicle = (me as any)?.vehicleType ?? null;
+      } catch { driverVehicle = null; }
+    }
+    if (driverVehicle) {
+      q.andWhere(`(d."kind" <> 'ride' OR d."vehicleType" = :driverVehicle)`, { driverVehicle });
+    }
+
     const safeLat = Number(lat);
     const safeLng = Number(lng);
     const safeRadius = Math.min(200, Math.max(1, Number(radiusKm)));
@@ -1375,6 +1401,19 @@ export class DeliveriesService {
         trackingCode:   d.trackingCode,
         pickupAddress:  d.pickupAddress,
         dropoffAddress: d.dropoffAddress,
+        /**
+         * Package or person (2026-08-31).
+         *
+         * The driver home card has branched on `kind` since Book-a-Ride
+         * shipped, colouring the row and reading "RIDE · passenger", and
+         * this payload never sent the field. The branch was therefore
+         * always false and every waiting passenger was rendered in the
+         * open-jobs list as a parcel: no label, no colour, just a vehicle
+         * name. The job screen behind it always knew, so a rider found
+         * out one tap in rather than while scanning the list, which is
+         * the surface they actually triage on.
+         */
+        kind:           (d as any).kind ?? 'package',
         packageSize:    d.packageSize ?? null,
         vehicleType:    d.vehicleType ?? null,
         urgency:        (d as any).urgency ?? null,
@@ -4994,6 +5033,31 @@ export class DeliveriesService {
     }
     if (delivery.driver) {
       throw new ConflictException('This job was already claimed by another driver.');
+    }
+
+    /**
+     * A ride goes ONLY to the vehicle class the passenger booked
+     * (founder 2026-08-22, restated here 2026-08-31).
+     *
+     * MatchingService.filterForRide has enforced this since Book-a-Ride:
+     * "someone who booked a car must not get an okada, and a person never
+     * rides a bicycle or a truck". Auto-dispatch obeyed it and the open
+     * jobs list did not, so the rule only held on one of the two ways a
+     * driver gets work. A passenger who chose and paid for a car could
+     * have that ride claimed off the browse list by an okada, and the
+     * first they would know is the machine that arrives.
+     *
+     * Packages are deliberately NOT gated the same way: vehicle fit is a
+     * score in matching, not a hard filter, and a rider who judges they
+     * can carry a load may take it. Only the ride rule is absolute,
+     * because the passenger chose the class themselves.
+     */
+    if (String((delivery as any).kind ?? 'package') === 'ride'
+        && driver.vehicleType !== delivery.vehicleType) {
+      throw new BadRequestException(
+        `This passenger booked ${aVehicle(delivery.vehicleType)}. ` +
+        `Your vehicle is ${aVehicle(driver.vehicleType)}, so you cannot take this ride.`,
+      );
     }
 
     await this.repo.update(deliveryId, {
