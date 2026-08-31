@@ -10,7 +10,7 @@ import { RateCard } from './rate-card.entity';
 import { ServiceCategory } from './service-category.entity';
 import { DEFAULT_RATE_CARD, DEFAULT_SERVICE_CATEGORIES } from './pricing.seed';
 import {
-  detectStateFromCoords, areStatesAdjacent, getStateZone,
+  detectStateFromCoords, areStatesAdjacent, getStateZone, getState,
   type StateCode, type GeopoliticalZone,
 } from './regions';
 
@@ -25,6 +25,29 @@ export interface PriceBreakdown {
   km:            number;
   stops:         number;
   estimatedDwellMinutes: number;
+
+  /**
+   * The geography that set the zone surcharge (2026-08-31).
+   *
+   * The tier was worked out inside computePrice and then bucketed into
+   * two legacy `zoneSurcharges` fields, so the LABEL never left the
+   * engine: the sender saw an unexplained uplift, the delivery row could
+   * not record why it was charged, and admin could not filter interstate
+   * work at all.
+   *
+   * Optional because computeRidePrice and computeSeatPrice return this
+   * same shape and do not populate it yet.
+   */
+  route?: {
+    pickupStateCode:  string | null;
+    dropoffStateCode: string | null;
+    pickupStateName:  string | null;
+    dropoffStateName: string | null;
+    zoneTier:         string | null;
+    /** Null when either state is unknown: silence, not a false "domestic". */
+    isInterState:     boolean | null;
+    tierSurchargeNgn: number;
+  };
 
   // Customer-facing line items
   customer: {
@@ -1388,6 +1411,41 @@ export class PricingService implements OnModuleInit {
       km:           input.km,
       stops:        input.stopCount,
       estimatedDwellMinutes: input.estimatedDwellMinutes,
+      /**
+       * What the geography actually was (2026-08-31).
+       *
+       * The tier that set the surcharge was worked out here and then
+       * bucketed into the two legacy `zoneSurcharges` fields, so the
+       * LABEL never left the engine. Nothing downstream could name the
+       * reason: the sender saw an unexplained uplift, the delivery row
+       * could not record why it was charged, and admin could not filter
+       * interstate work at all.
+       *
+       * Returned as the engine's own vocabulary so a receipt, a booking
+       * screen, an admin row and a dispute all quote the same word for
+       * the same money.
+       */
+      route: {
+        pickupStateCode:  pickupState  ?? null,
+        dropoffStateCode: dropoffState ?? null,
+        // Readable names travel with the codes so no client has to ship
+        // its own copy of the state table to render a sentence.
+        pickupStateName:  getState(pickupState  as any)?.name ?? null,
+        dropoffStateName: getState(dropoffState as any)?.name ?? null,
+        zoneTier:         labelOfTier  ?? null,
+        /**
+         * Null, not false, when either state is unknown. A quote priced
+         * from coordinates that fall outside every state box has not
+         * been shown to be domestic, and a screen must be able to stay
+         * silent rather than assert "same state" on no evidence.
+         */
+        isInterState:     (pickupState && dropoffState)
+                            ? pickupState !== dropoffState
+                            : null,
+        // What the tier actually cost, so a sender can be shown the
+        // reason and the number in the same breath.
+        tierSurchargeNgn: round2(tierSur),
+      },
       customer: {
         base, distanceLabour, distanceFuel, stopBonuses, dwellOver,
         categorySurcharge,

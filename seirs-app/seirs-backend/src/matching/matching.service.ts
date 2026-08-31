@@ -95,8 +95,10 @@ export class MatchingService {
 
     // Value-level gate (founder 2026-08-21): a driver never sees a job
     // whose declared value exceeds their level's cap.
-    const candidates = this.filterForRide(
-      await this.filterByValueLevel(nearbyDrivers, delivery), delivery);
+    const candidates = this.filterForDriverLimits(
+      this.filterForRide(
+        await this.filterByValueLevel(nearbyDrivers, delivery), delivery),
+      delivery);
     if (!candidates.length) {
       this.logger.warn(
         `No drivers near delivery ${delivery.id} are levelled for its declared value (₦${Number((delivery as any).declaredValueNgn ?? 0)}).`,
@@ -225,6 +227,39 @@ export class MatchingService {
   private filterForRide(drivers: Driver[], delivery: Delivery): Driver[] {
     if ((delivery as any).kind !== 'ride') return drivers;
     return drivers.filter((d) => d.vehicleType === delivery.vehicleType);
+  }
+
+  /**
+   * Respect what the rider said they will actually do (2026-08-31).
+   *
+   * Two standing preferences, both new, both defaulting to the old
+   * behaviour so nobody's work changes until they change it:
+   *
+   *   acceptsInterstate  false means never auto-assign a run that leaves
+   *                      their state. Before this the only way to say no
+   *                      was to decline the job, which costs them their
+   *                      acceptance rate for answering honestly.
+   *   maxTripKm          the rider's own ceiling. Distinct from the
+   *                      vehicle's maxRouteKm, which is what the machine
+   *                      can do rather than what the person will do.
+   *
+   * Both are skipped when the run's states are unknown. A booking made
+   * before those columns existed has not been SHOWN to cross a line, and
+   * withholding work on a guess is the wrong way round: the rider loses
+   * a job for a fact nobody established.
+   */
+  private filterForDriverLimits(drivers: Driver[], delivery: Delivery): Driver[] {
+    const from = (delivery as any).pickupStateCode;
+    const to   = (delivery as any).dropoffStateCode;
+    const isInterState = !!(from && to && from !== to);
+    const runKm = Number((delivery as any).distanceKm ?? 0);
+
+    return drivers.filter((d) => {
+      if (isInterState && (d as any).acceptsInterstate === false) return false;
+      const cap = Number((d as any).maxTripKm ?? 0);
+      if (cap > 0 && runKm > cap) return false;
+      return true;
+    });
   }
 
   /**

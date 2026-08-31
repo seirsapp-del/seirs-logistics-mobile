@@ -154,6 +154,22 @@ export const emptyPackage = (): PackageDraft => ({
   instructions: '',
 });
 
+/**
+ * The engine's zone tiers, in words a sender recognises.
+ *
+ * Keys are the labels pricing.service returns. Anything not listed here
+ * renders nothing rather than a raw camelCase key: a summary line the
+ * customer cannot read is no better than the unnamed number this
+ * replaces.
+ */
+const ZONE_TIER_LABEL: Record<string, string> = {
+  intraStateLongHaul: 'Long trip within one state',
+  interStateAdjacent: 'Crossing into the next state',
+  interStateDistant:  'Crossing to a further state',
+  crossZone:          'Crossing to another part of the country',
+  interState:         'Crossing a state line',
+};
+
 // Hard ceiling on one run. Vehicle capacity is the real limit and is
 // enforced server-side from the Fee Catalogue; this just stops a runaway
 // form. Same number the backend DTO caps at.
@@ -912,6 +928,18 @@ export default function SendScreen() {
           timeLabels,
           zoneSurcharge:     Number(zone.interState ?? 0) + Number(zone.longDistance ?? 0) + Number(zone.restricted ?? 0),
           zoneFlat:          Number(zone.overnight ?? 0),
+          /**
+           * Why the geography cost extra (2026-08-31).
+           *
+           * The engine has bucketed a 15 to 40 percent uplift into one
+           * unnamed "zone surcharge" number since the state-aware tier
+           * shipped, so a sender watching a Lagos to Abuja quote come
+           * back far above a local one had nothing telling them it was
+           * the distance between two states. An uplift whose cause the
+           * payer cannot see is indistinguishable from a scam, which is
+           * the standard the zone NOTICES were already held to.
+           */
+          route:             runQuote?.route ?? null,
           vat:               Number(c.vat ?? 0),
           total:             runTotal,
         };
@@ -2525,6 +2553,25 @@ export default function SendScreen() {
                   ...(Number((fare as any).highValue) > 0
                     ? [[t('send.highValueFee', { defaultValue: 'High-value cover' }),
                         naira((fare as any).highValue)] as [string, string]]
+                    : []),
+                  /**
+                   * Name the geography, and what it cost (2026-08-31).
+                   *
+                   * Two rows, and both only when the engine actually
+                   * charged a tier: which states this run connects, and
+                   * the surcharge that crossing them added. A zero-naira
+                   * row is noise; an unexplained one is the thing this
+                   * screen calls a lie everywhere else.
+                   */
+                  ...((fare as any).route?.zoneTier
+                      && Number((fare as any).route?.tierSurchargeNgn) > 0
+                    ? ([
+                        [t('send.summaryRoute', { defaultValue: 'Route' }),
+                         `${(fare as any).route.pickupStateName ?? (fare as any).route.pickupStateCode} to ${(fare as any).route.dropoffStateName ?? (fare as any).route.dropoffStateCode}`],
+                        [ZONE_TIER_LABEL[(fare as any).route.zoneTier]
+                           ?? t('send.summaryZoneFee', { defaultValue: 'Distance surcharge' }),
+                         naira(Number((fare as any).route.tierSurchargeNgn))],
+                      ] as [string, string][])
                     : []),
                   [t('send.total'),          naira(fare.total)],
                 ] as [string, string][]).map(([lbl, val]) => (

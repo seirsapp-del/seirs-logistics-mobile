@@ -14,6 +14,10 @@ import { PricingModule } from '../pricing/pricing.module';
 import { PartnerPayout } from '../business/partner-payout.entity';
 import { PaymentsModule } from '../payments/payments.module';
 import { MailModule } from '../mail/mail.module';
+// Real road distance for counter-to-counter quotes (2026-08-31). The
+// straight line this used to price on is ~20% short over an interstate
+// leg, and SEIRS ate the difference on every one.
+import { DeliveriesModule } from '../deliveries/deliveries.module';
 
 /**
  * Idempotent boot-time schema self-heal for the partner_stores table.
@@ -28,6 +32,7 @@ import { MailModule } from '../mail/mail.module';
     FeesModule,
     IdentityModule,
     PricingModule,
+    forwardRef(() => DeliveriesModule),
     forwardRef(() => PaymentsModule),
     MailModule,
   ],

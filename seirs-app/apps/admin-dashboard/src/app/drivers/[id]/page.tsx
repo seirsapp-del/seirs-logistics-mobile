@@ -746,6 +746,38 @@ export default function DriverDetailPage() {
                 This exact photo + plate show on the passenger's trust card and
                 the sender's tracking page.
               </p>
+              {/*
+                What this rider will actually take (2026-08-31).
+
+                Standing preferences, distinct from the per-trip switches
+                on a declared intercity trip. Ops asking "why is nobody
+                picking up this Lagos to Benin run" could not see that
+                half the pool had opted out of interstate work, because
+                there was nowhere to opt out and nowhere to read it.
+                Read-only here: it is the rider's choice, not ops'.
+              */}
+              <div className="pt-2 mt-2 border-t border-gray-100 space-y-1">
+                <p>
+                  <span className="text-gray-400">Interstate work:</span>{' '}
+                  {driver.acceptsInterstate === false ? (
+                    <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-700">
+                      Opted out
+                    </span>
+                  ) : (
+                    <span className="text-gray-700">Accepts</span>
+                  )}
+                </p>
+                <p>
+                  <span className="text-gray-400">Own trip limit:</span>{' '}
+                  {driver.maxTripKm != null
+                    ? `${driver.maxTripKm} km`
+                    : <span className="text-gray-400">no limit set</span>}
+                </p>
+                <p className="text-xs text-gray-400 max-w-xs">
+                  The rider sets both in the app. Separate from the vehicle
+                  class ceiling on the rate card, which is yours.
+                </p>
+              </div>
             </div>
           </div>
         </div>

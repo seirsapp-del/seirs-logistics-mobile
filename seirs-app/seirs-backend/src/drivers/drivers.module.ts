@@ -109,7 +109,14 @@ export class DriversModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "corridorDestLat" numeric(10,7) NULL,
           ADD COLUMN IF NOT EXISTS "corridorDestLng" numeric(10,7) NULL,
           ADD COLUMN IF NOT EXISTS "corridorLabel" varchar(120) NULL,
-          ADD COLUMN IF NOT EXISTS "corridorExpiresAt" timestamptz NULL
+          ADD COLUMN IF NOT EXISTS "corridorExpiresAt" timestamptz NULL,
+          /* Standing interstate preference (2026-08-31). Defaults true so
+             every existing rider keeps exactly the work they had; this is
+             a switch to opt OUT of, not one to discover before earning.
+             maxTripKm is the rider's OWN ceiling, distinct from the
+             vehicle's maxRouteKm on the rate card. */
+          ADD COLUMN IF NOT EXISTS "acceptsInterstate" boolean NOT NULL DEFAULT true,
+          ADD COLUMN IF NOT EXISTS "maxTripKm" integer NULL
       `);
       await this.ds.query(`
         ALTER TABLE "driver_trips"

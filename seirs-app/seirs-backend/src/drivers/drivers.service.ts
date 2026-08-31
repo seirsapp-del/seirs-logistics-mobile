@@ -109,6 +109,55 @@ export class DriversService {
     return this.repo.findOneBy({ id: driver.id });
   }
 
+  /**
+   * The rider's standing work limits (2026-08-31).
+   *
+   * Both fields are optional and applied independently, so a client can
+   * send one without clearing the other. maxTripKm accepts null to mean
+   * "no personal limit", which is different from 0 and had to be
+   * expressible: a rider removing their cap must not end up capped at
+   * zero kilometres and silently unmatchable.
+   */
+  async setWorkPreferences(
+    userId: string,
+    body: { acceptsInterstate?: boolean; maxTripKm?: number | null },
+  ) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found');
+
+    const patch: Record<string, any> = {};
+    if (body.acceptsInterstate !== undefined) {
+      patch.acceptsInterstate = !!body.acceptsInterstate;
+    }
+    if (body.maxTripKm !== undefined) {
+      if (body.maxTripKm === null || body.maxTripKm === ('' as any)) {
+        patch.maxTripKm = null;
+      } else {
+        const km = Math.round(Number(body.maxTripKm));
+        if (!Number.isFinite(km) || km <= 0) {
+          throw new BadRequestException(
+            'A trip limit must be a positive number of kilometres, or empty for no limit.',
+          );
+        }
+        // A ceiling below the shortest realistic run would take the rider
+        // out of the pool entirely without telling them why.
+        if (km < 1) throw new BadRequestException('That limit is too low to match any work.');
+        patch.maxTripKm = km;
+      }
+    }
+    if (Object.keys(patch).length === 0) {
+      return this.repo.findOneBy({ id: driver.id });
+    }
+
+    await this.repo.update(driver.id, patch);
+    this.logger.log(
+      `WORK_PREFS driver=${driver.id} ` +
+      `interstate=${patch.acceptsInterstate ?? '(unchanged)'} ` +
+      `maxTripKm=${patch.maxTripKm === undefined ? '(unchanged)' : patch.maxTripKm}`,
+    );
+    return this.repo.findOneBy({ id: driver.id });
+  }
+
   async clearCorridor(userId: string) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found');

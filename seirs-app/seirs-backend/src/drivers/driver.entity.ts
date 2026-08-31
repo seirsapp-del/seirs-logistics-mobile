@@ -92,6 +92,34 @@ export class Driver {
   @Column({ default: false })
   isOnline: boolean;
 
+  /**
+   * Will this rider leave their state at all? (2026-08-31)
+   *
+   * The only two switches that existed lived on a DECLARED TRIP:
+   * acceptsPackages and acceptsPassengers on driver_trips. So a rider
+   * who runs Lagos to Benin every week but had not declared today's trip
+   * was invisible to the corridor bonus, and a rider who never wants to
+   * leave Surulere had no way whatsoever to say so. Interstate work was
+   * offered to whoever happened to be nearest the pickup.
+   *
+   * Defaults TRUE so nothing changes for anybody until they choose. This
+   * is a preference a rider opts OUT of, never one they must discover
+   * and switch on before they can earn.
+   */
+  @Column({ default: true })
+  acceptsInterstate: boolean;
+
+  /**
+   * A personal ceiling on how far this rider will travel, in km.
+   *
+   * Distinct from vehicleRates[type].maxRouteKm, which is what the
+   * MACHINE can do and is the founder's number. This is what the PERSON
+   * will do, and it is theirs to set. Null means no personal limit,
+   * which is every rider who existed before this column.
+   */
+  @Column({ type: 'integer', nullable: true })
+  maxTripKm: number | null;
+
   // Spec V8 §2.11 - wind-down mode. While true, the matching service
   // skips this driver for new assignments but they continue completing
   // already-accepted jobs. One-way until the driver fully signs off.

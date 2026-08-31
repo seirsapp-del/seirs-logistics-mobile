@@ -9,6 +9,7 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
+  Switch,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -378,6 +379,61 @@ export default function InterstateScreen() {
    * timer forever and never search.
    */
   const scrollRef = useRef<ScrollView>(null);
+
+  /**
+   * Standing work limits (2026-08-31), loaded from the driver profile
+   * and saved one field at a time so a half-typed km box never clears
+   * the interstate switch.
+   */
+  const [acceptsInterstate, setAcceptsInterstate] = useState(true);
+  const [maxTripKm,         setMaxTripKm]         = useState('');
+  const [prefSaving,        setPrefSaving]        = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    driversApi.me()
+      .then((d: any) => {
+        if (cancelled || !d) return;
+        setAcceptsInterstate(d.acceptsInterstate !== false);
+        setMaxTripKm(d.maxTripKm != null ? String(d.maxTripKm) : '');
+      })
+      .catch(() => { /* keep the permissive defaults */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const saveInterstatePref = async (next: boolean) => {
+    // Optimistic: the switch must feel instant. Reverted on failure so
+    // the rider is never shown a preference the server did not take.
+    const previous = acceptsInterstate;
+    setAcceptsInterstate(next);
+    setPrefSaving(true);
+    try {
+      await driversApi.setWorkPreferences({ acceptsInterstate: next });
+    } catch (e: any) {
+      setAcceptsInterstate(previous);
+      alertDialog('Could not save that', e?.message ?? 'Try again in a moment.');
+    } finally {
+      setPrefSaving(false);
+    }
+  };
+
+  const saveMaxTripKm = async () => {
+    setPrefSaving(true);
+    try {
+      const trimmed = maxTripKm.trim();
+      await driversApi.setWorkPreferences({ maxTripKm: trimmed === '' ? null : Number(trimmed) });
+      alertDialog(
+        'Saved',
+        trimmed === ''
+          ? 'No distance limit: any length of run can reach you.'
+          : `You will not be offered runs longer than ${trimmed} km.`,
+      );
+    } catch (e: any) {
+      alertDialog('Could not save that', e?.message ?? 'Try again in a moment.');
+    } finally {
+      setPrefSaving(false);
+    }
+  };
   const scrollY   = useRef(0);
   const liftBy = useCallback((hiddenPx: number) => {
     if (!(hiddenPx > 0)) return;
@@ -887,6 +943,62 @@ export default function InterstateScreen() {
           onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
         >
 
+          {/*
+            Standing interstate preference (2026-08-31).
+
+            Everything else on this screen is about ONE declared trip.
+            This is the rider's standing answer to "do you leave your
+            state at all", and it had no home anywhere in the product:
+            the only way to refuse interstate work was to decline each
+            job, which costs a rider their acceptance rate for answering
+            honestly. It sits here because this is the screen where a
+            rider is already thinking about intercity work.
+
+            Defaults to accepting, so nobody loses work by not finding
+            this control.
+          */}
+          <View style={[styles.prefCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.prefTitle, { color: theme.text }]}>Take interstate work</Text>
+                <Text style={[styles.prefSub, { color: theme.textSecond }]}>
+                  {acceptsInterstate
+                    ? 'Runs that leave your state can be offered to you.'
+                    : 'You will only be offered runs inside your own state.'}
+                </Text>
+              </View>
+              <Switch
+                value={acceptsInterstate}
+                onValueChange={saveInterstatePref}
+                disabled={prefSaving}
+                trackColor={{ false: theme.border, true: theme.primary }}
+              />
+            </View>
+
+            <View style={{ marginTop: 12 }}>
+              <Text style={[styles.prefSub, { color: theme.textSecond, marginBottom: 6 }]}>
+                Longest trip you will take (km). Leave empty for no limit.
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <TextInput
+                  value={maxTripKm}
+                  onChangeText={(v) => setMaxTripKm(v.replace(/[^0-9]/g, ''))}
+                  keyboardType="number-pad"
+                  placeholder="No limit"
+                  placeholderTextColor={theme.textThird}
+                  style={[styles.prefInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+                />
+                <Pressable
+                  onPress={saveMaxTripKm}
+                  disabled={prefSaving}
+                  style={[styles.prefSaveBtn, { backgroundColor: prefSaving ? theme.border : theme.primary }]}
+                >
+                  <Text style={styles.prefSaveTxt}>{prefSaving ? 'Saving' : 'Save'}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
           {myTrips.length > 0 && (
             <View style={{ gap: 8, marginBottom: 4 }}>
               <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, letterSpacing: 0.6, color: theme.textSecond }}>
@@ -1371,6 +1483,13 @@ export default function InterstateScreen() {
 }
 
 const styles = StyleSheet.create({
+  prefCard:     { borderWidth: 1, borderRadius: Radius.lg, padding: 14, marginBottom: 12 },
+  prefTitle:    { fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
+  prefSub:      { fontSize: FontSize.xs, lineHeight: 17, marginTop: 2 },
+  prefInput:    { flex: 1, borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 9, fontSize: FontSize.base },
+  prefSaveBtn:  { paddingHorizontal: 18, paddingVertical: 10, borderRadius: Radius.md },
+  prefSaveTxt:  { color: '#fff', fontSize: FontSize.sm, fontWeight: '700' },
+
   header:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
   backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   title:   { fontSize: FontSize.md, fontWeight: FontWeight.bold },

@@ -46,6 +46,7 @@ function DeliveriesContent() {
   const [search, setSearch]     = useState('');
   // Rides vs packages: two product lines, one table (founder 23 Aug).
   const [kindFilter, setKindFilter] = useState<'' | 'ride' | 'package'>('');
+  const [interOnly,  setInterOnly]  = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [error, setError]       = useState<string | null>(null);
   const q = search.trim().toLowerCase();
@@ -91,6 +92,23 @@ function DeliveriesContent() {
           <h1 className="text-2xl font-bold text-[#0F2B4C]">Deliveries</h1>
           <div className="flex gap-2 flex-wrap items-center">
             {/* Product line first, then status. */}
+            {/*
+              Interstate is a dispatch question, not a status: "who is
+              currently committed to leaving their state" is what an ops
+              person asks when a corridor goes quiet. Filtered client-side
+              over the loaded page, same as the product-line chips.
+            */}
+            <button
+              onClick={() => setInterOnly((v) => !v)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                interOnly
+                  ? 'bg-amber-600 text-white border-amber-600'
+                  : 'bg-white text-[#0F2B4C]/50 border-[#E5E7EB] hover:border-amber-300'
+              }`}
+            >
+              Interstate
+            </button>
+            <span className="h-5 w-px bg-gray-200" />
             {([['', 'All'], ['package', 'Packages'], ['ride', 'Rides']] as const).map(([k, label]) => (
               <button
                 key={k || 'all'}
@@ -183,7 +201,10 @@ function DeliveriesContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F5F5F0]">
-                  {data?.deliveries?.map((d: any) => (
+                  {data?.deliveries?.filter((d: any) => !interOnly || (
+                    d.pickupStateCode && d.dropoffStateCode
+                    && d.pickupStateCode !== d.dropoffStateCode
+                  )).map((d: any) => (
                   <React.Fragment key={d.id}>
                     <tr className="hover:bg-[#F5F5F0] transition-colors">
                       <td className="px-4 py-3">
@@ -267,6 +288,21 @@ function DeliveriesContent() {
                           <Navigation size={10} className="mt-0.5 shrink-0 text-emerald-500" />
                           <span className="truncate">{d.dropoffAddress}</span>
                         </div>
+                        {/*
+                          Which states, and which tier charged (2026-08-31).
+                          The engine worked both out at booking and threw them
+                          away, so ops could not tell an interstate run from a
+                          local one, could not filter for them, and could not
+                          answer a customer asking why a quote jumped 40%.
+                          Both columns are stored now, so the row can say it.
+                        */}
+                        {d.pickupStateCode && d.dropoffStateCode
+                          && d.pickupStateCode !== d.dropoffStateCode && (
+                          <div className="mt-1 inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                            {d.pickupStateCode} to {d.dropoffStateCode}
+                            {d.zoneTier ? ` · ${ZONE_TIER_SHORT[d.zoneTier] ?? d.zoneTier}` : ''}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${STATUS_COLORS[d.status] ?? 'bg-[#0F2B4C]/5'}`}>
@@ -575,6 +611,19 @@ function AssignDriverModal({ delivery, onClose, onDone }: {
     </div>
   );
 }
+
+/**
+ * The engine's zone tiers, abbreviated for a table cell. Ops read these
+ * beside a price, so they have to be short and unambiguous; the customer
+ * apps carry the long form.
+ */
+const ZONE_TIER_SHORT: Record<string, string> = {
+  intraStateLongHaul: 'long haul',
+  interStateAdjacent: 'adjacent',
+  interStateDistant:  'distant',
+  crossZone:          'cross-zone',
+  interState:         'interstate',
+};
 
 export default function DeliveriesPage() {
   return (

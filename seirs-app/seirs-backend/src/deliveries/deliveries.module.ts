@@ -54,7 +54,14 @@ import { FeesService } from '../fees/fees.service';
   ],
   controllers: [DeliveriesController],
   providers: [DeliveriesService, PricingService, RouteDistanceService],
-  exports: [DeliveriesService, PricingService],
+  /**
+   * RouteDistanceService is exported (2026-08-31) so the counter flow can
+   * measure a real road route instead of a straight line. It keeps a
+   * learned road/straight ratio per zone and a request cache, so sharing
+   * the one instance is the point: a second copy would relearn and
+   * recache the same journeys.
+   */
+  exports: [DeliveriesService, PricingService, RouteDistanceService],
 })
 export class DeliveriesModule implements OnModuleInit {
   private readonly logger = new Logger(DeliveriesModule.name);
@@ -291,8 +298,22 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "termsAcceptedAt" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "kind" varchar(10) NOT NULL DEFAULT 'package',
           ADD COLUMN IF NOT EXISTS "tripId" uuid NULL,
-          ADD COLUMN IF NOT EXISTS "tripOfferedAt" timestamptz NULL
+          ADD COLUMN IF NOT EXISTS "tripOfferedAt" timestamptz NULL,
+          /* Which states the run connects, and which zone tier fired
+             (2026-08-31). Derived at pricing time since the state-aware
+             tier shipped and thrown away every time, so a 15 to 40
+             percent surcharge could never be reconciled, reported on, or
+             even named to the sender who paid it. */
+          ADD COLUMN IF NOT EXISTS "pickupStateCode" varchar(2) NULL,
+          ADD COLUMN IF NOT EXISTS "dropoffStateCode" varchar(2) NULL,
+          ADD COLUMN IF NOT EXISTS "zoneTier" varchar(30) NULL
 
+      `);
+      /* Admin filters interstate work by these two, and the ops board
+         groups by corridor. Both are range scans over a small set. */
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "idx_deliveries_states"
+          ON "deliveries" ("pickupStateCode", "dropoffStateCode")
       `);
 
       // Mid-delivery address change (2026-08-21): support-decided, paid

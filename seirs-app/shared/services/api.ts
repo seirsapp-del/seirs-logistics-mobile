@@ -695,6 +695,14 @@ export const driversApi = {
   setCorridor: (destLat: number, destLng: number, label?: string, hours?: number) =>
     request<any>('POST', '/drivers/me/corridor', { destLat, destLng, label, hours }),
   clearCorridor: () => request<any>('DELETE', '/drivers/me/corridor'),
+  /**
+   * Standing work limits, as opposed to the per-trip switches on a
+   * declared intercity trip (2026-08-31). Send only what changed: an
+   * omitted field is left alone, and maxTripKm: null clears the cap
+   * rather than setting it to zero.
+   */
+  setWorkPreferences: (body: { acceptsInterstate?: boolean; maxTripKm?: number | null }) =>
+    request<any>('PATCH', '/drivers/me/work-preferences', body),
   updateLocation: (lat: number, lng: number) => request<any>('PATCH', '/drivers/location', { lat, lng }),
   myDeliveries:   () => request<any[]>('GET', '/deliveries/driver'),
   // Fetch a single delivery WITH stops eager-loaded. Returns the full

@@ -75,6 +75,19 @@ const DEFAULT_MAX_PACKAGES: Record<string, number> = {
 
 // Scheduled pickups run 5 AM to 9 PM (platform operating window).
 // Send Now stays 24/7: this list is only for booking ahead.
+/**
+ * The engine's zone tiers in words a sender recognises. Same strings the
+ * customer app uses: one company must not describe the same charge two
+ * different ways. An unlisted tier renders nothing rather than a raw key.
+ */
+const ZONE_TIER_LABEL: Record<string, string> = {
+  intraStateLongHaul: 'Long trip within one state',
+  interStateAdjacent: 'Crossing into the next state',
+  interStateDistant:  'Crossing to a further state',
+  crossZone:          'Crossing to another part of the country',
+  interState:         'Crossing a state line',
+};
+
 const TIME_SLOTS = Array.from({ length: 17 }, (_, i) => {
   const hour = i + 5;
   return {
@@ -1810,6 +1823,25 @@ export default function SendPackageScreen() {
                   ['When', scheduleNow ? 'Send now' : (TIME_SLOTS.find(t => t.hour === scheduledHour)?.label ?? '-')],
                   ...(Number(quote?.customer?.serviceFee ?? 0) > 0
                     ? [['Service fee', naira(quote!.customer.serviceFee)] as [string, string]]
+                    : []),
+                  /**
+                   * Name the geography, and what it cost (2026-08-31).
+                   *
+                   * This app showed NOTHING about the state tier: a
+                   * Lagos to Abuja run came back up to 40% above a local
+                   * one with no line explaining it, which for a business
+                   * sender reconciling invoices is a support ticket
+                   * waiting to happen. Both rows appear only when the
+                   * engine actually charged a tier.
+                   */
+                  ...((quote as any)?.route?.zoneTier
+                      && Number((quote as any)?.route?.tierSurchargeNgn) > 0
+                    ? ([
+                        ['Route',
+                         `${(quote as any).route.pickupStateName ?? (quote as any).route.pickupStateCode} to ${(quote as any).route.dropoffStateName ?? (quote as any).route.dropoffStateCode}`],
+                        [ZONE_TIER_LABEL[(quote as any).route.zoneTier] ?? 'Distance surcharge',
+                         naira(Number((quote as any).route.tierSurchargeNgn))],
+                      ] as [string, string][])
                     : []),
                   ['Total', quote?.customer?.total != null ? naira(quote.customer.total) : '…'],
                 ] as [string, string][]).map(([lbl, val]) => (

@@ -15,7 +15,7 @@ import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
 import { RouteDistanceService } from './route-distance.service';
 import { PricingService as RateCardPricing } from '../pricing/pricing.service';
-import { detectStateFromCoords } from '../pricing/regions';
+import { detectStateFromCoords, getState } from '../pricing/regions';
 import { User } from '../users/user.entity';
 import { redactDriverForCustomer } from '../common/redact-driver';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
@@ -602,6 +602,16 @@ export class DeliveriesService {
       // A ride's "recipient" is the passenger: the driver greets a
       // person by name, and the tracking page shows who is riding.
       kind: isRideBooking ? 'ride' : 'package',
+      /**
+       * The geography that justified the surcharge, stored beside the
+       * charge (2026-08-31). Taken from the engine's own answer rather
+       * than recomputed here, so the row can never disagree with the
+       * price it was charged. Absent on a breakdown that predates this,
+       * hence the optional chain and the nulls.
+       */
+      pickupStateCode:  (breakdown as any)?.route?.pickupStateCode  ?? null,
+      dropoffStateCode: (breakdown as any)?.route?.dropoffStateCode ?? null,
+      zoneTier:         (breakdown as any)?.route?.zoneTier         ?? null,
       ...ridePassenger,
       scheduledFor,
       trackingCode,
@@ -1346,14 +1356,40 @@ export class DeliveriesService {
      * hard filter, and a rider may judge their own load.
      */
     let driverVehicle: string | null = null;
+    let me: any = null;
     if (userId && this.driversService) {
       try {
-        const me = await this.driversService.findByUserId(userId);
-        driverVehicle = (me as any)?.vehicleType ?? null;
-      } catch { driverVehicle = null; }
+        me = await this.driversService.findByUserId(userId);
+        driverVehicle = me?.vehicleType ?? null;
+      } catch { me = null; driverVehicle = null; }
     }
     if (driverVehicle) {
       q.andWhere(`(d."kind" <> 'ride' OR d."vehicleType" = :driverVehicle)`, { driverVehicle });
+    }
+
+    /**
+     * The rider's own standing limits (2026-08-31).
+     *
+     * Same two preferences the matcher honours, applied to the browse
+     * list so the two ways of getting work agree. A rider who has said
+     * they do not leave their state should not have to scroll past runs
+     * that do, and a rider with a personal 60 km ceiling should not be
+     * shown an 800 km job at all.
+     *
+     * Both clauses pass a row through when the states are NULL: an
+     * unmeasured booking has not been shown to cross a line, and hiding
+     * work on a guess costs the rider money for a fact nobody
+     * established.
+     */
+    if (me?.acceptsInterstate === false) {
+      q.andWhere(`(
+        d."pickupStateCode" IS NULL OR d."dropoffStateCode" IS NULL
+        OR d."pickupStateCode" = d."dropoffStateCode"
+      )`);
+    }
+    const personalCapKm = Number(me?.maxTripKm ?? 0);
+    if (personalCapKm > 0) {
+      q.andWhere(`(d."distanceKm" IS NULL OR d."distanceKm" <= :personalCapKm)`, { personalCapKm });
     }
 
     const safeLat = Number(lat);
@@ -1418,6 +1454,38 @@ export class DeliveriesService {
         vehicleType:    d.vehicleType ?? null,
         urgency:        (d as any).urgency ?? null,
         status:         d.status,
+        /**
+         * Where the run goes, not just where it starts (2026-08-31).
+         *
+         * The list showed one number, the straight line from the driver
+         * to the PICKUP, and the card rendered it beside a clock. So a
+         * Lagos to Kano parcel and a Lagos to Yaba parcel both read
+         * "3.2 km" and looked like the same afternoon's work. A rider
+         * had no way to tell an 800 km commitment from a local drop
+         * without opening it.
+         *
+         * tripKm is the run's own measured road distance, kept separate
+         * from distanceKm above rather than replacing it, because both
+         * are things a rider needs: how far to start, and how far in
+         * total.
+         */
+        tripKm:           d.distanceKm != null ? +Number(d.distanceKm).toFixed(1) : null,
+        pickupStateCode:  (d as any).pickupStateCode  ?? null,
+        dropoffStateCode: (d as any).dropoffStateCode ?? null,
+        // Names, not just codes: "LA to KN" is a puzzle, "Lagos to Kano"
+        // is the decision the rider is actually making.
+        pickupStateName:  getState((d as any).pickupStateCode)?.name  ?? null,
+        dropoffStateName: getState((d as any).dropoffStateCode)?.name ?? null,
+        zoneTier:         (d as any).zoneTier ?? null,
+        /**
+         * Null, not false, when the states are unknown. A row booked
+         * before the columns existed is not a domestic run, it is a run
+         * nobody measured, and the app must be able to say nothing
+         * rather than say "same state" on no evidence.
+         */
+        isInterState:     ((d as any).pickupStateCode && (d as any).dropoffStateCode)
+                            ? (d as any).pickupStateCode !== (d as any).dropoffStateCode
+                            : null,
         priceNgn:       price,
         youEarnNgn:     net,
         distanceKm:     rawDist != null ? +Number(rawDist).toFixed(1) : null,
@@ -4985,6 +5053,18 @@ export class DeliveriesService {
      * address, date of birth, emergency contacts, FCM token and every KYC
      * document URL to the customer's phone.
      */
+    /**
+     * State names alongside the codes (2026-08-31).
+     *
+     * The row stores two-letter codes because that is what the pricing
+     * engine speaks. "LA to KN" is a puzzle on a screen, so the readable
+     * names are attached here rather than shipping a copy of the state
+     * table to three apps. Left absent when the codes are null, so a
+     * client can tell "not interstate" from "nobody measured it".
+     */
+    (delivery as any).pickupStateName  = getState((delivery as any).pickupStateCode)?.name  ?? null;
+    (delivery as any).dropoffStateName = getState((delivery as any).dropoffStateCode)?.name ?? null;
+
     return isCustomer
       ? redactDriverForCustomer(delivery as any)
       : this.redactCustomerForDriver(delivery as any);

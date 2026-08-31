@@ -1,5 +1,6 @@
 import {
   Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger,
+  Optional, Inject, forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -18,6 +19,7 @@ import {
   HandoffMethod, HandoffStage, HandoffRole,
 } from '../identity/handoff-record.entity';
 import { MailService } from '../mail/mail.service';
+import { RouteDistanceService } from '../deliveries/route-distance.service';
 import { secureCode } from '../common/utils/auth-codes';
 
 // "In store" means physically present at the pickup or dropoff location -
@@ -148,6 +150,13 @@ export class PartnerStoreService {
     private readonly payments:       PaymentsService,
     private readonly identityService: IdentityService,
     private readonly mailService:    MailService,
+    /**
+     * Real road distance for counter quotes (2026-08-31). Optional and
+     * injected forward-ref, so a wiring problem degrades this file to
+     * the straight line it used before rather than failing every quote.
+     */
+    @Optional() @Inject(forwardRef(() => RouteDistanceService))
+    private readonly routeDistance?: RouteDistanceService,
   ) {}
 
   /**
@@ -520,12 +529,37 @@ export class PartnerStoreService {
       destLng = (dest as any)?.storeLng != null ? Number((dest as any).storeLng) : null;
     }
 
-    // Straight-line distance, then the rate card's own circuity factor
-    // turns it into road distance. Same treatment bulk upload gives an
-    // address-only row.
-    const km = (originLat != null && originLng != null && destLat != null && destLng != null)
-      ? haversineKm(originLat, originLng, destLat, destLng)
-      : 0;
+    /**
+     * Road distance, measured (2026-08-31).
+     *
+     * This used the straight line and the comment above it claimed "the
+     * rate card's own circuity factor turns it into road distance".
+     * There is no circuity factor anywhere in this codebase, and there
+     * never was: the number went into the engine raw. Over a city hop
+     * that is a small error. Over Lagos to Kano the straight line is
+     * roughly 825 km against about 1,050 km of road, so SEIRS quoted a
+     * fifth under cost and ate the difference on every counter-to-counter
+     * parcel that crossed the country.
+     *
+     * RouteDistanceService measures the real route and keeps a learned
+     * road/straight ratio per zone for when the maps call fails, which
+     * is the thing the old comment described but nothing implemented.
+     * Falls back to the straight line if the service is unavailable,
+     * because a quote that is 20% low still beats no quote at all.
+     */
+    const haveBothEnds = originLat != null && originLng != null && destLat != null && destLng != null;
+    let km = haveBothEnds ? haversineKm(originLat!, originLng!, destLat!, destLng!) : 0;
+    if (haveBothEnds && this.routeDistance) {
+      try {
+        const road = await this.routeDistance.getRoadDistance(
+          originLat!, originLng!, destLat!, destLng!,
+        );
+        if (Number.isFinite(road?.km) && Number(road.km) > 0) km = Number(road.km);
+      } catch {
+        // Keep the straight line. Logged nowhere on purpose: this runs on
+        // every quote and a maps outage must not fill the log.
+      }
+    }
 
     const touches = input.mode === DropoffMode.STORE_TO_STORE ? 2 : 1;
     const weightKg = Number(input.weightKg ?? 0);
@@ -572,6 +606,37 @@ export class PartnerStoreService {
     // The door leg needs sizing too: a 30kg parcel quoted at okada blew
     // past the 20kg payload cap and failed the quote outright.
     const trunkVehicle = consolidated ? pickTrunkVehicle(trunkLoadKg) : pickDoorVehicle(weightKg);
+
+    /**
+     * The vehicle's distance ceiling, applied to counter work too
+     * (2026-08-31).
+     *
+     * Every other way of booking a run checks vehicleRates[type].
+     * maxRouteKm: the customer and business Send flows, the seat sale,
+     * the address-change re-price. This path checked nothing, so a
+     * counter-to-counter parcel was the one route in the product with no
+     * distance ceiling of any kind. It would happily quote a Lagos
+     * counter to a Kano counter on whatever vehicle the weight ladder
+     * picked, including a keke.
+     *
+     * Silent while the value is unset, which is how it stands today.
+     * Setting it is the founder's decision; this makes that decision
+     * reach the counter network as well.
+     */
+    try {
+      const card: any = await this.pricing.getActiveRateCard();
+      const maxKm = Number(card?.vehicleRates?.[trunkVehicle]?.maxRouteKm ?? 0);
+      if (maxKm > 0 && km > maxKm) {
+        throw new BadRequestException(
+          `This counter-to-counter route is ${Math.round(km)} km, past the ${maxKm} km limit for the vehicle that would carry it. ` +
+          `Send it to an address instead, or split the journey.`,
+        );
+      }
+    } catch (e: any) {
+      // The rule firing must reach the caller. A card that will not read
+      // must not fail the quote.
+      if (e?.status === 400 || e?.name === 'BadRequestException') throw e;
+    }
 
     const breakdown = await this.pricing.computePrice({
       vehicleType:  trunkVehicle,

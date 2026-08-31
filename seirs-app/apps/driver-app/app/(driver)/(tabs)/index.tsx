@@ -664,14 +664,50 @@ export default function DriverHomeScreen() {
                     <MapPin size={12} color="#EF4444" strokeWidth={1.75} />
                     <Text style={[styles.jobAddr, { color: theme.textSecond }]} numberOfLines={1}>{job.dropoffAddress}</Text>
                   </View>
+                  {/*
+                    Interstate marking (2026-08-31).
+
+                    A Lagos to Kano parcel and a Lagos to Yaba parcel sat
+                    in this list looking identical: two addresses and one
+                    small number that was actually the distance to the
+                    PICKUP. A rider could not tell an 800 km commitment
+                    from an afternoon drop without opening it.
+
+                    Shown only when the server actually knows both states.
+                    isInterState is null, not false, on rows booked before
+                    the columns existed, and saying nothing is correct
+                    there: an unmeasured run must not be labelled local.
+                  */}
+                  {job.isInterState === true && (
+                    <View style={[styles.interBadge, { backgroundColor: '#B4530920' }]}>
+                      <Text style={[styles.interText, { color: '#B45309' }]} numberOfLines={1}>
+                        INTERSTATE · {job.pickupStateName ?? job.pickupStateCode} to {job.dropoffStateName ?? job.dropoffStateCode}
+                        {job.tripKm != null ? ` · ${job.tripKm} km` : ''}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.jobRight}>
                   <Text style={[styles.earnLabel, { color: theme.textThird }]}>You earn</Text>
                   <Text style={[styles.jobFare, { color: theme.primary }]}>{naira(job.youEarnNgn ?? job.driverEarnings ?? 0)}</Text>
+                  {/*
+                    Two distances, named. This showed one unlabelled number
+                    beside a clock, which read as journey time or trip
+                    length and was neither: it is how far the rider is from
+                    the pickup. Both matter, so both are labelled.
+                  */}
                   <View style={styles.distRow}>
-                    <Clock size={12} color={theme.textThird} strokeWidth={1.75} />
-                    <Text style={[styles.jobDist, { color: theme.textThird }]}>{job.distanceKm != null ? `${job.distanceKm} km` : 'nearby'}</Text>
+                    <Navigation size={11} color={theme.textThird} strokeWidth={1.75} />
+                    <Text style={[styles.jobDist, { color: theme.textThird }]}>
+                      {job.distanceKm != null ? `${job.distanceKm} km away` : 'nearby'}
+                    </Text>
                   </View>
+                  {job.tripKm != null && (
+                    <View style={styles.distRow}>
+                      <Clock size={11} color={theme.textThird} strokeWidth={1.75} />
+                      <Text style={[styles.jobDist, { color: theme.textThird }]}>{job.tripKm} km trip</Text>
+                    </View>
+                  )}
                 </View>
                 <ChevronRight size={16} color={theme.textThird} strokeWidth={1.75} />
               </Pressable>
@@ -767,4 +803,6 @@ const styles = StyleSheet.create({
   jobFare:       { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
   distRow:       { flexDirection: 'row', alignItems: 'center', gap: 3 },
   jobDist:       { fontSize: FontSize.xs },
+  interBadge:    { alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 },
+  interText:     { fontSize: 10, fontWeight: FontWeight.bold as any, letterSpacing: 0.3 },
 });

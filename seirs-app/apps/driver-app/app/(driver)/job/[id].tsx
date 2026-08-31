@@ -156,6 +156,20 @@ export default function JobDetailScreen() {
           dropoffLat:        d.dropoffLat,
           dropoffLng:        d.dropoffLng,
           distanceKm:        d.distanceKm ? Number(d.distanceKm).toFixed(1) : null,
+          /**
+           * Which states the run connects (2026-08-31). Stored on the
+           * booking now rather than derived and discarded, so the screen
+           * can say plainly that a rider is being asked to leave their
+           * state before they accept. Null when unknown, and the banner
+           * stays hidden rather than guessing.
+           */
+          pickupStateCode:   (d as any).pickupStateCode ?? null,
+          dropoffStateCode:  (d as any).dropoffStateCode ?? null,
+          pickupStateName:   (d as any).pickupStateName ?? null,
+          dropoffStateName:  (d as any).dropoffStateName ?? null,
+          isInterState:      ((d as any).pickupStateCode && (d as any).dropoffStateCode)
+                               ? (d as any).pickupStateCode !== (d as any).dropoffStateCode
+                               : null,
           price:             Number(d.price ?? 0),
           driverEarnings:    Number(d.driverEarnings ?? 0),
           packageDescription: d.packageDescription,
@@ -479,6 +493,31 @@ export default function JobDetailScreen() {
             <Zap size={16} color="#6366F1" strokeWidth={1.75} />
             <Text style={styles.rideBannerText}>
               This is a RIDE: you are picking up a passenger, not a package.
+            </Text>
+          </View>
+        )}
+
+        {/*
+          Leaving your state is a decision, so say it before Accept
+          (2026-08-31).
+
+          The booking now stores which states it connects, so this screen
+          can name them instead of leaving a rider to work it out from two
+          address strings. Rendered only when the server actually knows
+          both: isInterState is null on rows booked before those columns
+          existed, and an unmeasured run must not be described either way.
+        */}
+        {job.isInterState === true && (
+          <View style={[
+            styles.rideBanner,
+            isDark
+              ? { backgroundColor: '#B4530920' }
+              : { backgroundColor: theme.surface, borderWidth: 1.5, borderColor: '#B45309' },
+          ]}>
+            <Navigation size={16} color="#B45309" strokeWidth={1.75} />
+            <Text style={[styles.rideBannerText, { color: '#B45309' }]}>
+              INTERSTATE: this run leaves {job.pickupStateName ?? job.pickupStateCode} for {job.dropoffStateName ?? job.dropoffStateCode}
+              {job.distanceKm ? `, about ${job.distanceKm} km each way` : ''}. Check your papers and your fuel before you accept.
             </Text>
           </View>
         )}

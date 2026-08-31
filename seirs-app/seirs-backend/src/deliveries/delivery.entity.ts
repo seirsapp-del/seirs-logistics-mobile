@@ -157,6 +157,38 @@ export class Delivery {
   kind: 'package' | 'ride';
 
   /**
+   * Which states this run connects, resolved once at booking
+   * (2026-08-31).
+   *
+   * The engine has worked both states out from coordinates since the
+   * state-aware zone tier shipped, charged 15 to 40 percent on the
+   * answer, and then thrown it away. So the surcharge a customer paid
+   * could never be reconciled afterwards, admin could not filter or
+   * report on interstate work, and the driver apps could not mark a job
+   * as crossing a line because nothing downstream knew that it did.
+   *
+   * Two columns, written where the price is decided, so the states that
+   * justified the charge are stored beside the charge itself. Null on
+   * rows that predate this and on any booking whose coordinates fall
+   * outside every state box, which is why nothing may assume they are
+   * present.
+   */
+  @Column({ type: 'varchar', length: 2, nullable: true })
+  pickupStateCode: string | null;
+
+  @Column({ type: 'varchar', length: 2, nullable: true })
+  dropoffStateCode: string | null;
+
+  /**
+   * Which tier of the zone table actually fired: intraStateLongHaul,
+   * interStateAdjacent, interStateDistant, crossZone, or none. Stored as
+   * the engine's own label so a receipt, an admin row and a dispute all
+   * quote the same word for the same money.
+   */
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  zoneTier: string | null;
+
+  /**
    * Travel Buddy: when set, this booking belongs to a declared
    * intercity trip and dispatch assigns THAT driver, not the radius.
    */

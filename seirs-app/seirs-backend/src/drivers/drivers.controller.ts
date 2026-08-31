@@ -64,6 +64,23 @@ export class DriversController {
     return this.driversService.clearCorridor(user.id);
   }
 
+  /**
+   * PATCH /api/v1/drivers/me/work-preferences
+   *   { acceptsInterstate?: boolean, maxTripKm?: number | null }
+   *
+   * Standing preferences, as opposed to the per-trip switches on a
+   * declared intercity trip. A rider who never wants to leave their
+   * state had no way to say so before this, and declining the job
+   * instead cost them their acceptance rate for answering honestly.
+   */
+  @Patch('me/work-preferences')
+  setWorkPreferences(
+    @CurrentUser() user: User,
+    @Body() body: { acceptsInterstate?: boolean; maxTripKm?: number | null },
+  ) {
+    return this.driversService.setWorkPreferences(user.id, body ?? {});
+  }
+
   // PATCH /api/v1/drivers/online  { isOnline: true/false }
   @Patch('online')
   toggleOnline(@CurrentUser() user: User, @Body() body: { isOnline: boolean }) {
