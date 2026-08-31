@@ -641,7 +641,17 @@ export class DriversService {
     return out;
   }
 
-  async browseTrips(fromCity: string, toCity: string) {
+  /**
+   * Trips on a route.
+   *
+   * `forPackages` narrows this to riders actually carrying freight
+   * (2026-08-31, founder). The business app browses the same declared
+   * trips as Travel Buddy but must never be shown a trip that only
+   * takes passengers: a trader looking for space for 100 kg of yam has
+   * no use for a car with two seats free, and showing them one wastes
+   * their time and makes the product look unserious.
+   */
+  async browseTrips(fromCity: string, toCity: string, forPackages = false) {
     const from = `%${(fromCity ?? '').trim()}%`;
     const to   = `%${(toCity ?? '').trim()}%`;
     const trips = await this.tripsRepo
@@ -674,6 +684,9 @@ export class DriversService {
          )`,
         { from, to },
       )
+      .andWhere(forPackages ? 't."acceptsPackages" = true' : '1=1')
+      // No point listing a rider with nothing left to give.
+      .andWhere(forPackages ? 't."spareCapacityKg" > 0' : '1=1')
       .orderBy('t.departAt', 'ASC')
       .take(30)
       .getMany();

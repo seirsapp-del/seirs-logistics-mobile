@@ -367,6 +367,13 @@ export const deliveriesApi = {
   travelBuddyTrips: (from: string, to: string) =>
     request<any[]>('GET', `/deliveries/travel-buddy/trips?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   /**
+   * The same declared trips, narrowed to riders actually carrying
+   * freight (2026-08-31). Powers the business app's Cargo Space screen,
+   * which must never show a trader a car with two seats free.
+   */
+  cargoTrips: (from: string, to: string) =>
+    request<any[]>('GET', `/deliveries/travel-buddy/trips?forPackages=1&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  /**
    * Book seats. `segment` is the pair of stops the passenger is riding
    * when they are not taking the whole trip: without it the server
    * prices the entire route and boards them at its origin, which on a

@@ -114,7 +114,18 @@ export default function SendPackageScreen() {
    * button as "Send a Package" (B-1.3). It now arrives with preset=cargo
    * and a truck already chosen.
    */
-  const { preset } = useLocalSearchParams<{ preset?: string }>();
+  const { preset, tripId: tripIdParam, tripLabel: tripLabelParam } =
+    useLocalSearchParams<{ preset?: string; tripId?: string; tripLabel?: string }>();
+  /**
+   * Sending this load on a rider's declared trip (2026-08-31).
+   *
+   * Arrives from Cargo Space. The parcel is offered to that one rider
+   * first; they accept or decline, and an unanswered offer expires and
+   * refunds without anyone chasing it. Priced exactly like any other
+   * booking, so attaching a trip never changes the fare.
+   */
+  const postToTripId    = typeof tripIdParam === 'string' ? tripIdParam : undefined;
+  const postToTripLabel = typeof tripLabelParam === 'string' ? tripLabelParam : undefined;
   const isCargoPreset = preset === 'cargo';
   const {
     draft, setDraft, addStop, removeStop, updateStop, resetDraft,
@@ -900,6 +911,8 @@ export default function SendPackageScreen() {
 
       const res = await businessApi.createDelivery({
         termsAccepted: tcAgreed,
+        // Offered to this one rider first, not to the open pool.
+        ...(postToTripId ? { tripId: postToTripId } : {}),
         // Signed quote pin: the review's number is the charged number.
         quoteToken: (quote as any)?.quotePin?.token,
         pickupAddress: draft.pickupAddress,
@@ -1814,6 +1827,16 @@ export default function SendPackageScreen() {
                   review at the founder's request, payment row omitted. */}
               <View style={[styles.sumCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.sumTitle, { color: colors.text }]}>Order Summary</Text>
+                {/* Who this load is going to, when it came from Cargo Space. */}
+                {postToTripId && (
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start', paddingVertical: 8 }}>
+                    <Icon name="Truck" size={15} color={colors.primary} />
+                    <Text style={[styles.lineSub, { color: colors.textSecond, fontSize: 13, flex: 1 }]}>
+                      Offered first to the {postToTripLabel ?? 'selected'} trip. The driver can accept or
+                      decline, and you are refunded in full if nobody takes it.
+                    </Text>
+                  </View>
+                )}
                 {([
                   ['Pickup', draft.pickupMode === 'store' && draft.pickupStoreName
                     ? `${draft.pickupStoreName} (counter)` : (draft.pickupAddress || '-')],

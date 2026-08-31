@@ -1,7 +1,7 @@
 import {
   Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger,
   ConflictException,
-  Inject, forwardRef,
+  Inject, forwardRef, Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
@@ -21,6 +21,7 @@ import { RoutingService } from '../routing/routing.service';
 import { FeesService } from '../fees/fees.service';
 import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery.entity';
 import { DeliveriesService } from '../deliveries/deliveries.service';
+import { DriversService } from '../drivers/drivers.service';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
 import { secureCode } from '../common/utils/auth-codes';
 
@@ -77,6 +78,13 @@ export interface CreateMultiStopDeliveryDto {
   pickupLng:        number;
   /** Sender drops the run at this counter instead of a door pickup. */
   pickupStoreId?:   string;
+  /**
+   * Post this load to a rider's declared intercity trip (2026-08-31).
+   * Set by the Cargo Space screen. The parcel is offered to that one
+   * rider first; they accept or decline, and an unanswered offer expires
+   * and refunds. Priced exactly like any other booking.
+   */
+  tripId?:          string;
   stops: Array<{
     address:        string;
     lat:            number;
@@ -140,6 +148,13 @@ export class BusinessService {
     private dataSource: DataSource,
     @Inject(forwardRef(() => DeliveriesService))
     private deliveriesService: DeliveriesService,
+    /**
+     * Only used to validate a trip a load is being posted to
+     * (2026-08-31). Optional so a wiring problem refuses trip posting
+     * with a clear message rather than breaking every business booking.
+     */
+    @Optional() @Inject(forwardRef(() => DriversService))
+    private driversService?: DriversService,
   ) {}
 
   // ── Spec V8 §4.2 - Recurring Delivery Templates ───────────────────────────
@@ -614,6 +629,26 @@ export class BusinessService {
     if (!dto.pickupAddress || dto.pickupLat == null || dto.pickupLng == null) {
       throw new BadRequestException('Pickup address with coordinates is required.');
     }
+
+    /**
+     * Posting this load to a declared trip (2026-08-31, Cargo Space).
+     *
+     * Same checks the customer path runs: the trip is active, has not
+     * departed, is actually carrying freight, and has room for THIS load
+     * measured against what the rider is already committed to. Validated
+     * up here, before any money is calculated, so a refusal costs the
+     * sender nothing.
+     */
+    let postedTrip: any = null;
+    if (dto.tripId) {
+      if (!this.driversService?.getTripForParcel) {
+        throw new BadRequestException('Trip posting is unavailable right now.');
+      }
+      const totalKg = (dto.stops ?? []).reduce(
+        (sum: number, st: any) => sum + (Number(st?.weightKg ?? 0) || 0), 0,
+      ) || Number((dto as any).weightKg ?? 0);
+      postedTrip = await this.driversService.getTripForParcel(String(dto.tripId), totalKg);
+    }
     if (!Array.isArray(dto.stops) || dto.stops.length === 0) {
       throw new BadRequestException('At least one stop is required.');
     }
@@ -849,6 +884,11 @@ export class BusinessService {
         dropoffLat:     dto.stops.length === 1 ? dto.stops[0].lat     : null,
         dropoffLng:     dto.stops.length === 1 ? dto.stops[0].lng     : null,
         isMultiStop:    dto.stops.length > 1,
+        /* Offered to ONE rider, the one whose trip it is. tripOfferedAt
+           starts the clock the expiry cron reads, so a sender's money
+           never waits on a silent phone. */
+        tripId:         postedTrip ? postedTrip.id : null,
+        tripOfferedAt:  postedTrip ? new Date() : null,
         packageDescription: dto.packageDescription ?? category.name,
         categoryCode:   dto.categoryCode,
         weightKg:       dto.weightKg,

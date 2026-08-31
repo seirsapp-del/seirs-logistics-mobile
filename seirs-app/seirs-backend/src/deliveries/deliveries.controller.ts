@@ -325,8 +325,17 @@ export class DeliveriesController {
   // ── Travel Buddy (founder 2026-08-23) ────────────────────────────────
   // GET /api/v1/deliveries/travel-buddy/trips?from=&to=
   @Get('travel-buddy/trips')
-  browseTrips(@Query('from') from: string, @Query('to') to: string) {
-    return (this.deliveriesService as any).driversService.browseTrips(from ?? '', to ?? '');
+  browseTrips(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    // forPackages=1 narrows to riders carrying freight, for the business
+    // app's Cargo Space screen. A trader wanting room for 100 kg of yam
+    // must not be shown a car with two seats free.
+    @Query('forPackages') forPackages?: string,
+  ) {
+    return (this.deliveriesService as any).driversService.browseTrips(
+      from ?? '', to ?? '', forPackages === '1' || forPackages === 'true',
+    );
   }
 
   // POST /api/v1/deliveries/travel-buddy/trips/:tripId/book { seats, luggage }

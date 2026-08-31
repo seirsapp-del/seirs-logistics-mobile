@@ -18,6 +18,7 @@ import { RoutingModule } from '../routing/routing.module';
 import { Delivery } from '../deliveries/delivery.entity';
 import { DeliveryStop } from '../deliveries/delivery-stop.entity';
 import { DeliveriesModule } from '../deliveries/deliveries.module';
+import { DriversModule } from '../drivers/drivers.module';
 
 @Module({
   imports: [
@@ -42,6 +43,8 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
     // refunds and the rest of the side effects fire. forwardRef because
     // PricingModule already closes a cycle back to this module.
     forwardRef(() => DeliveriesModule),
+    // Cargo Space validates the trip a load is posted to.
+    forwardRef(() => DriversModule),
   ],
   controllers: [BusinessController],
   providers:   [BusinessService],

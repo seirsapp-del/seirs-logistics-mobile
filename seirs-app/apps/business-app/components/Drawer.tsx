@@ -65,6 +65,11 @@ export function Drawer({ visible, onClose }: Props) {
     // Gap 6 (2026-08-09): bulk drop at a partner counter instead of
     // per-package door pickups. Each package gets its own QR.
     { icon: 'Store',           label: t('drawer.dropAtStore',     { defaultValue: 'Drop at Partner Store' }), onPress: () => navigate('/(business)/drop-at-store') },
+    /* Cargo Space, NOT Travel Buddy. Same declared trips underneath,
+       filtered to riders actually carrying freight. A trader moving
+       100kg of yam should never be shown a car with two seats free,
+       nor a product name that reads as lift-sharing. */
+    { icon: 'Truck',           label: t('drawer.cargoSpace',      { defaultValue: 'Cargo Space' }),          onPress: () => navigate('/(business)/cargo-space') },
     // B-8.1: recurring.tsx is a complete Spec V8 recurring-delivery
     // scheduler wired to a live backend cron, and nothing in the app
     // navigated to it. Same for the three developer screens below.
