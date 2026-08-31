@@ -485,7 +485,7 @@ export default function DriverHomeScreen() {
         </Pressable>
 
         {/* ── Widgets row ──────────────────────────────────────────────── */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.widgetRow} contentContainerStyle={styles.widgetContent}>
+        <View style={styles.widgetRow}>
 
           {/* Wallet */}
           <Pressable style={[styles.widgetCard, styles.walletWidget, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/withdrawal' as any)}>
@@ -522,23 +522,30 @@ export default function DriverHomeScreen() {
             <Text style={[styles.widgetSub, { color: theme.textThird }]}>{tripCount} trips</Text>
           </Pressable>
 
-          {/* Interstate. Founder 2026-08-31: declaring a long-haul trip was
-              buried in the drawer, where a rider has no reason to look. It
-              is one of the few things on this screen that MAKES money
-              rather than reporting it, so it sits with the other cards. */}
-          <Pressable
-            style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() => router.push('/(driver)/interstate' as any)}
-          >
-            <View style={styles.widgetIcon}>
-              <Navigation size={18} color={theme.primary} strokeWidth={1.75} />
-            </View>
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Intercity</Text>
-            <Text style={[styles.widgetValue, { color: theme.text }]} numberOfLines={1}>Declare</Text>
-            <Text style={[styles.widgetSub, { color: theme.textThird }]} numberOfLines={1}>Long-haul trips</Text>
-          </Pressable>
+        </View>
 
-        </ScrollView>
+        {/* Interstate, full width under the pair.
+            Founder 2026-08-31: declaring a long-haul trip was buried in the
+            drawer, where a rider has no reason to look, and squeezed into
+            the 130px widget row it clipped its own subtitle. It is one of
+            the few things on this screen that MAKES money rather than
+            reporting it, so it gets its own row: the same shape Travel
+            Buddy took on the customer home. */}
+        <Pressable
+          style={[styles.interRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          onPress={() => router.push('/(driver)/interstate' as any)}
+        >
+          <View style={[styles.interIcon, { backgroundColor: theme.primary + '1A' }]}>
+            <Navigation size={20} color={theme.primary} strokeWidth={1.75} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.interTitle, { color: theme.text }]}>Declare an intercity trip</Text>
+            <Text style={[styles.interSub, { color: theme.textThird }]} numberOfLines={1}>
+              Sell spare seats and boot space
+            </Text>
+          </View>
+          <ChevronRight size={18} color={theme.textThird} />
+        </Pressable>
 
         {/* ── Available jobs ────────────────────────────────────────────── */}
         <View style={styles.section}>
@@ -650,7 +657,8 @@ const styles = StyleSheet.create({
   activeRow:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
   activeAddr:    { fontSize: FontSize.sm, flex: 1 },
 
-  widgetRow:     { marginTop: Spacing.md },
+  widgetRow:     { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md,
+                   paddingHorizontal: Spacing.md },
 
   bigMapCard:  { marginHorizontal: Spacing.md, marginTop: Spacing.md, borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden' },
   bigMapHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: 10 },
@@ -658,8 +666,8 @@ const styles = StyleSheet.create({
   bigMapCta:   { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
   bigMapBox:   { height: 150 },
   widgetContent: { paddingHorizontal: Spacing.md, gap: Spacing.sm },
-  widgetCard:    { width: 130, borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: 4 },
-  walletWidget:  { width: 150 },
+  widgetCard:    { flex: 1, borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: 4 },
+  walletWidget:  {},
   widgetIcon:    { width: 32, height: 32, borderRadius: Radius.md, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
   widgetLabel:   { fontSize: FontSize.xs },
   widgetValue:   { fontSize: FontSize.lg, fontWeight: FontWeight.bold as any },
@@ -670,6 +678,12 @@ const styles = StyleSheet.create({
   section:       { paddingHorizontal: Spacing.md, paddingTop: Spacing.lg },
   sectionRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.md },
   sectionTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  interRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+                   marginHorizontal: Spacing.md, marginTop: Spacing.md,
+                   padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+  interIcon:     { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  interTitle:    { fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
+  interSub:      { fontSize: FontSize.sm, marginTop: 2 },
   liveDot:       { flexDirection: 'row', alignItems: 'center', gap: 4 },
   livePulse:     { width: 8, height: 8, borderRadius: 4 },
   liveText:      { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
