@@ -3300,6 +3300,22 @@ export class AdminService {
     opts: { reason?: string; force?: boolean },
     ip?: string,
   ) {
+    /**
+     * Confirm they exist before anything else.
+     *
+     * This used to go straight to the footprint check and then to an
+     * update() that silently matches zero rows for an unknown id, so
+     * offboarding a mistyped or stale id returned the success message and
+     * wrote an audit row saying access had been revoked. Nothing had
+     * happened. For the one control whose whole purpose is removing
+     * access, saying "done" has to mean it (2026-08-31).
+     */
+    const outgoing = await this.usersRepo.findOne({
+      where:  { id: adminUserId },
+      select: ['id', 'adminRole', 'roleId'],
+    });
+    if (!outgoing) throw new NotFoundException('Admin not found');
+
     if (!opts.force) {
       const footprint = await this.getAdminFootprint(adminUserId);
       if (!footprint.ready) {
@@ -3324,11 +3340,6 @@ export class AdminService {
      * The previous role goes into the audit entry rather than being
      * lost, so a genuine rehire can be restored knowingly.
      */
-    const outgoing = await this.usersRepo.findOne({
-      where:  { id: adminUserId },
-      select: ['id', 'adminRole', 'roleId'],
-    });
-
     await this.usersRepo.update(adminUserId, {
       isActive:           false,
       deactivatedAt:      new Date(),
