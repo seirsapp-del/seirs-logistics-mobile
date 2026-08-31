@@ -135,23 +135,23 @@ const FEE_GROUPS: FeeGroup[] = [
     categories: ['customer_fee', 'surge', 'zone'],
     keys: ['high_value_threshold_ngn', 'return_to_sender_fee'] },
 
-  { id: 'driver-pay', label: 'What a rider is paid',
-    hint: 'Payout floors, caps, the new-rider holdback and how long money is held.',
+  { id: 'driver-pay', label: 'What a driver is paid',
+    hint: 'Payout floors, caps, the new-driver holdback and how long money is held.',
     keys: ['driver_min_payout_ngn', 'driver_new_holdback_pct', 'driver_new_period_days',
            'driver_clearance_business_days', 'driver_daily_cap_ngn',
            'driver_daily_cap_new_ngn', 'driver_failed_trip_base_ngn'] },
 
-  { id: 'driver-conduct', label: 'Rider reliability',
-    hint: 'What happens when a rider cancels or turns work down.',
+  { id: 'driver-conduct', label: 'Driver reliability',
+    hint: 'What happens when a driver cancels or turns work down.',
     keys: ['driver_cancel_free_per_day', 'driver_cancel_pause_hours',
            'last_order_min_acceptance_pct'] },
 
-  { id: 'driver-levels', label: 'Rider value levels', collapsed: true,
-    hint: 'The ceiling on what each level may carry, and how a rider climbs. Set once, then rarely touched.',
+  { id: 'driver-levels', label: 'Driver value levels', collapsed: true,
+    hint: 'The ceiling on what each level may carry, and how a driver climbs. Set once, then rarely touched.',
     prefixes: ['driver_level_'] },
 
   { id: 'matching', label: 'Matching and corridors',
-    hint: 'How far SEIRS looks for a rider, how a corridor run is scored, and how road distance is estimated.',
+    hint: 'How far SEIRS looks for a driver, how a corridor run is scored, and how road distance is estimated.',
     prefixes: ['corridor_'],
     keys: ['interstate_match_bonus', 'consolidated_dispatch_enabled',
            'consolidated_floor_ngn', 'trunk_assumed_parcels',
@@ -179,7 +179,7 @@ const FEE_GROUPS: FeeGroup[] = [
     categories: ['loyalty'] },
 
   { id: 'fuel', label: 'Fuel reference',
-    hint: 'Today’s pump price. This prices NOTHING: quotes and rider reimbursement are built on the rate card above. These exist so the drift warning can tell you the card has fallen behind.',
+    hint: 'Today’s pump price. This prices NOTHING: quotes and driver reimbursement are built on the rate card above. These exist so the drift warning can tell you the card has fallen behind.',
     keys: ['current_petrol_price_ngn', 'current_diesel_price_ngn',
            'fuel_reprice_trigger_pct'] },
 
@@ -376,7 +376,7 @@ export function FeeCataloguePanel() {
         ? `${editing.name} starts being applied again.`
         : `${editing.name} stops being applied at all: it is charged as zero until somebody switches it back on.`);
     }
-    lines.push('Every new booking made from about a minute after you save uses this, in the customer app, the business app and the rider app. Jobs already priced and paid for are not touched.');
+    lines.push('Every new booking made from about a minute after you save uses this, in the customer app, the business app and the driver app. Jobs already priced and paid for are not touched.');
     lines.push('To undo it, set the old number back here: the change history keeps what it was and your name against both changes.');
 
     const ok = await confirm({
@@ -421,7 +421,7 @@ export function FeeCataloguePanel() {
       */}
       <PageIntro
         title="Fee catalogue"
-        purpose="Every price SEIRS charges a customer or pays a rider, in one list. Changing a number here changes what real people are charged, in all three apps, within about a minute."
+        purpose="Every price SEIRS charges a customer or pays a driver, in one list. Changing a number here changes what real people are charged, in all three apps, within about a minute."
         storageKey="fees"
         help={
           <>

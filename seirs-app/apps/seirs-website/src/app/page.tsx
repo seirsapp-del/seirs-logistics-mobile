@@ -731,7 +731,7 @@ export default async function HomePage() {
                     {
                       icon: Shield,
                       title: "You know the vehicle before you walk up",
-                      body: "Colour, make, model and plate, not just \u201cokada\u201d. At a park at 5am that is the difference between your rider and a stranger offering a lift.",
+                      body: "Colour, make, model and plate, not just \u201cokada\u201d. At a park at 5am that is the difference between your driver and a stranger offering a lift.",
                     },
                     {
                       icon: CreditCard,
@@ -819,7 +819,7 @@ export default async function HomePage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.img_handoff_hands}
-                  alt="A SEIRS rider handing a package to the person collecting it"
+                  alt="A SEIRS driver handing a package to the person collecting it"
                   className="w-full rounded-card object-cover aspect-[4/3] lg:aspect-[16/10] shadow-lg"
                   loading="lazy"
                 />
@@ -999,7 +999,7 @@ export default async function HomePage() {
             Ready to simplify your logistics?
           </h2>
           <p className="text-white/65 text-sm sm:text-base lg:text-lg mb-6 lg:mb-8 max-w-xl mx-auto">
-            Be part of the first wave: senders, riders, and partner stores building
+            Be part of the first wave: senders, drivers, and partner stores building
             Nigeria&apos;s most honest delivery network.
           </p>
           {/* These were two adjacent buttons pointing at the same /contact

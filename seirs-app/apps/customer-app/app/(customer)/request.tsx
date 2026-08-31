@@ -499,7 +499,7 @@ export default function RequestDriverScreen() {
                 <BottomSheetTextInput
                   value={riderName}
                   onChangeText={setRiderName}
-                  placeholder={t('request2.riderFirstName', { defaultValue: "Rider's first name (what the driver calls them)" })}
+                  placeholder={t('request2.riderFirstName', { defaultValue: "Driver's first name (what the driver calls them)" })}
                   placeholderTextColor={theme.textThird}
                   style={[styles.input, { color: theme.text }]}
                 />

@@ -30,7 +30,7 @@ const SLIDES = [
   {
     id: 'send',
     Icon: Package,
-    headline: 'Sent by a verified rider.',
+    headline: 'Sent by a verified driver.',
     sub: 'Documents, parcels, hot food or fragile goods, each on the right vehicle.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',

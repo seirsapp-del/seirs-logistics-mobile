@@ -16,8 +16,8 @@ import { adminApi } from '@/lib/api';
 const AUDIENCES: Array<{ id: string; label: string; who: string }> = [
   { id: 'all_customers', label: 'All customers',
     who: 'Everybody with an active customer account, business accounts included.' },
-  { id: 'all_drivers',   label: 'All riders',
-    who: 'Every active rider. This includes riders still waiting for approval and riders who were turned down, because that is who the server selects.' },
+  { id: 'all_drivers',   label: 'All drivers',
+    who: 'Every active driver. This includes drivers still waiting for approval and drivers who were turned down, because that is who the server selects.' },
   { id: 'all_partners',  label: 'Partner stores',
     who: 'Every active account with the partner capability.' },
 ];

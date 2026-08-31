@@ -57,8 +57,8 @@ const WHERE_THINGS_LIVE: Array<{ topic: string; card?: string; fees?: string }> 
   // Corrected by the audit of 2026-08-28: a rider's pay comes from the
   // card's per-vehicle driver base and per-km, NOT from
   // platform_commission_pct, which now only settles legacy jobs.
-  { topic: 'What a rider earns per job',    card: 'Per-vehicle rates, driver columns' },
-  { topic: 'Rider caps, levels and holdbacks', fees: 'driver_level_*, driver_daily_cap_ngn, driver_new_holdback_pct' },
+  { topic: 'What a driver earns per job',    card: 'Per-vehicle rates, driver columns' },
+  { topic: 'Driver caps, levels and holdbacks', fees: 'driver_level_*, driver_daily_cap_ngn, driver_new_holdback_pct' },
   { topic: 'Card processing and postal levy', fees: 'card_processing_pct, nipost_postal_fund_pct' },
   { topic: 'VAT',                           card: 'VAT' },
 ];
@@ -86,7 +86,7 @@ export default function PricingPage() {
       <div className="px-6 pt-6">
         <h1 className="text-2xl font-bold text-[#0F2B4C]">Pricing</h1>
         <p className="mt-1 max-w-3xl text-sm leading-relaxed text-[#0F2B4C]/55">
-          Every number that decides what a customer pays and what a rider earns. Two halves,
+          Every number that decides what a customer pays and what a driver earns. Two halves,
           because they change in different ways: the rate card is published as a version, and a
           fee row takes effect the moment you save it.
         </p>

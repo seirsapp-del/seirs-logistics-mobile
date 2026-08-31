@@ -15,6 +15,7 @@ import {
 } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
@@ -98,21 +99,40 @@ export default function KycScreen() {
   // the progress bar like every other requirement.
   const [ownership, setOwnership] = useState<{ declared: boolean; kind: 'self' | 'third_party' } | null>(null);
 
-  // D-10.2: hydrate from the driver record. /drivers/me spreads the whole
-  // entity, so every uploaded document already has its URL there. A doc with
-  // a URL is at minimum "Under Review"; once the driver record itself is
-  // approved the whole document set has been reviewed, so show Verified.
+  /**
+   * Status comes from the review queue, not from the account.
+   *
+   * This used to read the driver's OWN record and call every uploaded
+   * document "Verified" whenever `me.status === 'approved'`. So an approved
+   * driver who replaced their licence saw "Verified" the instant the upload
+   * finished, with no human having looked at the new file, and nothing
+   * anywhere for one to look at (founder, 2026-08-31).
+   *
+   * /drivers/me/kyc-documents returns the real per-document state. The
+   * driver record is still read for the URLs, so a document uploaded before
+   * the queue existed still shows as under review rather than vanishing.
+   */
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const me: any = await driversApi.me();
+        const [me, reviewed]: any[] = await Promise.all([
+          driversApi.me(),
+          driversApi.myKycDocuments().catch(() => ({ documents: [] })),
+        ]);
         if (cancelled || !me) return;
-        const approved = me.status === 'approved';
+        const byId: Record<string, any> = {};
+        for (const r of (reviewed?.documents ?? [])) byId[r.docId] = r;
+
         setDocs(prev => prev.map(d => {
-          const url = me[DOC_URL_FIELD[d.id]];
+          const rec = byId[d.id];
+          const url = rec?.url ?? me[DOC_URL_FIELD[d.id]];
           if (!url) return d;
-          return { ...d, url, status: (approved ? 'verified' : 'uploaded') as DocStatus };
+          const status: DocStatus =
+            rec?.status === 'approved' ? 'verified'
+            : rec?.status === 'rejected' ? 'rejected'
+            : 'uploaded';                       // submitted, or pre-queue upload
+          return { ...d, url, status, rejectionReason: rec?.rejectionReason ?? null };
         }));
       } catch {
         // Offline or profile missing: leave the defaults, the driver can
@@ -177,22 +197,48 @@ export default function KycScreen() {
   };
 
   const handleUpload = async (docId: string) => {
-    // Sat at exactly Android's three-button ceiling, so a fourth source
-    // (a PDF, a re-take) could never have been added without silently
-    // dropping Cancel (2026-08-25 dialog sweep).
+    // This used to sit at Android's three-button Alert ceiling, which is
+    // why a PDF option could never be added. The custom sheet has room, so
+    // the third source is here now (founder 2026-08-31): licences and
+    // insurance certificates arrive from portals as PDFs, and asking a
+    // driver to photograph their screen produces exactly the unreadable
+    // document that gets rejected.
     setSheet({
       title: 'Upload document',
       message: 'Choose how to provide the document.',
       options: [
         { label: 'Take a photo',      sub: 'Use the camera now', variant: 'primary', icon: 'camera-outline', onPress: () => doUpload(docId, 'camera') },
         { label: 'Choose from phone', sub: 'Pick a photo you already have', icon: 'images-outline', onPress: () => doUpload(docId, 'library') },
+        { label: 'Attach a PDF',      sub: 'A file from your email or a portal', icon: 'document-text-outline', onPress: () => doUpload(docId, 'document') },
       ],
       cancelLabel: 'Not now',
     });
   };
 
-  const doUpload = async (docId: string, source: 'camera' | 'library') => {
-    const uri = await pickImage(source);
+  /** A PDF from the phone's file picker. Images are handled by pickImage. */
+  const pickDocument = async (): Promise<string | null> => {
+    try {
+      const r = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (r.canceled || !r.assets?.length) return null;
+      const a = r.assets[0];
+      // Guard the size here rather than letting a 40MB scan fail halfway
+      // through an upload on a Lagos connection.
+      if (a.size && a.size > 10 * 1024 * 1024) {
+        alertDialog('File too large', 'That file is over 10MB. Send a smaller scan or a photo instead.');
+        return null;
+      }
+      return a.uri;
+    } catch {
+      return null;
+    }
+  };
+
+  const doUpload = async (docId: string, source: 'camera' | 'library' | 'document') => {
+    const uri = source === 'document' ? await pickDocument() : await pickImage(source);
     if (!uri) return;
     setUploading(docId);
     try {

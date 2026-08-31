@@ -541,6 +541,23 @@ export const adminApi = {
    * it was in the database the whole time. No email fans out either, so
    * this page is currently the ONLY way to see them.
    */
+  /**
+   * Driver KYC review queue.
+   *
+   * There was no queue at all until 2026-08-31: documents were written to
+   * columns on the driver row and nothing listed them. The founder uploaded
+   * documents, the app said "Verified", and there was nothing here to open.
+   */
+  driverDocuments: {
+    list:    (status?: string, page = 1) =>
+      req<{ items: any[]; total: number; page: number; take: number }>(
+        `/admin/driver-documents?page=${page}${status ? `&status=${status}` : ''}`),
+    approve: (id: string) =>
+      req<any>(`/admin/driver-documents/${id}/approve`, { method: 'POST' }),
+    reject:  (id: string, reason: string) =>
+      req<any>(`/admin/driver-documents/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  },
+
   contactSubmissions: {
     list:   (status?: string, page = 1) =>
       req<{ items: any[]; total: number; page: number; take: number }>(

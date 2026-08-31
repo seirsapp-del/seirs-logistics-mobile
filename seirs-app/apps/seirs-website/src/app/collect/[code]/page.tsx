@@ -194,7 +194,7 @@ export default function CollectPage() {
                   {naira(owed)} to settle before collection
                 </div>
                 <div className="mt-1 text-sm text-amber-800">
-                  Nobody was available when the rider arrived, so your package is
+                  Nobody was available when the driver arrived, so your package is
                   being kept safe at a SEIRS partner counter. Settle this and the
                   counter&apos;s address appears here straight away.
                 </div>

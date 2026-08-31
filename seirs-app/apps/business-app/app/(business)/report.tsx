@@ -24,7 +24,7 @@ import { businessApi, supportApi } from '@/services/api';
 const CATEGORIES = [
   { id: 'delivery', icon: 'Package',        label: 'Delivery issue', desc: 'A delivery went wrong or is stuck',   topic: 'delivery' },
   { id: 'billing',  icon: 'Banknote',       label: 'Billing',        desc: 'Charged wrongly or a refund question', topic: 'billing' },
-  { id: 'driver',   icon: 'Bike',           label: 'Driver',         desc: 'A problem with a rider on a job',      topic: 'driver' },
+  { id: 'driver',   icon: 'Bike',           label: 'Driver',         desc: 'A problem with a driver on a job',      topic: 'driver' },
   { id: 'account',  icon: 'User',           label: 'Account',        desc: 'Access, team or business details',     topic: 'account' },
   { id: 'other',    icon: 'MoreHorizontal', label: 'Other',          desc: 'Something else happened',              topic: 'other' },
 ] as const;

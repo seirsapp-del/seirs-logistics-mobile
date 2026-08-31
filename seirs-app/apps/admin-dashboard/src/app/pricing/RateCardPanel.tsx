@@ -197,7 +197,7 @@ export function RateCardPanel() {
       title:        `Change prices for every new booking?`,
       message:      [
         `${changedPaths.length} value${changedPaths.length === 1 ? '' : 's'} changed, in: ${changedSections.join(', ')}.`,
-        'Every quote given from about five minutes after you publish uses these numbers, in the customer app, the business app and the rider app. Deliveries already booked and paid for keep the price they were quoted.',
+        'Every quote given from about five minutes after you publish uses these numbers, in the customer app, the business app and the driver app. Deliveries already booked and paid for keep the price they were quoted.',
         'There is no undo button. The version live now is kept in the history below, but putting it back means typing the old numbers in again, so check the figures before you publish.',
       ].join('\n\n'),
       confirmLabel: 'Publish and go live',
@@ -236,7 +236,7 @@ export function RateCardPanel() {
     if (!card) return;
     const ok = await confirm({
       title:        `Raise every vehicle rate by ${pct}%?`,
-      message:      `Each vehicle's base fare and per-kilometre labour rate, on both the customer side and the rider side, is multiplied by ${(1 + pct / 100).toFixed(2)}. Fuel is not touched: that is worked out from the pump prices at the top of the page.
+      message:      `Each vehicle's base fare and per-kilometre labour rate, on both the customer side and the driver side, is multiplied by ${(1 + pct / 100).toFixed(2)}. Fuel is not touched: that is worked out from the pump prices at the top of the page.
 
 Nothing goes live yet. It fills the boxes on this page so you can check them, and you still have to press Publish.`,
       confirmLabel: `Raise everything ${pct}%`,
@@ -425,7 +425,7 @@ Nothing goes live yet. It fills the boxes on this page so you can check them, an
         another, so editing the visible one did nothing". So the two
         stay, and the labels now say which is which.
       */}
-      <Card title="Fuel prices the rates are built on" hint="What every quote and every rider reimbursement is calculated from. Changing it recomputes all vehicle km rates, and takes effect when you publish. Today's actual pump price is a separate reference in the fee catalogue below; the drift banner compares the two and tells you when to copy it up.">
+      <Card title="Fuel prices the rates are built on" hint="What every quote and every driver reimbursement is calculated from. Changing it recomputes all vehicle km rates, and takes effect when you publish. Today's actual pump price is a separate reference in the fee catalogue below; the drift banner compares the two and tells you when to copy it up.">
         <Row>
           <FieldNumber
             label="Petrol (PMS) ₦ per litre"
@@ -910,7 +910,7 @@ Nothing goes live yet. It fills the boxes on this page so you can check them, an
           <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
             <li>Waiting on a sender is <b>sender_response_window_minutes</b>, currently 15,
               not the 10 shown here.</li>
-            <li>A rider is paid for a wasted trip by <b>driver_failed_trip_base_ngn</b>,
+            <li>A driver is paid for a wasted trip by <b>driver_failed_trip_base_ngn</b>,
               a base plus fuel for the distance ridden, not a flat fee.</li>
             <li>Returns are charged by <b>return_to_sender_fee</b>, currently 1,500.00.</li>
             <li>Nothing counts recipient call attempts at all.</li>
@@ -946,7 +946,7 @@ Nothing goes live yet. It fills the boxes on this page so you can check them, an
           </p>
           <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
             <li>Waiting on a sender: <b>sender_response_window_minutes</b>, 15 minutes.</li>
-            <li>A wasted trip pays the rider <b>driver_failed_trip_base_ngn</b> plus fuel for
+            <li>A wasted trip pays the driver <b>driver_failed_trip_base_ngn</b> plus fuel for
               the distance actually ridden, not a flat fee.</li>
             <li>A return is priced as a <b>real trip</b> from where the parcel is back to the
               original pickup address, plus any storage accrued. The pickup address cannot be

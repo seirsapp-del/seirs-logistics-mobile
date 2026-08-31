@@ -67,10 +67,10 @@ const ACTION_WORDS: Record<string, string> = {
   ndpr_hard_delete:         'Permanently erased an account',
   data_export:              'Downloaded a spreadsheet of records',
   pii_view:                 'Looked at somebody’s ID documents',
-  bank_change_approved:     'Approved a rider’s new bank account',
-  bank_change_rejected:     'Refused a rider’s new bank account',
-  vehicle_change_approved:  'Approved a rider’s change of vehicle',
-  vehicle_change_rejected:  'Refused a rider’s change of vehicle',
+  bank_change_approved:     'Approved a driver’s new bank account',
+  bank_change_rejected:     'Refused a driver’s new bank account',
+  vehicle_change_approved:  'Approved a driver’s change of vehicle',
+  vehicle_change_rejected:  'Refused a driver’s change of vehicle',
   soft_delete_scheduled:    'Scheduled an account for deletion',
   deletion_cancelled:       'Called off a scheduled deletion',
   chat_reopen:              'Reopened a closed delivery chat',
@@ -80,7 +80,7 @@ const ACTION_WORDS: Record<string, string> = {
   reactivate_admin:         'Let a member of staff sign in again',
   reset_admin_password:     'Emailed a staff password reset',
   offboard_admin:           'Offboarded a member of staff',
-  'earning.release':        'Released a rider payout that was being held',
+  'earning.release':        'Released a driver payout that was being held',
   'config.update':          'Changed a system setting',
   'launch_reset.preview':   'Previewed the launch reset',
   'launch_reset.started':   'Started the launch reset',
@@ -127,7 +127,7 @@ function targetParts(target?: string): { label: string; href?: string; id?: stri
     case 'admin':    return { label: 'Staff account',    href: `/admins`,           id };
     case 'delivery': return { label: 'Delivery',         href: `/deliveries/${id}`, id };
     case 'ticket':   return { label: 'Support ticket',   href: `/support`,          id };
-    case 'earning':  return { label: 'Rider earning',    href: `/wallet`,           id };
+    case 'earning':  return { label: 'Driver earning',    href: `/wallet`,           id };
     case 'config':   return { label: `Setting "${id}"`,  href: `/settings` };
     case 'export':   return { label: `Export "${id}"`,   href: `/exports` };
     case 'launch':   return { label: 'Launch reset' };

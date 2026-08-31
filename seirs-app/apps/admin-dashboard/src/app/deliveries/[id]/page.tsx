@@ -457,7 +457,7 @@ export default function DeliveryDetailPage() {
 
           {d.returnStatus === 'approved' && !d.returnPaidAt && (
             <div className="mt-3 rounded-lg border border-[#D97706]/30 bg-[#D97706]/5 px-3 py-2 text-xs text-[#92400E]">
-              Approved and waiting for payment. The rider does not turn around
+              Approved and waiting for payment. The driver does not turn around
               until the money lands.
             </div>
           )}
@@ -500,7 +500,7 @@ export default function DeliveryDetailPage() {
         </div>
         <p className="mt-1 text-xs text-[#0F2B4C]/50">
           A refund comes out of two pockets. SEIRS margin absorbs it first, then
-          the rider&apos;s payout, and the rider floor stops an honest report
+          the driver&apos;s payout, and the driver floor stops an honest report
           costing them the trip.
         </p>
 
@@ -530,13 +530,13 @@ export default function DeliveryDetailPage() {
             <Row label="Fare paid" value={naira(rfPrev.farePaid)} />
             <Row label={`Refund at ${rfPrev.percent}%`} value={naira(rfPrev.refundNgn)} />
             <Row label="From SEIRS margin" value={naira(rfPrev.fromMargin)} />
-            <Row label="From rider payout" value={naira(rfPrev.fromDriver)} />
-            <Row label="Rider floor" value={naira(rfPrev.driverFloorNgn)} />
-            <Row label="Rider is paid" value={naira(rfPrev.driverPayAfter)} />
+            <Row label="From driver payout" value={naira(rfPrev.fromDriver)} />
+            <Row label="Driver floor" value={naira(rfPrev.driverFloorNgn)} />
+            <Row label="Driver is paid" value={naira(rfPrev.driverPayAfter)} />
             {rfPrev.floorApplied && (
               <div className="mt-2 rounded border border-[#D97706]/30 bg-[#D97706]/5 px-2 py-1 text-[11px] text-[#92400E]">
                 The floor rescued {naira(rfPrev.absorbedByFloor)} of the
-                rider&apos;s pay. SEIRS covers that, not them.
+                driver&apos;s pay. SEIRS covers that, not them.
               </div>
             )}
           </div>
@@ -573,7 +573,7 @@ export default function DeliveryDetailPage() {
             </div>
             <div>
               <div className="text-xs uppercase tracking-wider text-[#0F2B4C]/40">
-                Re-quote from the rider&apos;s position
+                Re-quote from the driver&apos;s position
               </div>
               <div className="font-medium text-[#0F2B4C]">
                 {d.addressChangeQuoteNgn != null
@@ -601,7 +601,7 @@ export default function DeliveryDetailPage() {
 
           {d.addressChangeStatus === 'applied' && (
             <div className="mt-3 rounded-lg border border-[#16A34A]/30 bg-[#16A34A]/5 px-3 py-2 text-xs text-[#166534]">
-              Paid and applied. The rider has been told the new address.
+              Paid and applied. The driver has been told the new address.
             </div>
           )}
 
@@ -672,7 +672,7 @@ export default function DeliveryDetailPage() {
           <div className="flex items-center gap-2 text-[#DC2626]">
             <AlertTriangle size={16} />
             <span className="text-sm font-bold uppercase tracking-wide">
-              Rider reported a problem
+              Driver reported a problem
             </span>
           </div>
           <p className="mt-2 text-sm text-[#0F2B4C]">
@@ -697,7 +697,7 @@ export default function DeliveryDetailPage() {
                   Compare it against the sender's own booking photos below. */}
               <img
                 src={d.disputePhotoUrl}
-                alt="Rider's photo of the package"
+                alt="Driver's photo of the package"
                 className="max-h-48 rounded-lg border border-[#DC2626]/30"
               />
             </a>
@@ -747,7 +747,7 @@ export default function DeliveryDetailPage() {
           />
           <EvidenceShots
             title="Proof of delivery"
-            note="Photographed by the rider at handover. Required by the server before a run can flip to delivered."
+            note="Photographed by the driver at handover. Required by the server before a run can flip to delivered."
             urls={proofPhotos}
             capturedAt={d.deliveredAt}
             capturedLabel="Handover recorded at"
@@ -882,7 +882,7 @@ export default function DeliveryDetailPage() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Where the rider accepted from
+                    Where the driver accepted from
                   </a>
                 )}
               </>

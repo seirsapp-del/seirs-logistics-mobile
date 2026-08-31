@@ -38,7 +38,7 @@ const STATUS_LABEL: Record<string, { label: string; hint: string }> = {
 
 const COVERAGE_LABEL: Record<string, string> = {
   cargo:           'The goods being carried',
-  driver_accident: 'Riders hurt while working',
+  driver_accident: 'Drivers hurt while working',
   third_party:     'Damage we cause to other people',
   cyber:           'Data and systems',
 };
@@ -99,13 +99,13 @@ export default function InsurancePage() {
     <div className="p-6 space-y-6">
       <PageIntro
         title="Our insurance cover"
-        purpose="Every policy SEIRS holds to protect its riders and the goods they carry, and when each one runs out."
+        purpose="Every policy SEIRS holds to protect its drivers and the goods they carry, and when each one runs out."
         storageKey="insurance"
         help={
           <>
             <p><b>Nothing here is sold to customers.</b> This is the cover SEIRS buys for itself. Cover offered to a customer on their parcel is priced in the <Link className="font-semibold text-[#3A7BD5] hover:underline" href="/pricing">Pricing engine</Link> and stays switched off until an underwriter is signed.</p>
             <p><b>Expired means uninsured.</b> If a policy's renewal date has passed, SEIRS is carrying that risk itself from that date, whatever the row still says.</p>
-            <p>Adding, editing and removing rows here changes nothing in the customer, business or rider apps. It is a record for the people who buy the cover.</p>
+            <p>Adding, editing and removing rows here changes nothing in the customer, business or driver apps. It is a record for the people who buy the cover.</p>
           </>
         }
         actions={

@@ -200,7 +200,7 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
                 )}
               </div>
               {store.storeCode && (
-                <p className="mb-1 font-mono text-xs text-gray-500" title="Customers and riders quote this code when they call about a collection.">
+                <p className="mb-1 font-mono text-xs text-gray-500" title="Customers and drivers quote this code when they call about a collection.">
                   Shop code: {store.storeCode}
                 </p>
               )}
@@ -270,7 +270,7 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
               <p className="text-xs text-gray-500 font-mono">{Number(store.storeLat).toFixed(5)}, {Number(store.storeLng).toFixed(5)}</p>
             ) : (
               <p className="text-xs text-amber-700 flex items-center gap-1">
-                <AlertTriangle size={11} /> No map position, so riders can never be sent here and the shop shows on no map
+                <AlertTriangle size={11} /> No map position, so drivers can never be sent here and the shop shows on no map
               </p>
             )}
           </div>

@@ -213,7 +213,7 @@ function DeliveriesContent() {
                             somebody happened to open that row. */}
                         {d.disputedAt && (
                           <div className="mt-0.5 inline-block rounded bg-[#DC2626]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#DC2626]">
-                            Rider reported a problem
+                            Driver reported a problem
                           </div>
                         )}
                         {(d.stops?.length ?? 0) > 1 && (

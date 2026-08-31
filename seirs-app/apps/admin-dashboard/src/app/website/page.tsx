@@ -84,7 +84,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   getting_started: 'Getting started',
   payments:        'Payments',
   pickup:          'Pickup and delivery',
-  drivers:         'For riders',
+  drivers:         'For drivers',
   partner:         'Partner stores',
 };
 

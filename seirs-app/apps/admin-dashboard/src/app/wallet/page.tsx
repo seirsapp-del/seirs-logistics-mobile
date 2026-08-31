@@ -217,7 +217,7 @@ export default function WalletPage() {
 ` +
         `Open Flutterwave, find ${w.flutterwaveTransferId ? `transfer ${w.flutterwaveTransferId}` : 'this transfer'}, ` +
         `and type the amount that actually left. Anything held back is worked out as the difference ` +
-        `and stays available to the rider.
+        `and stays available to the driver.
 
 ` +
         `This is recorded under your name and cannot be edited afterwards.`,
@@ -254,7 +254,7 @@ export default function WalletPage() {
      */
     const ok = await confirm({
       title:        `Release ${naira(h.driverNet)} to ${h.driverName}?`,
-      message:      `${naira(h.driverNet)} stops being frozen and becomes withdrawable by ${h.driverName} straight away: they can request it to their bank from the rider app within minutes.\n\nThis dashboard has no button to freeze it again, so treat it as final. The reason it was frozen (${h.holdReason ?? 'no reason recorded'}) stays in the audit log under your name.`,
+      message:      `${naira(h.driverNet)} stops being frozen and becomes withdrawable by ${h.driverName} straight away: they can request it to their bank from the driver app within minutes.\n\nThis dashboard has no button to freeze it again, so treat it as final. The reason it was frozen (${h.holdReason ?? 'no reason recorded'}) stays in the audit log under your name.`,
       confirmLabel: `Release ${naira(h.driverNet)}`,
     });
     if (!ok) return;
@@ -284,15 +284,15 @@ export default function WalletPage() {
         and the only balances on this page belong to riders.
       */}
       <PageIntro
-        title="Rider payouts"
-        purpose="The money SEIRS owes its riders: what is frozen pending your decision, what is ready for them to withdraw, and what has already reached their banks."
+        title="Driver payouts"
+        purpose="The money SEIRS owes its drivers: what is frozen pending your decision, what is ready for them to withdraw, and what has already reached their banks."
         storageKey="wallet"
         help={
           <>
-            <p><b>Frozen</b> earnings are the only ones needing you. Somebody put a hold on them (fraud check, dispute, wrong rider paid) and the rider cannot touch that money until it is released.</p>
-            <p><b>Release</b> makes that exact amount withdrawable to that rider immediately. There is no freeze button on this dashboard, so it is effectively final: check the reason and the delivery first.</p>
-            <p><b>Ready to withdraw</b> is a watch list, not a to-do list. Riders request their own payouts from the rider app. Nothing here sends money.</p>
-            <p><b>Sent to bank</b> is what actually left SEIRS through Flutterwave. When a rider is new, part of a payout is held back, so what was sent is smaller than what was earned. That is why the two columns differ.</p>
+            <p><b>Frozen</b> earnings are the only ones needing you. Somebody put a hold on them (fraud check, dispute, wrong driver paid) and the driver cannot touch that money until it is released.</p>
+            <p><b>Release</b> makes that exact amount withdrawable to that driver immediately. There is no freeze button on this dashboard, so it is effectively final: check the reason and the delivery first.</p>
+            <p><b>Ready to withdraw</b> is a watch list, not a to-do list. Drivers request their own payouts from the driver app. Nothing here sends money.</p>
+            <p><b>Sent to bank</b> is what actually left SEIRS through Flutterwave. When a driver is new, part of a payout is held back, so what was sent is smaller than what was earned. That is why the two columns differ.</p>
           </>
         }
         actions={
@@ -362,7 +362,7 @@ export default function WalletPage() {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
         <SummaryCard
-          label="Ready for riders to withdraw"
+          label="Ready for drivers to withdraw"
           sub={`${(summary?.pendingCount ?? 0).toLocaleString()} finished job${summary?.pendingCount === 1 ? '' : 's'} settled and waiting`}
           value={naira(summary?.pendingTotal ?? 0)}
           Icon={Clock}
@@ -370,7 +370,7 @@ export default function WalletPage() {
         />
         <SummaryCard
           label="Frozen, waiting on a decision"
-          sub={`${(summary?.heldCount ?? 0).toLocaleString()} earning${summary?.heldCount === 1 ? '' : 's'} a rider cannot touch`}
+          sub={`${(summary?.heldCount ?? 0).toLocaleString()} earning${summary?.heldCount === 1 ? '' : 's'} a driver cannot touch`}
           value={naira(summary?.heldTotal ?? 0)}
           Icon={AlertCircle}
           color="text-red-600"
@@ -410,14 +410,14 @@ export default function WalletPage() {
             <EmptyState
               icon={<CheckCircle2 size={20} />}
               tone="good"
-              title="No rider's money is frozen"
+              title="No driver's money is frozen"
               body="Nothing is being withheld from anybody. Frozen earnings show up here when a hold is placed during a fraud check or a dispute."
             />
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-xs text-gray-500 font-semibold uppercase tracking-wide">
-                  <th className="text-left px-4 py-3">Rider</th>
+                  <th className="text-left px-4 py-3">Driver</th>
                   <th className="text-left px-4 py-3">Frozen amount</th>
                   <th className="text-left px-4 py-3">Why it was frozen</th>
                   <th className="text-left px-4 py-3">Delivery</th>
@@ -459,12 +459,12 @@ export default function WalletPage() {
       <section className="bg-white rounded-xl border border-gray-200">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
           <Clock size={15} className="text-yellow-600" />
-          <span className="text-sm font-semibold text-[#0F2B4C]">Ready for riders to withdraw</span>
+          <span className="text-sm font-semibold text-[#0F2B4C]">Ready for drivers to withdraw</span>
           <RowCount shown={pending.length} total={summary?.pendingCount} noun="earnings" />
           {pending.some(p => p.isCorrection) && (
             <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
               <b>One or more of these is a correction: money SEIRS owes and recorded on purpose.</b>{' '}
-              A correction is attached to the rider&apos;s most recent delivery because the record
+              A correction is attached to the driver&apos;s most recent delivery because the record
               needs one, so it will always look like a second payment on a job that is already
               settled. It is not. The reason is shown on the row, and this money is genuinely owed.
             </p>
@@ -474,7 +474,7 @@ export default function WalletPage() {
               <b>One or more of these deliveries has already been paid in full.</b> Those rows are
               marked below and are NOT corrections. They are left over from a bug where a single job
               could write two earning rows, fixed on 27 August, and they are not money anybody is
-              owed. Paying one pays the rider twice for the same job.
+              owed. Paying one pays the driver twice for the same job.
             </p>
           )}
         </div>
@@ -482,7 +482,7 @@ export default function WalletPage() {
             /payments/withdraw", an API path on a screen read by people
             who do not have one. */}
         <p className="px-4 pt-2 text-xs text-gray-500">
-          Nothing on this list needs an action. Riders request these themselves in the SEIRS rider app, oldest first.
+          Nothing on this list needs an action. Drivers request these themselves in the SEIRS driver app, oldest first.
         </p>
         <div className="overflow-x-auto">
           {loading && pending.length === 0 ? (
@@ -497,8 +497,8 @@ export default function WalletPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-xs text-gray-500 font-semibold uppercase tracking-wide">
-                  <th className="text-left px-4 py-3">Rider</th>
-                  <th className="text-left px-4 py-3">Rider keeps</th>
+                  <th className="text-left px-4 py-3">Driver</th>
+                  <th className="text-left px-4 py-3">Driver keeps</th>
                   {/* Gross and the SEIRS cut were already in the payload
                       and drawn nowhere, so the one screen about payouts
                       could not show what the job earned SEIRS. */}
@@ -573,7 +573,7 @@ export default function WalletPage() {
       <section className="bg-white rounded-xl border border-gray-200">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
           <ArrowDownCircle size={15} className="text-[#3A7BD5]" />
-          <span className="text-sm font-semibold text-[#0F2B4C]">Already sent to riders' banks</span>
+          <span className="text-sm font-semibold text-[#0F2B4C]">Already sent to drivers' banks</span>
           <RowCount shown={paid.length} noun="transfers, newest first" />
         </div>
         <div className="overflow-x-auto">
@@ -583,13 +583,13 @@ export default function WalletPage() {
             <EmptyState
               icon={<ArrowDownCircle size={20} />}
               title="No money has been sent out yet"
-              body="Transfers appear here the moment a rider's withdrawal completes at Flutterwave."
+              body="Transfers appear here the moment a driver's withdrawal completes at Flutterwave."
             />
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-xs text-gray-500 font-semibold uppercase tracking-wide">
-                  <th className="text-left px-4 py-3">Rider</th>
+                  <th className="text-left px-4 py-3">Driver</th>
                   <th className="text-left px-4 py-3">Reached their bank</th>
                   <th className="text-left px-4 py-3">Held back</th>
                   <th className="text-left px-4 py-3">Sent</th>
@@ -605,7 +605,7 @@ export default function WalletPage() {
                       {w.estimated && (
                         <span
                           className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
-                          title="Predates the payout ledger. This is what the rider earned; if a holdback applied, less reached the bank. Check the Flutterwave reference before reconciling."
+                          title="Predates the payout ledger. This is what the driver earned; if a holdback applied, less reached the bank. Check the Flutterwave reference before reconciling."
                         >
                           earned, not confirmed sent
                         </span>
@@ -615,7 +615,7 @@ export default function WalletPage() {
                         pay, so it says why rather than showing a bare figure. */}
                     <td className="px-4 py-3 text-gray-500 text-xs tabular-nums">
                       {w.holdbackNgn && w.holdbackNgn > 0 ? (
-                        <span title="New-rider holdback. Kept by SEIRS on early payouts and released later.">
+                        <span title="New-driver holdback. Kept by SEIRS on early payouts and released later.">
                           {naira(w.holdbackNgn)}
                         </span>
                       ) : '-'}

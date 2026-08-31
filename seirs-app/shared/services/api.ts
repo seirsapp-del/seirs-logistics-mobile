@@ -719,7 +719,18 @@ export const driversApi = {
     return request<any[]>('GET', `/deliveries/available${qs ? `?${qs}` : ''}`);
   },
   updateKycDoc:   (docId: string, url: string) =>
-    request<{ docId: string; saved: boolean }>('PATCH', '/drivers/me/kyc', { docId, url }),
+    request<{ docId: string; saved: boolean; status?: string }>('PATCH', '/drivers/me/kyc', { docId, url }),
+
+  /**
+   * Real per-document review state. The KYC screen used to derive "Verified"
+   * from the DRIVER's account status, so a replacement licence on an
+   * approved account read as verified without anyone reviewing it.
+   */
+  myKycDocuments: () =>
+    request<{ documents: Array<{
+      docId: string; url: string; status: 'submitted' | 'approved' | 'rejected';
+      rejectionReason: string | null; reviewedAt: string | null; version: number;
+    }> }>('GET', '/drivers/me/kyc-documents'),
   // ── Vehicle: live record, ownership, change requests (2026-08-25) ──────
   //
   // Shaped like the payout-bank calls on purpose (founder: "just like

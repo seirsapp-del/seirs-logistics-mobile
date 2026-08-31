@@ -81,7 +81,7 @@ export default function PartnerApplicationsPage() {
   const approve = async (a: Application) => {
     const ok = await confirm({
       title:        `Let ${a.storeName} start holding parcels?`,
-      message:      `From the moment you approve: customers can pick this shop as a collection point, riders start being sent there, and the owner gets the partner screens in their SEIRS app. The shop is given a permanent shop code that goes on their shelf labels.\n\nCheck the shopfront photo against the address first. If it turns out badly, you can suspend the shop later from Partner stores.`,
+      message:      `From the moment you approve: customers can pick this shop as a collection point, drivers start being sent there, and the owner gets the partner screens in their SEIRS app. The shop is given a permanent shop code that goes on their shelf labels.\n\nCheck the shopfront photo against the address first. If it turns out badly, you can suspend the shop later from Partner stores.`,
       confirmLabel: 'Approve the shop',
     });
     if (!ok) return;
@@ -246,7 +246,7 @@ export default function PartnerApplicationsPage() {
                         <AlertCircle size={14} className="mt-0.5 shrink-0" />
                         <span>
                           <b>This one cannot be approved yet.</b>{' '}
-                          {missingCoords && 'It has no position on the map, so no rider could ever be sent to it: ask the owner to re-enter the address by picking one of the suggestions instead of typing it. '}
+                          {missingCoords && 'It has no position on the map, so no driver could ever be sent to it: ask the owner to re-enter the address by picking one of the suggestions instead of typing it. '}
                           {missingPhoto && 'There is no shopfront photo, so nobody can recognise the shop on arrival and there is no evidence a real premises was checked.'}
                         </span>
                       </div>

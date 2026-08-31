@@ -140,7 +140,7 @@ export default async function ForDriversPage() {
                 strength is the opposite: the platform cut is shown plainly
                 on every trip, so say that. */}
             <p className="section-sub">
-              Built around how dispatch riders actually work in Nigeria: a
+              Built around how dispatch drivers actually work in Nigeria: a
               platform that respects your time and shows you exactly what you
               earn on every trip.
             </p>
@@ -151,7 +151,7 @@ export default async function ForDriversPage() {
           <div className="space-y-16 mb-20">
             <StoryRow
               imageUrl={img.img_driver_earnings}
-              alt="Rider checking his earnings"
+              alt="Driver checking his earnings"
               eyebrow="The money"
               title="Your money moves when you do"
               /* Rewritten 2026-08-29 (website audit). Four claims in one
@@ -196,7 +196,7 @@ export default async function ForDriversPage() {
                 // founder retunes from a dashboard, so it now describes
                 // the mechanism instead of guessing its setting.
                 'A clearance window applies before a job can be withdrawn, shown on every trip in the app',
-                'New riders have a small share held back for their first weeks, released automatically',
+                'New drivers have a small share held back for their first weeks, released automatically',
                 'Minimum withdrawal and daily limits apply, both shown in the app before you request one',
               ]}
             />
@@ -322,7 +322,7 @@ export default async function ForDriversPage() {
                 Vehicle papers (registration certificate or proof of permission to use)
               </RequirementRow>
               <RequirementRow>
-                Driver&apos;s licence (motorbike riders need rider&apos;s permit, car/van drivers need full licence)
+                Driver&apos;s licence (motorbike drivers need driver&apos;s permit, car/van drivers need full licence)
               </RequirementRow>
               <RequirementRow>
                 A Nigerian bank account in your name for your payouts
@@ -347,7 +347,7 @@ export default async function ForDriversPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <StoryRow
             imageUrl={img.img_driver_portrait}
-            alt="A SEIRS rider handing a package to a customer"
+            alt="A SEIRS driver handing a package to a customer"
             flip
             eyebrow="The work itself"
             title="Every delivery ends with a person"

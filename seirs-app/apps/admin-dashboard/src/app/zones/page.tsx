@@ -69,7 +69,7 @@ const STATUS_HELP: Record<ZoneStatus, string> = {
   no_dropoff:
     'Refused as a DESTINATION, allowed as an origin. Collections OUT of the area still work, which is what matters when people are leaving.',
   closed:
-    'Refused at both ends. No quote, no booking, no rider offered the job.',
+    'Refused at both ends. No quote, no booking, no driver offered the job.',
 };
 
 const BLOCKING: ZoneStatus[] = ['no_pickup', 'no_dropoff', 'closed'];
@@ -398,7 +398,7 @@ export default function ZonesPage() {
       const ok = await confirm({
         title: 'Publish "' + z.name + '" as ' + STATUS_LABEL[z.status] + '?',
         message:
-          'This takes effect on the next quote. New bookings stop immediately. Deliveries already on the road continue, because stranding a parcel is worse than completing one, and riders inside the area are told rather than logged out.',
+          'This takes effect on the next quote. New bookings stop immediately. Deliveries already on the road continue, because stranding a parcel is worse than completing one, and drivers inside the area are told rather than logged out.',
         confirmLabel: 'Publish',
         danger: true,
       });
@@ -861,7 +861,7 @@ export default function ZonesPage() {
 
               {/* Reason */}
               <div>
-                <label className={label}>Reason shown to senders and riders</label>
+                <label className={label}>Reason shown to senders and drivers</label>
                 <textarea
                   className={field + ' h-20'}
                   value={draft.reason}

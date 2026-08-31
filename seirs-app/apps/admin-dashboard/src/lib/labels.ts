@@ -27,12 +27,12 @@ export interface Label {
 }
 
 const DELIVERY: Record<string, Label> = {
-  pending:     { label: 'Looking for a rider', hint: 'Booked and paid for, waiting to be matched with a rider.' },
-  assigned:    { label: 'Rider assigned',      hint: 'A rider has accepted and is on their way to collect it.' },
-  picked_up:   { label: 'Collected',           hint: 'The rider has the package.' },
+  pending:     { label: 'Looking for a driver', hint: 'Booked and paid for, waiting to be matched with a driver.' },
+  assigned:    { label: 'Driver assigned',      hint: 'A driver has accepted and is on their way to collect it.' },
+  picked_up:   { label: 'Collected',           hint: 'The driver has the package.' },
   in_transit:  { label: 'On the way',          hint: 'On the road to the drop-off.' },
   delivered:   { label: 'Delivered',           hint: 'Handed over and confirmed.' },
-  failed:      { label: 'Could not deliver',   hint: 'The rider could not complete it. The reason is on the row.' },
+  failed:      { label: 'Could not deliver',   hint: 'The driver could not complete it. The reason is on the row.' },
   cancelled:   { label: 'Cancelled',           hint: 'Called off before completion.' },
   disputed:    { label: 'Problem reported',    hint: 'Somebody on this job has raised an issue.' },
   returning:   { label: 'Going back',          hint: 'On its way back to the sender.' },
@@ -60,7 +60,7 @@ const ROLE: Record<string, Label> = {
   customer: { label: 'Customer' },
   business: { label: 'Business' },
   partner:  { label: 'Partner store' },
-  driver:   { label: 'Rider' },
+  driver:   { label: 'Driver' },
   admin:    { label: 'Staff' },
 };
 

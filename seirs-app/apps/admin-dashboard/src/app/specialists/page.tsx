@@ -70,11 +70,11 @@ export default function SpecialistsPage() {
     <div className="p-6 space-y-6">
       <PageIntro
         title="Specialist operators"
-        purpose="The outside firms SEIRS can hand a job to when it needs something our own riders cannot carry: cold chain, heavy haulage, live animals."
+        purpose="The outside firms SEIRS can hand a job to when it needs something our own drivers cannot carry: cold chain, heavy haulage, live animals."
         storageKey="specialists"
         help={
           <>
-            <p><b>This is a contact book, not a live service.</b> Nothing here is shown in the customer, business or rider apps, and marking a firm active does not send them any work. Somebody still has to ring them.</p>
+            <p><b>This is a contact book, not a live service.</b> Nothing here is shown in the customer, business or driver apps, and marking a firm active does not send them any work. Somebody still has to ring them.</p>
             <p><b>Use them / Not checked yet / Do not use</b> is the only thing the status column means. Keep it honest: it is what the next person on the phone will trust.</p>
             <p><b>The rating and job count are typed in by us</b>, from what we have seen, not calculated by SEIRS. Treat them as a note, not a measurement.</p>
           </>

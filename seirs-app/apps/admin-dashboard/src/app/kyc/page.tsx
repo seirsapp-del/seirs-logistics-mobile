@@ -128,7 +128,7 @@ export default function DriverKycQueuePage() {
              .map((doc) => doc.label);
 
   const approve = async (row: any, detail: any) => {
-    const name    = row?.user?.name ?? 'this rider';
+    const name    = row?.user?.name ?? 'this driver';
     const missing = detail ? missingRequired(detail) : [];
     const ok = await confirm({
       title:   `Put ${name} on the road?`,
@@ -139,7 +139,7 @@ export default function DriverKycQueuePage() {
           ? `WARNING: ${missing.length} required document${missing.length === 1 ? ' is' : 's are'} missing: ${missing.join(', ')}.\n\n`
           : '') +
         'This can be undone: suspending them later stops new offers.',
-      confirmLabel: 'Approve rider',
+      confirmLabel: 'Approve driver',
       danger:       missing.length > 0,
     });
     if (!ok) return;
@@ -154,13 +154,13 @@ export default function DriverKycQueuePage() {
   };
 
   const reject = async (row: any) => {
-    const name   = row?.user?.name ?? 'this rider';
+    const name   = row?.user?.name ?? 'this driver';
     const reason = await prompt({
       title:       `Turn down ${name}?`,
       message:     'Say why, in words they can act on. This exact text is emailed to them.',
-      label:       'Reason, emailed to the rider',
+      label:       'Reason, emailed to the driver',
       placeholder: 'Example: the photo of your licence is too blurry to read the expiry date. Please send it again in daylight.',
-      helper:      'Emailed to the rider as written. It is NOT stored on their record, so keep a copy in your own notes if you will need it later.',
+      helper:      'Emailed to the driver as written. It is NOT stored on their record, so keep a copy in your own notes if you will need it later.',
       minLength:   10,
       confirmLabel: 'Continue',
       danger:      true,
@@ -171,7 +171,7 @@ export default function DriverKycQueuePage() {
       message:
         `They will be emailed:\n\n"${reason.trim()}"\n\n` +
         'They cannot take jobs and cannot earn. This can be undone from the Rejected tab on this page.',
-      confirmLabel: 'Reject rider',
+      confirmLabel: 'Reject driver',
       danger:       true,
     });
     if (!ok) return;
@@ -191,7 +191,7 @@ export default function DriverKycQueuePage() {
    * status setter is the same one Approve uses.
    */
   const reinstate = async (row: any) => {
-    const name = row?.user?.name ?? 'this rider';
+    const name = row?.user?.name ?? 'this driver';
     const ok = await confirm({
       title:        `Put ${name} back on the road?`,
       message:      `${name} starts receiving dispatch offers again immediately, and is emailed to say they were approved.`,
@@ -209,7 +209,7 @@ export default function DriverKycQueuePage() {
   };
 
   const suspend = async (row: any) => {
-    const name = row?.user?.name ?? 'this rider';
+    const name = row?.user?.name ?? 'this driver';
     const ok = await confirm({
       title:   `Suspend ${name}?`,
       message:
@@ -240,11 +240,11 @@ export default function DriverKycQueuePage() {
     <div className="p-8">
       <PageIntro
         title="Driver KYC Queue"
-        purpose="Read a new rider's documents and decide whether they can start carrying packages. Nobody in this queue can earn a naira until somebody here presses a button."
+        purpose="Read a new driver's documents and decide whether they can start carrying packages. Nobody in this queue can earn a naira until somebody here presses a button."
         storageKey="kyc"
         help={
           <>
-            <p><strong>Review documents</strong> opens the rider&apos;s pack on this page. Read it before deciding: this is the only screen that puts it beside the buttons.</p>
+            <p><strong>Review documents</strong> opens the driver&apos;s pack on this page. Read it before deciding: this is the only screen that puts it beside the buttons.</p>
             <p><strong>Approve</strong> starts their dispatch offers straight away and emails them. Reversible: suspend them later.</p>
             <p><strong>Reject</strong> emails them your reason and leaves them unable to work. Reversible from the Rejected tab.</p>
             <p><strong>Suspend</strong> stops new offers. A trip already running still finishes.</p>
@@ -255,7 +255,7 @@ export default function DriverKycQueuePage() {
             href="/drivers"
             className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs font-semibold text-[#0F2B4C] hover:bg-[#F5F5F0]"
           >
-            Full rider roster
+            Full driver roster
           </Link>
         }
       />
@@ -306,7 +306,7 @@ export default function DriverKycQueuePage() {
           somebody work the queue backwards without knowing. */}
       {status === 'pending' && lastPage > 1 && !loading && (
         <p className="mb-3 text-xs text-[#0F2B4C]/50">
-          Newest applications first. The riders who have waited longest are on page {lastPage}.{' '}
+          Newest applications first. The drivers who have waited longest are on page {lastPage}.{' '}
           <button onClick={() => load(lastPage)} className="font-semibold text-[#3A7BD5] hover:underline">
             Go to the longest waiting
           </button>
@@ -338,20 +338,20 @@ export default function DriverKycQueuePage() {
             <EmptyState
               icon={<Search size={20} />}
               title={`Nothing matches "${search.trim()}"`}
-              body={`No ${driverStatus(status).toLowerCase()} rider matches that name, email, phone, SEIRS ID or plate.`}
+              body={`No ${driverStatus(status).toLowerCase()} driver matches that name, email, phone, SEIRS ID or plate.`}
               action={{ label: 'Clear the search', onClick: () => setSearch('') }}
             />
           ) : status === 'pending' ? (
             <EmptyState
               icon={<ShieldCheck size={20} />}
               tone="good"
-              title="No rider is waiting to be approved"
+              title="No driver is waiting to be approved"
               body="Every application has been decided. New sign-ups arrive here on their own."
             />
           ) : (
             <EmptyState
               icon={<ClipboardCheck size={20} />}
-              title={`No riders are ${driverStatus(status).toLowerCase()}`}
+              title={`No drivers are ${driverStatus(status).toLowerCase()}`}
               body="Nothing to show under this tab."
             />
           )
@@ -359,7 +359,7 @@ export default function DriverKycQueuePage() {
           <table className="w-full text-sm">
             <thead className="border-b border-[#E5E7EB] bg-[#F5F5F0]">
               <tr>
-                {['Rider', 'Vehicle', 'Waiting', 'Status', ''].map((h) => (
+                {['Driver', 'Vehicle', 'Waiting', 'Status', ''].map((h) => (
                   <th key={h || 'actions'} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#0F2B4C]/40">{h}</th>
                 ))}
               </tr>
@@ -542,11 +542,11 @@ function DocumentPack({
                 : 'no signature on file'}
             </p>
             <p className="text-xs text-[#0F2B4C]/50">
-              The rider does not own this vehicle. The owner&apos;s written permission has to be in the pack below before you approve.
+              The driver does not own this vehicle. The owner&apos;s written permission has to be in the pack below before you approve.
             </p>
           </div>
         ) : (
-          <p className="text-[#0F2B4C]">The rider says the vehicle is their own.</p>
+          <p className="text-[#0F2B4C]">The driver says the vehicle is their own.</p>
         )}
       </div>
 
@@ -583,7 +583,7 @@ function DocumentPack({
                 disabled={busy}
                 className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-40"
               >
-                <ShieldCheck size={15} /> Approve rider
+                <ShieldCheck size={15} /> Approve driver
               </button>
             </>
           )}
@@ -602,7 +602,7 @@ function DocumentPack({
               disabled={busy}
               className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-40"
             >
-              Reinstate rider
+              Reinstate driver
             </button>
           )}
         </div>

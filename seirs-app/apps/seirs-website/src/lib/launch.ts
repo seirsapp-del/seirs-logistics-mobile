@@ -276,9 +276,9 @@ export const LAUNCH_CHECKLIST = [
   },
   {
     key: 'driver_clearance_business_days',
-    what: 'Business days a completed job waits before a rider may withdraw it. Currently 0, code default is 2',
-    where: 'Fee Catalogue, Pricing page, "What a rider is paid"',
-    blocks: 'Nothing today, and that is the problem at launch: a rider completes a job at 6pm and can withdraw it the same evening, so a dispute raised the next morning arrives after the money has gone. Dialled to 0 deliberately so a real payout, a failed payout and a pay-in could be watched in one sitting instead of waiting out a weekend',
+    what: 'Business days a completed job waits before a driver may withdraw it. Currently 0, code default is 2',
+    where: 'Fee Catalogue, Pricing page, "What a driver is paid"',
+    blocks: 'Nothing today, and that is the problem at launch: a driver completes a job at 6pm and can withdraw it the same evening, so a dispute raised the next morning arrives after the money has gone. Dialled to 0 deliberately so a real payout, a failed payout and a pay-in could be watched in one sitting instead of waiting out a weekend',
     from: 'Founder, before the first real customer money moves',
   },
   {
@@ -297,7 +297,7 @@ export const LAUNCH_CHECKLIST = [
   },
   {
     key: 'seatDriverSharePct',
-    what: 'The rider share of a Travel Buddy seat fare. Null on the live card, so it falls back to a hardcoded 75%',
+    what: 'The driver share of a Travel Buddy seat fare. Null on the live card, so it falls back to a hardcoded 75%',
     where: 'Rate card, Pricing page. Needs a PUBLISH',
     blocks: 'Nothing today, but the column was added specifically because this share was a literal 0.75 buried in computeSeatPrice and should be admin-tunable. Until a value is published it is still effectively hardcoded, so that fix is not finished',
     from: 'Founder, before Travel Buddy carries paying passengers',

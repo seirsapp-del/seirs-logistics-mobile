@@ -176,7 +176,7 @@ export default function UserDetailPage() {
             className="inline-flex items-center gap-1 text-sm text-[#3A7BD5] hover:underline"
           >
             <ArrowLeft size={14} />
-            {user.role === 'driver' ? 'All riders' : user.role === 'admin' ? 'All staff' : 'All customers'}
+            {user.role === 'driver' ? 'All drivers' : user.role === 'admin' ? 'All staff' : 'All customers'}
           </Link>
           {/*
             The rider record is a different page with different facts on
@@ -188,7 +188,7 @@ export default function UserDetailPage() {
               href={`/drivers/${driverRecord.id}`}
               className="inline-flex items-center gap-1 rounded-lg border border-[#E5E7EB] px-2.5 py-1 text-xs font-semibold text-[#0F2B4C] hover:bg-gray-50"
             >
-              Open their rider record
+              Open their driver record
             </Link>
           )}
         </div>

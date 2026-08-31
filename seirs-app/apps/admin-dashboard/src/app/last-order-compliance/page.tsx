@@ -65,7 +65,7 @@ export default function LastOrderCompliancePage() {
       .then(res => setDrivers(Array.isArray(res?.drivers) ? res.drivers : []))
       // A failure used to empty the list silently, and an empty
       // compliance board reads as good news. It is not, if it is a lie.
-      .catch((e: any) => setError(e?.message ?? 'The rider figures could not be loaded.'))
+      .catch((e: any) => setError(e?.message ?? 'The driver figures could not be loaded.'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -111,14 +111,14 @@ export default function LastOrderCompliancePage() {
     <div className="p-8">
       <PageIntro
         title="Last-Order Compliance"
-        purpose="See which riders are turning down the jobs dispatch sends them today, so somebody can call them before the board runs short."
+        purpose="See which drivers are turning down the jobs dispatch sends them today, so somebody can call them before the board runs short."
         storageKey="last-order-compliance"
         help={
           <>
             <p><strong>Today&apos;s acceptance</strong> is jobs taken out of jobs offered, since midnight. It resets every day.</p>
-            <p>The target is {threshold}%, set in the Fee Catalogue. It is advisory: nothing on this page or in the rider app blocks anybody for missing it.</p>
-            <p>A dash means dispatch has not offered that rider anything yet today, which is not the same as refusing work.</p>
-            <p>Nothing here changes anything. To act on a rider, open their profile.</p>
+            <p>The target is {threshold}%, set in the Fee Catalogue. It is advisory: nothing on this page or in the driver app blocks anybody for missing it.</p>
+            <p>A dash means dispatch has not offered that driver anything yet today, which is not the same as refusing work.</p>
+            <p>Nothing here changes anything. To act on a driver, open their profile.</p>
           </>
         }
         actions={
@@ -143,7 +143,7 @@ export default function LastOrderCompliancePage() {
       {/* Summary cards. "Currently winding down" was removed: it counted
           a field this endpoint does not send, so it was always zero. */}
       <div className="mb-6 grid grid-cols-3 gap-4">
-        <SummaryCard label="Riders on the platform"        value={drivers.length}        accent="#3A7BD5" />
+        <SummaryCard label="Drivers on the platform"        value={drivers.length}        accent="#3A7BD5" />
         <SummaryCard label={`Below ${threshold}% today`}   value={belowThreshold.length} accent="#DC2626" />
         <SummaryCard label="Not offered anything yet"      value={noOffersYet}           accent="#9CA3AF" />
       </div>
@@ -162,7 +162,7 @@ export default function LastOrderCompliancePage() {
       {/* Driver table */}
       <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
         <div className="grid grid-cols-12 items-center gap-4 border-b border-[#E5E7EB] bg-gray-50 px-4 py-3 text-[10px] font-bold uppercase tracking-wide text-gray-500">
-          <div className="col-span-4">Rider</div>
+          <div className="col-span-4">Driver</div>
           <div className="col-span-2">Vehicle</div>
           <div className="col-span-2 text-right">Rating</div>
           <div className="col-span-2 text-right">
@@ -179,20 +179,20 @@ export default function LastOrderCompliancePage() {
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-gray-400">Loading the riders</div>
+          <div className="py-12 text-center text-gray-400">Loading the drivers</div>
         ) : error ? (
           <EmptyState
             icon={<AlertCircle size={20} />}
-            title="The rider figures could not be loaded"
-            body="This is a connection or permission problem. It does not mean every rider is behaving."
+            title="The driver figures could not be loaded"
+            body="This is a connection or permission problem. It does not mean every driver is behaving."
             action={{ label: 'Try again', onClick: load }}
           />
         ) : drivers.length === 0 ? (
           <EmptyState
             icon={<MoonStar size={20} />}
-            title="No riders on the platform yet"
-            body="Once riders are approved they appear here with their acceptance for the day."
-            action={{ label: 'Open the rider queue', href: '/kyc' }}
+            title="No drivers on the platform yet"
+            body="Once drivers are approved they appear here with their acceptance for the day."
+            action={{ label: 'Open the driver queue', href: '/kyc' }}
           />
         ) : (
           sorted.map(d => {

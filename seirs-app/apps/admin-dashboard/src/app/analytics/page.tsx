@@ -151,12 +151,12 @@ export default function AnalyticsPage() {
       <main className="p-8">
         <PageIntro
           title="Analytics"
-          purpose="See how much SEIRS moved and earned over a period, which riders carried it, and where the work is coming from."
+          purpose="See how much SEIRS moved and earned over a period, which drivers carried it, and where the work is coming from."
           storageKey="analytics"
           help={
             <>
               <p>The date buttons only change the two panels marked with a date range. Everything else is an all-time figure and says so on its own label.</p>
-              <p><strong>Customer payments</strong> is what customers were charged, not what SEIRS keeps after paying the rider and the card processor.</p>
+              <p><strong>Customer payments</strong> is what customers were charged, not what SEIRS keeps after paying the driver and the card processor.</p>
               <p>Nothing on this page changes anything. It is safe to click about.</p>
             </>
           }
@@ -207,7 +207,7 @@ export default function AnalyticsPage() {
                     the card fee both come out of it, so it is not what
                     SEIRS earns. */}
                 <p className="mt-1 text-xs leading-relaxed text-[#0F2B4C]/40">
-                  The full price of completed deliveries. The rider&apos;s share and card fees come out of this,
+                  The full price of completed deliveries. The driver&apos;s share and card fees come out of this,
                   so it is not what SEIRS keeps. Counted on the day each job was booked.
                 </p>
               </div>
@@ -295,7 +295,7 @@ export default function AnalyticsPage() {
               </Panel>
 
               <Panel
-                title="Busiest riders"
+                title="Busiest drivers"
                 window={rangeLabel}
                 note="Ranked by total deliveries ever completed, not by this period."
               >
@@ -387,9 +387,9 @@ export default function AnalyticsPage() {
 
             <div className="grid grid-cols-2 gap-6">
               <Panel
-                title="Hours riders spent on jobs"
+                title="Hours drivers spent on jobs"
                 window={rangeLabel}
-                note="From accepting a job to delivering it, added up per rider."
+                note="From accepting a job to delivering it, added up per driver."
               >
                 {driverHrs.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>

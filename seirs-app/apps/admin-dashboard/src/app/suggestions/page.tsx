@@ -95,7 +95,7 @@ export default function SuggestionsPage() {
     <div className="p-6 space-y-6">
       <PageIntro
         title="What people are asking for"
-        purpose="Ideas and complaints sent in by customers and riders, most-voted first, and the place to write back to them."
+        purpose="Ideas and complaints sent in by customers and drivers, most-voted first, and the place to write back to them."
         storageKey="suggestions"
         help={
           <>
@@ -211,7 +211,7 @@ export default function SuggestionsPage() {
           <EmptyState
             icon={<Lightbulb size={20} />}
             title="Nobody has sent anything in yet"
-            body="Customers and riders can send an idea from the Help screen in their app. It lands here the moment they do."
+            body="Customers and drivers can send an idea from the Help screen in their app. It lands here the moment they do."
           />
         </div>
       ) : (

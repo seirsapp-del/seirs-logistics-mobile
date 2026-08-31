@@ -397,7 +397,7 @@ export default function JobDetailScreen() {
       title: isTripOffer ? 'Decline this seat booking?' : 'Skip this job?',
       message: isTripOffer
         ? 'The passenger is refunded in full immediately and the seat reopens on your trip.'
-        : 'It stays in Available Jobs. Another rider can take it before you come back.',
+        : 'It stays in Available Jobs. Another driver can take it before you come back.',
       options: [{
         label: isTripOffer ? 'Decline the booking' : 'Skip this job',
         variant: 'destructive',

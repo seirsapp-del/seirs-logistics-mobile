@@ -370,7 +370,7 @@ export default function EditBooking() {
                   <View style={styles.noteRow}>
                     <Info size={14} color={theme.textThird} />
                     <Text style={[styles.note, { color: theme.textThird }]}>
-                      These are the rider's own stops, so the fare changes with the leg you pick. Agree the exact spot with them in chat.
+                      These are the driver's own stops, so the fare changes with the leg you pick. Agree the exact spot with them in chat.
                     </Text>
                   </View>
                 </>

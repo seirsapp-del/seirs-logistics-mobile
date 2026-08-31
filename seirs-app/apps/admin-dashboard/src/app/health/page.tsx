@@ -58,7 +58,7 @@ const PROBES: Array<{ key: string; label: string; why: string; route: string; ru
   },
   {
     key: 'analytics', label: 'The reporting figures', route: 'GET /admin/analytics/revenue',
-    why: 'Only affects this dashboard. Customers and riders are unaffected if it fails.',
+    why: 'Only affects this dashboard. Customers and drivers are unaffected if it fails.',
     run: () => adminApi.analytics.revenue(7),
   },
   {
@@ -67,8 +67,8 @@ const PROBES: Array<{ key: string; label: string; why: string; route: string; ru
     run: () => adminApi.opsMap.activeDeliveries(),
   },
   {
-    key: 'drivers', label: 'The rider records', route: 'GET /admin/drivers',
-    why: 'If this fails, riders cannot be approved, suspended or looked up.',
+    key: 'drivers', label: 'The driver records', route: 'GET /admin/drivers',
+    why: 'If this fails, drivers cannot be approved, suspended or looked up.',
     run: () => adminApi.drivers(1),
   },
   {

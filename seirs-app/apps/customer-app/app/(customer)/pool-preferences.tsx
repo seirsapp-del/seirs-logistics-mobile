@@ -120,7 +120,7 @@ export default function PoolPreferencesScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardTitle, { color: theme.text }]}>Other passengers</Text>
                   <Text style={[styles.cardSub, { color: theme.textSecond }]}>
-                    Allow another rider going the same direction to share your vehicle.
+                    Allow another driver going the same direction to share your vehicle.
                   </Text>
                 </View>
                 <Switch

@@ -130,7 +130,7 @@ export default async function ForBusinessPage() {
               alt="Preparing the morning's orders"
               eyebrow="The morning rush"
               title="One booking instead of one hundred"
-              body="Most shops start the day the same way: a list of orders on paper or WhatsApp, and someone arranging riders one at a time. Add every package to a single booking instead, each with its own receiver, and send them together. Every delivery is created, priced, and dispatched together."
+              body="Most shops start the day the same way: a list of orders on paper or WhatsApp, and someone arranging drivers one at a time. Add every package to a single booking instead, each with its own receiver, and send them together. Every delivery is created, priced, and dispatched together."
               points={[
                 'Nigerian phone formats and addresses validated before dispatch',
                 'Recurring routes saved once and rebooked in two taps',
@@ -318,7 +318,7 @@ export default async function ForBusinessPage() {
             flip
             eyebrow="Who this is for"
             title="Built for the owner who does everything"
-            body="You take the orders, pack the parcels, answer the WhatsApp messages, and chase the riders. SEIRS takes the last one off your plate: dispatch becomes a list you upload, not a morning you lose."
+            body="You take the orders, pack the parcels, answer the WhatsApp messages, and chase the drivers. SEIRS takes the last one off your plate: dispatch becomes a list you upload, not a morning you lose."
           />
         </div>
       </section>

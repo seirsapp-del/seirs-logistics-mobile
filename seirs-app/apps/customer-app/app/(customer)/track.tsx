@@ -47,8 +47,8 @@ const STATUS_CONFIG: Record<string, {
 
 const RIDE_LABELS: Record<string, string> = {
   awaiting_payment: 'Waiting for payment',
-  pending:          'Finding your rider',
-  assigned:         'Rider on the way',
+  pending:          'Finding your driver',
+  assigned:         'Driver on the way',
   picked_up:        'Arrived, meet them outside',
   in_transit:       'On the trip',
   delivered:        'Ride completed',
@@ -128,14 +128,14 @@ function custodyOf(d: any, driverName?: string | null) {
     if (d?.awaitingPayment) {
       return {
         who:    'Waiting for payment',
-        detail: 'We start finding a rider the moment payment lands',
+        detail: 'We start finding a driver the moment payment lands',
         where:  null,
       };
     }
-    return { who: 'Looking for a rider', detail: 'Nobody is carrying it yet', where: null };
+    return { who: 'Looking for a driver', detail: 'Nobody is carrying it yet', where: null };
   }
   if (IN_FLIGHT.includes(status)) {
-    const named = driverName ? `With ${driverName}` : 'With your rider';
+    const named = driverName ? `With ${driverName}` : 'With your driver';
     return {
       who:    status === 'assigned' ? `${named}, heading to pickup` : `${named}, on the way`,
       detail: null,
@@ -252,7 +252,7 @@ export default function TrackScreen() {
                 showDialog({
                   title: r.status === 'pending' ? 'Sent to support' : 'Return approved',
                   message: r.status === 'pending'
-                    ? 'A rider is carrying this package, so support has to arrange it. We will let you know.'
+                    ? 'A driver is carrying this package, so support has to arrange it. We will let you know.'
                     : 'Pay in the app and we will bring it back to your pickup address.',
                 });
               } catch (e: any) {
@@ -300,7 +300,7 @@ export default function TrackScreen() {
         title: 'Sent to support',
         message:
           `We quoted ${naira(res.quoteNgn)} for the ${Number(res.km).toFixed(1)} km ` +
-          `from where your rider is now. Support will approve or decline, and you only pay if they approve.`,
+          `from where your driver is now. Support will approve or decline, and you only pay if they approve.`,
       });
     } catch (e: any) {
       showDialog({ title: 'Could not send that', message: e?.message ?? 'Please try again.' });
@@ -544,7 +544,7 @@ export default function TrackScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.redirectTitle, { color: theme.text }]}>Show package QR</Text>
                   <Text style={[styles.redirectSub, { color: theme.textSecond }]}>
-                    Screenshot it for whoever is receiving. The rider scans it at handover.
+                    Screenshot it for whoever is receiving. The driver scans it at handover.
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
@@ -636,7 +636,7 @@ export default function TrackScreen() {
             {/* Driver card */}
             {(assignedDriver ?? deliveryData.driver) && (
               <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-                <Text style={[styles.cardTitle, { color: theme.text }]}>Your Rider</Text>
+                <Text style={[styles.cardTitle, { color: theme.text }]}>Your Driver</Text>
                 <View style={styles.driverRow}>
                   <View style={[styles.driverAvatar, { backgroundColor: theme.primary }]}>
                     <Text style={styles.driverAvatarText}>
@@ -727,7 +727,7 @@ export default function TrackScreen() {
                     <Ionicons name="location" size={14} color={theme.primary} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.liveLocationText, { color: theme.textSecond }]}>
-                        Rider location updating live
+                        Driver location updating live
                       </Text>
                       {/* The actual position, not just a promise that one
                           exists. A customer waiting at a gate can read
@@ -753,7 +753,7 @@ export default function TrackScreen() {
                   >
                     <Ionicons name="open-outline" size={14} color={theme.primary} />
                     <Text style={[styles.liveMapsText, { color: theme.primary }]}>
-                      See where your rider is on Google Maps
+                      See where your driver is on Google Maps
                     </Text>
                   </Pressable>
                 )}
@@ -877,7 +877,7 @@ export default function TrackScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.redirectTitle, { color: theme.text }]}>Wrong address?</Text>
                       <Text style={{ fontSize: FontSize.xs, color: theme.textThird }}>
-                        Support can move it, priced from where your rider is now
+                        Support can move it, priced from where your driver is now
                       </Text>
                     </View>
                   </Pressable>
@@ -1042,7 +1042,7 @@ export default function TrackScreen() {
               Correct the delivery address
             </Text>
             <Text style={{ fontSize: FontSize.sm, color: theme.textSecond, marginTop: 6, lineHeight: 19 }}>
-              Your rider is already carrying this package, so support has to approve
+              Your driver is already carrying this package, so support has to approve
               the change. You will be quoted for the distance from where they are now,
               and you only pay if it is approved.
             </Text>

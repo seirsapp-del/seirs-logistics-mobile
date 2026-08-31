@@ -43,7 +43,7 @@ const SECTIONS: Section[] = [
     title: '3. Road safety comes first',
     points: [
       'Obey all traffic laws and Federal Road Safety Corps (FRSC) regulations at all times.',
-      'Riders must wear a certified helmet. Drivers must wear seat belts. No exceptions.',
+      'Drivers must wear a certified helmet. Drivers must wear seat belts. No exceptions.',
       'Never handle your phone while the vehicle is moving. Stop safely before using the app.',
       'Never drive under the influence of alcohol, drugs, or any substance that impairs you.',
       'Keep your vehicle roadworthy. If it is not safe to carry a package, do not accept the job.',

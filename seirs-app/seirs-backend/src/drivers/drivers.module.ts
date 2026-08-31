@@ -19,16 +19,18 @@ import { FraudModule } from '../fraud/fraud.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationsService } from '../notifications/notifications.service';
 import { FeesModule } from '../fees/fees.module';
+import { DriverDocument } from './driver-document.entity';
+import { AdminDriverDocumentsController } from './admin-driver-documents.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Driver, DriverTrip, TripStop, DriverStatusBroadcast, DriverSubscription, DriverLevelChange, DriverVehicleChange, Delivery, Wallet, DriverEarning]),
+    TypeOrmModule.forFeature([Driver, DriverTrip, TripStop, DriverStatusBroadcast, DriverSubscription, DriverLevelChange, DriverVehicleChange, Delivery, Wallet, DriverEarning, DriverDocument]),
     TrackingModule,
     FraudModule,
     NotificationsModule,
     FeesModule,
   ],
-  controllers: [DriversController],
+  controllers: [DriversController, AdminDriverDocumentsController],
   providers: [DriversService],
   exports: [DriversService],
 })
@@ -47,6 +49,41 @@ export class DriversModule implements OnModuleInit {
      * answer a rider asking why they were turned down. Self-heal rather
      * than a migration file, matching the rest of this module.
      */
+    /**
+     * driver_documents, the KYC review queue (2026-08-31).
+     *
+     * synchronize is off in production, so a new entity does NOT get a
+     * table on deploy. Created here with the same self-heal pattern the
+     * rest of this module uses, rather than a migration file nobody runs.
+     */
+    try {
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "driver_documents" (
+          "id"              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "driver_id"       uuid NOT NULL REFERENCES "drivers"("id") ON DELETE CASCADE,
+          "docId"           varchar NOT NULL,
+          "url"             varchar NOT NULL,
+          "status"          varchar(20) NOT NULL DEFAULT 'submitted',
+          "rejectionReason" text NULL,
+          "reviewed_by_id"  uuid NULL,
+          "reviewedAt"      timestamptz NULL,
+          "version"         integer NOT NULL DEFAULT 1,
+          "createdAt"       timestamptz NOT NULL DEFAULT now(),
+          "updatedAt"       timestamptz NOT NULL DEFAULT now()
+        )
+      `);
+      await this.ds.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS "driver_documents_driver_doc"
+           ON "driver_documents" ("driver_id", "docId")`,
+      );
+      await this.ds.query(
+        `CREATE INDEX IF NOT EXISTS "driver_documents_status_created"
+           ON "driver_documents" ("status", "createdAt")`,
+      );
+    } catch (e: any) {
+      console.error(`driver_documents table ensure failed: ${e?.message ?? e}`);
+    }
+
     try {
       await this.ds.query(`
         ALTER TABLE "drivers"

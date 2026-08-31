@@ -1018,7 +1018,7 @@ function AnomalyPanel({ anomalies }: { anomalies: any }) {
       items: [],
       href: '/wallet',
       render: () => '',
-      note: 'A rider was owed and the transfer was refused.',
+      note: 'A driver was owed and the transfer was refused.',
     },
     {
       key: 'zones',
@@ -1036,7 +1036,7 @@ function AnomalyPanel({ anomalies }: { anomalies: any }) {
       items: [],
       href: '/travel-buddy',
       render: () => '',
-      note: 'A rider marked someone dropped and nobody agreed.',
+      note: 'A driver marked someone dropped and nobody agreed.',
     },
     {
       key: 'dropsGeofence',

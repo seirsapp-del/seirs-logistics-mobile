@@ -183,7 +183,7 @@ export default function BusinessPackageQrScreen() {
           (sender ? ` from ${sender}` : '') + `.\n\n` +
           `Tracking code: ${code}\n` +
           (description ? `Package: ${description}\n` : '') +
-          `\nShow this code to the rider at handover, or let them scan the ` +
+          `\nShow this code to the driver at handover, or let them scan the ` +
           `QR image. Follow it here: ${trackUrl(code)}`,
       });
     } catch { /* the share sheet was dismissed */ }
@@ -336,7 +336,7 @@ export default function BusinessPackageQrScreen() {
 
           <View style={styles.perforation} />
           <Text style={styles.footprint}>
-            Show this to your SEIRS rider at handover
+            Show this to your SEIRS driver at handover
           </Text>
         </View>
 
@@ -373,7 +373,7 @@ export default function BusinessPackageQrScreen() {
             <Icon name="Camera" size={16} color={colors.primary} />
             <Text style={[styles.noteText, { color: colors.textSecond }]}>
               Screenshot this and send it to whoever is receiving this package.
-              They do not need the SEIRS app: the rider scans it off their
+              They do not need the SEIRS app: the driver scans it off their
               screen, or types the code in.
             </Text>
           </View>

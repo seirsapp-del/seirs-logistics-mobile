@@ -62,7 +62,8 @@
           "cameraPermission": "Seirs Driver needs camera access for proof of delivery photos."
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-document-picker"
     ],
     "experiments": {
       "typedRoutes": true

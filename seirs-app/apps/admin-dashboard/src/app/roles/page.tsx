@@ -401,7 +401,7 @@ export default function RolesPage() {
                   value={draftDescription}
                   onChange={e => setDraftDescription(e.target.value)}
                   rows={2}
-                  placeholder="Runs dispatch for Lagos and handles rider complaints"
+                  placeholder="Runs dispatch for Lagos and handles driver complaints"
                   className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm focus:border-[#3A7BD5] focus:outline-none"
                 />
                 <p className="mt-1 text-[11px] text-gray-400">

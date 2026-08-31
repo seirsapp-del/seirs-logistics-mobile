@@ -166,7 +166,7 @@ export default function TravelBuddyOpsPage() {
                 {tab === 'noshows'
                   ? 'No forfeited fares. That is the good outcome.'
                   : tab === 'pending'
-                  ? 'Nobody is keeping a rider waiting on payment.'
+                  ? 'Nobody is keeping a driver waiting on payment.'
                   : 'Nothing here yet.'}
               </span>
             )}

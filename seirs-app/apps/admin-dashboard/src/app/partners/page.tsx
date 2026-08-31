@@ -97,7 +97,7 @@ export default function PartnersPage() {
           <>
             <p><b>Suspend</b> takes effect straight away: the shop stops being offered as a drop-off point, and the owner loses the partner screens in their SEIRS business app. Packages already sitting in that shop still have to be collected, so ring them.</p>
             <p><b>Re-approve</b> puts it all back. Suspension is not permanent and nothing is deleted.</p>
-            <p><b>No map location</b> on a row is serious: that shop cannot be dispatched to at all, because riders are never sent to a place with no coordinates. Fix it on the store's own page.</p>
+            <p><b>No map location</b> on a row is serious: that shop cannot be dispatched to at all, because drivers are never sent to a place with no coordinates. Fix it on the store's own page.</p>
             <p>New applicants are approved on <Link className="font-semibold text-[#3A7BD5] hover:underline" href="/partner-applications">Partner applications</Link>, not here.</p>
           </>
         }
@@ -286,7 +286,7 @@ export default function PartnersPage() {
                       {s.storeCode && (
                         <span
                           className="block text-[10px] font-mono text-gray-400 mt-0.5"
-                          title="The shop's code. Customers and riders quote this when they call about a collection."
+                          title="The shop's code. Customers and drivers quote this when they call about a collection."
                         >
                           {s.storeCode}
                         </span>

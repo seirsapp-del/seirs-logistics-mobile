@@ -47,10 +47,10 @@ interface Handoff {
 
 const STAGE_LABEL: Record<string, string> = {
   customer_to_store:   'Customer handed it to the partner store',
-  store_to_driver:     'Partner store handed it to the rider',
-  driver_to_store:     'Rider handed it to the partner store',
+  store_to_driver:     'Partner store handed it to the driver',
+  driver_to_store:     'Driver handed it to the partner store',
   store_to_recipient:  'Partner store handed it to the receiver',
-  driver_to_recipient: 'Rider handed it to the receiver',
+  driver_to_recipient: 'Driver handed it to the receiver',
 };
 
 const STAGE_COLOR: Record<string, string> = {
@@ -207,7 +207,7 @@ function DisputesContent() {
         storageKey="disputes"
         help={
           <>
-            <p><strong>Jobs a rider flagged</strong> is every delivery where the rider reported a problem. Their photo and their reason are on the row.</p>
+            <p><strong>Jobs a driver flagged</strong> is every delivery where the driver reported a problem. Their photo and their reason are on the row.</p>
             <p><strong>Open the handoffs</strong> lays out who verifiably handed the parcel to whom, with the photo and the signature taken at the time.</p>
             <p>Nothing on this page changes anything or moves money. Refunds, escrow and cancellation are decided on the delivery itself, so open the delivery when you know the answer.</p>
             <p>The liability table at the bottom says who is responsible at each leg. Read it against the last successful handoff.</p>
@@ -219,7 +219,7 @@ function DisputesContent() {
           was invisible from the screen named after them. */}
       <section className="mb-8">
         <div className="mb-3 flex items-baseline justify-between gap-4">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-[#0F2B4C]/70">Jobs a rider flagged</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-[#0F2B4C]/70">Jobs a driver flagged</h2>
           <span className="text-xs text-[#0F2B4C]/50">
             {queueLoading ? 'Loading' : total === 0 ? 'None open' : `${total.toLocaleString()} in total`}
           </span>
@@ -249,7 +249,7 @@ function DisputesContent() {
             <EmptyState
               icon={<ShieldCheck size={20} />}
               tone="good"
-              title="No rider has flagged a job"
+              title="No driver has flagged a job"
               body="Nothing is waiting to be adjudicated. You can still look up any delivery's handoffs below."
             />
           ) : (
@@ -272,7 +272,7 @@ function DisputesContent() {
                       </p>
                       <p className="mt-0.5 text-xs text-[#0F2B4C]/50">
                         Sender {d.customer?.name ?? 'unknown'}
-                        {d.driver?.user?.name ? `, rider ${d.driver.user.name}` : ', no rider on it'}
+                        {d.driver?.user?.name ? `, driver ${d.driver.user.name}` : ', no driver on it'}
                         {d.disputedAt ? `, reported ${new Date(d.disputedAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}
                       </p>
                     </div>
@@ -281,9 +281,9 @@ function DisputesContent() {
                           It is the first thing an adjudicator wants and
                           it was two pages away. */}
                       {d.disputePhotoUrl && (
-                        <a href={d.disputePhotoUrl} target="_blank" rel="noreferrer" title="The rider's photo, full size">
+                        <a href={d.disputePhotoUrl} target="_blank" rel="noreferrer" title="The driver's photo, full size">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={d.disputePhotoUrl} alt="What the rider was handed" className="h-14 w-14 rounded-lg border border-[#E5E7EB] object-cover hover:border-[#3A7BD5]" />
+                          <img src={d.disputePhotoUrl} alt="What the driver was handed" className="h-14 w-14 rounded-lg border border-[#E5E7EB] object-cover hover:border-[#3A7BD5]" />
                         </a>
                       )}
                       <button
@@ -436,9 +436,9 @@ function DisputesContent() {
           <tbody className="text-[#0F2B4C]">
             <tr className="border-b border-[#F3F4F6]"><td className="py-2">Customer to partner store</td><td className="py-2">The customer, until the store takes it</td></tr>
             <tr className="border-b border-[#F3F4F6]"><td className="py-2">Inside the partner store</td><td className="py-2">The partner store</td></tr>
-            <tr className="border-b border-[#F3F4F6]"><td className="py-2">Partner store to rider</td><td className="py-2">The partner store, until the rider scans</td></tr>
-            <tr className="border-b border-[#F3F4F6]"><td className="py-2">With the rider, on the road</td><td className="py-2">The rider (rating, and earnings held back)</td></tr>
-            <tr className="border-b border-[#F3F4F6]"><td className="py-2">Rider to the final partner store</td><td className="py-2">The rider, until the store scans</td></tr>
+            <tr className="border-b border-[#F3F4F6]"><td className="py-2">Partner store to driver</td><td className="py-2">The partner store, until the driver scans</td></tr>
+            <tr className="border-b border-[#F3F4F6]"><td className="py-2">With the driver, on the road</td><td className="py-2">The driver (rating, and earnings held back)</td></tr>
+            <tr className="border-b border-[#F3F4F6]"><td className="py-2">Driver to the final partner store</td><td className="py-2">The driver, until the store scans</td></tr>
             <tr className="border-b border-[#F3F4F6]"><td className="py-2">Inside the final partner store</td><td className="py-2">The partner store</td></tr>
             <tr><td className="py-2">Partner store to the receiver</td><td className="py-2">The partner store, until the receiver scans</td></tr>
           </tbody>

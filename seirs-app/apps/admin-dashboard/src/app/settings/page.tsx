@@ -34,7 +34,7 @@ const PRETTY: Record<string, { label: string; help?: string }> = {
   max_active_deliveries: { label: 'Most jobs running at once',     help: 'A safety cap. When more than this many deliveries are live, matching pauses and new bookings wait.' },
   default_currency:      { label: 'Currency SEIRS settles in',     help: 'Fixed at naira.' },
   default_timezone:      { label: 'Time zone the apps work in',    help: 'Fixed at Lagos time.' },
-  maintenance_mode:      { label: 'Maintenance mode',              help: 'When this is on, every app shows a maintenance screen. Nobody can book, and riders cannot take jobs.' },
+  maintenance_mode:      { label: 'Maintenance mode',              help: 'When this is on, every app shows a maintenance screen. Nobody can book, and drivers cannot take jobs.' },
 };
 
 function labelFor(key: string): string {
@@ -124,10 +124,10 @@ export default function SettingsPage() {
     const ok = await confirm({
       title: turningOn ? 'Take SEIRS offline for everybody?' : 'Bring SEIRS back online?',
       message: turningOn
-        ? 'Every customer, rider and partner store immediately sees a maintenance screen instead of the app.\n\n'
-          + 'Nobody can book. Riders cannot accept jobs. Deliveries already on the road are not cancelled, but nothing new starts.\n\n'
+        ? 'Every customer, driver and partner store immediately sees a maintenance screen instead of the app.\n\n'
+          + 'Nobody can book. Drivers cannot accept jobs. Deliveries already on the road are not cancelled, but nothing new starts.\n\n'
           + 'Nobody is warned first, and there is no scheduled window. You can switch it back from this page at any time.'
-        : 'The apps go back to normal within about a minute. Customers can book again and riders can accept jobs.',
+        : 'The apps go back to normal within about a minute. Customers can book again and drivers can accept jobs.',
       confirmLabel: turningOn ? 'Take everything offline' : 'Bring it back online',
       danger:       turningOn,
     });
@@ -153,7 +153,7 @@ export default function SettingsPage() {
         storageKey="settings"
         help={
           <>
-            <p><strong>Maintenance mode</strong> stops every customer and rider using SEIRS, straight away and without warning them. Treat it as the emergency stop.</p>
+            <p><strong>Maintenance mode</strong> stops every customer and driver using SEIRS, straight away and without warning them. Treat it as the emergency stop.</p>
             <p>Every change here is written to the audit log with your name, the old value and the new one.</p>
             <p>Prices, fees and email wording are not here. Each lives on its own page, linked at the bottom.</p>
           </>
@@ -189,7 +189,7 @@ export default function SettingsPage() {
                 </p>
                 <p className={`mt-0.5 max-w-xl text-xs leading-relaxed ${maintenanceOn ? 'text-red-600' : 'text-[#0F2B4C]/50'}`}>
                   {maintenanceOn
-                    ? 'Every customer, rider and partner store is seeing a maintenance screen. Nobody can book and no rider can take a job.'
+                    ? 'Every customer, driver and partner store is seeing a maintenance screen. Nobody can book and no driver can take a job.'
                     : 'Switching this on shows every app a maintenance screen immediately, with no warning to anybody. Only use it when SEIRS genuinely must stop.'}
                 </p>
                 {maintenanceRow.updatedAt && (
@@ -585,7 +585,7 @@ function DemoDataCard() {
       </div>
       <div className="space-y-3 p-4">
         <p className="text-xs leading-relaxed text-gray-500">
-          Creates three permanent pretend accounts (a customer, a rider and a partner store) with believable
+          Creates three permanent pretend accounts (a customer, a driver and a partner store) with believable
           delivery history, ratings and reward points, so you can sign in on a phone and take marketing
           screenshots without a real person&apos;s name or SEIRS ID ever appearing in public.
           Safe to run again: it refreshes the same three accounts rather than making more.
@@ -610,7 +610,7 @@ function DemoDataCard() {
             <div className="grid grid-cols-3 divide-x divide-gray-100">
               {([
                 ['customer', 'Customer'],
-                ['driver',   'Rider'],
+                ['driver',   'Driver'],
                 ['business', 'Partner store'],
               ] as const).map(([k, title]) => (
                 <div key={k} className="p-3">

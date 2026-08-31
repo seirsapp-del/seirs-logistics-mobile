@@ -98,7 +98,7 @@ export default function BusinessSeirsIdScreen() {
           <Text style={[styles.howTitle, { color: theme.text }]}>When you send packages</Text>
           {[
             'Dropping a run at a partner counter: staff scan this to book the packages against your account.',
-            'A rider collecting from your premises can confirm they are at the right business.',
+            'A driver collecting from your premises can confirm they are at the right business.',
             'Read the code to SEIRS support and they find your account instantly, no email spelling.',
           ].map((text, i) => (
             <View key={i} style={styles.howRow}>
@@ -114,7 +114,7 @@ export default function BusinessSeirsIdScreen() {
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.howTitle, { color: theme.text }]}>If you run a partner counter</Text>
           {[
-            'SEIRS riders collecting from your counter verify they are dealing with the registered store keeper.',
+            'SEIRS drivers collecting from your counter verify they are dealing with the registered store keeper.',
             'Payout questions: this ID ties your counter’s earnings ledger to you and nobody else.',
             'Your store also has its own STORE CODE for customers; this ID is YOURS, the store code is the shop’s.',
           ].map((text, i) => (

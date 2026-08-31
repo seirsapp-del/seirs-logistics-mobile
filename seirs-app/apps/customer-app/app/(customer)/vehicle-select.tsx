@@ -162,7 +162,7 @@ export default function VehicleSelectScreen() {
           return q ? naira(q.total) : '…';
         })(),
         // Capacity, not minutes: SEIRS makes no time promises.
-        metaText:    `${v.capacityCount} rider${v.capacityCount === 1 ? '' : 's'}`,
+        metaText:    `${v.capacityCount} driver${v.capacityCount === 1 ? '' : 's'}`,
       }))
     : PACKAGE_VEHICLES.map(v => {
         const ui = PACKAGE_UI[v.id] ?? { icon: 'cube-outline', descKey: v.noteKey, features: [] };

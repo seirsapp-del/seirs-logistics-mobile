@@ -211,7 +211,7 @@ export default function TripDetailsScreen() {
                 showDialog({
                   title: r.status === 'pending' ? 'Sent to support' : 'Return approved',
                   message: r.status === 'pending'
-                    ? 'A rider is carrying this package, so support has to arrange it. We will let you know.'
+                    ? 'A driver is carrying this package, so support has to arrange it. We will let you know.'
                     : 'Pay in the app and we will bring it back to your pickup address.',
                 });
                 setD(await deliveriesApi.get(String(id)));
@@ -307,7 +307,7 @@ export default function TripDetailsScreen() {
               Waiting for payment
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
-              We match a rider the moment this is paid. Nothing has been charged yet.
+              We match a driver the moment this is paid. Nothing has been charged yet.
             </Text>
             <Pressable
               onPress={() => router.push({ pathname: '/(customer)/payment/[deliveryId]', params: { deliveryId: String(d.id) } } as any)}
@@ -350,7 +350,7 @@ export default function TripDetailsScreen() {
               Nobody available to receive
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
-              The rider is at the drop-off and cannot hand the package over. If we do
+              The driver is at the drop-off and cannot hand the package over. If we do
               not hear from you it will follow your booked fallback.
             </Text>
           </View>
@@ -677,7 +677,7 @@ export default function TripDetailsScreen() {
               {t('tripDetail.trackPackage', { defaultValue: 'Track this delivery live' })}
             </Text>
             <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
-              Live status, rider position and updates
+              Live status, driver position and updates
             </Text>
           </Pressable>
         )}

@@ -79,7 +79,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string; hint: string 
  *  "Rider" everywhere a person can read it, same as the rest of the app. */
 const TOPIC_LABEL: Record<string, string> = {
   billing:  'Billing',
-  driver:   'Rider',
+  driver:   'Driver',
   account:  'Account',
   delivery: 'Delivery',
   other:    'Something else',
@@ -315,10 +315,10 @@ export default function SupportInboxPage() {
   const reopenChat = async () => {
     if (!thread?.ticket.linkedDeliveryId) return;
     const reason = await prompt({
-      title:       'Let the customer and rider talk again?',
+      title:       'Let the customer and driver talk again?',
       message:     'The chat on this delivery is frozen once it finishes. Re-opening lets the two of them message each other for the next 24 hours, and shows each of them the other\'s messages again.',
       label:       'Why are you re-opening it',
-      placeholder: 'e.g. package left at the wrong gate, rider needs to hear the directions',
+      placeholder: 'e.g. package left at the wrong gate, driver needs to hear the directions',
       minLength:   6,
       multiline:   true,
       helper:      'Recorded against your name in the audit log. Keep it to the operational reason.',
@@ -331,7 +331,7 @@ export default function SupportInboxPage() {
         reason:   reason.trim(),
         ticketId: thread.ticket.id,
       });
-      void notify({ title: 'Chat re-opened', message: 'The customer and the rider can message each other for the next 24 hours. Recorded in the audit log under your name.', tone: 'success' });
+      void notify({ title: 'Chat re-opened', message: 'The customer and the driver can message each other for the next 24 hours. Recorded in the audit log under your name.', tone: 'success' });
     } catch (e: any) {
       setError(`Could not re-open the chat: ${e?.message ?? 'unknown error'}`);
     }
@@ -341,7 +341,7 @@ export default function SupportInboxPage() {
     if (!thread?.ticket.linkedDeliveryId) return;
     const ok = await confirm({
       title:        'Stop them messaging each other now?',
-      message:      'The customer and the rider lose the delivery chat immediately, mid-sentence if either is typing. You can re-open it again from this same screen.',
+      message:      'The customer and the driver lose the delivery chat immediately, mid-sentence if either is typing. You can re-open it again from this same screen.',
       confirmLabel: 'Close the chat',
     });
     if (!ok) return;
@@ -359,8 +359,8 @@ export default function SupportInboxPage() {
     const ok = await confirm({
       title:        approve ? 'Approve this vehicle change?' : 'Turn down this vehicle change?',
       message:      approve
-        ? 'The rider\'s profile switches to the new vehicle straight away, and dispatch starts offering them jobs sized for it. They are told in their app Messages. Recorded in the audit log.'
-        : 'The new vehicle details are thrown away and the rider keeps the vehicle already on file. They are told in their app Messages. They can apply again.',
+        ? 'The driver\'s profile switches to the new vehicle straight away, and dispatch starts offering them jobs sized for it. They are told in their app Messages. Recorded in the audit log.'
+        : 'The new vehicle details are thrown away and the driver keeps the vehicle already on file. They are told in their app Messages. They can apply again.',
       confirmLabel: approve ? 'Approve' : 'Turn it down',
       danger:       !approve,
     });
@@ -369,7 +369,7 @@ export default function SupportInboxPage() {
       await adminApi.vehicleChange.resolve(userId, approve);
       void notify({
         title:   approve ? 'Vehicle change approved' : 'Vehicle change turned down',
-        message: 'The rider has been told in their app Messages.',
+        message: 'The driver has been told in their app Messages.',
         tone:    'success',
       });
       loadThread(thread!.ticket.id);
@@ -382,9 +382,9 @@ export default function SupportInboxPage() {
     const userId = thread?.ticket.user?.id;
     if (!userId) return;
     const ok = await confirm({
-      title:        approve ? 'Send this rider\'s money to the new account?' : 'Turn down this bank change?',
+      title:        approve ? 'Send this driver\'s money to the new account?' : 'Turn down this bank change?',
       message:      approve
-        ? 'Every future payout goes to the NEW bank account from the moment you press this. Check the account name matches the rider\'s name before you do. They are told in their app Messages, and this is recorded in the audit log under your name.'
+        ? 'Every future payout goes to the NEW bank account from the moment you press this. Check the account name matches the driver\'s name before you do. They are told in their app Messages, and this is recorded in the audit log under your name.'
         : 'The new bank details are thrown away and payouts keep going to the account already on file. They are told in their app Messages, and can apply again with better documents.',
       confirmLabel: approve ? 'Approve the new account' : 'Turn it down',
       danger:       true,
@@ -394,7 +394,7 @@ export default function SupportInboxPage() {
       await adminApi.bankChange.resolve(userId, approve);
       void notify({
         title:   approve ? 'Payout account changed' : 'Bank change turned down',
-        message: 'The rider has been told in their app Messages.',
+        message: 'The driver has been told in their app Messages.',
         tone:    'success',
       });
       loadThread(thread!.ticket.id);
@@ -453,14 +453,14 @@ export default function SupportInboxPage() {
         */}
         <PageIntro
           title="Support inbox"
-          purpose="Answer the customers, riders and businesses who have written in, and mark each conversation sorted when it is done."
+          purpose="Answer the customers, drivers and businesses who have written in, and mark each conversation sorted when it is done."
           storageKey="support"
           help={
             <>
               <p><b>Reply</b> lands in their SEIRS app Messages within seconds. It cannot be edited or unsent, so read it back first.</p>
               <p><b>Mark sorted</b> takes the ticket off the waiting-on-us queue. It is not final: if they write back it returns to the top.</p>
               <p><b>Close</b> is final. Neither side can post to a closed ticket, and the whole conversation is deleted 7 days later. Re-open it here if you closed it by mistake.</p>
-              <p><b>Re-open chat</b> is about the customer and rider talking to <i>each other</i> on the delivery, not about this ticket. It un-freezes their private chat for 24 hours and is recorded against your name.</p>
+              <p><b>Re-open chat</b> is about the customer and driver talking to <i>each other</i> on the delivery, not about this ticket. It un-freezes their private chat for 24 hours and is recorded against your name.</p>
               <p>Tickets nobody touches for 7 days close themselves.</p>
             </>
           }
@@ -489,7 +489,7 @@ export default function SupportInboxPage() {
             className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-medium focus:outline-none focus:ring-1 focus:ring-[#3A7BD5]">
             <option value="">Any topic</option>
             <option value="billing">Billing</option>
-            <option value="driver">Rider</option>
+            <option value="driver">Driver</option>
             <option value="account">Account</option>
             <option value="delivery">Delivery</option>
             <option value="other">Something else</option>
@@ -498,7 +498,7 @@ export default function SupportInboxPage() {
             className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-medium focus:outline-none focus:ring-1 focus:ring-[#3A7BD5]">
             <option value="">Anyone</option>
             <option value="customer">Customers</option>
-            <option value="driver">Riders</option>
+            <option value="driver">Drivers</option>
             <option value="business">Businesses</option>
           </select>
 
@@ -747,14 +747,14 @@ export default function SupportInboxPage() {
                       <button
                         onClick={() => resolveVehicleChange(true)}
                         className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
-                        title="Switch this rider onto the new vehicle. Recorded in the audit log."
+                        title="Switch this driver onto the new vehicle. Recorded in the audit log."
                       >
                         <CheckCircle2 size={12} /> Approve vehicle change
                       </button>
                       <button
                         onClick={() => resolveVehicleChange(false)}
                         className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
-                        title="Throw away the new vehicle details. The rider keeps the one on file and can apply again."
+                        title="Throw away the new vehicle details. The driver keeps the one on file and can apply again."
                       >
                         <XCircle size={12} /> Turn down
                       </button>
@@ -791,9 +791,9 @@ export default function SupportInboxPage() {
                     <button
                       onClick={reopenChat}
                       className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
-                      title="Let the customer and the rider message each other again on this delivery, for 24 hours. Recorded in the audit log."
+                      title="Let the customer and the driver message each other again on this delivery, for 24 hours. Recorded in the audit log."
                     >
-                      <MessageSquare size={12} /> Let customer and rider talk
+                      <MessageSquare size={12} /> Let customer and driver talk
                     </button>
                   )}
                   {/* chatReopen.close was defined against a live route and
@@ -803,7 +803,7 @@ export default function SupportInboxPage() {
                     <button
                       onClick={closeChat}
                       className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
-                      title="Stop the customer and the rider messaging each other on this delivery. Recorded in the audit log."
+                      title="Stop the customer and the driver messaging each other on this delivery. Recorded in the audit log."
                     >
                       <XCircle size={12} /> Stop that chat
                     </button>

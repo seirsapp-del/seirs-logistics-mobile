@@ -182,7 +182,7 @@ export function SosHistory({
       {rows !== null && rows.length > 1 && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
           <span className="font-semibold">{personLabel} has pressed SOS {rows.length} times.</span>{' '}
-          Read them together before deciding what this one is. A rider
+          Read them together before deciding what this one is. A driver
           repeating on the same route and somebody leaning on the button
           look identical one alert at a time.
         </div>

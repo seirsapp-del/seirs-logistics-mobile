@@ -17,6 +17,7 @@ import { FeesService } from '../fees/fees.service';
 import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
 import { DriverEarning } from '../earnings/driver-earning.entity';
 import { vehicleIdentityForPassenger } from '../common/redact-driver';
+import { DriverDocument, DriverDocStatus } from './driver-document.entity';
 
 // Spec V8 §2.1 - recognised KYC document IDs
 const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
@@ -68,6 +69,7 @@ export class DriversService {
     @InjectRepository(DriverLevelChange)      private levelChangesRepo: Repository<DriverLevelChange>,
     @InjectRepository(DriverVehicleChange)    private vehicleChangesRepo: Repository<DriverVehicleChange>,
     @InjectRepository(DriverEarning)          private earningsRepo:   Repository<DriverEarning>,
+    @InjectRepository(DriverDocument)         private docsRepo:       Repository<DriverDocument>,
     private fraudService:    FraudService,
     private trackingGateway: TrackingGateway,
     private feesService:     FeesService,
@@ -2156,7 +2158,101 @@ export class DriversService {
     if (!driver) throw new NotFoundException('Driver profile not found.');
 
     await this.repo.update(driver.id, { [field]: url } as Partial<Driver>);
-    return { docId, saved: true };
+
+    /**
+     * Queue it for review.
+     *
+     * The URL column above is still written because plenty of code reads
+     * it, but approval has to attach to a specific FILE rather than to the
+     * slot it occupies. Re-uploading always returns the document to
+     * 'submitted' and bumps the version, so an approved driver swapping in
+     * a new licence does not inherit the old approval.
+     */
+    const existing = await this.docsRepo.findOne({ where: { driverId: driver.id, docId } });
+    if (existing) {
+      await this.docsRepo.update(existing.id, {
+        url,
+        status:          'submitted',
+        rejectionReason: null,
+        reviewedById:    null,
+        reviewedAt:      null,
+        version:         existing.version + 1,
+      });
+    } else {
+      await this.docsRepo.save(this.docsRepo.create({ driverId: driver.id, docId, url }));
+    }
+
+    return { docId, saved: true, status: 'submitted' };
+  }
+
+  /** Every document this driver has uploaded, with its real review state. */
+  async myKycDocuments(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+    const docs = await this.docsRepo.find({
+      where: { driverId: driver.id },
+      order: { updatedAt: 'DESC' },
+    });
+    return {
+      documents: docs.map(d => ({
+        docId:           d.docId,
+        url:             d.url,
+        status:          d.status,
+        rejectionReason: d.rejectionReason,
+        reviewedAt:      d.reviewedAt,
+        version:         d.version,
+      })),
+    };
+  }
+
+  // ── Admin review queue ──────────────────────────────────────────────────
+
+  async listDriverDocuments(status?: DriverDocStatus, page = 1) {
+    const take = 50;
+    const [rows, total] = await this.docsRepo.findAndCount({
+      where: status ? { status } : {},
+      relations: ['driver', 'driver.user'],
+      order: { createdAt: 'ASC' },   // oldest waiting first
+      take,
+      skip: (page - 1) * take,
+    });
+    return {
+      items: rows.map(d => ({
+        id:              d.id,
+        docId:           d.docId,
+        url:             d.url,
+        status:          d.status,
+        rejectionReason: d.rejectionReason,
+        version:         d.version,
+        createdAt:       d.createdAt,
+        reviewedAt:      d.reviewedAt,
+        driverId:        d.driverId,
+        driverName:      d.driver?.user?.name ?? null,
+        driverEmail:     d.driver?.user?.email ?? null,
+        driverStatus:    d.driver?.status ?? null,
+      })),
+      total, page, take,
+    };
+  }
+
+  async reviewDriverDocument(
+    id: string,
+    adminUserId: string,
+    decision: 'approved' | 'rejected',
+    reason?: string,
+  ) {
+    const doc = await this.docsRepo.findOne({ where: { id } });
+    if (!doc) throw new NotFoundException('Document not found.');
+    if (decision === 'rejected' && !reason?.trim()) {
+      throw new BadRequestException('Tell the driver why, or they will upload the same photo again.');
+    }
+    await this.docsRepo.update(id, {
+      status:          decision,
+      rejectionReason: decision === 'rejected' ? reason!.trim() : null,
+      reviewedById:    adminUserId,
+      reviewedAt:      new Date(),
+    });
+    return { id, status: decision };
   }
 
   // Spec V8 §2.10 / §2.18 - derive demand zones from recent pickup density

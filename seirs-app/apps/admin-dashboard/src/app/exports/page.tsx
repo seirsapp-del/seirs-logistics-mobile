@@ -79,7 +79,7 @@ const OPERATIONAL_EXPORTS: ExportCard[] = [
     key:         'drivers',
     title:       'Drivers',
     description:
-      'Rider roster with vehicle, status, value level and rating. Bank details are the last 4 digits only, and no KYC document, selfie or live position is included.',
+      'Driver roster with vehicle, status, value level and rating. Bank details are the last 4 digits only, and no KYC document, selfie or live position is included.',
     permission:  OPERATIONAL_PERMISSION,
     icon:        Truck,
   },
@@ -221,7 +221,7 @@ Your name, the dates and the number of rows are written to the Audit Log.`,
         storageKey="exports"
         help={
           <>
-            <p><b>Nothing here changes anything.</b> These buttons only read. No customer, rider or partner is affected by a download.</p>
+            <p><b>Nothing here changes anything.</b> These buttons only read. No customer, driver or partner is affected by a download.</p>
             <p><b>Money is written to the kobo</b> so a payout run adds up against the bank statement rather than being rounded into disagreement.</p>
             <p><b>Dates are Nigerian dates.</b> Both ends are included, so "1 to 31 August" means the whole of August in Lagos, whatever timezone your laptop is in.</p>
             <p><b>Every download is recorded</b> in the Audit Log with your name, the dates and the number of rows. The personal-data files are real people's contact details: keep them off shared drives.</p>

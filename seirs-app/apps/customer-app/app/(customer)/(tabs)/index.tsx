@@ -165,7 +165,7 @@ export default function CustomerHomeScreen() {
                 {activeTrip.unpaid
                   ? t('home.deliveryAwaitingPayment', { defaultValue: 'Waiting for payment' })
                   : activeTrip.status === 'pending'
-                    ? t('home.deliveryFindingRider', { defaultValue: 'Finding you a rider' })
+                    ? t('home.deliveryFindingRider', { defaultValue: 'Finding you a driver' })
                     : t('home.deliveryInProgress')}
               </Text>
               <Text style={[styles.activeBannerSub, { color: theme.textSecond }]} numberOfLines={1}>

@@ -161,7 +161,7 @@ export default function WithdrawalScreen() {
         `Withdraw up to ${naira(numericAmount)} to ${bank?.bankName ?? 'your bank'} ` +
         `(${bank?.bankAccountNumber}).\n\n` +
         (holdbackApplies
-          ? `New riders keep ${holdbackPct}% back for the first few weeks, so ` +
+          ? `New drivers keep ${holdbackPct}% back for the first few weeks, so ` +
             `${naira(expectedPayout)} is sent now and ${naira(heldBack)} stays in ` +
             `your balance.\n\n`
           : '') +
@@ -216,7 +216,7 @@ export default function WithdrawalScreen() {
             */}
             You asked for {naira(numericAmount)} and {naira(paidAmount)} was sent.
             {holdbackApplies
-              ? ` New riders keep ${holdbackPct}% back for the first few weeks, so ${naira(round2(numericAmount - paidAmount))} stays in your balance for next time.`
+              ? ` New drivers keep ${holdbackPct}% back for the first few weeks, so ${naira(round2(numericAmount - paidAmount))} stays in your balance for next time.`
               : ' Withdrawals match whole deliveries, so the rest stays available.'}
           </Text>
         )}

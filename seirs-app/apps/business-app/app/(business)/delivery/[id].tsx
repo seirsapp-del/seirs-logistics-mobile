@@ -266,7 +266,7 @@ export default function DeliveryDetailScreen() {
                 dialog.alert(
                   r.status === 'pending' ? 'Sent to support' : 'Return approved',
                   r.status === 'pending'
-                    ? 'A rider is carrying this package, so support has to arrange it. We will let you know.'
+                    ? 'A driver is carrying this package, so support has to arrange it. We will let you know.'
                     : 'Pay in the app and we will bring it back to your pickup address.',
                 );
                 setD(await businessApi.delivery(String(id)));
@@ -350,7 +350,7 @@ export default function DeliveryDetailScreen() {
                 >
                   <Icon name="ExternalLink" size={14} color={colors.primary} />
                   <Text style={{ color: colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
-                    See where your rider is on Google Maps
+                    See where your driver is on Google Maps
                   </Text>
                 </Pressable>
               </View>
@@ -418,7 +418,7 @@ export default function DeliveryDetailScreen() {
               Nobody available to receive
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
-              The rider is at the drop-off and cannot hand the package over. If we do
+              The driver is at the drop-off and cannot hand the package over. If we do
               not hear from you it will follow your booked fallback.
             </Text>
           </View>

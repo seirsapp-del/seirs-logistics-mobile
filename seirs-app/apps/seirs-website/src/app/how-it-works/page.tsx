@@ -252,7 +252,7 @@ export default async function HowItWorksPage() {
             <FeatureBlock
               icon={MapPin}
               title="Live location, audit trail"
-              body="The rider's position updates as they move, and every handoff is stored with its photos, codes and timestamps. If anything goes wrong, support has the full chain of custody."
+              body="The driver's position updates as they move, and every handoff is stored with its photos, codes and timestamps. If anything goes wrong, support has the full chain of custody."
             />
             <FeatureBlock
               icon={Receipt}

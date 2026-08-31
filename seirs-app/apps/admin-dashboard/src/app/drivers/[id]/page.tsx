@@ -389,7 +389,7 @@ export default function DriverDetailPage() {
             {
               label: 'Jobs assigned, all outcomes',
               value: deliveryCount,
-              hint:  'Every row ever handed to this rider, whatever became of it.',
+              hint:  'Every row ever handed to this driver, whatever became of it.',
             },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center" title={s.hint}>
@@ -416,7 +416,7 @@ export default function DriverDetailPage() {
             <div className="text-xl font-bold text-gray-900">{naira(totalEarned)}</div>
             <div className="text-xs font-semibold text-gray-600 mt-1">Earned on delivered runs</div>
             <p className="mt-1.5 text-xs text-gray-500">
-              Lifetime sum of this rider&apos;s cut across every run that reached
+              Lifetime sum of this driver&apos;s cut across every run that reached
               delivered. A record of work done, not a balance owed: most of it has
               already been paid out.
             </p>
@@ -430,7 +430,7 @@ export default function DriverDetailPage() {
             <div className="text-xl font-bold text-gray-900">{naira(availableNgn ?? 0)}</div>
             <div className="text-xs font-semibold text-gray-600 mt-1">Available to withdraw</div>
             <p className="mt-1.5 text-xs text-gray-500">
-              Cleared earnings this rider can draw today. Pending runs are not
+              Cleared earnings this driver can draw today. Pending runs are not
               counted until their dispute window closes.
               {pendingNgn ? ` ${naira(pendingNgn)} still pending.` : ''}
             </p>
@@ -446,7 +446,7 @@ export default function DriverDetailPage() {
           <Star size={20} className="fill-amber-400 text-amber-400 shrink-0" />
           <div>
             <div className="text-sm font-bold text-gray-900">{Number(driver.rating ?? 0).toFixed(1)} out of 5</div>
-            <div className="text-xs text-gray-500">Average of every star a customer has left on this rider&apos;s runs.</div>
+            <div className="text-xs text-gray-500">Average of every star a customer has left on this driver&apos;s runs.</div>
           </div>
         </div>
 
@@ -477,7 +477,7 @@ export default function DriverDetailPage() {
           </Section>
         )}
 
-        <SosHistory userId={driver.user?.id} personLabel={driver.user?.name ?? 'this rider'} alerts={sosAlerts} />
+        <SosHistory userId={driver.user?.id} personLabel={driver.user?.name ?? 'this driver'} alerts={sosAlerts} />
 
         {/* Financial. Driver payout bank details visible here since drivers
             actually use direct debit for withdrawals. */}

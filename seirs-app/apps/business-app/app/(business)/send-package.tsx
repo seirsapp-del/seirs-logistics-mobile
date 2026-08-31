@@ -1359,7 +1359,7 @@ export default function SendPackageScreen() {
                 How do we get the packages? <Text style={{ color: '#DC2626' }}>*</Text>
               </Text>
               {([
-                { key: 'door',  title: 'A driver collects from me', sub: 'Rider comes to your address', icon: 'Bike' },
+                { key: 'door',  title: 'A driver collects from me', sub: 'Driver comes to your address', icon: 'Bike' },
                 // Founder 2026-08-16: say what actually happens, not what
                 // it costs. "Cheaper" is a claim; this is the instruction.
                 { key: 'store', title: "I'll drop them at a counter", sub: 'You drop them off, a driver collects from the counter', icon: 'Store' },

@@ -58,7 +58,7 @@ const REPORTS: ReportDef[] = [
     key:         'delivery_performance',
     title:       'Where deliveries stand',
     description: 'One line per delivery state, with how many jobs are sitting in it. Covers every delivery SEIRS has ever taken, not a date range.',
-    contains:    'Counts only. No customer, rider or address is named.',
+    contains:    'Counts only. No customer, driver or address is named.',
     icon:        Package,
     personal:    false,
     columns: [
@@ -75,7 +75,7 @@ const REPORTS: ReportDef[] = [
     key:         'revenue_finance',
     title:       'Money taken each day',
     description: 'One line per day for the last 30 days: what customers were charged on jobs that completed, and how many completed. Not what SEIRS keeps.',
-    contains:    'Daily totals only. No customer or rider is named.',
+    contains:    'Daily totals only. No customer or driver is named.',
     icon:        TrendingUp,
     personal:    false,
     columns: [
@@ -93,13 +93,13 @@ const REPORTS: ReportDef[] = [
   },
   {
     key:         'driver_activity',
-    title:       'Busiest riders',
-    description: 'The 50 riders with the most completed deliveries, with their rating and vehicle. There are no earnings in this file.',
-    contains:    'Names real riders: name, SEIRS ID, vehicle, deliveries, rating, account state. No bank details, no documents, no phone number, no address.',
+    title:       'Busiest drivers',
+    description: 'The 50 drivers with the most completed deliveries, with their rating and vehicle. There are no earnings in this file.',
+    contains:    'Names real drivers: name, SEIRS ID, vehicle, deliveries, rating, account state. No bank details, no documents, no phone number, no address.',
     icon:        BarChart2,
     personal:    true,
     columns: [
-      { header: 'Rider',                 get: r => r.user?.name ?? 'Name missing' },
+      { header: 'Driver',                 get: r => r.user?.name ?? 'Name missing' },
       { header: 'SEIRS ID',              get: r => r.user?.accountId ?? '' },
       { header: 'Vehicle',               get: r => r.vehicleType ?? '' },
       { header: 'Deliveries completed',  get: r => Number(r.totalDeliveries ?? 0) },

@@ -440,7 +440,7 @@ export function TrackingView() {
                     {naira(feeOwed)} to settle before collection
                   </div>
                   <div className="mt-1 text-xs leading-relaxed text-[#0F2B4C]/80">
-                    Nobody was available when the rider arrived, so this package
+                    Nobody was available when the driver arrived, so this package
                     is being kept safe at a SEIRS partner counter. The counter
                     address appears as soon as this is settled.
                   </div>

@@ -99,6 +99,14 @@ export class DriversController {
     return this.driversService.updateKycDoc(user.id, body.docId, body.url);
   }
 
+  // GET /api/v1/drivers/me/kyc-documents
+  // Real per-document review state, so the app stops calling a document
+  // "Verified" just because the account is approved.
+  @Get('me/kyc-documents')
+  myKycDocuments(@CurrentUser() user: User) {
+    return this.driversService.myKycDocuments(user.id);
+  }
+
   // ── Driver Premium subscription (Spec V8 §2.13 / D35) ─────────────────────
 
   @Get('me/subscription')

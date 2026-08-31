@@ -167,7 +167,7 @@ export default function TopBar() {
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => { if (q.trim().length >= 2) setOpen(true); }}
           onKeyDown={onInputKeyDown}
-          placeholder="Search a page, a person, a rider or a tracking code..."
+          placeholder="Search a page, a person, a driver or a tracking code..."
           className="w-full pl-9 pr-14 py-2.5 rounded-lg border border-[#E5E7EB] text-sm bg-[#F8F9FB] text-[#0F2B4C] focus:outline-none focus:ring-2 focus:ring-[#3A7BD5] placeholder:text-[#0F2B4C]/40"
         />
         {/* Right-side controls: loader when searching, clear button, or Cmd+K hint */}

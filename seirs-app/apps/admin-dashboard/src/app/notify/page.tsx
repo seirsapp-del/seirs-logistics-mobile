@@ -43,8 +43,8 @@ const AUDIENCES: Array<{ key: Audience; label: string; sub: string; exact: strin
     exact: 'one account you pick below', Icon: UserSearch, color: '#0F2B4C' },
   { key: 'all_customers', label: 'Every customer',     sub: 'Every active customer account, business accounts included',
     exact: 'every customer account that is not suspended, business accounts included', Icon: Users, color: '#3A7BD5' },
-  { key: 'all_drivers',   label: 'Every rider',        sub: 'Every active rider account, including ones still awaiting approval',
-    exact: 'every rider account that is not suspended, including riders still waiting for approval', Icon: Truck, color: '#D97706' },
+  { key: 'all_drivers',   label: 'Every driver',        sub: 'Every active driver account, including ones still awaiting approval',
+    exact: 'every driver account that is not suspended, including drivers still waiting for approval', Icon: Truck, color: '#D97706' },
   { key: 'all_partners',  label: 'Every partner store', sub: 'Every active partner store account',
     exact: 'every partner store account that is not suspended', Icon: Store, color: '#16A34A' },
 ];
@@ -375,7 +375,7 @@ export default function NotifyComposerPage() {
           <textarea
             value={body}
             onChange={e => setBody(e.target.value.slice(0, charLimit))}
-            placeholder="Heavy rain on Admiralty Way. Rider pickups in the area are paused until 4pm."
+            placeholder="Heavy rain on Admiralty Way. Driver pickups in the area are paused until 4pm."
             rows={4}
             className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm focus:border-[#3A7BD5] focus:outline-none"
           />

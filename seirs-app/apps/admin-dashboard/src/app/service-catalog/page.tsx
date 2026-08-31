@@ -125,7 +125,7 @@ export default function ServiceCatalogPage() {
     const ok = await confirm({
       title:        `Save "${cat.name}" and make it live?`,
       message:      [
-        `Customers picking ${cat.name} will be charged ${Number(cat.surchargePercent) || 0}% more than the base price, riders are given ${Number(cat.setupDwellMinutes) || 0} minutes at each stop for it, and ${(cat.safetyRules?.blockedVehicles ?? []).length} vehicle type(s) are refused outright.`,
+        `Customers picking ${cat.name} will be charged ${Number(cat.surchargePercent) || 0}% more than the base price, drivers are given ${Number(cat.setupDwellMinutes) || 0} minutes at each stop for it, and ${(cat.safetyRules?.blockedVehicles ?? []).length} vehicle type(s) are refused outright.`,
         cat.active
           ? 'The change reaches all three apps within about five minutes. Anything already booked keeps the price it was quoted.'
           : 'This category is switched OFF, so saving also removes it from every customer Send screen, and from this editor.',
@@ -298,7 +298,7 @@ export default function ServiceCatalogPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <Field
-                    label="Minutes the rider is given at each stop"
+                    label="Minutes the driver is given at each stop"
                     hint="Time for handling this kind of item, before anything added for weight or for the neighbourhood."
                   >
                     <input
