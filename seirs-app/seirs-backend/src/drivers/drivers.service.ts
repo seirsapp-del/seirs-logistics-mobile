@@ -2200,6 +2200,7 @@ export class DriversService {
         status:          d.status,
         rejectionReason: d.rejectionReason,
         reviewedAt:      d.reviewedAt,
+        expiresAt:       d.expiresAt,
         version:         d.version,
       })),
     };
@@ -2232,6 +2233,7 @@ export class DriversService {
         version:         d.version,
         createdAt:       d.createdAt,
         reviewedAt:      d.reviewedAt,
+        expiresAt:       d.expiresAt,
         driverId:        d.driverId,
         driverName:      d.driver?.user?.name ?? null,
         driverEmail:     d.driver?.user?.email ?? null,
@@ -2241,11 +2243,54 @@ export class DriversService {
     };
   }
 
+  /**
+   * What is waiting, and what is about to stop being valid.
+   *
+   * The dashboard had no way to know a driver's KYC was sitting unreviewed,
+   * so it never told anyone (founder 2026-08-31). Expiring is the other
+   * half: a licence that lapses is not a document anyone re-submits
+   * unprompted.
+   */
+  async driverDocumentCounts() {
+    const soon = new Date();
+    soon.setDate(soon.getDate() + 30);
+    const today = new Date().toISOString().slice(0, 10);
+    const soonStr = soon.toISOString().slice(0, 10);
+
+    const [waiting, expired, expiringSoon, driversWaiting] = await Promise.all([
+      this.docsRepo.count({ where: { status: 'submitted' } }),
+      this.docsRepo
+        .createQueryBuilder('d')
+        .where('d.status = :s', { s: 'approved' })
+        .andWhere('d."expiresAt" IS NOT NULL AND d."expiresAt" < :today', { today })
+        .getCount(),
+      this.docsRepo
+        .createQueryBuilder('d')
+        .where('d.status = :s', { s: 'approved' })
+        .andWhere('d."expiresAt" IS NOT NULL')
+        .andWhere('d."expiresAt" >= :today AND d."expiresAt" <= :soon', { today, soon: soonStr })
+        .getCount(),
+      this.docsRepo
+        .createQueryBuilder('d')
+        .select('COUNT(DISTINCT d.driver_id)', 'c')
+        .where('d.status = :s', { s: 'submitted' })
+        .getRawOne<{ c: string }>(),
+    ]);
+
+    return {
+      waiting,
+      expired,
+      expiringSoon,
+      driversWaiting: Number(driversWaiting?.c ?? 0),
+    };
+  }
+
   async reviewDriverDocument(
     id: string,
     adminUserId: string,
     decision: 'approved' | 'rejected',
     reason?: string,
+    expiresAt?: string | null,
   ) {
     const doc = await this.docsRepo.findOne({ where: { id } });
     if (!doc) throw new NotFoundException('Document not found.');
@@ -2257,6 +2302,9 @@ export class DriversService {
       rejectionReason: decision === 'rejected' ? reason!.trim() : null,
       reviewedById:    adminUserId,
       reviewedAt:      new Date(),
+      // Only an approval carries an expiry: a rejected document has no
+      // validity to run out. Blank clears any date already there.
+      ...(decision === 'approved' ? { expiresAt: expiresAt || null } : {}),
     });
     return { id, status: decision };
   }

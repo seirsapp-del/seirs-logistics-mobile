@@ -69,6 +69,19 @@ export class DriverDocument {
   @Column({ type: 'int', default: 1 })
   version: number;
 
+  /**
+   * When the document itself stops being valid: a licence expiry, an
+   * insurance certificate's end date. Set by the reviewer from what the
+   * document actually says, because nothing else knows it.
+   *
+   * Founder 2026-08-31: "it should have a date so we can set when a kyc
+   * expired and keep track". A driver carrying passengers on a licence that
+   * lapsed six months ago is the kind of thing that is only ever noticed
+   * after it matters.
+   */
+  @Column({ type: 'date', nullable: true })
+  expiresAt: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

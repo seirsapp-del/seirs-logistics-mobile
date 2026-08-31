@@ -32,6 +32,8 @@ import {
 LogBox.ignoreAllLogs(true);
 
 import { Text as RNText, TextInput as RNTextInput } from 'react-native';
+import { useFonts } from 'expo-font';
+import { installBrandFont } from '@seirs/shared/theme/brandFont';
 
 /**
  * Cap how far system font scaling can stretch the UI.
@@ -48,6 +50,16 @@ const MAX_FONT_SCALE = 1.25;
 RNText.defaultProps = { ...(RNText.defaultProps ?? {}), maxFontSizeMultiplier: MAX_FONT_SCALE };
 // @ts-ignore
 RNTextInput.defaultProps = { ...(RNTextInput.defaultProps ?? {}), maxFontSizeMultiplier: MAX_FONT_SCALE };
+
+/**
+ * Inter, for every Text in the app.
+ *
+ * Installed at module scope so it is in place before the first render.
+ * Nothing is drawn until the files themselves have loaded (see the gate
+ * in RootLayout), so no screen ever asks for a family Android has not
+ * registered yet.
+ */
+installBrandFont();
 
 configureApi(API_BASE);
 // Business app stores session under a separate key so it can coexist with
@@ -192,7 +204,19 @@ export default function RootLayout() {
       .catch((e) => { console.warn('i18n init failed, continuing:', e?.message); setI18nReady(true); });
   }, []);
 
-  if (!i18nReady) return null;
+  // Inter, bundled. Held here rather than requested at run time so the app
+  // reads the same on a handset with a FlipFont as on a stock one.
+  const [fontsLoaded] = useFonts({
+    'Inter-Regular':  require('../assets/fonts/Inter-Regular.ttf'),
+    'Inter-Medium':   require('../assets/fonts/Inter-Medium.ttf'),
+    'Inter-SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
+    'Inter-Bold':     require('../assets/fonts/Inter-Bold.ttf'),
+    'Inter-Black':    require('../assets/fonts/Inter-Black.ttf'),
+  });
+
+  // The splash stays up for both. Rendering before the fonts register would
+  // show one frame of the system font and then reflow the whole app.
+  if (!i18nReady || !fontsLoaded) return null;
 
   return (
     <ErrorBoundary>

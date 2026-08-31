@@ -350,7 +350,46 @@ export class MailService {
       return;
     }
 
-    this.logger.warn(`[MAIL-NOOP] Would send "${subject}" to ${to} - no transport configured`);
+    /**
+     * No transport is a FAILURE, not a quiet success.
+     *
+     * This used to warn and return, so every caller above recorded a
+     * delivery that never happened: a staff invite reported as emailed, a
+     * signup OTP reported as sent, a password reset reported as on its
+     * way. A deploy missing RESEND_API_KEY looked completely healthy while
+     * nobody could receive anything (founder hit exactly this on
+     * 2026-08-31, one day before launch).
+     *
+     * Throwing is safe for the callers that matter: the signup path
+     * already turns a throw into { sent: false }, and createAdmin already
+     * reports inviteSent to the dashboard.
+     */
+    this.logger.error(
+      `[MAIL-NOOP] Cannot send "${subject}" to ${to}: no mail transport configured. ` +
+      'Set RESEND_API_KEY (or MAIL_HOST/MAIL_USER/MAIL_PASS).',
+    );
+    throw new Error('No mail transport is configured, so nothing was sent.');
+  }
+
+  /**
+   * What the mailer can actually do right now, for /health.
+   *
+   * Reports the shape of the configuration, never a credential. The
+   * from-address is included deliberately: Resend's shared
+   * onboarding@resend.dev sender delivers ONLY to the Resend account
+   * owner and silently refuses every other recipient, which looks
+   * identical to working when the person testing it is the owner.
+   */
+  get transportStatus() {
+    const kind: 'resend' | 'smtp' | 'none' =
+      this.resend ? 'resend' : this.smtpTransporter ? 'smtp' : 'none';
+    const from = this.cfg.get<string>('MAIL_FROM', 'Seirs Logistics <onboarding@resend.dev>');
+    return {
+      configured: kind !== 'none',
+      kind,
+      from,
+      sharedTestSender: /onboarding@resend\.dev/i.test(from),
+    };
   }
 
   // ── Email verification OTP ──────────────────────────────────────────────────
@@ -472,12 +511,12 @@ export class MailService {
     const html = baseTemplate(`
       <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Welcome to Seirs!</h2>
       <p>Hi ${name},</p>
-      <p>Your Seirs account is ready. You can now send and track packages across Africa and Europe - fast, affordable, and reliable.</p>
+      <p>Your Seirs account is ready. You can now send parcels across Nigeria and follow every one of them from pickup to the door.</p>
       <p><strong>What you can do:</strong></p>
       <ul style="padding-left:20px;color:#374151">
         <li>Send packages with real-time tracking</li>
         <li>Choose economy, standard, or instant delivery</li>
-        <li>Pay by card, bank transfer, or Seirs wallet</li>
+        <li>Pay at checkout by card, bank transfer or USSD</li>
       </ul>
       <p style="font-size:13px;color:#6B7280">Download the Seirs app to get started.</p>
     `);

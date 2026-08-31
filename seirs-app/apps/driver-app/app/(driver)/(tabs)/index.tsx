@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Bell, MapPin, Star, TrendingUp, Truck, Zap,
+  Bell, MapPin, Star, TrendingUp, Truck, Zap, Users, CheckCircle2,
   ChevronRight, Wifi, WifiOff, Package,
   Navigation, Clock, AlignLeft,
 } from 'lucide-react-native';
@@ -20,7 +20,7 @@ import { Drawer } from '@/components/Drawer';
 import { CorridorCard } from '@/components/CorridorCard';
 import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as Location from 'expo-location';
 import { io, Socket } from 'socket.io-client';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -240,6 +240,48 @@ export default function DriverHomeScreen() {
    * totalTrips is kept as a fallback in case a future payload uses it.
    */
   const tripCount     = Number(driverData?.totalDeliveries ?? driverData?.totalTrips ?? 0);
+
+  /**
+   * The rating a customer would actually see, not the driver row's copy.
+   * The stored column showed 4.9 while the profile computed 4.4 from the
+   * real rows, and two numbers for one thing a tab apart is worse than
+   * either (founder 2026-08-31).
+   */
+  const [ratingAvg,   setRatingAvg]   = useState<number | null>(null);
+  const [ratingCount, setRatingCount] = useState(0);
+  const [doneToday,   setDoneToday]   = useState(0);
+  const [seatReqs,    setSeatReqs]    = useState(0);
+
+  /**
+   * Plain useEffect, not useFocusEffect.
+   *
+   * The focus variant never fired on this screen: neither the resolve nor
+   * the reject branch ran, so the cards sat on their initial values while
+   * /drivers/me/ratings was happily returning 4.43 from seven ratings.
+   * Home is the tab a driver lands on, so a mount-time load is the right
+   * shape anyway, and refreshDeliveries already covers coming back to it.
+   */
+  useEffect(() => {
+    driversApi.myRatings()
+      .then((r: any) => { setRatingAvg(Number(r?.average ?? 0)); setRatingCount(Number(r?.total ?? 0)); })
+      .catch(() => {});
+    earningsApi.dashboard()
+      .then((d: any) => setDoneToday(Number(d?.today?.deliveries ?? 0)))
+      .catch(() => {});
+    // Seat requests waiting on an answer, across every trip the driver
+    // declared. Counted here so the card can carry the badge.
+    (async () => {
+      try {
+        const trips = await driversApi.myInterstateTrips().catch(() => []);
+        let pending = 0;
+        for (const t of (trips ?? []).filter((x: any) => x?.acceptsPassengers)) {
+          const bs = await driversApi.tripBookings(t.id).catch(() => []);
+          pending += (bs ?? []).filter((b: any) => String(b?.status) === 'requested').length;
+        }
+        setSeatReqs(pending);
+      } catch { /* leave the badge off */ }
+    })();
+  }, []);
 
   const activeJobs = activeDeliveries.filter(d => d.status === 'assigned' || d.status === 'picked_up' || d.status === 'in_transit');
   const activeJob  = activeJobs[0];
@@ -487,39 +529,58 @@ export default function DriverHomeScreen() {
         {/* ── Widgets row ──────────────────────────────────────────────── */}
         <View style={styles.widgetRow}>
 
-          {/* Wallet */}
-          <Pressable style={[styles.widgetCard, styles.walletWidget, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/withdrawal' as any)}>
+          {/* The withdrawable balance USED to sit here and no longer does.
+              A driver's money should not be readable over their shoulder at
+              a junction (founder 2026-08-31: "any threat actor can just look
+              at their screen and see the money they have and try to rob
+              them"). It lives on Earnings, which is opened deliberately. */}
+
+          {/* Done today */}
+          <Pressable style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/(tabs)/history' as any)}>
             <View style={styles.widgetIcon}>
-              <TrendingUp size={18} color={theme.primary} strokeWidth={1.75} />
+              <CheckCircle2 size={18} color={theme.primary} strokeWidth={1.75} />
             </View>
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Withdrawable</Text>
-            <Text style={[styles.widgetValue, { color: theme.text }]}>
-              {naira(withdrawable ?? 0)}
-            </Text>
-            <Text style={[styles.widgetSub, { color: earningsStale ? theme.warning : theme.textThird }]}>
-              {earningsStale ? 'Not updated, no connection' : `Today ${naira(todayEarnings)}`}
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Done today</Text>
+            <Text style={[styles.widgetValue, { color: theme.text }]}>{doneToday}</Text>
+            <Text style={[styles.widgetSub, { color: theme.textThird }]} numberOfLines={1}>
+              {doneToday === 1 ? 'job completed' : 'jobs completed'}
             </Text>
           </Pressable>
 
-          {/* Weekly Goal widget PARKED (founder deferred the weekly-goal
-              program, 2026-08-22). The self-set target on the Earnings
-              tab remains; re-add here only after the founder rules. */}
-
-          {/* Rating */}
+          {/* Rating, the REAL one.
+              This read the driver row's stored copy, which showed 4.9 while
+              the profile computed 4.4 from the actual ratings. Two numbers
+              for one thing, one tab apart. Now both come from the same
+              place. */}
           <Pressable style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/ratings' as any)}>
             <View style={styles.widgetIcon}>
               <Star size={18} color="#FFBE0B" strokeWidth={1.75} />
             </View>
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Rating</Text>
-            {/* Dash for unrated drivers: "0.0 Below threshold" scared
-                every new driver for no reason. */}
-            {/* A stored rating with zero trips is a fiction: the seed gave
-                Emeka 4.9 before he ever carried a parcel. */}
-            <Text style={[styles.widgetValue, { color: tripCount > 0 && rating > 0 && rating < 3.5 ? '#EF4444' : theme.text }]}>
-              {tripCount > 0 && rating > 0 ? rating.toFixed(1) : 'New'}
+            {/* "New" rather than 0.0: a dash does not frighten a driver who
+                simply has not been rated yet. */}
+            <Text style={[styles.widgetValue, { color: ratingCount > 0 && (ratingAvg ?? 0) < 3.5 ? '#EF4444' : theme.text }]}>
+              {ratingCount > 0 ? (ratingAvg ?? 0).toFixed(1) : 'New'}
             </Text>
-            {tripCount > 0 && rating > 0 && rating < 3.5 && <Text style={[styles.ratingWarn, { color: '#EF4444' }]}>Below threshold</Text>}
-            <Text style={[styles.widgetSub, { color: theme.textThird }]}>{tripCount} trips</Text>
+            <Text style={[styles.widgetSub, { color: theme.textThird }]} numberOfLines={1}>
+              {ratingCount > 0 ? `${ratingCount} rating${ratingCount === 1 ? '' : 's'}` : 'no ratings yet'}
+            </Text>
+          </Pressable>
+
+          {/* Seat requests.
+              The backend has had accept and decline since Travel Buddy
+              shipped and nothing in this app called either, so a driver
+              declared a trip and never learned that anybody wanted to
+              ride. */}
+          <Pressable style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/seat-requests' as any)}>
+            <View style={styles.widgetIcon}>
+              <Users size={18} color={seatReqs > 0 ? theme.primary : theme.textThird} strokeWidth={1.75} />
+            </View>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Requests</Text>
+            <Text style={[styles.widgetValue, { color: seatReqs > 0 ? theme.primary : theme.text }]}>{seatReqs}</Text>
+            <Text style={[styles.widgetSub, { color: theme.textThird }]} numberOfLines={1}>
+              {seatReqs > 0 ? 'waiting on you' : 'for your trips'}
+            </Text>
           </Pressable>
 
         </View>

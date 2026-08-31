@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Lock } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -7,13 +8,75 @@ import { useConfirm } from '@/components/ConfirmDialog';
 // Sectioned detail row: a labeled card with a two-column key/value grid.
 // Shared across /users/[id] and /drivers/[id] so both detail pages
 // have identical visual rhythm.
-export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+//
+// Collapsible since 2026-08-31. These pages had grown to a single long
+// scroll, and an admin opening a driver to answer one question had to travel
+// past everything else to reach it. The open/closed choice is remembered per
+// section so nobody shuts the same panel every morning.
+export function Section({
+  title,
+  children,
+  summary,
+  defaultOpen = true,
+  storageKey,
+  bare = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  /** Shown in the header while collapsed, so a shut panel still tells you
+   *  whether it is worth opening: "2 on record", "5 waiting". */
+  summary?: React.ReactNode;
+  defaultOpen?: boolean;
+  /** Defaults to the title, so callers rarely need to pass it. */
+  storageKey?: string;
+  /** Skip the two-column Field grid, for sections that lay themselves out. */
+  bare?: boolean;
+}) {
+  const key = `seirs.section.${storageKey ?? title}`;
+  const [open, setOpen] = useState(defaultOpen);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(key);
+      if (v === '0') setOpen(false);
+      if (v === '1') setOpen(true);
+    } catch { /* private window, or storage blocked: keep the default */ }
+  }, [key]);
+
+  const toggle = () => {
+    setOpen((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(key, next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4">
-      <h3 className="text-sm font-bold text-[#0F2B4C] mb-3">{title}</h3>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-        {children}
-      </div>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-4">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-gray-50/70 rounded-xl"
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-bold text-[#0F2B4C]">{title}</span>
+          {summary != null && (
+            <span className="text-xs text-gray-500 truncate">{summary}</span>
+          )}
+        </span>
+        <ChevronDown
+          size={16}
+          className={`text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <div className="px-5 pb-5">
+          {bare ? children : (
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">{children}</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

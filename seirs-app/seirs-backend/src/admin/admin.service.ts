@@ -3197,16 +3197,28 @@ export class AdminService {
       expiresAt: expiry.toISOString(),
     }, ip);
 
+    let emailSent = false;
     try {
       await this.mailService.sendPasswordReset(
         target.email, target.name ?? 'there', token, 'admin',
       );
+      emailSent = true;
     } catch (e: any) {
       this.logger.warn(`Password invalidated for ${adminUserId} but the reset email failed: ${e?.message ?? e}`);
     }
 
+    /**
+     * The old return asserted the email had gone out no matter what, so a
+     * failed send looked identical to a good one and the admin had no
+     * reason to follow up. Their password is revoked either way, which is
+     * the dangerous half to be wrong about.
+     */
     return {
-      message: 'Their password no longer works. A reset link has been emailed to them.',
+      emailSent,
+      message: emailSent
+        ? 'Their password no longer works. A reset link has been emailed to them.'
+        : 'Their password no longer works, but the reset email could NOT be sent. '
+          + 'They cannot sign in until you get a link to them another way.',
     };
   }
 

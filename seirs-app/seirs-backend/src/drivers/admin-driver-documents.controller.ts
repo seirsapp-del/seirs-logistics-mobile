@@ -35,10 +35,21 @@ export class AdminDriverDocumentsController {
     return this.drivers.listDriverDocuments(status, page, driverId);
   }
 
-  // POST /api/v1/admin/driver-documents/:id/approve
+  // GET /api/v1/admin/driver-documents/counts
+  // Feeds the dashboard: waiting, expired, expiring within 30 days.
+  @Get('counts')
+  counts() {
+    return this.drivers.driverDocumentCounts();
+  }
+
+  // POST /api/v1/admin/driver-documents/:id/approve  { expiresAt? }
   @Post(':id/approve')
-  approve(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.drivers.reviewDriverDocument(id, user.id, 'approved');
+  approve(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body?: { expiresAt?: string | null },
+  ) {
+    return this.drivers.reviewDriverDocument(id, user.id, 'approved', undefined, body?.expiresAt ?? null);
   }
 
   // POST /api/v1/admin/driver-documents/:id/reject  { reason }

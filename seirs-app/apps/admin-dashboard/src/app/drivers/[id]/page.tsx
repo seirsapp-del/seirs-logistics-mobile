@@ -52,6 +52,8 @@ export default function DriverDetailPage() {
   const [docs,      setDocs]      = useState<any[] | null>(null);
   const [docReason, setDocReason] = useState<Record<string, string>>({});
   const [docBusy,   setDocBusy]   = useState<string | null>(null);
+  const [docsOpen,  setDocsOpen]  = useState(true);
+  const [delivOpen, setDelivOpen] = useState(false);
   const docsWaiting = (docs ?? []).filter((d: any) => d.status === 'submitted').length;
 
   const loadDocs = useCallback(async () => {
@@ -399,16 +401,24 @@ export default function DriverDetailPage() {
           <div className="border-t border-gray-50 pt-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-700">Documents</h3>
-              {docsWaiting > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                  {docsWaiting} waiting on you
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {docsWaiting > 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    {docsWaiting} waiting on you
+                  </span>
+                )}
+                {!!docs?.length && (
+                  <button type="button" onClick={() => setDocsOpen((v) => !v)}
+                    className="text-xs text-gray-500 hover:text-gray-800 underline">
+                    {docsOpen ? 'Hide' : `Show ${docs.length}`}
+                  </button>
+                )}
+              </div>
             </div>
 
             {docs === null ? (
               <p className="text-sm text-gray-400">Loading documents...</p>
-            ) : docs.length === 0 ? (
+            ) : !docsOpen ? null : docs.length === 0 ? (
               <p className="text-sm text-gray-400">
                 This driver has not uploaded any documents yet.
               </p>
@@ -776,9 +786,22 @@ export default function DriverDetailPage() {
 
         {/* Recent deliveries */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-50">
-            <h2 className="font-semibold text-gray-900">Recent Deliveries</h2>
-          </div>
+          <button
+            type="button"
+            onClick={() => setDelivOpen((v) => !v)}
+            aria-expanded={delivOpen}
+            className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-50 text-left hover:bg-gray-50/70"
+          >
+            <span className="flex items-center gap-2">
+              <span className="font-semibold text-gray-900">Recent deliveries</span>
+              <span className="text-xs text-gray-500">
+                {deliveries.length ? `${deliveries.length} shown` : 'none yet'}
+              </span>
+            </span>
+            <span className="text-xs text-gray-500">{delivOpen ? 'Hide' : 'Show'}</span>
+          </button>
+          {delivOpen && (
+          <>
           {deliveries.length === 0 ? (
             <div className="text-center py-12 text-gray-400">No deliveries yet</div>
           ) : (
@@ -814,6 +837,8 @@ export default function DriverDetailPage() {
                 ))}
               </tbody>
             </table>
+          )}
+          </>
           )}
         </div>
       </main>

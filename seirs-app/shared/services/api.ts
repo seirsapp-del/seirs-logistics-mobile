@@ -826,6 +826,21 @@ export const driversApi = {
     }>;
   }) => request<any>('POST', '/drivers/interstate-trips', body),
   myInterstateTrips: () => request<any[]>('GET', '/drivers/interstate-trips/me'),
+
+  /**
+   * Seat requests on a declared trip, and the driver's answer.
+   *
+   * The backend has had accept and decline since Travel Buddy shipped, and
+   * the driver app never called either: a driver declared a trip and then
+   * had no way to see who wanted a seat (founder 2026-08-31). A request
+   * holds no seat and charges nothing until the driver says yes.
+   */
+  tripBookings:   (tripId: string) =>
+    request<any[]>('GET', `/travel-buddy/trips/${tripId}/bookings`),
+  acceptSeat:     (bookingId: string, note?: string) =>
+    request<any>('POST', `/travel-buddy/bookings/${bookingId}/accept`, note ? { note } : {}),
+  declineSeat:    (bookingId: string, reason?: string) =>
+    request<any>('POST', `/travel-buddy/bookings/${bookingId}/decline`, reason ? { reason } : {}),
   /**
    * Change a declared trip. What the server allows narrows once a seat
    * is booked: more seats and more capacity yes, a new departure time

@@ -68,6 +68,7 @@ export class DriversModule implements OnModuleInit {
           "reviewed_by_id"  uuid NULL,
           "reviewedAt"      timestamptz NULL,
           "version"         integer NOT NULL DEFAULT 1,
+          "expiresAt"       date NULL,
           "createdAt"       timestamptz NOT NULL DEFAULT now(),
           "updatedAt"       timestamptz NOT NULL DEFAULT now()
         )
@@ -79,6 +80,9 @@ export class DriversModule implements OnModuleInit {
       await this.ds.query(
         `CREATE INDEX IF NOT EXISTS "driver_documents_status_created"
            ON "driver_documents" ("status", "createdAt")`,
+      );
+      await this.ds.query(
+        `ALTER TABLE "driver_documents" ADD COLUMN IF NOT EXISTS "expiresAt" date NULL`,
       );
     } catch (e: any) {
       console.error(`driver_documents table ensure failed: ${e?.message ?? e}`);

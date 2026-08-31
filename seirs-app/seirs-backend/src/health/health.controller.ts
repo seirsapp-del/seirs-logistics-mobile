@@ -4,6 +4,7 @@ import { SupportTicket } from '../support/support-ticket.entity';
 import { DataSource, Repository } from 'typeorm';
 import { Public } from '../common/decorators/public.decorator';
 import { PricingService } from '../pricing/pricing.service';
+import { MailService } from '../mail/mail.service';
 
 /**
  * GET /api/v1/health - public liveness + readiness probe.
@@ -30,6 +31,7 @@ export class HealthController {
     @InjectDataSource() private readonly dataSource: DataSource,
     @InjectRepository(SupportTicket) private readonly ticketsRepo: Repository<SupportTicket>,
     private readonly pricing: PricingService,
+    private readonly mail: MailService,
   ) {}
 
   @Public()
@@ -153,6 +155,16 @@ export class HealthController {
       db:        { reachable: dbOk, ...(dbError ? { error: dbError } : {}) },
       support,
       pricing,
+      /**
+       * Can this deploy actually send an email?
+       *
+       * A missing RESEND_API_KEY used to be invisible: the mailer no-opped
+       * and every caller reported success. If configured is false, nobody
+       * can register, reset a password, or accept a staff invite. If
+       * sharedTestSender is true, only the Resend account owner receives
+       * anything and every other address is refused.
+       */
+      mail: this.mail.transportStatus,
       /**
        * Live or test money.
        *

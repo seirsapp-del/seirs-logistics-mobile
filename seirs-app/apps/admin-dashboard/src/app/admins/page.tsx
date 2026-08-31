@@ -255,7 +255,18 @@ function CreateDrawer({ onClose, onCreated, addToast, roles, permLabels }: Creat
         ...(role?.isSystemRole ? { adminRole: role.slug } : {}),
         roleId: form.roleId,
       });
-      addToast('success', `Invitation emailed to ${form.email.trim().toLowerCase()}`);
+      // createAdmin reports whether the invite actually left the building.
+      // Treating a failed send as success is how somebody ends up with a
+      // staff account and no way into it.
+      if (result?.inviteSent === false) {
+        addToast(
+          'error',
+          `Account created, but the invitation email to ${form.email.trim().toLowerCase()} did NOT send. `
+          + 'They cannot sign in yet. Use Reset password on their row to try again.',
+        );
+      } else {
+        addToast('success', `Invitation emailed to ${form.email.trim().toLowerCase()}`);
+      }
       const newMember: AdminMember = {
         id:          String(result?.id ?? Date.now()),
         firstName:   form.firstName.trim(),
@@ -525,8 +536,18 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles, permLabels }:
     if (!ok) return;
     setResetting(true);
     try {
-      await adminApi.admins.resetPassword(member.id);
-      addToast('success', `Reset link emailed to ${member.email}`);
+      const res = await adminApi.admins.resetPassword(member.id);
+      // Their password is revoked whether or not the mail left, so a silent
+      // failure strands them: no old password, no new link.
+      if (res?.emailSent === false) {
+        addToast(
+          'error',
+          `${member.email} can no longer sign in, but the reset email did NOT send. `
+          + 'Get a link to them another way before they try to log in.',
+        );
+      } else {
+        addToast('success', `Reset link emailed to ${member.email}`);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'The email was not sent.';
       addToast('error', msg);

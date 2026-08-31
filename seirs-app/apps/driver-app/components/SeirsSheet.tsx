@@ -35,7 +35,7 @@ import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme
 export type SeirsSheetOption = {
   /** Row label. Keep it an answer to the title, not a verb like "OK". */
   label: string;
-  /** Optional second line: why a rider would pick this row. */
+  /** Optional second line: why a driver would pick this row. */
   sub?: string;
   /**
    * primary     filled, the recommended path

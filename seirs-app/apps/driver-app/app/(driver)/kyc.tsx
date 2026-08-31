@@ -15,10 +15,10 @@ import {
 } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
+import { requireOptionalNativeModule } from 'expo-modules-core';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
+import { SeirsSheet, type SeirsSheetSpec, type SeirsSheetOption } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { uploadApi, driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
@@ -76,6 +76,33 @@ const INSURANCE_PARTNERS = [
   { name: 'Aiico Insurance', desc: 'Affordable driver policies', url: 'https://aiicoplc.com' },
   { name: 'Cornerstone Insurance', desc: 'Motor & liability cover', url: 'https://cornerstoneinsuranceplc.com' },
 ];
+
+/**
+ * The file picker, if this build has it.
+ *
+ * Resolved once and remembered: undefined means not yet tried, null means
+ * the native module is genuinely absent from this build.
+ */
+let cachedPicker: typeof import('expo-document-picker') | null | undefined;
+function getDocumentPicker() {
+  if (cachedPicker === undefined) {
+    // Ask the native registry first. Requiring the JS wrapper when the
+    // native side is missing throws while the module is being evaluated,
+    // and Metro hands that to the global error handler before rethrowing,
+    // so a try/catch here would still surface a fatal red box.
+    if (!requireOptionalNativeModule('ExpoDocumentPicker')) {
+      cachedPicker = null;
+    } else {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        cachedPicker = require('expo-document-picker');
+      } catch {
+        cachedPicker = null;
+      }
+    }
+  }
+  return cachedPicker;
+}
 
 export default function KycScreen() {
   const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
@@ -203,22 +230,45 @@ export default function KycScreen() {
     // insurance certificates arrive from portals as PDFs, and asking a
     // driver to photograph their screen produces exactly the unreadable
     // document that gets rejected.
+    // Offered only when this build can actually honour it, so nobody taps
+    // a row that ends in an apology.
+    const fileRow: SeirsSheetOption[] = getDocumentPicker()
+      ? [{ label: 'Attach a PDF', sub: 'A file from your email or a portal', icon: 'document-text-outline', onPress: () => doUpload(docId, 'document') }]
+      : [];
+
     setSheet({
       title: 'Upload document',
       message: 'Choose how to provide the document.',
       options: [
         { label: 'Take a photo',      sub: 'Use the camera now', variant: 'primary', icon: 'camera-outline', onPress: () => doUpload(docId, 'camera') },
         { label: 'Choose from phone', sub: 'Pick a photo you already have', icon: 'images-outline', onPress: () => doUpload(docId, 'library') },
-        { label: 'Attach a PDF',      sub: 'A file from your email or a portal', icon: 'document-text-outline', onPress: () => doUpload(docId, 'document') },
+        ...fileRow,
       ],
       cancelLabel: 'Not now',
     });
   };
 
-  /** A PDF from the phone's file picker. Images are handled by pickImage. */
+  /**
+   * A PDF from the phone's file picker. Images are handled by pickImage.
+   *
+   * Required lazily rather than imported at the top of the file.
+   * expo-document-picker is a NATIVE module, and a build made before it was
+   * added has no such module: a top-level import throws while the module is
+   * being evaluated, which happens at launch, which takes down the router
+   * and every route in the app rather than just this screen. Drivers on an
+   * older build are offered photos only, and the app opens.
+   */
   const pickDocument = async (): Promise<string | null> => {
+    const picker = getDocumentPicker();
+    if (!picker) {
+      alertDialog(
+        'Update the app first',
+        'Attaching a file needs a newer version of SEIRS Driver. Take a photo of the document instead, or update from the Play Store.',
+      );
+      return null;
+    }
     try {
-      const r = await DocumentPicker.getDocumentAsync({
+      const r = await picker.getDocumentAsync({
         type: ['application/pdf', 'image/*'],
         copyToCacheDirectory: true,
         multiple: false,

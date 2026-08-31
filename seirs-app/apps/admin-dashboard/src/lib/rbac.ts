@@ -268,7 +268,6 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   // fall through the gate entirely.
   '/tickets':                 'tickets',
   '/suggestions':             'suggestions',
-  '/driver-documents':        'drivers',
   '/contact-submissions':     'support',
 
   '/website':                 'cms',
@@ -519,8 +518,6 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     items: [
       { href: '/deliveries', label: 'Deliveries',       icon: 'Package' },
       { href: '/drivers',    label: 'Drivers',          icon: 'Truck'   },
-      // Added 2026-08-31: driver documents had no review queue at all.
-      { href: '/driver-documents', label: 'Driver Documents', icon: 'FileText' },
       { href: '/users',      label: 'Customers',        icon: 'Users'   },
       /**
        * Zones lives with operations, not with pricing.
