@@ -13,6 +13,7 @@ import { DriverLevelChange } from './driver-level-change.entity';
 import { DriverVehicleChange } from './driver-vehicle-change.entity';
 import { Delivery } from '../deliveries/delivery.entity';
 import { Wallet } from '../payments/wallet.entity';
+import { DriverEarning } from '../earnings/driver-earning.entity';
 import { TrackingModule } from '../tracking/tracking.module';
 import { FraudModule } from '../fraud/fraud.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -21,7 +22,7 @@ import { FeesModule } from '../fees/fees.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Driver, DriverTrip, TripStop, DriverStatusBroadcast, DriverSubscription, DriverLevelChange, DriverVehicleChange, Delivery, Wallet]),
+    TypeOrmModule.forFeature([Driver, DriverTrip, TripStop, DriverStatusBroadcast, DriverSubscription, DriverLevelChange, DriverVehicleChange, Delivery, Wallet, DriverEarning]),
     TrackingModule,
     FraudModule,
     NotificationsModule,

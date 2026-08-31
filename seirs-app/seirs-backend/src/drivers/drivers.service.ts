@@ -15,6 +15,7 @@ import { FraudService } from '../fraud/fraud.service';
 import { TrackingGateway } from '../tracking/tracking.gateway';
 import { FeesService } from '../fees/fees.service';
 import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
+import { DriverEarning } from '../earnings/driver-earning.entity';
 import { vehicleIdentityForPassenger } from '../common/redact-driver';
 
 // Spec V8 §2.1 - recognised KYC document IDs
@@ -66,6 +67,7 @@ export class DriversService {
     @InjectRepository(DriverSubscription)     private subsRepo:       Repository<DriverSubscription>,
     @InjectRepository(DriverLevelChange)      private levelChangesRepo: Repository<DriverLevelChange>,
     @InjectRepository(DriverVehicleChange)    private vehicleChangesRepo: Repository<DriverVehicleChange>,
+    @InjectRepository(DriverEarning)          private earningsRepo:   Repository<DriverEarning>,
     private fraudService:    FraudService,
     private trackingGateway: TrackingGateway,
     private feesService:     FeesService,
@@ -1548,13 +1550,32 @@ export class DriversService {
       });
     }
 
-    // Non-zero wallet balance
-    const balance = Number(driver.walletBalance ?? 0);
+    /**
+     * Money still owed to this rider.
+     *
+     * This used to read `driver.walletBalance`, which NOTHING in the
+     * backend ever writes, so the guard always passed and a driver with
+     * real earnings was told "wallet is empty" and cleared to delete
+     * (found on device 2026-08-31 with NGN 146.97 sitting withdrawable).
+     *
+     * The real money is the driver_earnings ledger. `pending` counts too:
+     * it is money owed that has merely not cleared its dispute window yet,
+     * and deleting would strand it just the same. driverId on that table
+     * is the USER id, which is what this method receives.
+     */
+    const owed = await this.earningsRepo
+      .createQueryBuilder('e')
+      .select('COALESCE(SUM(e.driver_net), 0)', 'total')
+      .where('e.driver_id = :userId', { userId })
+      .andWhere('e.status IN (:...statuses)', { statuses: ['pending', 'available'] })
+      .getRawOne<{ total: string }>();
+
+    const balance = Number(owed?.total ?? 0);
     if (balance > 0) {
       blockers.push({
         type:   'wallet_balance',
-        count:  Math.round(balance),
-        action: `Withdraw your ₦${Math.round(balance).toLocaleString()} wallet balance before deleting.`,
+        count:  balance,
+        action: `Withdraw your ₦${balance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} before deleting.`,
       });
     }
 
