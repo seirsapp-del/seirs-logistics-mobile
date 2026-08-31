@@ -3350,6 +3350,154 @@ export class AdminService {
     };
   }
 
+
+  /**
+   * Every delivered trip that owes a driver money, checked against the ledger.
+   *
+   * Two directions matter and they fail differently:
+   *
+   *   missingLedger  a delivery says the driver earned, and no ledger row
+   *                  backs it. The driver cannot see the trip OR the money;
+   *                  the admin sees both. This is the one that becomes a
+   *                  dispute nobody can settle.
+   *   orphanLedger   a ledger row whose delivery has gone. Money credited
+   *                  against nothing.
+   *
+   * Read-only by construction: it selects and compares, and writes nothing.
+   */
+  async earningsReconciliation(limit = 100) {
+    const missing = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .select(['d.id', 'd.status', 'd.driverEarnings', 'd.deliveredAt', 'd.driverId'])
+      .where('d.status = :delivered', { delivered: 'delivered' })
+      .andWhere('d.driverEarnings > 0')
+      .andWhere(qb => 'NOT EXISTS ' + qb
+        .subQuery()
+        .select('1')
+        .from(DriverEarning, 'e')
+        .where('e.deliveryId = d.id')
+        .getQuery())
+      .orderBy('d.driverEarnings', 'DESC')
+      .limit(limit)
+      .getMany();
+
+    const orphan = await this.earningsRepo
+      .createQueryBuilder('e')
+      .select(['e.id', 'e.deliveryId', 'e.driverId', 'e.driverNet', 'e.status'])
+      .where(qb => 'NOT EXISTS ' + qb
+        .subQuery()
+        .select('1')
+        .from(Delivery, 'd')
+        .where('d.id = e.deliveryId')
+        .getQuery())
+      .limit(limit)
+      .getMany();
+
+    // decimal columns arrive as strings over the wire, so Number() them
+    // before summing or the total is a concatenation.
+    const missingTotal = missing.reduce((t, d) => t + Number(d.driverEarnings ?? 0), 0);
+    const orphanTotal  = orphan.reduce((t, e) => t + Number((e as any).driverNet ?? 0), 0);
+
+    return {
+      ok: missing.length === 0 && orphan.length === 0,
+      checkedAt: new Date().toISOString(),
+      missingLedger: {
+        count: missing.length,
+        totalNgn: +missingTotal.toFixed(2),
+        note: 'Delivered trips carrying a driver amount with no ledger row. '
+            + 'The driver cannot see this money; the admin can.',
+        rows: missing.map(d => ({
+          deliveryId: d.id,
+          driverId:   (d as any).driverId ?? null,
+          amountNgn:  Number(d.driverEarnings ?? 0),
+          deliveredAt: (d as any).deliveredAt ?? null,
+        })),
+      },
+      orphanLedger: {
+        count: orphan.length,
+        totalNgn: +orphanTotal.toFixed(2),
+        note: 'Ledger rows whose delivery no longer exists.',
+        rows: orphan.map(e => ({
+          earningId:  e.id,
+          deliveryId: (e as any).deliveryId,
+          driverId:   (e as any).driverId,
+          amountNgn:  Number((e as any).driverNet ?? 0),
+          status:     (e as any).status,
+        })),
+      },
+    };
+  }
+
+
+  /**
+   * What every driver's rating and trip count SHOULD be, from real data.
+   *
+   * Reports only, writes nothing. Compares the stored columns against:
+   *
+   *   rating          AVG(customerRating) over their rated deliveries
+   *   totalDeliveries COUNT of their deliveries in a delivered state
+   *
+   * Both stored values are seeded fiction on any driver the demo fixture
+   * touched, and both drive real behaviour: matching scores on the rating,
+   * and customers are shown it.
+   *
+   * A driver with no ratings yet reports null, not 0. Zero is a verdict;
+   * "not rated yet" is the truth, and the apps already render that as "New".
+   */
+  async driverStatsPreview() {
+    const drivers = await this.driversRepo
+      .createQueryBuilder('d')
+      .select(['d.id', 'd.rating', 'd.totalDeliveries'])
+      .getMany();
+
+    const rows: any[] = [];
+
+    for (const d of drivers) {
+      // Same join the rating writer uses: deliveries carry driver_id, which
+      // is the DRIVER ROW id, not the user id.
+      const delivered = await this.deliveriesRepo
+        .createQueryBuilder('x')
+        .where('x.driver_id = :id', { id: d.id })
+        .andWhere('x.status = :s', { s: 'delivered' })
+        .getCount();
+
+      const rated = await this.deliveriesRepo
+        .createQueryBuilder('x')
+        .select('AVG(x.customerRating)', 'avg')
+        .addSelect('COUNT(x.customerRating)', 'n')
+        .where('x.driver_id = :id', { id: d.id })
+        .andWhere('x.customerRating IS NOT NULL')
+        .getRawOne<{ avg: string | null; n: string }>();
+
+      // decimal and aggregate columns arrive as strings over the wire
+      const realRating = rated?.avg != null ? +Number(rated.avg).toFixed(2) : null;
+      const ratingsUsed = Number(rated?.n ?? 0);
+
+      const storedRating = d.rating != null ? Number(d.rating) : null;
+      const storedTrips  = Number((d as any).totalDeliveries ?? 0);
+
+      const ratingOff = (storedRating ?? -1) !== (realRating ?? -1);
+      const tripsOff  = storedTrips !== delivered;
+      if (!ratingOff && !tripsOff) continue;
+
+      rows.push({
+        driverId: d.id,
+        rating:          { stored: storedRating, real: realRating, fromRatings: ratingsUsed },
+        totalDeliveries: { stored: storedTrips,  real: delivered },
+      });
+    }
+
+    return {
+      checkedAt: new Date().toISOString(),
+      dryRun: true,
+      note: 'Reports only, nothing was written. These columns drive dispatch '
+          + '(matching scores on the stored rating) and are shown to customers.',
+      driversChecked: drivers.length,
+      wouldChange: rows.length,
+      rows,
+    };
+  }
+
   async offboardAdmin(
     adminUserId: string,
     requester: any,

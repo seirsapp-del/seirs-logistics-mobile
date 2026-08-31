@@ -254,8 +254,35 @@ export class DemoDataService {
         ?? (opts.role === UserRole.DRIVER ? AccountIdPrefix.DRIVER : AccountIdPrefix.CUSTOMER);
       const accountId = await this.uniqueAccountId(prefix);
       user = this.usersRepo.create({ email: opts.email, accountId, ...patch });
-    } else {
+    } else if (user.isDemo) {
+      // The seed created this row and owns it: rewriting is the point,
+      // including the password, which is how a fresh demo login is issued.
       Object.assign(user, patch);
+    } else {
+      /**
+       * A REAL account wearing a demo email. Fill blanks, change nothing.
+       *
+       * This branch used to be a plain Object.assign, and the patch carries
+       * ...(opts.bank ?? {}), so re-seeding replaced a real person's payout
+       * destination with the demo GTBank account. It happened to the
+       * founder's test bank account on 2026-08-31 and left no audit row,
+       * because seeding is not an edit as far as the audit log knows.
+       *
+       * Bank details, identity and the password are never filled in here
+       * even when blank: a payout destination is not something a demo
+       * fixture gets to decide.
+       */
+      const NEVER = new Set([
+        'bankCode', 'bankName', 'bankAccountNumber', 'bankAccountName',
+        'password', 'identityVerifiedAt', 'identityDocType', 'isDemo',
+      ]);
+      for (const [key, value] of Object.entries(patch)) {
+        if (NEVER.has(key)) continue;
+        const current = (user as any)[key];
+        if (current === null || current === undefined) {
+          (user as any)[key] = value;
+        }
+      }
     }
     return this.usersRepo.save(user);
   }
@@ -280,8 +307,16 @@ export class DemoDataService {
       vehicleDetails: { make: 'Bajaj', model: 'Boxer', year: '2023', color: 'Red' },
       status: DriverStatus.APPROVED,
       isOnline: true,
-      rating: 4.87,
-      totalDeliveries: 214,
+      /**
+       * rating and totalDeliveries are deliberately NOT seeded.
+       *
+       * They used to be written as 4.87 and 214, which is a driver who has
+       * completed seven trips being credited with two hundred and fourteen.
+       * Those columns are not decoration: matching.service.ts scores
+       * drivers on the stored rating, so a seeded figure takes real jobs
+       * from real drivers, and deliveries.service.ts surfaces both to
+       * customers. A reputation is earned or it is a lie.
+       */
       lastLat: IKEJA.lat,
       lastLng: IKEJA.lng,
       locationUpdatedAt: new Date(),
@@ -289,7 +324,21 @@ export class DemoDataService {
     if (!driver) {
       driver = this.driversRepo.create({ user, ...patch });
     } else {
-      Object.assign(driver, patch);
+      /**
+       * Fill blanks only. NEVER overwrite.
+       *
+       * This was Object.assign(driver, patch), so re-running the seed
+       * rewrote a real driver's vehicle, plate, location and reputation,
+       * with no audit row anywhere because seeding is not an edit. The
+       * founder lost a test bank account this way and spent an afternoon
+       * distrusting numbers that were, correctly, not to be trusted.
+       */
+      for (const [key, value] of Object.entries(patch)) {
+        const current = (driver as any)[key];
+        if (current === null || current === undefined) {
+          (driver as any)[key] = value;
+        }
+      }
     }
     return this.driversRepo.save(driver);
   }

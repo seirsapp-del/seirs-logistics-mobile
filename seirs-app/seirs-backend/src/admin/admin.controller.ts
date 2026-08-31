@@ -335,6 +335,29 @@ export class AdminController {
    * password-reset notice, which a new hire never requested and which
    * leaves out their staff ID.
    */
+  /**
+   * Money the admin can see that the driver cannot, and the reverse.
+   *
+   * Super admin only: it enumerates unpaid-looking amounts per driver, which
+   * is not a list for general admin eyes.
+   */
+  /**
+   * What the seeded ratings and trip counts should really be. Reports only.
+   */
+  @UseGuards(SuperAdminGuard)
+  @Get('drivers/stats-preview')
+  driverStatsPreview() {
+    return this.adminService.driverStatsPreview();
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @Get('wallet/earnings-reconciliation')
+  earningsReconciliation(@Query('limit') limit?: string) {
+    return this.adminService.earningsReconciliation(
+      Math.min(Math.max(parseInt(limit ?? '100', 10) || 100, 1), 500),
+    );
+  }
+
   @UseGuards(SuperAdminGuard)
   @Post('admins/:id/resend-invite')
   resendAdminInvite(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
