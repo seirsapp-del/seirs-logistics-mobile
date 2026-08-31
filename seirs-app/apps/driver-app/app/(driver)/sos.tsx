@@ -11,7 +11,7 @@ import * as Location from 'expo-location';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { sosApi } from '@/services/api';
+import { sosApi, apiRequest } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 
 // Spec V8: driver-side SOS. Mirrors customer SOS using the same
@@ -20,11 +20,75 @@ import { alertDialog } from '@/components/SeirsDialog';
 // in-progress order. Driver-tailored copy: emphasises vehicle
 // breakdown / road incident / personal-safety as common triggers.
 
-const EMERGENCY_CONTACTS = [
-  { label: 'Police',       number: '199', icon: 'shield-outline' },
-  { label: 'Ambulance',    number: '112', icon: 'medkit-outline' },
-  { label: 'FRSC',         number: '122', icon: 'car-outline'   },
+/**
+ * One row of the emergency directory, served from
+ * GET /config/emergency-contacts so a wrong number can be corrected
+ * without an app release and a store review.
+ */
+type EmergencyContact = {
+  id:          string;
+  name:        string;
+  numbers:     string[];
+  instruction: string;
+  category?:   string;
+  sortOrder?:  number;
+};
+
+/**
+ * The hardcoded list this replaces was WRONG (fixed 2026-08-31).
+ *
+ * It read:
+ *   Police    199
+ *   Ambulance 112
+ *
+ * 199 is the fire service and 112 is the national emergency line, which
+ * covers all services rather than ambulances specifically. So a rider
+ * broken down at night who tapped "Police" reached the fire service,
+ * believing they had reached the police. The customer app had already
+ * been corrected and says so plainly in its own source; only this screen
+ * still carried the old list.
+ *
+ * There is no "Police" entry pointing at one national number because
+ * there is not one: police response runs through 112 or through a state
+ * command line that differs by state. Admin can add those.
+ *
+ * Offline fallback ONLY. Both numbers are correct and enough to dial.
+ * Do not grow this list, grow the admin one.
+ */
+const FALLBACK_CONTACTS: EmergencyContact[] = [
+  {
+    id:          'fallback-112',
+    name:        'Emergency (all services)',
+    numbers:     ['112'],
+    instruction: 'The national emergency line. Dial this first if you are hurt, threatened, or unsure who you need.',
+    category:    'national',
+  },
+  {
+    id:          'fallback-199',
+    name:        'Fire Service',
+    numbers:     ['199'],
+    instruction: 'Fire, or a vehicle burning. For anything else use 112.',
+    category:    'fire',
+  },
 ];
+
+/**
+ * Category to icon. An unknown category gets a plain phone glyph rather
+ * than a guess, because an icon implying the wrong service is the same
+ * bug as a wrong number.
+ */
+const CATEGORY_ICON: Record<string, string> = {
+  emergency: 'alert-circle-outline',
+  national:  'alert-circle-outline',
+  police:    'shield-outline',
+  fire:      'flame-outline',
+  medical:   'medkit-outline',
+  ambulance: 'medkit-outline',
+  road:      'car-outline',
+  traffic:   'car-outline',
+  women:     'people-outline',
+  child:     'people-outline',
+};
 
 export default function DriverSosScreen() {
   const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
@@ -37,6 +101,44 @@ export default function DriverSosScreen() {
   const [countdown,  setCountdown]  = useState(5);
   const [alertId,    setAlertId]    = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  /**
+   * The directory, loaded on mount rather than when SOS fires: the
+   * intent is that a rider dials help directly WHILE SEIRS responds, so
+   * the numbers must already be on screen when the alarm goes off.
+   */
+  const [contacts, setContacts] = useState<EmergencyContact[]>(FALLBACK_CONTACTS);
+  const [contactsOffline, setContactsOffline] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiRequest<{ items?: EmergencyContact[] }>('GET', '/config/emergency-contacts')
+      .then((res) => {
+        if (cancelled) return;
+        const items = (res?.items ?? [])
+          .filter(c => c && Array.isArray(c.numbers) && c.numbers.length > 0)
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+        setContactsOffline(false);
+        // An empty directory is one nobody has filled in, not a failure
+        // to reach one.
+        setContacts(items.length ? items : FALLBACK_CONTACTS);
+      })
+      .catch((e: any) => {
+        if (cancelled) return;
+        /**
+         * A 404 is not an outage. If the endpoint is simply absent the
+         * two national numbers are correct and sufficient, so they are
+         * presented plainly. A red warning on the emergency screen
+         * should only appear when it is TRUE, or it trains a frightened
+         * rider to ignore the one banner that must always mean
+         * something.
+         */
+        const status = Number(e?.status ?? e?.response?.status ?? 0);
+        setContactsOffline(status !== 404);
+        setContacts(FALLBACK_CONTACTS);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   // "What is happening?" state. The alert is ALREADY sent by the time any
   // of this renders: an SOS must never become a form, so detail is a
@@ -254,20 +356,38 @@ export default function DriverSosScreen() {
 
           <View style={styles.emergencySection}>
             <Text style={styles.emergencySectionTitle}>Quick Dial</Text>
+            {contactsOffline && (
+              <Text style={styles.emergencyOffline}>
+                Could not load the full directory. These national numbers still work.
+              </Text>
+            )}
             <View style={styles.emergencyRow}>
-              {EMERGENCY_CONTACTS.map(ec => (
-                <Pressable
-                  key={ec.label}
-                  style={styles.emergencyCard}
-                  onPress={() => Linking.openURL(`tel:${ec.number}`).catch(() => {})}
-                >
-                  <View style={styles.emergencyIcon}>
-                    <Ionicons name={ec.icon as any} size={22} color="#EF4444" />
-                  </View>
-                  <Text style={styles.emergencyLabel}>{ec.label}</Text>
-                  <Text style={styles.emergencyNum}>{ec.number}</Text>
-                </Pressable>
-              ))}
+              {contacts.map(ec => {
+                // First number is the one the button dials; the rest are
+                // alternates an admin listed, shown so a rider can try them.
+                const dial = ec.numbers[0];
+                const alt  = ec.numbers.slice(1);
+                return (
+                  <Pressable
+                    key={ec.id}
+                    style={styles.emergencyCard}
+                    onPress={() => Linking.openURL(`tel:${dial}`).catch(() => {})}
+                  >
+                    <View style={styles.emergencyIcon}>
+                      <Ionicons
+                        name={(CATEGORY_ICON[String(ec.category ?? '')] ?? 'call-outline') as any}
+                        size={22}
+                        color="#EF4444"
+                      />
+                    </View>
+                    <Text style={styles.emergencyLabel} numberOfLines={2}>{ec.name}</Text>
+                    <Text style={styles.emergencyNum}>{dial}</Text>
+                    {alt.length > 0 && (
+                      <Text style={styles.emergencyAlt} numberOfLines={1}>or {alt.join(', ')}</Text>
+                    )}
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
 
@@ -393,4 +513,6 @@ const styles = StyleSheet.create({
   emergencyIcon:        { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(239,68,68,0.15)', justifyContent: 'center', alignItems: 'center' },
   emergencyLabel:       { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
   emergencyNum:         { color: '#EF4444', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+  emergencyAlt:         { color: 'rgba(255,255,255,0.5)', fontSize: 10, textAlign: 'center' },
+  emergencyOffline:     { color: '#FCA5A5', fontSize: FontSize.xs, lineHeight: 16 },
 });

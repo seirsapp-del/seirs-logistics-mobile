@@ -21,6 +21,12 @@ export {
   documentsApi,
   dropoffApi,
   configApi,
+  // Raw request helper. The SOS screen reads GET /config/emergency-contacts,
+  // an admin-managed list with no typed wrapper in shared yet. Exported here
+  // so the screen does not hand-roll a fetch and lose the auth header and the
+  // 401 session handling. This barrel is a whitelist: an export missing from
+  // it resolves to undefined at runtime and red-screens the app.
+  request as apiRequest,
 } from '@seirs/shared/services/api';
 
 export type {
