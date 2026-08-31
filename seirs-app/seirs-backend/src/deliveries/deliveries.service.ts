@@ -496,6 +496,46 @@ export class DeliveriesService {
     // Consent lands as a timestamp on the row, provable later.
     const termsAcceptedAt = (dto as any).termsAccepted ? new Date() : null;
 
+    /**
+     * Interstate behind ID verification, if the founder wants it
+     * (2026-08-31).
+     *
+     * user.entity.ts has said since the identity policy shipped that
+     * verified users "unlock higher wallet/reward limits, INTERSTATE
+     * DELIVERY, insured deliveries, priority support". Nothing anywhere
+     * enforced the interstate half, so the policy and the product
+     * disagreed, and an unverified account could book Lagos to Kano
+     * today.
+     *
+     * Either the code should enforce it or the policy should be
+     * rewritten; the mismatch is the actual problem. Which of those is
+     * right is a founder call with real revenue in it, because approval
+     * takes 24 hours to 3 business days and gating interstate on launch
+     * day would block real bookings from real people.
+     *
+     * So: the mechanism exists and the switch is OFF, seeded 0. Nothing
+     * changes for anybody until somebody turns it on, and turning it on
+     * is a catalogue edit rather than a deploy.
+     */
+    const routeIsInterState = (breakdown as any)?.route?.isInterState === true;
+    if (routeIsInterState) {
+      const gateOn = await this.feesServiceRef
+        ?.getValueOr('interstate_requires_verified_id', 0)
+        .catch(() => 0);
+      if (Number(gateOn) > 0) {
+        const verifiedAt = await this.repo.manager.getRepository(User)
+          .findOne({ where: { id: (customer as any).id }, select: ['id', 'identityVerifiedAt'] })
+          .then(u => (u as any)?.identityVerifiedAt ?? null)
+          .catch(() => null);
+        if (!verifiedAt) {
+          throw new BadRequestException(
+            'Sending between states needs a verified ID on your account. ' +
+            'Add one from Profile, Verify identity. Deliveries inside your state are unaffected.',
+          );
+        }
+      }
+    }
+
     // The passenger IS the recipient on a ride, and the driver greets
     // them by name. The auth snapshot only carries id/email, so the
     // name and phone come from the user row (first live ride saved

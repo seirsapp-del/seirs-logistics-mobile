@@ -116,12 +116,18 @@ export class MatchingService {
     const corridorCfg = await this.corridorConfig();
     // Interstate declared trips (Spec V8 2.18): the driver app has
     // promised "matching packages will be auto-offered" since day one;
-    // this is the first code that makes it true. Route match = the
-    // declared cities appear in the booking's addresses.
+    // this is the code that makes it true. Route match is GEOGRAPHIC as
+    // of 2026-08-31: both ends of the parcel near both ends of the trip.
+    // It used to compare city-name spelling against free-text addresses.
     const interTrips = await this.driversService
       .activeInterstateTripsFor(candidates.map((d) => d.id))
       .catch(() => [] as any[]);
     const interBonus = await this.feesService.getValueOr('interstate_match_bonus', 0.25).catch(() => 0.25);
+    /* How near a parcel's two ends must be to the declared trip's two ends.
+       A catalogue row because 'near' on a Lagos to Ibadan corridor is not
+       'near' on a Lagos to Maiduguri one. */
+    const corridorMatchKm = await this.feesService
+      .getValueOr('interstate_corridor_match_km', 25).catch(() => 25);
 
     /* What each candidate is already carrying, one query for the whole
        pass. Feeds the spare-capacity test below. */
@@ -132,14 +138,11 @@ export class MatchingService {
     const scored = candidates
       .map((driver) => {
         const scored = this.scoreDriver(driver, delivery, premiumSet.has(driver.id), corridorCfg);
-        // Declared-trip route match: both cities named in the booking.
         const trip = interTrips.find((tr: any) => String(tr.driverId ?? tr.driver?.id) === driver.id);
-        if (trip && this.tripCanCarry(trip, delivery, committedByDriver.get(driver.id) ?? 0)) {
-          const up = String(delivery.pickupAddress ?? '').toLowerCase();
-          const dn = String(delivery.dropoffAddress ?? '').toLowerCase();
-          if (up.includes(String(trip.fromCity).toLowerCase()) && dn.includes(String(trip.toCity).toLowerCase())) {
-            scored.score = Math.min(1, scored.score + interBonus);
-          }
+        if (trip
+          && this.tripCanCarry(trip, delivery, committedByDriver.get(driver.id) ?? 0)
+          && this.tripRouteMatches(trip, delivery, corridorMatchKm)) {
+          scored.score = Math.min(1, scored.score + interBonus);
         }
         return scored;
       })
@@ -181,6 +184,61 @@ export class MatchingService {
    * field is null would quietly disable the corridor feature on every
    * booking that predates the column.
    */
+  /**
+   * Does this booking actually travel the corridor the rider declared?
+   *
+   * This used to be two substring tests: pickupAddress.includes(fromCity)
+   * and dropoffAddress.includes(toCity), both lowercased. It compared
+   * SPELLING, not geography, so it failed on exactly the addresses
+   * Nigerians write. A rider who declared "Abuja" got no bonus for a
+   * parcel addressed "Wuse 2, FCT"; one who declared "Ibadan" got none
+   * for "Bodija, Oyo State"; and "Lagos" quietly matched anything with
+   * the word Lagos in it, including a purely local Lagos Island run that
+   * was never going anywhere near the trip.
+   *
+   * The trip has carried real destination coordinates since the twelve
+   * city lookup was removed, so this compares distance instead: the
+   * parcel starts near where the rider starts, and ends near where the
+   * rider ends. The radius is a Fee Catalogue row because "near" on a
+   * Lagos to Ibadan corridor is not "near" on a Lagos to Maiduguri one,
+   * and the founder will want to move it.
+   *
+   * Falls back to the old string test when the trip predates the
+   * coordinate columns, so old rows keep whatever matching they had
+   * rather than silently losing the feature.
+   */
+  private tripRouteMatches(trip: any, delivery: any, radiusKm: number): boolean {
+    const tripFrom = this.coord(trip.pickupLat, trip.pickupLng);
+    const tripTo   = this.coord(trip.destLat,   trip.destLng);
+    const dropFrom = this.coord(delivery.pickupLat,  delivery.pickupLng);
+    const dropTo   = this.coord(delivery.dropoffLat, delivery.dropoffLng);
+
+    if (!tripFrom || !tripTo || !dropFrom || !dropTo) {
+      const up = String(delivery.pickupAddress ?? '').toLowerCase();
+      const dn = String(delivery.dropoffAddress ?? '').toLowerCase();
+      const from = String(trip.fromCity ?? '').toLowerCase();
+      const to   = String(trip.toCity   ?? '').toLowerCase();
+      if (!from || !to) return false;
+      return up.includes(from) && dn.includes(to);
+    }
+
+    const startGap = PricingService.haversineKm(
+      dropFrom.lat, dropFrom.lng, tripFrom.lat, tripFrom.lng);
+    const endGap = PricingService.haversineKm(
+      dropTo.lat, dropTo.lng, tripTo.lat, tripTo.lng);
+
+    return startGap <= radiusKm && endGap <= radiusKm;
+  }
+
+  /** A coordinate pair is usable only when both halves are real and not 0,0. */
+  private coord(lat: any, lng: any): { lat: number; lng: number } | null {
+    const la = Number(lat);
+    const ln = Number(lng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return null;
+    if (la === 0 && ln === 0) return null;
+    return { lat: la, lng: ln };
+  }
+
   private tripCanCarry(trip: any, delivery: any, committedKg: number): boolean {
     if (trip.acceptsPackages === false) return false;
 
