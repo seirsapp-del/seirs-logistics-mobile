@@ -97,13 +97,13 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Hours before departure inside which a passenger cancellation stops being refunded in full. Outside it the fare returns less the sunk card processing (cancel_processing_pct).',
     category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.HOURS, value: 24 },
   // 100, not 0. Founder 2026-08-28: "they get a refund minus the
-  // Flutterwave fee." A passenger who cancels in advance leaves a seat
+  // processing fee." A passenger who cancels in advance leaves a seat
   // that can still be sold, which is nothing like a no-show where the
   // vehicle waited and then carried the space empty. The card
   // processing is still withheld through cancel_processing_pct, because
   // that is a real sunk cost rather than a penalty.
   { key: 'travel_buddy_late_cancel_refund_pct', name: 'Travel Buddy late-cancel refund (%)',
-    description: 'Share of a paid seat fare returned when a passenger cancels INSIDE the cut-off, before card processing is deducted. 100 returns the fare less the Flutterwave fee, which is the standing policy. 0 returns nothing at all. While this sits at 100 the cut-off changes nothing, because both sides of it refund the same: lower this to make late cancellations cost the passenger something.',
+    description: 'Share of a paid seat fare returned when a passenger cancels INSIDE the cut-off, before card processing is deducted. 100 returns the fare less the payment processing charge, which is the standing policy. 0 returns nothing at all. While this sits at 100 the cut-off changes nothing, because both sides of it refund the same: lower this to make late cancellations cost the passenger something.',
     category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.PERCENT, value: 100 },
   { key: 'travel_buddy_drop_geofence_m', name: 'Travel Buddy drop geofence (m)',
     description: 'Metres from the declared alight stop beyond which a drop is FLAGGED, never refused: roads close and plans change, so the distance is recorded for review rather than used to strand a rider mid-journey.',
@@ -211,9 +211,28 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // ── The real cost of serving a job ─────────────────────────────────────
   // None of these were modelled, so every quote reported a margin the
   // company never actually saw (review 2026-08-18).
-  { key: 'card_processing_pct',         name: 'Card Processing Cost',
-    description: 'What Flutterwave takes on a collected payment. Modelled as a cost so quoted margin is the margin we keep.',
+  { key: 'card_processing_pct',         name: 'Payment Processing Cost (%)',
+    description: 'The proportional part of what the processor takes on a collected payment. Modelled as a cost so quoted margin is the margin we keep. Pair with the flat row below: a rail that charges a fixed amount per transaction cannot be described by a percentage.',
     category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 1.4 },
+
+  /**
+   * The flat half of processing (2026-09-01).
+   *
+   * A single percentage assumes every rail prices proportionally. Card
+   * does. Transfer and USSD commonly do not: they charge a fixed amount
+   * per transaction, and a flat NGN 50 is 6.25% of an NGN 800 okada
+   * booking and 0.1% of an NGN 50,000 one. No percentage is right for
+   * both, so tuning the row above cannot fix it, only choose which end
+   * to be wrong at.
+   *
+   * Seeded at 0, so today's behaviour is byte-identical to before this
+   * row existed. It is here so the number is expressible the day we
+   * have a real transfer and a real USSD payment to read it off. We
+   * have neither, and this is deliberately NOT a guess at one.
+   */
+  { key: 'card_processing_flat_ngn',    name: 'Payment Processing Cost (flat)',
+    description: 'The fixed part of what the processor takes per transaction, on top of the percentage above. Transfer and USSD often price this way while card does not. Left at 0 until real transfer and USSD payments show what it actually is.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 0 },
 
   { key: 'nipost_postal_fund_pct',      name: 'NIPOST Postal Fund Levy',
     description: 'Statutory contribution required of courier operators. Confirm with counsel whether the base is gross bookings or net revenue before scaling.',

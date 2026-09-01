@@ -1399,8 +1399,11 @@ export class PricingService implements OnModuleInit {
      * Counter deliveries carry no failed-delivery provision: a shop is
      * open when it is open and never goes out.
      */
-    const [processorPct, levyPct, failureRate, marginFloor] = await Promise.all([
+    const [processorPct, processorFlat, levyPct, failureRate, marginFloor] = await Promise.all([
       this.fees.getValueOr('card_processing_pct', 1.4),
+      // The flat half. Seeded at 0, so this changes nothing until
+      // somebody has a real transfer or USSD figure to put in it.
+      this.fees.getValueOr('card_processing_flat_ngn', 0),
       this.fees.getValueOr('nipost_postal_fund_pct', 2),
       this.fees.getValueOr('door_delivery_failure_pct', 8),
       this.fees.getValueOr('min_job_margin_ngn', 0),
@@ -1422,7 +1425,14 @@ export class PricingService implements OnModuleInit {
       || input.vehicleType === 'truck_small'
       || input.vehicleType === 'truck_large';
     const usesCounter    = (input.partnerStoreTouches ?? 0) > 0;
-    const processorCost  = round2(total * (processorPct / 100));
+    /**
+     * Percentage plus flat, because processing is not one shape.
+     *
+     * Card prices proportionally, transfer and USSD commonly do not.
+     * The flat row is 0 today, so this is arithmetically identical to
+     * the old line until it is set.
+     */
+    const processorCost  = round2(total * (processorPct / 100) + processorFlat);
     const postalLevy     = round2(total * (levyPct / 100));
     const failureProvision = (usesCounter || scheduledFreight)
       ? 0

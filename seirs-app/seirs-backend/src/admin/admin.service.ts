@@ -2666,13 +2666,16 @@ export class AdminService {
       .filter(p => p.status === 'success')
       .reduce((sum, p) => sum + Number(p.amountKobo ?? 0) / 100, 0);
 
-    const [processorPct, levyPct, marginFloor] = await Promise.all([
+    const [processorPct, processorFlat, levyPct, marginFloor] = await Promise.all([
       this.feesService.getValueOr('card_processing_pct', 1.4),
+      // Flat half, seeded 0. Kept in step with pricing.service so the
+      // admin margin view and the quote engine cannot disagree.
+      this.feesService.getValueOr('card_processing_flat_ngn', 0),
       this.feesService.getValueOr('nipost_postal_fund_pct', 2),
       this.feesService.getValueOr('min_job_margin_ngn', 0),
     ]);
     const r2 = (n: number) => Math.round(n * 100) / 100;
-    const processorCost = r2(price * (processorPct / 100));
+    const processorCost = r2(price * (processorPct / 100) + processorFlat);
     const postalLevy    = r2(price * (levyPct / 100));
     const grossMargin   = r2(price - driverPay - partnerHandling);
     const contribution  = r2(grossMargin - processorCost - postalLevy);
