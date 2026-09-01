@@ -164,6 +164,56 @@ export class HealthController {
       paymentsSchema = { ok: false, error: err?.message ?? 'unknown' };
     }
 
+    /**
+     * Statements schema probe (2026-09-01).
+     *
+     * statement_records grew two columns after it shipped: pdf, which
+     * holds the document exactly as issued, and downloadExpiresAt, which
+     * ends the emailed link. Both arrive as ALTERs in the module's
+     * self-heal, inside the usual try/catch, so a total failure of both
+     * looks identical to success at boot.
+     *
+     * The consequence is not cosmetic and not immediate, which is what
+     * makes it worth a probe. Without pdf, issuing appears to work,
+     * writes a record, prints a code on a document, and every download
+     * of it 404s. Nobody finds out until somebody follows a link, and by
+     * then the statement is in an accountant's inbox.
+     *
+     * Same reasoning as paymentsSchema below it, which exists only
+     * because a nullable method column and a ussd enum value silently
+     * did not apply and there was no way to know until someone paid.
+     */
+    let statementsSchema: Record<string, unknown> = { ok: false };
+    try {
+      const cols = await this.dataSource.query(
+        `SELECT column_name, data_type, is_nullable
+           FROM information_schema.columns
+          WHERE table_name = 'statement_records'
+            AND column_name IN ('pdf', 'downloadExpiresAt')`,
+      );
+      const names = (cols as any[]).map(c => c.column_name);
+      const hasPdf    = names.includes('pdf');
+      const hasExpiry = names.includes('downloadExpiresAt');
+      // How many documents actually have bytes behind them. A row
+      // without them cannot be downloaded, so this is the count that
+      // says whether issuing has ever really worked.
+      const counted = await this.dataSource.query(
+        `SELECT COUNT(*)::int AS total,
+                COUNT("pdf")::int AS "withPdf"
+           FROM "statement_records"`,
+      ).catch(() => null);
+      statementsSchema = {
+        ok: hasPdf && hasExpiry,
+        pdfColumn:        hasPdf,
+        expiryColumn:     hasExpiry,
+        ...(counted?.[0] ? { issued: counted[0].total, withDocument: counted[0].withPdf } : {}),
+        ...(hasPdf    ? {} : { warn: 'statement_records has no pdf column: every download will 404 while issuing looks fine' }),
+        ...(hasExpiry ? {} : { warnExpiry: 'statement_records has no downloadExpiresAt column: links will never expire' }),
+      };
+    } catch (err: any) {
+      statementsSchema = { ok: false, error: err?.message ?? 'unknown' };
+    }
+
     // ── Pricing system smoke test ──────────────────────────────────
     // Canned input: 5 km motorcycle delivery of small parcel. Should
     // always return a non-zero customer total if the rate card seeded
@@ -213,6 +263,9 @@ export class HealthController {
       // try/catch and failure looks identical to success until the
       // first USSD payment throws on insert.
       paymentsSchema,
+      // Did the statement_records ALTERs land? Same class of silent
+      // failure: issuing looks healthy and every download 404s.
+      statementsSchema,
       pricing,
       /**
        * Can this deploy actually send an email?
