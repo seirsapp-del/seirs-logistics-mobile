@@ -79,6 +79,34 @@ export class StatementsController {
     this.send(res, pdf, filename);
   }
 
+  /**
+   * GET /api/v1/statements/business?from=&to=
+   * The signed-in sender's own delivery spend, as a PDF.
+   *
+   * Ownership is resolved from the signed-in user rather than taken as a
+   * parameter, exactly as the two above do: the token proves who you
+   * are, and the businessAccountId is then looked up from it, so there
+   * is no id a caller could substitute for somebody else's company.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('statements/business')
+  async myBusinessStatement(
+    @CurrentUser() user: any,
+    @Res() res: Response,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const rows = await this.ds.query(
+      `SELECT "businessAccountId" FROM users WHERE id = $1 LIMIT 1`, [user.id],
+    );
+    const businessAccountId = rows?.[0]?.businessAccountId;
+    if (!businessAccountId) throw new ForbiddenException('You do not have a business account.');
+
+    const data = await this.svc.businessStatement(businessAccountId, from, to);
+    const { pdf, filename } = await this.svc.issue(data as any);
+    this.send(res, pdf, filename);
+  }
+
   // ── Admin, on someone's behalf ─────────────────────────────────────────
 
   /**
@@ -95,12 +123,14 @@ export class StatementsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    if (type !== 'partner' && type !== 'driver') {
-      throw new NotFoundException('Statement type must be partner or driver.');
+    if (type !== 'partner' && type !== 'driver' && type !== 'business') {
+      throw new NotFoundException('Statement type must be partner, driver or business.');
     }
     const data = type === 'partner'
       ? await this.svc.partnerStatement(id, from, to)
-      : await this.svc.driverStatement(id, from, to);
+      : type === 'business'
+        ? await this.svc.businessStatement(id, from, to)
+        : await this.svc.driverStatement(id, from, to);
     const { pdf, filename } = await this.svc.issue(data as any, 'support');
     this.send(res, pdf, filename);
   }

@@ -31,6 +31,16 @@ export interface StatementInput {
   lines:        StatementLine[];
   totalPaidNgn:    number;
   totalPendingNgn: number;
+  /**
+   * Heading over the second total, or null to leave it off the page.
+   *
+   * "EARNED, NOT YET PAID" is an earner's sentence and it was printed
+   * unconditionally. On a spend statement it is wrong twice: a business
+   * pays rather than earns, and the figure would read NGN 0.00 because
+   * unsettled charges are excluded by policy, which states that nothing
+   * is outstanding when something may well be. Null omits the block.
+   */
+  pendingLabel?: string | null;
   code:         string;
   verifyUrl:    string;
   issuedNote?:  string;          // "Issued by SEIRS support on request"
@@ -112,8 +122,13 @@ export async function renderStatementPdf(input: StatementInput): Promise<Buffer>
   doc.fillColor(MUTED).fontSize(8).font('Helvetica-Bold').text('PAID IN PERIOD', 44, y);
   doc.fillColor('#15803D').fontSize(17).font('Helvetica-Bold').text(naira(input.totalPaidNgn), 44, y + 13);
 
-  doc.fillColor(MUTED).fontSize(8).font('Helvetica-Bold').text('EARNED, NOT YET PAID', 220, y);
-  doc.fillColor('#B45309').fontSize(17).font('Helvetica-Bold').text(naira(input.totalPendingNgn), 220, y + 13);
+  // Omitted entirely when the caller passes null: a total nobody can
+  // interpret is worse than a gap on the page.
+  const pendingLabel = input.pendingLabel === undefined ? 'EARNED, NOT YET PAID' : input.pendingLabel;
+  if (pendingLabel !== null) {
+    doc.fillColor(MUTED).fontSize(8).font('Helvetica-Bold').text(pendingLabel, 220, y);
+    doc.fillColor('#B45309').fontSize(17).font('Helvetica-Bold').text(naira(input.totalPendingNgn), 220, y + 13);
+  }
 
   doc.fillColor(MUTED).fontSize(8).font('Helvetica-Bold')
      .text('ENTRIES', 430, y, { width: 121, align: 'right' });

@@ -4,6 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { StatementRecord } from './statement-record.entity';
 import { renderStatementPdf, StatementLine } from './statement-pdf';
 import { secureCode } from '../common/utils/auth-codes';
+import { spendNarrative, methodLabel } from '../business/spend-narrative';
 
 /**
  * Downloadable earnings statements for partners and drivers.
@@ -129,6 +130,79 @@ export class StatementsService {
     };
   }
 
+  // ── Business sender ────────────────────────────────────────────────────
+
+  /**
+   * What a company paid SEIRS to ship, in the window it asked for.
+   *
+   * Partner and driver statements landed on 19 August and the business
+   * side never got one, the same gap that left GET /business/statement a
+   * yearly aggregate until 2026-09-01. Built by mirroring the partner
+   * producer above rather than inventing a third shape.
+   *
+   * SETTLED CHARGES ONLY, founder decision 2026-09-01: "no pending in
+   * statement at all". So every line here is settled by construction,
+   * the pending total is structurally zero, and the caller passes
+   * pendingLabel null so the document does not print a zero that reads
+   * as "nothing outstanding".
+   *
+   * card_verify is excluded by name for the same reason the screen
+   * excludes it: it is the tokenisation charge, refunded immediately,
+   * and if that refund ever fails the row stays SUCCESS and would land
+   * on a tax record as a real charge.
+   */
+  async businessStatement(businessAccountId: string, from?: string, to?: string) {
+    const w = this.window(from, to);
+    const biz = await this.ds.query(
+      `SELECT id, "companyName", "ownerId" FROM "business_accounts" WHERE id = $1 LIMIT 1`,
+      [businessAccountId],
+    );
+    if (!biz?.length) throw new NotFoundException('Business account not found.');
+
+    // Columns named one by one, and the customer relation is not joined:
+    // a join here would carry bank details and KYC paths into a document
+    // that renders none of them.
+    const rows = await this.ds.query(
+      `SELECT p."createdAt", p."amountKobo", p.purpose, p.method,
+              d."trackingCode", d."pickupAddress", d."dropoffAddress", d.kind,
+              (SELECT COUNT(*)::int FROM delivery_stops s WHERE s."deliveryId" = d.id) AS stops
+         FROM payments p
+         LEFT JOIN deliveries d ON d.id = p."deliveryId"
+        WHERE p."customerId" = $1
+          AND p.status = 'success'
+          AND p.purpose <> 'card_verify'
+          AND p."createdAt" BETWEEN $2 AND $3
+        ORDER BY p."createdAt" ASC`,
+      [biz[0].ownerId, w.from.toISOString(), w.to.toISOString()],
+    );
+
+    const lines: StatementLine[] = (rows as any[]).map((r) => {
+      const rail = methodLabel(r.method);
+      return {
+        date:      r.createdAt,
+        // The rail rides along in the narrative only when it is known.
+        // A charge nobody told us the rail for says nothing about it
+        // rather than claiming a card.
+        narrative: rail ? `${spendNarrative(r)} (${rail})` : spendNarrative(r),
+        amountNgn: Number(r.amountKobo ?? 0) / 100,
+        status:    'paid',
+        settled:   true,
+      };
+    });
+
+    return {
+      subjectType: 'business' as const,
+      subjectId:   businessAccountId,
+      subjectName: biz[0].companyName,
+      subjectMeta: undefined,
+      title:       'Business Delivery Spend',
+      window: w,
+      lines,
+      // No second total on this document. See businessStatement above.
+      pendingLabel: null as string | null,
+    };
+  }
+
   // ── Issue ──────────────────────────────────────────────────────────────
 
   /**
@@ -170,6 +244,8 @@ export class StatementsService {
       code,
       verifyUrl:    `${this.publicBase()}/verify/${code}`,
       issuedNote:   issuedBy === 'self' ? undefined : `Issued by SEIRS ${issuedBy}`,
+      // Undefined keeps the earner wording partner and driver expect.
+      pendingLabel: (data as any).pendingLabel,
     });
 
     const stamp = data.window.to.toISOString().slice(0, 10);
