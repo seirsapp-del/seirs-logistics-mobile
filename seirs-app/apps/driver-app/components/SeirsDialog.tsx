@@ -704,11 +704,23 @@ const styles = StyleSheet.create({
   // Roughly four full-height buttons before it starts scrolling, which
   // keeps the title and message on screen with a long option list.
   actionsScroll: {
-    maxHeight: BUTTON_MIN_HEIGHT * 4 + Spacing.sm * 4,
+    /*
+     * Four buttons and the THREE gaps between them.
+     *
+     * The cap used to count four gaps, and the content inside the scroll
+     * view also carried a 16 marginTop, so the content stood 8 taller than
+     * its own ceiling and the fourth button was sliced along the bottom:
+     * 52*4 + 8*3 + 16 = 248 against a 240 cap. On the Appearance dialog,
+     * which has exactly four (Follow my phone / Light / Dark / Cancel),
+     * that meant a Cancel button with its bottom edge and corners cut off.
+     * Founder spotted it 2026-09-01. The margin now sits on the ScrollView
+     * itself so it is not measured as content.
+     */
+    maxHeight: BUTTON_MIN_HEIGHT * 4 + Spacing.sm * 3,
+    marginTop: Spacing.md,
     flexGrow: 0,
   },
   actions: {
-    marginTop: Spacing.md,
     gap: Spacing.sm,
   },
   actionsRow:     { flexDirection: 'row' },
