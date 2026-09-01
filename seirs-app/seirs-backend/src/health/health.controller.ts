@@ -110,6 +110,60 @@ export class HealthController {
       support = { ok: false, error: err?.message ?? 'unknown' };
     }
 
+    /**
+     * Payments schema probe (2026-09-01).
+     *
+     * Two self-heals in PaymentsModule.onModuleInit have to have applied
+     * for payments to record the truth: payments.method must be nullable
+     * so a row can exist before anyone has paid, and the enum backing it
+     * must hold 'ussd', which checkout has always offered.
+     *
+     * Both run inside try/catch, so total failure is indistinguishable
+     * from success at boot: the service comes up healthy, pricing is ok,
+     * and the fault surfaces weeks later as the first USSD payment
+     * throwing on insert. The Railway logs that would say so are not
+     * reachable without a login.
+     *
+     * So it is reported here rather than inferred. Read-only, and it
+     * names the enum type it found rather than assuming the type name,
+     * for the same reason the heal itself resolves it from the
+     * catalogue.
+     */
+    let paymentsSchema: Record<string, unknown> = { ok: false };
+    try {
+      const col = await this.dataSource.query(
+        `SELECT is_nullable, udt_name FROM information_schema.columns
+          WHERE table_name = 'payments' AND column_name = 'method'`,
+      );
+      if (!col?.[0]) {
+        paymentsSchema = { ok: false, error: 'payments.method column not found' };
+      } else {
+        const typeName = col[0].udt_name;
+        const vals = await this.dataSource.query(
+          `SELECT e.enumlabel FROM pg_enum e
+             JOIN pg_type t ON t.oid = e.enumtypid
+            WHERE t.typname = $1
+            ORDER BY e.enumsortorder`,
+          [typeName],
+        );
+        const methods    = vals.map((v: any) => v.enumlabel);
+        const isNullable = col[0].is_nullable === 'YES';
+        const hasUssd    = methods.includes('ussd');
+        paymentsSchema = {
+          // ok only when BOTH heals actually landed. Anything else is a
+          // real fault however healthy the rest of the boot looked.
+          ok: isNullable && hasUssd,
+          methodNullable: isNullable,
+          methodEnum:     typeName,
+          methods,
+          ...(isNullable ? {} : { warn: 'payments.method is still NOT NULL: the DROP NOT NULL heal did not apply' }),
+          ...(hasUssd    ? {} : { warnUssd: "the enum has no 'ussd' value: a USSD payment will throw on insert" }),
+        };
+      }
+    } catch (err: any) {
+      paymentsSchema = { ok: false, error: err?.message ?? 'unknown' };
+    }
+
     // ── Pricing system smoke test ──────────────────────────────────
     // Canned input: 5 km motorcycle delivery of small parcel. Should
     // always return a non-zero customer total if the rate card seeded
@@ -154,6 +208,11 @@ export class HealthController {
       env:       process.env.NODE_ENV ?? 'development',
       db:        { reachable: dbOk, ...(dbError ? { error: dbError } : {}) },
       support,
+      // Did the two payments self-heals actually apply? Reported rather
+      // than inferred from a clean boot, because both are wrapped in
+      // try/catch and failure looks identical to success until the
+      // first USSD payment throws on insert.
+      paymentsSchema,
       pricing,
       /**
        * Can this deploy actually send an email?
