@@ -49,9 +49,23 @@ export interface StatementInput {
 const naira = (n: number) =>
   'NGN ' + Number(n ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/**
+ * Months spelled out here rather than through toLocaleString.
+ *
+ * en-GB via CLDR renders September as "Sept", four letters, while every
+ * other month is three, so a document issued in September carried
+ * "Issued 01 Sept 2026" above a period reading "01 Jul to 31 Aug". Worse
+ * than the raggedness, the output depends on the ICU build in whatever
+ * container rendered it, so the same statement could format differently
+ * on Railway and on a laptop. A document people are asked to check
+ * against a record should not shift with the runtime.
+ */
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 const dmy = (d: string | Date) => {
   const x = new Date(d);
-  return `${String(x.getDate()).padStart(2, '0')} ${x.toLocaleString('en-GB', { month: 'short' })} ${x.getFullYear()}`;
+  return `${String(x.getDate()).padStart(2, '0')} ${MONTHS_SHORT[x.getMonth()]} ${x.getFullYear()}`;
 };
 
 /**
