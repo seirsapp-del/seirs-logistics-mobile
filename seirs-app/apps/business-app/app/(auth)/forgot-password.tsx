@@ -53,7 +53,7 @@ export default function ForgotPasswordScreen() {
       {/* Floating lockup, matching the customer app. The navy bar that
           used to sit here was removed so every pre-login screen across
           the three apps shares one treatment (founder 2026-09-01). */}
-      <View style={[styles.logoRow, { paddingTop: insets.top + 16, paddingBottom: 8 }]}>
+      <View style={[styles.logoRow, { paddingTop: insets.top + 32, paddingBottom: 8 }]}>
         <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
         <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
         <Text style={[styles.logoSub, { color: theme.textThird }]}>Business &amp; Partners</Text>

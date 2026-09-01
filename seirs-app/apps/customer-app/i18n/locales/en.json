@@ -42,8 +42,8 @@
     "sendResetLink": "Send Reset Link",
     "rememberPassword": "Remember your password?",
     "checkInbox": "Check your inbox",
-    "checkInboxDesc": "If your email is registered, we sent a reset link. It expires in 15 minutes.",
-    "checkSpam": "Check your spam folder if you don't see it.",
+    "checkInboxDesc": "If an account exists for that address, we sent a reset link. It expires in 15 minutes. Check spam if you do not see it.",
+    "checkSpam": "",
     "backToSignIn": "Back to Sign In",
     "enterEmail": "Please enter your email address."
   },

@@ -5,6 +5,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
+import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { authApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
@@ -71,12 +72,22 @@ export default function VerifyOtpScreen() {
 
   return (
     <View style={[styles.container, {
-      paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24,
+      paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24,
       backgroundColor: colors.background,
     }]}>
       <Pressable style={styles.back} onPress={() => router.back()}>
         <Icon name="ArrowLeft" size={20} color={colors.text} />
       </Pressable>
+
+      {/* This screen had NO branding at all, which is odd for the one place
+          somebody types a code we emailed them: it is exactly where a person
+          checks they are still in the right app. Left-aligned, matching every
+          other auth screen (founder 2026-09-01). */}
+      <View style={styles.brandRow}>
+        <SeirsMarkBold size={38} color={colors.primary} hubColor={colors.background} />
+        <Text style={[styles.brand, { color: colors.primary }]}>SEIRS</Text>
+        <Text style={[styles.brandSub, { color: colors.textThird }]}>Business &amp; Partners</Text>
+      </View>
 
       <View style={[styles.iconWrap, { backgroundColor: colors.primaryLight }]}>
         <Icon name="Mail" size={32} color={colors.accent} />
@@ -146,6 +157,9 @@ export default function VerifyOtpScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 24 },
   back:      { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginLeft: -8, marginBottom: 32 },
+  brandRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', marginBottom: 24 },
+  brand:     { fontSize: 15, fontWeight: '900', letterSpacing: 4 },
+  brandSub:  { fontSize: 12, marginTop: 1 },
   iconWrap:  { width: 72, height: 72, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   heading:   { fontSize: 26, fontWeight: '800', marginBottom: 10 },
   sub:       { fontSize: 15, lineHeight: 22, marginBottom: 28 },

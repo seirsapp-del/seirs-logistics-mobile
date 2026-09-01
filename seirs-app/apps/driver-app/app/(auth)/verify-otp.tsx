@@ -182,12 +182,12 @@ export default function VerifyOtpScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:   { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.xl, paddingBottom: Spacing.xl },
+  container:   { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.xxl, paddingBottom: Spacing.xl },
   backBtn:     { marginBottom: Spacing.lg },
   backCircle:  { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   heroSection: { alignItems: 'center', marginBottom: Spacing.xl, gap: Spacing.md },
   iconWrap:    { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center' },
-  brandRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, marginBottom: Spacing.lg },
+  brandRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.lg, alignSelf: 'flex-start' },
   brand:       { fontSize: FontSize.sm, fontWeight: FontWeight.black as any, letterSpacing: 4 },
   brandSub:    { fontSize: 9, fontWeight: FontWeight.medium as any, letterSpacing: 3, marginTop: 1 },
   title:       { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold as any, textAlign: 'center' },

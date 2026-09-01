@@ -21,6 +21,16 @@ export default function ForgotPasswordScreen() {
 
   const [email,   setEmail]   = useState('');
   const [loading, setLoading] = useState(false);
+
+  /**
+   * Nothing to send until the address could plausibly be one.
+   *
+   * The button was live on an empty field, so a stray tap round-tripped
+   * to the server to be told the obvious. Business already gated this.
+   * The regex is deliberately loose: the server decides what is real,
+   * this only stops an obviously empty or malformed submit.
+   */
+  const canSubmit = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && !loading;
   const [sent,    setSent]    = useState(false);
   const [error,   setError]   = useState('');
 
@@ -56,11 +66,12 @@ export default function ForgotPasswordScreen() {
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]} showsVerticalScrollIndicator={false}>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
-              <Ionicons name="arrow-back" size={20} color={theme.text} />
-            </View>
-          </Pressable>
+          {/* Holds the space the back arrow occupies on the form state.
+              This screen does not need an arrow (the full-width "Back to
+              Sign In" button is right there), but without reserving its
+              height the logo jumps up the moment you submit. Founder spotted
+              the drift comparing the two side by side, 2026-09-01. */}
+          <View style={styles.backSpacer} />
           <View style={styles.brandRow}>
             <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
@@ -81,16 +92,16 @@ export default function ForgotPasswordScreen() {
               sent people back to a link that had already died. */}
           <View style={styles.sentWrap}>
             <View style={[styles.sentIconWrap, { backgroundColor: theme.primary + '18' }]}>
-              <Ionicons name="mail-open-outline" size={40} color={theme.primary} />
+              <Ionicons name="mail-outline" size={40} color={theme.primary} />
             </View>
             <Text style={[styles.sentTitle, { color: theme.text }]}>Check your inbox</Text>
             <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
-              If <Text style={{ fontWeight: FontWeight.semibold, color: theme.text }}>{email.trim().toLowerCase()}</Text> is registered,
+              If an account exists for <Text style={{ fontWeight: FontWeight.semibold, color: theme.text }}>{email.trim().toLowerCase()}</Text>,
               we sent a reset link. It expires in 15 minutes. Check spam if you do not see it.
             </Text>
           </View>
           <Pressable
-            style={[styles.btn, { backgroundColor: theme.primary }]}
+            style={[styles.btn, { backgroundColor: theme.primary }, !canSubmit && { opacity: 0.5 }]}
             onPress={() => router.back()}
           >
             {/* The arrow lived here AND in the circle at the top of the
@@ -164,7 +175,7 @@ export default function ForgotPasswordScreen() {
           <Pressable
             style={[styles.btn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
             onPress={handleSubmit}
-            disabled={loading}
+            disabled={!canSubmit}
           >
             {loading ? <ActivityIndicator color="#fff" /> : (
               <View style={styles.btnRow}>
@@ -188,7 +199,8 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:  { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.xl, paddingBottom: Spacing.xl },
+  container:  { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.xxl, paddingBottom: Spacing.xl },
+  backSpacer: { height: 40, marginBottom: Spacing.lg },
   backBtn:    { marginBottom: Spacing.lg },
   backCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   header:     { marginBottom: Spacing.xl },
