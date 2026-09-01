@@ -573,8 +573,28 @@ export const adminApi = {
     list:    (status?: string, page = 1, driverId?: string) =>
       req<{ items: any[]; total: number; page: number; take: number }>(
         `/admin/driver-documents?page=${page}${status ? `&status=${status}` : ''}${driverId ? `&driverId=${driverId}` : ''}`),
-    approve: (id: string) =>
-      req<any>(`/admin/driver-documents/${id}/approve`, { method: 'POST' }),
+    /**
+     * Waiting, expired, and expiring within 30 days.
+     *
+     * The route has existed since 2026-08-31 and nothing called it, so the
+     * counts were computed and shown to nobody.
+     */
+    counts: () =>
+      req<{ waiting: number; expired: number; expiringSoon: number; driversWaiting: number }>(
+        '/admin/driver-documents/counts'),
+
+    /**
+     * `expiresAt` (YYYY-MM-DD) is what makes the expiry queries work at all.
+     * This used to send no body, so every approval stored null, so the
+     * expired and expiringSoon counts filtered on `expiresAt IS NOT NULL`
+     * and could only ever return zero. A licence or an insurance
+     * certificate approved without a date silently never lapses.
+     */
+    approve: (id: string, expiresAt?: string | null) =>
+      req<any>(`/admin/driver-documents/${id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ expiresAt: expiresAt ?? null }),
+      }),
     reject:  (id: string, reason: string) =>
       req<any>(`/admin/driver-documents/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
   },

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Bike, Car, Truck, FileText, Star, MapPin, IdCard, CheckCircle2, AlertTriangle, Copy, Download, XCircle, ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { naira } from "@/lib/money";
-import { useConfirm } from '@/components/ConfirmDialog';
+import { useConfirm, usePrompt } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
 import { SosHistory } from '@/components/SosHistory';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
@@ -68,15 +68,52 @@ export default function DriverDetailPage() {
 
   useEffect(() => { void loadDocs(); }, [loadDocs]);
 
+  /**
+   * Documents that stop being true on a date. A licence and an insurance
+   * certificate both lapse; a national ID or a selfie does not.
+   */
+  const EXPIRES = new Set(['drivers_license', 'insurance_cert', 'vehicle_document', 'ownership_proof']);
+
   const reviewDoc = async (d: any, decision: 'approved' | 'rejected') => {
     const reason = (docReason[d.id] ?? '').trim();
     if (decision === 'rejected' && !reason) {
       setError('Say why. The driver sees this, and without it they send the same photo again.');
       return;
     }
+
+    /*
+     * Ask for the expiry when approving something that lapses.
+     *
+     * The server has accepted { expiresAt } on approve since it was written,
+     * and this page sent no body, so every approval stored null. The expiry
+     * queries filter on `expiresAt IS NOT NULL`, so expired and expiringSoon
+     * could only ever return zero: an insurance certificate approved here
+     * silently never lapsed. Found 2026-09-01.
+     *
+     * Skippable on purpose. A reviewer holding a document with no readable
+     * date should not be forced to invent one, and a null here is exactly
+     * what it was before.
+     */
+    let expiresAt: string | null = null;
+    if (decision === 'approved' && EXPIRES.has(String(d.docId))) {
+      const answer = await promptFor({
+        title:   'When does this expire?',
+        message: 'YYYY-MM-DD, from the document itself. Ops is warned 30 days before, and again once it lapses. Leave it blank if the document carries no date.',
+        placeholder: 'YYYY-MM-DD',
+        confirmLabel: 'Approve',
+      });
+      if (answer === null) return;                    // reviewer backed out
+      const clean = String(answer).trim();
+      if (clean && !/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+        setError('That date is not YYYY-MM-DD, so it was not saved. Approve again with the date as written on the document.');
+        return;
+      }
+      expiresAt = clean || null;
+    }
+
     setDocBusy(d.id);
     try {
-      if (decision === 'approved') await adminApi.driverDocuments.approve(d.id);
+      if (decision === 'approved') await adminApi.driverDocuments.approve(d.id, expiresAt);
       else                          await adminApi.driverDocuments.reject(d.id, reason);
       await loadDocs();
     } catch (e: any) {
@@ -105,6 +142,7 @@ export default function DriverDetailPage() {
     rejected:  'bg-red-50 text-red-700 border-red-200',
   };
   const confirm               = useConfirm();
+  const promptFor             = usePrompt();
 
   // Same gate as /users/[id]: the backend refuses NDPR export and
   // erasure to roles outside its allow-lists, so do not render a live

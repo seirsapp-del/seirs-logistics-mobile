@@ -107,6 +107,26 @@ export default function DriverKycQueuePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
+  /**
+   * Documents that have lapsed, or are about to.
+   *
+   * GET /admin/driver-documents/counts has existed since 2026-08-31 and no
+   * screen called it, so expired and expiring documents were counted daily
+   * and shown to nobody. A licence that lapses is not a document anybody
+   * re-submits unprompted, which is the whole reason the count exists.
+   *
+   * Founder's decision 2026-09-01: this FLAGS, it does not enforce. A rider
+   * whose insurance lapsed keeps receiving jobs until a person here decides
+   * otherwise, because cutting somebody's income at 4am with no human in the
+   * loop is its own kind of harm.
+   */
+  const [docCounts, setDocCounts] = useState<{ expired: number; expiringSoon: number } | null>(null);
+  useEffect(() => {
+    adminApi.driverDocuments.counts()
+      .then(r => setDocCounts({ expired: r?.expired ?? 0, expiringSoon: r?.expiringSoon ?? 0 }))
+      .catch(() => setDocCounts(null));
+  }, []);
+
   const openPack = async (driverId: string) => {
     if (openId === driverId) { setOpenId(null); return; }
     setOpenId(driverId);
@@ -259,6 +279,25 @@ export default function DriverKycQueuePage() {
           </Link>
         }
       />
+
+      {!!docCounts && (docCounts.expired > 0 || docCounts.expiringSoon > 0) && (
+        <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+          <span className="font-semibold text-amber-900">Documents needing attention</span>
+          {docCounts.expired > 0 && (
+            <span className="text-amber-900">
+              <strong className="tabular-nums">{docCounts.expired}</strong> already expired
+            </span>
+          )}
+          {docCounts.expiringSoon > 0 && (
+            <span className="text-amber-900">
+              <strong className="tabular-nums">{docCounts.expiringSoon}</strong> expiring within 30 days
+            </span>
+          )}
+          <span className="text-amber-800/80">
+            These riders are still receiving jobs. Open their record to decide.
+          </span>
+        </div>
+      )}
 
       {/* Rejected and Suspended are tabs here so a decision made on this
           page can be reversed from this page. */}
