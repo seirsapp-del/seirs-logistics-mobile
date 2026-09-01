@@ -286,6 +286,31 @@ export class SupportService {
      * queue response). Full records stay available to those with the
      * users permission, one click away in the dashboard.
      */
+    /**
+     * The driver record id, for the riders on this page.
+     *
+     * The first version of this read user.driverId. That column does not
+     * exist: a driver is a row in `drivers` pointing AT the user, not a
+     * field on the user, so the check silently never passed and a rider's
+     * name still opened the customer page. accountTypeOf a few lines down
+     * makes the same wrong assumption and is only saved by its `||`.
+     *
+     * One query for the page rather than one per ticket.
+     */
+    const riderUserIds = rows
+      .filter(t => (t.user as any)?.role === 'driver')
+      .map(t => t.user!.id);
+    const driverIdByUser = new Map<string, string>();
+    if (riderUserIds.length) {
+      const found = await this.users.manager
+        .createQueryBuilder()
+        .select(['d.id AS id', 'd."userId" AS "userId"'])
+        .from('drivers', 'd')
+        .where('d."userId" IN (:...ids)', { ids: riderUserIds })
+        .getRawMany<{ id: string; userId: string }>();
+      found.forEach(r => driverIdByUser.set(r.userId, r.id));
+    }
+
     return rows.map((t) => ({
       ...t,
       user: t.user
@@ -301,7 +326,7 @@ export class SupportService {
             // of their documents, vehicle or trips. Deliberately only these
             // two: the rest of the user stays out of the queue response.
             role:      t.user.role ?? null,
-            driverId:  (t.user as any).driverId ?? null,
+            driverId:  driverIdByUser.get(t.user.id) ?? null,
           }
         : null,
     })) as any;

@@ -68,14 +68,27 @@ function useOpenFraudCount() {
 }
 
 /**
- * Riders waiting on the KYC desk: unreviewed documents plus vehicle changes.
+ * Riders waiting on a decision from the KYC desk.
  *
- * The founder uploaded a full set of documents, went to the dashboard, and
+ * The founder uploaded a full set of documents, opened the dashboard, and
  * saw a badge on Support and nothing at all on Driver KYC Queue, which is
- * where the actual work had landed. The endpoint reported five waiting the
- * whole time; no nav item asked it.
+ * where the work had landed. Nothing asked the endpoint.
  *
- * Both counts, because both are decided on that one page now.
+ * WHY NOT driversWaiting, which the counts endpoint offers and which the
+ * first version of this used. That counts drivers with a document in
+ * 'submitted' state. It is not the same as drivers waiting to be approved,
+ * and the difference is a person: an applicant who signed up and never
+ * uploaded anything is pending forever and has no submitted document, so
+ * they are invisible to it. There is one on the live queue right now who has
+ * been waiting 113 days.
+ *
+ * The two numbers happened to agree the day this was written, which is the
+ * worst way for a count to be wrong: the badge read 2, the page read 2, and
+ * they were counting different things.
+ *
+ * So: accounts awaiting approval, plus vehicle changes. Both are decided on
+ * that one page, and both are somebody unable to earn until a button is
+ * pressed.
  */
 function useKycWaitingCount() {
   const [count, setCount] = useState(0);
@@ -83,13 +96,15 @@ function useKycWaitingCount() {
     let alive = true;
     const load = () => {
       Promise.allSettled([
-        adminApi.driverDocuments.counts(),
+        adminApi.drivers(1, 'pending'),
         adminApi.vehicleChange.pending(),
-      ]).then(([docs, veh]) => {
+      ]).then(([pending, veh]) => {
         if (!alive) return;
-        const d = docs.status === 'fulfilled' ? Number((docs.value as any)?.driversWaiting ?? 0) : 0;
-        const v = veh.status  === 'fulfilled' ? Number((veh.value  as any)?.count ?? 0) : 0;
-        setCount(d + v);
+        const p = pending.status === 'fulfilled'
+          ? Number((pending.value as any)?.total ?? (pending.value as any)?.drivers?.length ?? 0)
+          : 0;
+        const v = veh.status === 'fulfilled' ? Number((veh.value as any)?.count ?? 0) : 0;
+        setCount(p + v);
       });
     };
     load();
