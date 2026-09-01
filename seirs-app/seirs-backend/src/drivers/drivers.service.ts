@@ -2559,6 +2559,58 @@ export class DriversService {
   /**
    * One row per rider waiting on anything. See kyc-queue.ts for why.
    */
+  /**
+   * Every vehicle change this rider has ever had decided.
+   *
+   * WHY. Approving a change copies the type, plate, make, model, year,
+   * colour, the OUTSIDE photo, the papers and the owner packet onto the
+   * driver record. It does not copy the inside photo, the plate close-up,
+   * or the reason the rider gave. Those stay on the change row, and the
+   * only screen that rendered one filtered to PENDING, so the moment a
+   * change was approved the plate close-up became unreachable.
+   *
+   * That is the single most identifying photo in the set, and the founder
+   * asked exactly the right question about it: what happens to the rest of
+   * their information after approval.
+   */
+  async vehicleHistory(driverId: string) {
+    const rows = await this.vehicleChangesRepo.find({
+      where: { driverId },
+      order: { createdAt: 'DESC' },
+      take:  50,
+    });
+    const adminIds = [...new Set(rows.map(r => r.decidedByAdminId).filter(Boolean))] as string[];
+    const names = new Map<string, string>();
+    if (adminIds.length) {
+      const staff = await this.repo.manager.createQueryBuilder()
+        .select(['u.id AS id', 'u.name AS name'])
+        .from('users', 'u').where('u.id IN (:...ids)', { ids: adminIds })
+        .getRawMany<{ id: string; name: string }>();
+      staff.forEach(x => names.set(x.id, x.name));
+    }
+    return {
+      items: rows.map(r => ({
+        id: r.id, status: r.status, createdAt: r.createdAt,
+        decidedAt: r.decidedAt, decisionNote: r.decisionNote,
+        rejectedItems: r.rejectedItems ?? [],
+        decidedByName: r.decidedByAdminId ? names.get(r.decidedByAdminId) ?? null : null,
+        vehicleType: r.vehicleType, vehiclePlate: r.vehiclePlate,
+        make: r.make, model: r.model, year: r.year, color: r.color,
+        reason: r.reason,
+        ownership: r.ownership, ownerName: r.ownerName, ownerPhone: r.ownerPhone,
+        ownerRelationship: r.ownerRelationship,
+        ownerSignatureName: r.ownerSignatureName, ownerConsentAt: r.ownerConsentAt,
+        photoExteriorUrl:  r.photoExteriorUrl,
+        photoInteriorUrl:  r.photoInteriorUrl,
+        photoPlateUrl:     r.photoPlateUrl,
+        ownershipProofUrl: r.ownershipProofUrl,
+        insuranceCertUrl:  r.insuranceCertUrl,
+        ownerConsentUrl:   r.ownerConsentUrl,
+        ownerIdUrl:        r.ownerIdUrl,
+      })),
+    };
+  }
+
   async kycQueue() {
     return buildKycQueue(this.repo.manager.connection);
   }

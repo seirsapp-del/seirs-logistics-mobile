@@ -600,6 +600,15 @@ export const adminApi = {
      */
     queue: () => req<{ count: number; items: any[] }>('/admin/driver-documents/queue'),
 
+    /**
+     * Every vehicle change ever decided for a rider, with all five photos.
+     * Approval copies only the OUTSIDE photo onto the driver record, so the
+     * inside shot, the plate close-up and the rider's own reason are
+     * otherwise unreachable once a change is approved.
+     */
+    vehicleHistory: (driverId: string) =>
+      req<{ items: any[] }>(`/admin/driver-documents/vehicle-history/${driverId}`),
+
     counts: () =>
       req<{ waiting: number; expired: number; expiringSoon: number; driversWaiting: number }>(
         '/admin/driver-documents/counts'),

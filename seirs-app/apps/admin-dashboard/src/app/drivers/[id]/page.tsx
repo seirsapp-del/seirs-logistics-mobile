@@ -8,6 +8,7 @@ import { naira } from "@/lib/money";
 import { useConfirm, usePrompt } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
 import { SosHistory } from '@/components/SosHistory';
+import { VehicleAndHistory } from '@/components/VehicleAndHistory';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
 import { SendDocumentModal } from '@/components/SendDocumentModal';
 import { canExportNdprData, canHardDeleteAccount } from '@/lib/rbac';
@@ -580,6 +581,16 @@ export default function DriverDetailPage() {
               </div>
             )}
           </Section>
+
+          {/*
+            The machine. This page described the person in ten sections and
+            the vehicle in one photo and two fields, while the make, model,
+            papers, insurance and the whole third-party owner packet sat on
+            the driver record unrendered. The history below it exists because
+            approving a change makes the inside photo, the plate close-up and
+            the rider's own reason unreachable.
+          */}
+          <VehicleAndHistory driver={driver} driverId={String(id)} />
         </div>
 
         {/* Work record.

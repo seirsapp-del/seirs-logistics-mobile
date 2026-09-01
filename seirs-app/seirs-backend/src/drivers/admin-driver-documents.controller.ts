@@ -44,6 +44,16 @@ export class AdminDriverDocumentsController {
     return this.drivers.kycQueue();
   }
 
+  // GET /api/v1/admin/driver-documents/vehicle-history/:driverId
+  // Every vehicle change ever decided for this rider, with all five photos.
+  // Approval copies only the OUTSIDE photo onto the driver record, so the
+  // inside shot, the plate close-up and the rider's own reason are otherwise
+  // unreachable the moment a change is approved.
+  @Get('vehicle-history/:driverId')
+  vehicleHistory(@Param('driverId') driverId: string) {
+    return this.drivers.vehicleHistory(driverId);
+  }
+
   // GET /api/v1/admin/driver-documents/counts
   // Feeds the dashboard: waiting, expired, expiring within 30 days.
   @Get('counts')
