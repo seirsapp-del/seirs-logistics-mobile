@@ -76,6 +76,10 @@ export default function RegisterScreen() {
   const [loading,        setLoading]         = useState(false);
   const [error,          setError]           = useState('');
 
+  // Gated like the sign-in button (founder 2026-09-01).
+  const missing   = validate(firstName, lastName, email, phone, password, confirmPwd, ageConfirmed, termsAccepted);
+  const canSubmit = missing === null && !loading;
+
   const handleRegister = async () => {
     const err = validate(firstName, lastName, email, phone, password, confirmPwd, ageConfirmed, termsAccepted);
     if (err) { setError(err); return; }
@@ -169,16 +173,12 @@ export default function RegisterScreen() {
 
           {/* Name row: First + Last */}
 
-          <Text style={[styles.legend, { color: theme.textThird }]}>
-            Fields marked <Text style={{ color: theme.error }}>*</Text> are required.
-          </Text>
-
           {/* Names stacked, not side by side. Nigerian names are long and a
               half-width field scrolled the start of the name out of view:
               "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
               not see what they had typed (founder, 2026-09-01). */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.firstName')}<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.firstName')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <User size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
               <TextInput
@@ -211,7 +211,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.lastName')}<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.lastName')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
@@ -227,7 +227,7 @@ export default function RegisterScreen() {
 
           {/* Email */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.emailAddress')}<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.emailAddress')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Mail size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
               <TextInput
@@ -245,7 +245,7 @@ export default function RegisterScreen() {
 
           {/* Phone: +234 locked prefix */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.phone')}<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.phone')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Phone size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
               <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
@@ -299,7 +299,7 @@ export default function RegisterScreen() {
               value={addrStreet}
               onChangeText={setAddrStreet}
               state={addrState}
-              placeholder="Start typing a street or landmark…"
+              placeholder="15 Adeola Odeku Street, Victoria Island"
             />
             <Text style={[styles.fieldHint, { color: theme.textThird }]}>
               {t('auth.addressHint', { defaultValue: 'Saves you typing it on your first booking. You can add it later instead.' })}
@@ -308,7 +308,7 @@ export default function RegisterScreen() {
 
           {/* Password */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.password')}<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="Min. 8 chars, upper + lower + number/symbol"
               placeholderTextColor={theme.textThird}
@@ -322,7 +322,7 @@ export default function RegisterScreen() {
 
           {/* Confirm Password */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.confirmPassword')}<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.confirmPassword')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder={t('auth.confirmPassword')}
               placeholderTextColor={theme.textThird}
@@ -367,9 +367,9 @@ export default function RegisterScreen() {
           </View>
 
           <Pressable
-            style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+            style={[styles.submitBtn, { backgroundColor: theme.primary }, !canSubmit && { opacity: 0.5 }]}
             onPress={handleRegister}
-            disabled={loading}
+            disabled={!canSubmit}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -380,6 +380,10 @@ export default function RegisterScreen() {
               </View>
             )}
           </Pressable>
+
+          {!!missing && !loading && (
+            <Text style={[styles.gateHint, { color: theme.textThird }]}>{missing}</Text>
+          )}
 
           <Text style={[styles.otpNote, { color: theme.textThird }]}>
             {t('auth.otpNote')}
@@ -410,7 +414,6 @@ const styles = StyleSheet.create({
   card:         { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },
   errorBox:     { padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
   errorText:    { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  legend:       { fontSize: FontSize.xs, marginBottom: Spacing.md },
   field:        { marginBottom: Spacing.md, gap: Spacing.xs },
   label:        { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   inputWrap:    { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },
@@ -428,6 +431,7 @@ const styles = StyleSheet.create({
   submitBtn:    { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.sm },
   submitRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   submitText:   { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  gateHint:     { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.sm, lineHeight: 18 },
   otpNote:      { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.md, lineHeight: 18 },
   footer:       { flexDirection: 'row', justifyContent: 'center' },
   footerText:   { fontSize: FontSize.base },

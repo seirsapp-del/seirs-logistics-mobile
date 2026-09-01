@@ -162,7 +162,7 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
   return (
     <View>
       {!!label && <Text style={[styles.label, { color: colors.textSecond }]}>{label}</Text>}
-      <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.inputWrap, { backgroundColor: colors.surfaceSecond, borderColor: colors.border }]}>
         <TextInput
           style={[styles.input, { color: colors.text }]}
           value={value}
@@ -170,20 +170,20 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
           onFocus={(e) => { setFocused(true); onFocus?.(e); }}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
           placeholder={placeholder ?? 'Start typing a street or landmark…'}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.textThird}
         />
-        {searching && <ActivityIndicator size="small" color="#3A7BD5" />}
+        {searching && <ActivityIndicator size="small" color={colors.accent} />}
       </View>
 
       {showDropdown && (
-        <View style={[styles.dropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.dropdown, { backgroundColor: colors.surfaceSecond, borderColor: colors.border }]}>
           {predictions.map((p) => (
             <Pressable
               key={p.place_id}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
               onPress={() => pick(p)}
             >
-              <Icon name="MapPin" size={16} color="#3A7BD5" />
+              <Icon name="MapPin" size={16} color={colors.accent} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.rowMain, { color: colors.text }]} numberOfLines={1}>{p.main_text}</Text>
                 {!!p.secondary_text && (
@@ -202,8 +202,8 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
-    borderWidth: 1, borderColor: '#E5E7EB',
+    backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 16, height: 52,
+    borderWidth: 1.5, borderColor: '#E5E7EB',
   },
   input: { flex: 1, fontSize: 15, color: '#0F2B4C' },
 

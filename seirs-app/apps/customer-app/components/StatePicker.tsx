@@ -48,7 +48,7 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
   return (
     <>
       {!!label && <Text style={[styles.label, { color: colors.textSecond }]}>{label}</Text>}
-      <Pressable style={[styles.trigger, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setOpen(true)}>
+      <Pressable style={[styles.trigger, { backgroundColor: colors.surfaceSecond, borderColor: colors.border }]} onPress={() => setOpen(true)}>
         <Text style={[styles.triggerText, { color: colors.text }, !value && styles.triggerPlaceholder]}>
           {value || placeholder}
         </Text>
@@ -62,7 +62,7 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
         onRequestClose={() => setOpen(false)}
       >
         <View style={[styles.modal, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.surfaceSecond, borderBottomColor: colors.border }]}>
             <Pressable style={styles.closeBtn} onPress={() => setOpen(false)}>
               <Icon name="X" size={22} color={colors.text} />
             </Pressable>
@@ -70,14 +70,14 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
             <View style={{ width: 40 }} />
           </View>
 
-          <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.searchWrap, { backgroundColor: colors.surfaceSecond, borderColor: colors.border }]}>
             <Icon name="Search" size={16} color={colors.textThird} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
               value={search}
               onChangeText={setSearch}
               placeholder="Search state…"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.textThird}
               autoFocus
             />
           </View>
@@ -95,11 +95,11 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
             }
             renderItem={({ item }) => (
               <Pressable
-                style={({ pressed }) => [styles.row, { backgroundColor: colors.surface, borderBottomColor: colors.border }, pressed && { backgroundColor: colors.surfaceSecond }]}
+                style={({ pressed }) => [styles.row, { backgroundColor: colors.surfaceSecond, borderBottomColor: colors.border }, pressed && { backgroundColor: colors.surfaceSecond }]}
                 onPress={() => pick(item)}
               >
                 <Text style={[styles.rowText, { color: colors.text }, value === item && [styles.rowTextActive, { color: colors.primary }]]}>{item}</Text>
-                {value === item && <Icon name="Check" size={16} color="#3A7BD5" />}
+                {value === item && <Icon name="Check" size={16} color={colors.accent} />}
               </Pressable>
             )}
           />
@@ -113,8 +113,8 @@ const styles = StyleSheet.create({
   label:    { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
   trigger:  {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
-    borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 14,
+    backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 16, height: 52,
+    borderWidth: 1.5, borderColor: '#E5E7EB', marginBottom: 14,
   },
   triggerText:         { fontSize: 15, color: '#0F2B4C' },
   triggerPlaceholder:  { color: '#9CA3AF' },

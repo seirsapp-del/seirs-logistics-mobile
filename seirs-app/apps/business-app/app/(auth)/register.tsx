@@ -115,6 +115,13 @@ export default function RegisterScreen() {
     return null;
   };
 
+  // Gated like the sign-in button (founder 2026-09-01): nothing to press
+  // until every required field is filled and both boxes ticked. `missing`
+  // is also rendered under the button, because a dead button on a form this
+  // long is only fair if it says what it is still waiting for.
+  const missing   = whatIsMissing();
+  const canSubmit = missing === null && !loading;
+
   const handleRegister = async () => {
     // Always tappable: name the missing field rather than leaving someone
     // staring at a greyed-out button with no clue which of thirteen inputs
@@ -219,10 +226,6 @@ export default function RegisterScreen() {
             </View>
           )}
 
-          <Text style={[styles.legend, { color: theme.textThird }]}>
-            Fields marked <Text style={{ color: theme.error }}>*</Text> are required.
-          </Text>
-
           {/* Names stacked, not side by side. Nigerian names are long and a
               half-width field scrolled the start of the name out of view:
               "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
@@ -299,13 +302,13 @@ export default function RegisterScreen() {
               value={form.streetAddress}
               onChangeText={(v) => set('streetAddress', v)}
               state={form.state}
-              placeholder="Start typing a street or landmark…"
+              placeholder="15 Adeola Odeku Street, Victoria Island"
             />
           </View>
 
           {/* Password */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="Min. 8 chars, upper + lower + number/symbol"
               placeholderTextColor={theme.textThird}
@@ -322,7 +325,7 @@ export default function RegisterScreen() {
               whose two entries disagree can actually look at what they
               typed instead of guessing. */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm Password<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm Password<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="Repeat password"
               placeholderTextColor={theme.textThird}
@@ -369,9 +372,9 @@ export default function RegisterScreen() {
           </View>
 
           <Pressable
-            style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+            style={[styles.submitBtn, { backgroundColor: theme.primary }, !canSubmit && { opacity: 0.5 }]}
             onPress={handleRegister}
-            disabled={loading}
+            disabled={!canSubmit}
           >
             {loading ? <ActivityIndicator color={theme.textOnPrimary} /> : (
               <View style={styles.submitRow}>
@@ -380,6 +383,10 @@ export default function RegisterScreen() {
               </View>
             )}
           </Pressable>
+
+          {!!missing && !loading && (
+            <Text style={[styles.gateHint, { color: theme.textThird }]}>{missing}</Text>
+          )}
 
           <Text style={[styles.otpNote, { color: theme.textThird }]}>
             We will email you a 6-digit code to confirm your address.
@@ -415,7 +422,7 @@ function Field({ theme, label, optional, required, icon, hint, children, ...prop
     <View style={styles.field}>
       <Text style={[styles.label, { color: theme.textSecond }]}>
         {label}
-        {required ? <Text style={{ color: theme.error }}> *</Text> : null}
+        {required ? <Text style={{ color: theme.textThird }}> *</Text> : null}
         {optional ? <Text style={{ fontWeight: FontWeight.regular as any, color: theme.textThird }}> (optional)</Text> : null}
       </Text>
       <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
@@ -461,7 +468,6 @@ const styles = StyleSheet.create({
   card:         { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },
   errorBox:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
   errorText:    { fontSize: FontSize.sm, fontWeight: FontWeight.medium as any, flex: 1 },
-  legend:       { fontSize: FontSize.xs, marginBottom: Spacing.md },
   field:        { marginBottom: Spacing.md, gap: Spacing.xs },
   label:        { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
   inputWrap:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },
@@ -478,6 +484,7 @@ const styles = StyleSheet.create({
   submitBtn:    { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.sm },
   submitRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   submitText:   { fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
+  gateHint:     { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.sm, lineHeight: 18 },
   otpNote:      { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.md, lineHeight: 18 },
   footer:       { flexDirection: 'row', justifyContent: 'center' },
   footerText:   { fontSize: FontSize.base },

@@ -59,6 +59,24 @@ export default function DriverRegisterScreen() {
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState('');
 
+  // Gated like the sign-in button (founder 2026-09-01): nothing to press
+  // until every required field is filled, a vehicle is picked and both boxes
+  // are ticked. `missing` is rendered under the button too, because a dead
+  // button on a form this long is only fair if it says what it wants.
+  const pwProblem = password ? validatePassword(password) : 'Choose a password.';
+  const missing: string | null =
+      !firstName.trim()               ? 'Enter your first name.'
+    : !lastName.trim()                ? 'Enter your last name.'
+    : !email.trim()                   ? 'Enter your email address.'
+    : !isValidNigerianMobile(phone)   ? NG_PHONE_HINT
+    : pwProblem                       ? pwProblem
+    : password !== confirmPass        ? 'Passwords do not match.'
+    : !vehicle                        ? 'Select a vehicle type.'
+    : !ageConfirmed                   ? 'Confirm you are 18 years or older.'
+    : !termsConfirmed                 ? 'Accept the Terms of Service and Privacy Policy.'
+    : null;
+  const canSubmit = missing === null && !loading;
+
   const handleRegister = async () => {
     if (!firstName.trim() || !lastName.trim() || !email || !phone || !password || !confirmPass || !vehicle) {
       setError('Please fill in all required fields and select a vehicle type.');
@@ -168,16 +186,12 @@ export default function DriverRegisterScreen() {
 
           {/* Name row */}
 
-          <Text style={[styles.legend, { color: theme.textThird }]}>
-            Fields marked <Text style={{ color: theme.error }}>*</Text> are required.
-          </Text>
-
           {/* Names stacked, not side by side. Nigerian names are long and a
               half-width field scrolled the start of the name out of view:
               "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
               not see what they had typed (founder, 2026-09-01). */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>First name<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>First name<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <User size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
               <TextInput
@@ -208,7 +222,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Last name<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Last name<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
@@ -222,7 +236,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Email address<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Email address<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Mail size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
               <TextInput
@@ -238,7 +252,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Phone number<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Phone number<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
                 <Phone size={14} color={theme.textThird} strokeWidth={1.5} />
@@ -258,7 +272,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="Min 8 chars, upper + lower + number/symbol"
               placeholderTextColor={theme.textThird}
@@ -270,7 +284,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm password<Text style={{ color: theme.error }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm password<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="Re-enter password"
               placeholderTextColor={theme.textThird}
@@ -284,7 +298,7 @@ export default function DriverRegisterScreen() {
 
         {/* Vehicle selector */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Vehicle type<Text style={{ color: theme.error }}> *</Text></Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Vehicle type<Text style={{ color: theme.textThird }}> *</Text></Text>
         </View>
         <View style={styles.vehicleGrid}>
           {VEHICLES.map(v => {
@@ -338,14 +352,18 @@ export default function DriverRegisterScreen() {
         </View>
 
         <Pressable
-          style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+          style={[styles.submitBtn, { backgroundColor: theme.primary }, !canSubmit && { opacity: 0.5 }]}
           onPress={handleRegister}
-          disabled={loading}
+          disabled={!canSubmit}
         >
           {loading ? <ActivityIndicator color="#fff" /> : (
             <Text style={styles.submitText}>Create Driver Account</Text>
           )}
         </Pressable>
+
+        {!!missing && !loading && (
+          <Text style={[styles.gateHint, { color: theme.textThird }]}>{missing}</Text>
+        )}
 
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecond }]}>Already have an account?</Text>
@@ -371,7 +389,6 @@ const styles = StyleSheet.create({
   card:          { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.md },
   errorBox:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
   errorText:     { fontSize: FontSize.sm, fontWeight: FontWeight.medium as any, flex: 1 },
-  legend:        { fontSize: FontSize.xs, marginBottom: Spacing.md },
   field:         { marginBottom: Spacing.md, gap: Spacing.xs },
   label:         { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
   optLabel:      { fontWeight: '400' as any },
@@ -391,6 +408,7 @@ const styles = StyleSheet.create({
   checkRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
   checkLabel:    { flex: 1, fontSize: FontSize.sm, lineHeight: 20 },
   linkText:      { fontWeight: FontWeight.semibold, textDecorationLine: 'underline' },
+  gateHint:      { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.sm, lineHeight: 18 },
   submitBtn:     { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.lg },
   submitText:    { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
   footer:        { flexDirection: 'row', justifyContent: 'center' },
