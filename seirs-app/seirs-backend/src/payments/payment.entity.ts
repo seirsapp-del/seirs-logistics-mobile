@@ -13,9 +13,22 @@ export enum PaymentStatus {
   CANCELLED = 'cancelled',
 }
 
+/**
+ * The rail the money actually arrived on.
+ *
+ * USSD was missing until 2026-09-01 even though SEIRS checkout has
+ * always offered it: initializePayment sends
+ * 'card,banktransfer,mobilemoney,ussd' as its payment_options, so a
+ * customer could pick a rail the enum had no name for.
+ *
+ * WALLET means the internal SEIRS balance, NOT a provider rail. Nothing
+ * the provider reports may ever map onto it, or provider money lands in
+ * the wrong ledger.
+ */
 export enum PaymentMethod {
   CARD         = 'card',
   BANK         = 'bank_transfer',
+  USSD         = 'ussd',
   MOBILE_MONEY = 'mobile_money',
   WALLET       = 'wallet',
   COD          = 'cash_on_delivery',
@@ -85,8 +98,23 @@ export class Payment {
   @Column({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PENDING })
   status: PaymentStatus;
 
-  @Column({ type: 'enum', enum: PaymentMethod })
-  method: PaymentMethod;
+  /**
+   * How the money actually arrived, or null until it has.
+   *
+   * This was NOT NULL and every checkout path stamped CARD onto the row
+   * at creation, before anyone had paid anything, and nothing ever
+   * corrected it. Someone who paid by transfer or USSD read "card" on
+   * their receipt forever, and the two places that branch on this field
+   * were reading a value that was only ever a placeholder.
+   *
+   * A rail is not knowable until the provider says which one was used,
+   * so the honest state before that is null. It is written at settle
+   * time from the provider's payment_type. Rows created before
+   * 2026-09-01 keep whatever they have: they are historical and there is
+   * no way to recover what really happened on them.
+   */
+  @Column({ type: 'enum', enum: PaymentMethod, nullable: true })
+  method: PaymentMethod | null;
 
   @Column({ type: 'enum', enum: EscrowStatus, nullable: true })
   escrowStatus: EscrowStatus;
