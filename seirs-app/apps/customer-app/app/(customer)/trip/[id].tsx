@@ -34,6 +34,7 @@ import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
+import { collectUrl } from '@/constants/config';
 
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
@@ -206,7 +207,7 @@ export default function TripDetailsScreen() {
         message:
           `Package ${code} is waiting at a SEIRS partner store. ` +
           `Settle the collection fee and get the pickup address here: ` +
-          `https://seirs.co/collect/${code}`,
+          collectUrl(code),
       });
     } catch { /* share sheet dismissed */ }
   };

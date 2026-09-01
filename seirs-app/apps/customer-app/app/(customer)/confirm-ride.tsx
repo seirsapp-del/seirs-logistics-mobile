@@ -30,6 +30,7 @@ import { deliveriesApi, paymentsApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
+import { TERMS_URL } from '@/constants/config';
 
 const VEHICLE_LABEL: Record<string, string> = {
   okada: 'Okada', keke: 'Keke', car: 'Car', danfo: 'Danfo',
@@ -247,7 +248,7 @@ export default function ConfirmRideScreen() {
               policy.{' '}
               <Text
                 style={{ color: theme.primary, fontWeight: '600' }}
-                onPress={() => Linking.openURL('https://seirs.co/terms-of-service')}
+                onPress={() => Linking.openURL(TERMS_URL)}
               >
                 Read them
               </Text>

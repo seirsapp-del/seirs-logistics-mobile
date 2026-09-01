@@ -61,6 +61,7 @@ import { getActiveRateCard } from '@/hooks/use-rate-card';
 
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
+import { TERMS_URL } from '@/constants/config';
 
 const VEHICLES = PACKAGE_VEHICLES;
 // Business Vehicle step, ported verbatim (founder 2026-08-21: exactly).
@@ -2670,7 +2671,7 @@ export default function SendScreen() {
                   {' '}
                   <Text
                     style={{ color: theme.primary, fontWeight: '600' }}
-                    onPress={() => Linking.openURL('https://seirs.co/terms-of-service')}
+                    onPress={() => Linking.openURL(TERMS_URL)}
                   >
                     {t('send.tcRead', { defaultValue: 'Read them' })}
                   </Text>

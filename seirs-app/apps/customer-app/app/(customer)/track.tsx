@@ -24,6 +24,7 @@ import DeliveryTrackMap from '@/components/DeliveryTrackMap';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
+import { collectUrl, trackUrl } from '@/constants/config';
 
 // Labels looked up via t(`tracking.step${cap}`) at render so language
 // switches reflect live.
@@ -208,7 +209,7 @@ export default function TrackScreen() {
   const shareCollectLink = async () => {
     const code = deliveryData?.trackingCode;
     if (!code) return;
-    const url = `https://seirs.co/collect/${code}`;
+    const url = collectUrl(code);
     try {
       await Share.share({
         message:
@@ -713,7 +714,7 @@ export default function TrackScreen() {
                       <Pressable
                         style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.surfaceSecond, borderRadius: 10, paddingVertical: 11 }}
                         onPress={() => Share.share({
-                          message: `I'm on a SEIRS ride (${deliveryData.trackingCode}). Follow my trip live: https://seirs.co/track/${deliveryData.trackingCode}`,
+                          message: `I'm on a SEIRS ride (${deliveryData.trackingCode}). Follow my trip live: ${trackUrl(deliveryData.trackingCode)}`,
                         }).catch(() => {})}
                       >
                         <Ionicons name="share-social-outline" size={16} color={theme.text} />

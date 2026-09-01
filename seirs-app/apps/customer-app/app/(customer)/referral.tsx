@@ -13,11 +13,12 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { loyaltyApi, type ReferralHistoryItem } from '@/services/api';
+import { referralUrl } from '@/constants/config';
 
 // Universal/web fallback link: when the receiver doesn't have the app,
 // the page on seirs.co/r/<code> can show download links and forward
 // the code through to the play store / app store via deferred deep linking.
-const WEB_REFERRAL_BASE = 'https://seirs.co/r/';
+const WEB_REFERRAL_BASE = referralUrl('');
 
 // Points awarded per successful referral. Must stay in sync with the
 // backend REFERRAL_BONUS constant in loyalty.service.ts. If either

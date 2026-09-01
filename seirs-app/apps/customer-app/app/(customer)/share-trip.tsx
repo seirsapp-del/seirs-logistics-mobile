@@ -12,6 +12,7 @@ import * as Clipboard from 'expo-clipboard';
 import { MOCK_TRIPS } from '@/constants/mockData';
 import { deliveriesApi } from '@/services/api';
 import { useEffect } from 'react';
+import { trackUrl } from '@/constants/config';
 
 // A delivery only has a live location worth sharing while it is running.
 const LIVE_STATUSES = ['assigned', 'accepted', 'picked_up', 'in_transit', 'arrived'];
@@ -85,7 +86,7 @@ export default function ShareTripScreen() {
 
   // Public tracking page lives on the marketing website: seirs.co/track/{code}.
   // Anyone with the code can open this in any browser without a login.
-  const shareLink = trackingCode ? `https://seirs.co/track/${trackingCode}` : null;
+  const shareLink = trackingCode ? `${trackUrl(trackingCode)}` : null;
 
   // "Live Tracking Active" was rendered unconditionally, including when the
   // screen was opened with no delivery at all (sweep C-5.11).

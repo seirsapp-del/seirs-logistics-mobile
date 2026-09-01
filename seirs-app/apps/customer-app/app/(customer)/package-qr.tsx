@@ -41,6 +41,7 @@ import { Icon } from '@/components/Icon';
 import { SeirsMarkBold, SeirsWordmark, NAVY_REFINED, YELLOW } from '@/components/SeirsLogoV2';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { trackUrl } from '@/constants/config';
 
 /**
  * The ticket is deliberately the same paper white in both themes.
@@ -107,7 +108,7 @@ export default function PackageQrScreen() {
           `Tracking code: ${code}\n` +
           (description ? `Package: ${description}\n` : '') +
           `\nShow this code to the driver at handover, or let them scan the ` +
-          `QR image. Follow it here: https://seirs.co/track/${code}`,
+          `QR image. Follow it here: ${trackUrl(code)}`,
       });
     } catch { /* the share sheet was dismissed */ }
   };

@@ -15,7 +15,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
-import { deliveriesApi, loyaltyApi, promotionsApi } from '@/services/api';
+import { deliveriesApi, loyaltyApi, promotionsApi, usersApi } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
 
@@ -88,6 +88,16 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleExportData = async () => {
+    try {
+      await usersApi.exportData();
+      alertDialog('Export queued',
+        'Your data export has been requested. You will receive an email with the download link within 24 hours.');
+    } catch {
+      alertDialog('Export failed', 'Please try again later, or contact support.');
+    }
+  };
+
   const SECTIONS: MenuSection[] = [
     {
       title: t('profile.sectionAccount'),
@@ -130,7 +140,6 @@ export default function ProfileScreen() {
          */
         { icon: 'document-text-outline', label: 'Documents', sub: 'Letters and documents from SEIRS', onPress: () => router.push('/(customer)/documents' as any) },
         { icon: 'language-outline',      label: t('profile.language'),      sub: t('profile.languageSub'),      onPress: () => router.push('/(customer)/language') },
-        { icon: 'lock-closed-outline',   label: t('profile.privacy'),       sub: t('profile.privacySub'),       onPress: () => router.push('/(customer)/privacy') },
         {
           icon:  'contrast-outline',
           label: 'Appearance',
@@ -189,6 +198,14 @@ export default function ProfileScreen() {
        */
       title: t('profile.sectionAccountActions', { defaultValue: 'Account actions' }),
       items: [
+        /*
+         * Carried off the Privacy & Data screen when that screen was
+         * deleted (founder 2026-09-01). It was the only thing on it that
+         * did anything: GET /users/me/export really exists and really
+         * queues an export. The rest was three legal links to a parked
+         * domain, a toggle nothing honoured, and a duplicate of this row.
+         */
+        { icon: 'download-outline', label: t('profile.exportData', { defaultValue: 'Download my data' }), sub: t('profile.exportDataSub', { defaultValue: 'We email you a copy within 24 hours' }), onPress: () => handleExportData() },
         { icon: 'trash-outline', label: t('profile.deleteAccount', { defaultValue: 'Delete Account' }), sub: t('profile.deleteAccountSub', { defaultValue: 'Close your SEIRS account for good' }), onPress: () => router.push('/(customer)/delete-account' as any), danger: true },
       ],
     },
