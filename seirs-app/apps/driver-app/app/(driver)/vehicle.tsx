@@ -40,6 +40,8 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { driversApi, uploadApi } from '@/services/api';
 import type { VehicleChangeDTO, VehicleRecordDTO } from '@/services/api';
 import { DocUploadTile } from '@/components/DocUploadTile';
+import { IdentityDocuments } from '@/components/IdentityDocuments';
+import { InsurancePartners } from '@/components/InsurancePartners';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import {
   VehicleOwnershipForm, ownershipProblems, EMPTY_OWNERSHIP, type OwnershipValue,
@@ -334,7 +336,7 @@ export default function VehicleScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>My Vehicle</Text>
+        <Text style={[styles.title, { color: theme.text }]}>KYC Verification</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -370,6 +372,12 @@ export default function VehicleScreen() {
                 <Text style={[styles.errText, { color: theme.error }]}>{error}</Text>
               </View>
             )}
+
+            {/* WHO you are. Above the vehicle, and deliberately OUTSIDE the
+                pending branch below: a vehicle change under review must not
+                hide the identity documents, because a rider whose licence was
+                rejected still has to be able to replace it while they wait. */}
+            <IdentityDocuments onSheet={setSheet} />
 
             {pending ? (
               /* One request at a time. Re-rendering the form under a
@@ -546,6 +554,8 @@ export default function VehicleScreen() {
                         flagged={faultedSlots.includes(p.key)}
                         onPress={() => choosePhoto(p.key, p.label)}
                       />
+                      {/* Right under the certificate we are asking for. */}
+                      {p.key === 'insuranceCert' && <InsurancePartners />}
                     </View>
                   ))}
                 </View>

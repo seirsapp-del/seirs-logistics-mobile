@@ -87,8 +87,10 @@ export default function DriverProfileScreen() {
       title: 'Account',
       items: [
         { icon: 'person-outline',           label: 'Edit Profile',     sub: 'Name, photo, contact details', route: '/(driver)/edit-profile' },
-        { icon: 'shield-checkmark-outline', label: 'KYC Verification', sub: 'Documents & verification',   route: '/(driver)/kyc' },
-        { icon: 'car-outline',              label: 'My Vehicle',        sub: vehicleSub,                   route: '/(driver)/vehicle' },
+        // One row, not two. Identity and vehicle were separate screens that
+        // asked for three of the same documents, and a rider could not tell
+        // which one wanted what (founder 2026-09-01). They are one screen now.
+        { icon: 'shield-checkmark-outline', label: 'KYC Verification', sub: `Documents, and ${vehicleSub}`, route: '/(driver)/vehicle' },
       ],
     },
     {

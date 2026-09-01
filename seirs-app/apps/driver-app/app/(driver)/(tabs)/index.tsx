@@ -343,7 +343,7 @@ export default function DriverHomeScreen() {
               <View style={styles.headerBtn}>
                 <NotificationBell color="#fff" size={22} />
               </View>
-              <Pressable style={styles.headerBtn} onPress={() => router.push('/(driver)/kyc' as any)}>
+              <Pressable style={styles.headerBtn} onPress={() => router.push('/(driver)/vehicle' as any)}>
                 <Truck size={22} color="#fff" strokeWidth={1.5} />
               </Pressable>
             </View>
@@ -354,7 +354,7 @@ export default function DriverHomeScreen() {
               KYC so they can finish their documents. */}
           {driverData?.status && driverData.status !== 'approved' && (
             <Pressable
-              onPress={() => router.push('/(driver)/kyc' as any)}
+              onPress={() => router.push('/(driver)/vehicle' as any)}
               style={styles.reviewBanner}
             >
               <Clock size={18} color="#FFBE0B" strokeWidth={2} />
