@@ -3,9 +3,11 @@ import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
-import { useColors } from '@/context/ThemeContext';
+import { useColors } from '@/context/ThemeContext';
+
 import { naira } from '@/utils/money';
 
 const PERIODS = ['week', 'month'] as const;
@@ -26,6 +28,7 @@ const PAYOUT_COLOR: Record<string, string> = {
 
 export default function EarningsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const colors = useColors();
   const [period,  setPeriod]  = useState<Period>('week');
   const [data,    setData]    = useState<EarningsData | null>(null);
@@ -136,8 +139,17 @@ export default function EarningsScreen() {
             </View>
           )}
 
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, styles.sectionHeaderRow]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Payout History</Text>
+            {/* The way out to a statement you can hand an accountant.
+                The windowed route and its PDF have existed since 10 and
+                19 August and were reachable from nowhere, so a shop
+                asking which packages made up a figure had no answer
+                inside the app (2026-09-02). */}
+            <Pressable onPress={() => router.push('/(partner)/statement' as any)} style={styles.stmtLink}>
+              <Text style={[styles.stmtLinkText, { color: colors.primary }]}>Full statement</Text>
+              <Icon name="ChevronRight" size={16} color={colors.primary} />
+            </Pressable>
           </View>
 
           {(data?.payouts ?? []).length === 0 ? (
@@ -184,6 +196,11 @@ export default function EarningsScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Only this section header carries a trailing action, so the row
+  // layout is additive rather than applied to every other one.
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stmtLink:     { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  stmtLinkText: { fontSize: 13, fontWeight: '700' },
   header:          { paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, gap: 12 },
   heading:         { fontSize: 20, fontWeight: '800' },
   periodToggle:    { flexDirection: 'row', gap: 8 },
