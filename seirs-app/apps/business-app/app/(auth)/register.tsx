@@ -39,7 +39,7 @@
  * form this long that is worse, so this is the one place business does not
  * follow it.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, Linking,
@@ -106,24 +106,32 @@ export default function RegisterScreen() {
 
   /** The first human-readable reason the form cannot submit, or null.
    *  Drives both the gate and the message shown on tap. */
-  const whatIsMissing = (): string | null => {
-    if (!form.firstName.trim())      return 'Please enter your first name.';
-    if (!form.lastName.trim())       return 'Please enter your last name.';
-    if (!form.email.trim())          return 'Please enter your email address.';
-    if (!form.email.includes('@'))   return 'Please enter a valid email address.';
-    if (!form.phone.trim())          return 'Please enter your phone number.';
+  /**
+   * The first unmet requirement, and the field it belongs to.
+   *
+   * The message is shown under the button so a dimmed button explains
+   * itself. The anchor is what makes that explanation useful: at the bottom
+   * of a form this long the named field is several screens up, so the line
+   * is tappable and scrolls to it (founder 2026-09-01).
+   */
+  const whatIsMissing = (): { msg: string; at: string } | null => {
+    if (!form.firstName.trim())      return { msg: 'Please enter your first name.', at: 'firstName' };
+    if (!form.lastName.trim())       return { msg: 'Please enter your last name.', at: 'lastName' };
+    if (!form.email.trim())          return { msg: 'Please enter your email address.', at: 'email' };
+    if (!form.email.includes('@'))   return { msg: 'Please enter a valid email address.', at: 'email' };
+    if (!form.phone.trim())          return { msg: 'Please enter your phone number.', at: 'phone' };
     // 071 is in the regex above and was missing from this list, so a Glo 071
     // user who mistyped was told their prefix is invalid (B-6.6).
-    if (!phoneValid)                 return NG_PHONE_HINT;
-    if (!form.companyName.trim())    return 'Please enter your company name.';
-    if (!rcOk)                       return RC_ERROR;
-    if (!form.state)                 return 'Please pick your state.';
-    if (!form.city.trim())           return 'Please enter your city or LGA (e.g. Ikeja, Surulere, Lekki).';
-    if (!form.streetAddress.trim())  return 'Please enter your street address (street name + building number / landmark).';
-    if (!passValid)                  return passError ?? 'Password does not meet the requirements above.';
-    if (!passMatch)                  return 'Passwords do not match. Please re-type your confirm password.';
-    if (!ageOk)                      return 'Please confirm you are 18 or older.';
-    if (!termsOk)                    return 'Please accept the Terms of Service.';
+    if (!phoneValid)                 return { msg: NG_PHONE_HINT, at: 'phone' };
+    if (!form.companyName.trim())    return { msg: 'Please enter your company name.', at: 'companyName' };
+    if (!rcOk)                       return { msg: RC_ERROR, at: 'rcNumber' };
+    if (!form.state)                 return { msg: 'Please pick your state.', at: 'state' };
+    if (!form.city.trim())           return { msg: 'Please enter your city or LGA (e.g. Ikeja, Surulere, Lekki).', at: 'city' };
+    if (!form.streetAddress.trim())  return { msg: 'Please enter your street address (street name + building number / landmark).', at: 'street' };
+    if (!passValid)                  return { msg: passError ?? 'Password does not meet the requirements above.', at: 'password' };
+    if (!passMatch)                  return { msg: 'Passwords do not match. Please re-type your confirm password.', at: 'confirm' };
+    if (!ageOk)                      return { msg: 'Please confirm you are 18 or older.', at: 'consent' };
+    if (!termsOk)                    return { msg: 'Please accept the Terms of Service.', at: 'consent' };
     return null;
   };
 
@@ -134,12 +142,24 @@ export default function RegisterScreen() {
   const missing   = whatIsMissing();
   const canSubmit = missing === null && !loading;
 
+  // Where each field sits inside the scroll view, filled in by onLayout.
+  const scrollRef = useRef<ScrollView>(null);
+  const cardY     = useRef(0);
+  const fieldY    = useRef<Record<string, number>>({});
+  const rememberY = (k: string, y: number) => { fieldY.current[k] = y; };
+  const jumpTo = (key: string) => {
+    const y = fieldY.current[key];
+    if (y === undefined) return;
+    // A little headroom so the label is not welded to the top edge.
+    scrollRef.current?.scrollTo({ y: Math.max(0, cardY.current + y - 90), animated: true });
+  };
+
   const handleRegister = async () => {
     // Always tappable: name the missing field rather than leaving someone
     // staring at a greyed-out button with no clue which of thirteen inputs
     // is at fault.
-    const missing = whatIsMissing();
-    if (missing) { setError(missing); return; }
+    const problem = whatIsMissing();
+    if (problem) { setError(problem.msg); return; }
 
     setError('');
     setLoading(true);
@@ -198,6 +218,7 @@ export default function RegisterScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -231,7 +252,10 @@ export default function RegisterScreen() {
         </View>
 
         {/* Form */}
-        <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
+        <View
+          style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}
+          onLayout={(e) => { cardY.current = e.nativeEvent.layout.y; }}
+        >
           {!!error && (
             <View style={[styles.errorBox, { backgroundColor: theme.error + '18' }]}>
               <Icon name="AlertCircle" size={16} color={theme.error} />
@@ -244,7 +268,7 @@ export default function RegisterScreen() {
               "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
               not see what they had typed (founder, 2026-09-01). */}
           <Field theme={theme}
-            label="First Name" required icon="User" placeholder="Adebayo"
+            label="First Name" required anchor="firstName" onAnchor={rememberY} icon="User" placeholder="Adebayo"
             autoComplete="given-name" autoCapitalize="words"
             value={form.firstName} onChangeText={(v) => set('firstName', v)}
           />
@@ -254,13 +278,13 @@ export default function RegisterScreen() {
             value={form.middleName} onChangeText={(v) => set('middleName', v)}
           />
           <Field theme={theme}
-            label="Last Name" required icon="User" placeholder="Yusuf"
+            label="Last Name" required anchor="lastName" onAnchor={rememberY} icon="User" placeholder="Yusuf"
             autoComplete="family-name" autoCapitalize="words"
             value={form.lastName} onChangeText={(v) => set('lastName', v)}
           />
 
           <Field theme={theme}
-            label="Email Address" required icon="Mail" placeholder="adebayo@company.ng"
+            label="Email Address" required anchor="email" onAnchor={rememberY} icon="Mail" placeholder="adebayo@company.ng"
             keyboardType="email-address" autoCapitalize="none" autoComplete="email"
             value={form.email} onChangeText={(v) => set('email', v)}
           />
@@ -268,7 +292,7 @@ export default function RegisterScreen() {
           {/* Phone with a locked +234, matching customer: type the number the
               way it is written on a card (08012345678) and the prefix is
               added for you on submit. */}
-          <Field theme={theme} label="Phone Number" required icon="Phone" hint={NG_PHONE_HINT}>
+          <Field theme={theme} label="Phone Number" required anchor="phone" onAnchor={rememberY} icon="Phone" hint={NG_PHONE_HINT}>
             <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
               <Text style={[styles.prefix, { color: theme.text }]}>+234</Text>
             </View>
@@ -286,12 +310,12 @@ export default function RegisterScreen() {
 
           {/* The one business-only group. */}
           <Field theme={theme}
-            label="Company Name" required icon="Building2" placeholder="Okafor Trading Ltd"
+            label="Company Name" required anchor="companyName" onAnchor={rememberY} icon="Building2" placeholder="Okafor Trading Ltd"
             autoCapitalize="words"
             value={form.companyName} onChangeText={(v) => set('companyName', v)}
           />
           <Field theme={theme}
-            label="RC Number" optional icon="Hash" placeholder="RC-123456"
+            label="RC Number" optional anchor="rcNumber" onAnchor={rememberY} icon="Hash" placeholder="RC-123456"
             autoCapitalize="characters"
             value={form.rcNumber}
             onChangeText={(v) => set('rcNumber', normaliseRc(v))}
@@ -307,14 +331,14 @@ export default function RegisterScreen() {
               is Places autocomplete pinned to the chosen state. Unlike
               customer, where the address is optional, business needs it:
               nothing can be priced or dispatched without a state. */}
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('state', e.nativeEvent.layout.y)}>
             <StatePicker label="State *" value={form.state} onChange={(s) => set('state', s)} />
           </View>
           <Field theme={theme}
-            label="City / LGA" required placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi"
+            label="City / LGA" required anchor="city" onAnchor={rememberY} placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi"
             value={form.city} onChangeText={(v) => set('city', v)}
           />
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('street', e.nativeEvent.layout.y)}>
             <StreetAutocomplete
               label="Street Address & Landmark *"
               value={form.streetAddress}
@@ -325,7 +349,7 @@ export default function RegisterScreen() {
           </View>
 
           {/* Password */}
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('password', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="At least 8 characters"
@@ -342,7 +366,7 @@ export default function RegisterScreen() {
           {/* Confirm password. Kept as its own toggleable field so somebody
               whose two entries disagree can actually look at what they
               typed instead of guessing. */}
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('confirm', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Confirm Password<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="Repeat password"
@@ -366,7 +390,10 @@ export default function RegisterScreen() {
           />
 
           {/* Age */}
-          <View style={[styles.checkSection, { borderColor: theme.border }]}>
+          <View
+            style={[styles.checkSection, { borderColor: theme.border }]}
+            onLayout={(e) => rememberY('consent', e.nativeEvent.layout.y)}
+          >
             <Checkbox theme={theme}
               checked={ageOk}
               onToggle={() => setAgeOk((v) => !v)}
@@ -413,11 +440,15 @@ export default function RegisterScreen() {
               incomplete it says what is still missing; once it is ready it
               says what happens next. The two used to stack, and two grey
               lines in a row read as one run-on sentence. */}
-          <Text style={[styles.gateHint, { color: theme.textThird }]}>
-            {missing && !loading
-              ? missing
-              : 'We will email you a 6-digit code to confirm your address.'}
-          </Text>
+          {missing && !loading ? (
+            <Pressable onPress={() => jumpTo(missing.at)} hitSlop={8}>
+              <Text style={[styles.gateHint, { color: theme.accent }]}>{missing.msg}</Text>
+            </Pressable>
+          ) : (
+            <Text style={[styles.gateHint, { color: theme.textThird }]}>
+              We will email you a 6-digit code to confirm your address.
+            </Text>
+          )}
         </View>
 
         {/* Footer */}
@@ -441,12 +472,16 @@ type ThemeShape = typeof Colors.light;
  * makes a new component type on every render, so React unmounts and remounts
  * the TextInput and the keyboard drops focus after each character typed.
  */
-function Field({ theme, label, optional, required, icon, hint, children, ...props }: {
+function Field({ theme, label, optional, required, icon, hint, anchor, onAnchor, children, ...props }: {
   theme: ThemeShape; label: string; optional?: boolean; required?: boolean;
   icon?: string; hint?: string; children?: ReactNode;
+  anchor?: string; onAnchor?: (k: string, y: number) => void;
 } & React.ComponentProps<typeof TextInput>) {
   return (
-    <View style={styles.field}>
+    <View
+      style={styles.field}
+      onLayout={anchor && onAnchor ? (e) => onAnchor(anchor, e.nativeEvent.layout.y) : undefined}
+    >
       <Text style={[styles.label, { color: theme.textSecond }]}>
         {label}
         {required ? <Text style={{ color: theme.textThird }}> *</Text> : null}

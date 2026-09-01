@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, Linking,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
@@ -72,20 +72,30 @@ export default function DriverRegisterScreen() {
   // are ticked. `missing` is rendered under the button too, because a dead
   // button on a form this long is only fair if it says what it wants.
   const pwProblem = password ? validatePassword(password) : 'Choose a password.';
-  const missing: string | null =
-      !firstName.trim()               ? 'Enter your first name.'
-    : !lastName.trim()                ? 'Enter your last name.'
-    : !email.trim()                   ? 'Enter your email address.'
-    : !isValidNigerianMobile(phone)   ? NG_PHONE_HINT
-    : pwProblem                       ? pwProblem
-    : password !== confirmPass        ? 'Passwords do not match.'
-    : !addrState                      ? 'Pick the state you live in.'
-    : !addrCity.trim()                ? 'Enter your city or LGA.'
-    : !addrStreet.trim()              ? 'Enter your street address.'
-    : !vehicle                        ? 'Select a vehicle type.'
-    : !ageConfirmed                   ? 'Confirm you are 18 years or older.'
-    : !termsConfirmed                 ? 'Accept the Terms of Service and Privacy Policy.'
+  const missing: { msg: string; at: string } | null =
+      !firstName.trim()               ? { msg: 'Enter your first name.', at: 'firstName' }
+    : !lastName.trim()                ? { msg: 'Enter your last name.', at: 'lastName' }
+    : !email.trim()                   ? { msg: 'Enter your email address.', at: 'email' }
+    : !isValidNigerianMobile(phone)   ? { msg: NG_PHONE_HINT, at: 'phone' }
+    : pwProblem                       ? { msg: pwProblem, at: 'password' }
+    : password !== confirmPass        ? { msg: 'Passwords do not match.', at: 'confirm' }
+    : !addrState                      ? { msg: 'Pick the state you live in.', at: 'state' }
+    : !addrCity.trim()                ? { msg: 'Enter your city or LGA.', at: 'city' }
+    : !addrStreet.trim()              ? { msg: 'Enter your street address.', at: 'street' }
+    : !vehicle                        ? { msg: 'Select a vehicle type.', at: 'vehicle' }
+    : !ageConfirmed                   ? { msg: 'Confirm you are 18 years or older.', at: 'consent' }
+    : !termsConfirmed                 ? { msg: 'Accept the Terms of Service and Privacy Policy.', at: 'consent' }
     : null;
+
+  // Where each field sits, so the line under the button can take you there.
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldY    = useRef<Record<string, number>>({});
+  const rememberY = (k: string, y: number) => { fieldY.current[k] = y; };
+  const jumpTo = (key: string) => {
+    const y = fieldY.current[key];
+    if (y === undefined) return;
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - 90), animated: true });
+  };
   const canSubmit = missing === null && !loading;
 
   const handleRegister = async () => {
@@ -168,6 +178,7 @@ export default function DriverRegisterScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.container,
           // Keep the footer clear of the Android navigation bar
@@ -209,7 +220,7 @@ export default function DriverRegisterScreen() {
               half-width field scrolled the start of the name out of view:
               "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
               not see what they had typed (founder, 2026-09-01). */}
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('firstName', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>First name<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <User size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
@@ -240,7 +251,7 @@ export default function DriverRegisterScreen() {
             </View>
           </View>
 
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('lastName', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Last name<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
@@ -254,7 +265,7 @@ export default function DriverRegisterScreen() {
             </View>
           </View>
 
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('email', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Email address<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Mail size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
@@ -270,7 +281,7 @@ export default function DriverRegisterScreen() {
             </View>
           </View>
 
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('phone', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Phone number<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
@@ -290,11 +301,11 @@ export default function DriverRegisterScreen() {
             <Text style={[styles.hint, { color: theme.textThird }]}>{NG_PHONE_HINT}</Text>
           </View>
 
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('state', e.nativeEvent.layout.y)}>
             <StatePicker label="State *" value={addrState} onChange={setAddrState} />
           </View>
 
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('city', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>City / LGA<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
@@ -308,7 +319,7 @@ export default function DriverRegisterScreen() {
             </View>
           </View>
 
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('street', e.nativeEvent.layout.y)}>
             <StreetAutocomplete
               label="Street Address & Landmark *"
               value={addrStreet}
@@ -318,7 +329,7 @@ export default function DriverRegisterScreen() {
             />
           </View>
 
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('password', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="At least 8 characters"
@@ -330,7 +341,7 @@ export default function DriverRegisterScreen() {
             />
           </View>
 
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('confirm', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Confirm password<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="Re-enter password"
@@ -409,7 +420,9 @@ export default function DriverRegisterScreen() {
         </Pressable>
 
         {!!missing && !loading && (
-          <Text style={[styles.gateHint, { color: theme.textThird }]}>{missing}</Text>
+          <Pressable onPress={() => jumpTo(missing.at)} hitSlop={8}>
+            <Text style={[styles.gateHint, { color: theme.primary }]}>{missing.msg}</Text>
+          </Pressable>
         )}
 
         <View style={styles.footer}>

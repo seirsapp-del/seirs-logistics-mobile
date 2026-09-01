@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, Linking,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
@@ -32,17 +32,17 @@ function validate(
   firstName: string, lastName: string, email: string, phone: string,
   password: string, confirmPassword: string,
   ageConfirmed: boolean, termsAccepted: boolean,
-): string | null {
-  if (!firstName.trim()) return 'First name is required.';
-  if (!lastName.trim())  return 'Last name is required.';
-  if (!email.trim())     return 'Email address is required.';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Enter a valid email address.';
-  if (!isValidNigerianMobile(phone)) return NG_PHONE_HINT;
+): { msg: string; at: string } | null {
+  if (!firstName.trim()) return { msg: 'First name is required.', at: 'firstName' };
+  if (!lastName.trim())  return { msg: 'Last name is required.', at: 'lastName' };
+  if (!email.trim())     return { msg: 'Email address is required.', at: 'email' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { msg: 'Enter a valid email address.', at: 'email' };
+  if (!isValidNigerianMobile(phone)) return { msg: NG_PHONE_HINT, at: 'phone' };
   const pwErr = validatePassword(password);
-  if (pwErr) return pwErr;
-  if (password !== confirmPassword) return 'Passwords do not match.';
-  if (!ageConfirmed) return 'You must confirm you are 18 years of age or older.';
-  if (!termsAccepted) return 'You must agree to the Terms of Service and Privacy Policy.';
+  if (pwErr) return { msg: pwErr, at: 'password' };
+  if (password !== confirmPassword) return { msg: 'Passwords do not match.', at: 'confirm' };
+  if (!ageConfirmed) return { msg: 'You must confirm you are 18 years of age or older.', at: 'consent' };
+  if (!termsAccepted) return { msg: 'You must agree to the Terms of Service and Privacy Policy.', at: 'consent' };
   return null;
 }
 
@@ -80,9 +80,20 @@ export default function RegisterScreen() {
   const missing   = validate(firstName, lastName, email, phone, password, confirmPwd, ageConfirmed, termsAccepted);
   const canSubmit = missing === null && !loading;
 
+  // Where each field sits, so the line under the button can take you there.
+  const scrollRef = useRef<ScrollView>(null);
+  const cardY     = useRef(0);
+  const fieldY    = useRef<Record<string, number>>({});
+  const rememberY = (k: string, y: number) => { fieldY.current[k] = y; };
+  const jumpTo = (key: string) => {
+    const y = fieldY.current[key];
+    if (y === undefined) return;
+    scrollRef.current?.scrollTo({ y: Math.max(0, cardY.current + y - 90), animated: true });
+  };
+
   const handleRegister = async () => {
     const err = validate(firstName, lastName, email, phone, password, confirmPwd, ageConfirmed, termsAccepted);
-    if (err) { setError(err); return; }
+    if (err) { setError(err.msg); return; }
 
     setError('');
     setLoading(true);
@@ -142,6 +153,7 @@ export default function RegisterScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -164,7 +176,10 @@ export default function RegisterScreen() {
         </View>
 
         {/* Form */}
-        <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
+        <View
+          style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}
+          onLayout={(e) => { cardY.current = e.nativeEvent.layout.y; }}
+        >
           {!!error && (
             <View style={[styles.errorBox, { backgroundColor: '#EF444415' }]}>
               <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
@@ -177,7 +192,7 @@ export default function RegisterScreen() {
               half-width field scrolled the start of the name out of view:
               "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
               not see what they had typed (founder, 2026-09-01). */}
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('firstName', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.firstName')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <User size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
@@ -210,7 +225,7 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('lastName', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.lastName')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
@@ -226,7 +241,7 @@ export default function RegisterScreen() {
           </View>
 
           {/* Email */}
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('email', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.emailAddress')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Mail size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
@@ -244,7 +259,7 @@ export default function RegisterScreen() {
           </View>
 
           {/* Phone: +234 locked prefix */}
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('phone', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.phone')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Phone size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
@@ -307,7 +322,7 @@ export default function RegisterScreen() {
           </View>
 
           {/* Password */}
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('password', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="At least 8 characters"
@@ -321,7 +336,7 @@ export default function RegisterScreen() {
           </View>
 
           {/* Confirm Password */}
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => rememberY('confirm', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.confirmPassword')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder={t('auth.confirmPassword')}
@@ -335,7 +350,7 @@ export default function RegisterScreen() {
           </View>
 
           {/* Age confirmation */}
-          <View style={[styles.checkSection, { borderColor: theme.border }]}>
+          <View style={[styles.checkSection, { borderColor: theme.border }]} onLayout={(e) => rememberY('consent', e.nativeEvent.layout.y)}>
             <Checkbox
               checked={ageConfirmed}
               onToggle={() => setAgeConfirmed(v => !v)}
@@ -385,9 +400,13 @@ export default function RegisterScreen() {
               incomplete it says what is still missing; once it is ready it
               says what happens next. The two used to stack, and two grey
               lines in a row read as one run-on sentence. */}
-          <Text style={[styles.gateHint, { color: theme.textThird }]}>
-            {missing && !loading ? missing : t('auth.otpNote')}
-          </Text>
+          {missing && !loading ? (
+            <Pressable onPress={() => jumpTo(missing.at)} hitSlop={8}>
+              <Text style={[styles.gateHint, { color: theme.accent }]}>{missing.msg}</Text>
+            </Pressable>
+          ) : (
+            <Text style={[styles.gateHint, { color: theme.textThird }]}>{t('auth.otpNote')}</Text>
+          )}
         </View>
 
         {/* Footer */}
