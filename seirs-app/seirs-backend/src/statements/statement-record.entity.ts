@@ -29,7 +29,7 @@ export class StatementRecord {
   code: string;
 
   @Column({ length: 16 })
-  subjectType: 'partner' | 'driver';
+  subjectType: 'partner' | 'driver' | 'business';
 
   @Index()
   @Column({ type: 'uuid' })
@@ -57,6 +57,37 @@ export class StatementRecord {
   /** Who asked for it: the subject themselves, or an admin on their behalf. */
   @Column({ length: 32, default: 'self' })
   issuedBy: string;
+
+  /**
+   * The document itself, exactly as issued.
+   *
+   * Stored rather than regenerated on demand, and that is the whole
+   * point. Regenerating reads live data, so a payment refunded after
+   * issue would produce a PDF that disagrees with the totals on this
+   * row, and the verification page would then contradict the document
+   * it exists to confirm. Immutable record, immutable bytes.
+   *
+   * Around 7KB each. Nullable because rows written before 2026-09-01
+   * have no bytes to serve and must fail as "expired" rather than as a
+   * server error.
+   */
+  @Column({ type: 'bytea', nullable: true })
+  pdf: Buffer | null;
+
+  /**
+   * When the download link stops working. NOT when verification stops.
+   *
+   * Those are deliberately different lifetimes. The code printed on the
+   * paper has to verify forever: somebody may check a statement months
+   * later, which is the entire reason the code exists. The download URL
+   * is a delivery mechanism that travels by email and gets forwarded,
+   * and a permanent public link to a company's full line-by-line spend
+   * is a much larger exposure than the totals the verify page shows.
+   *
+   * So the link dies and the record does not. Re-issuing is a tap.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  downloadExpiresAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

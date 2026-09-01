@@ -28,8 +28,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { Icon } from '@/components/Icon';
-import { paymentsApi, businessApi } from '@/services/api';
+import { paymentsApi, businessApi, statementsApi } from '@/services/api';
 import type { BusinessStatement, StatementEntry } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { naira as nairaFmt, nairaFromKobo } from '@/utils/money';
@@ -284,6 +285,27 @@ export default function BillingScreen() {
     if (!statement || exporting) return;
     setExporting(true);
     try {
+      /**
+       * Ask the server for the document first.
+       *
+       * That version is the one the founder asked for: rendered once,
+       * identical whichever phone requested it, carrying a verification
+       * code somebody can check, and reachable by a link an accountant
+       * can be emailed. The on-device print below produces a good page
+       * but it is only ever a page on this phone.
+       *
+       * A link rather than bytes because nothing in this app can hold a
+       * downloaded PDF: fetch cannot write one anywhere shareable
+       * without a filesystem module none of the apps carry.
+       */
+      try {
+        const link = await statementsApi.businessLink(range.from, range.to);
+        if (link?.url) {
+          const opened = await Linking.openURL(link.url).then(() => true).catch(() => false);
+          if (opened) return;
+        }
+      } catch { /* server unreachable or no business account: print locally */ }
+
       if (Print && Sharing) {
         try {
           const { uri } = await Print.printToFileAsync({ html: buildStatementHtml(statement) });

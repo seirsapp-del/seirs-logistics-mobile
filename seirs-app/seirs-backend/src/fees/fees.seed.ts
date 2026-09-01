@@ -234,6 +234,19 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'The fixed part of what the processor takes per transaction, on top of the percentage above. Transfer and USSD often price this way while card does not. Left at 0 until real transfer and USSD payments show what it actually is.',
     category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 0 },
 
+  /**
+   * How long a statement download link works for (2026-09-01).
+   *
+   * Separate from verification, which never expires: somebody may check
+   * a statement months later and that is the whole point of the code.
+   * This governs the emailed link, which gets forwarded, and a permanent
+   * public URL to a company's line-by-line spend is a much larger
+   * exposure than the totals the verification page shows.
+   */
+  { key: 'statement_download_expiry_days', name: 'Statement Download Link Life (days)',
+    description: 'How many days a statement download link keeps working. Verification by reference never expires; this only governs the emailed link, which can be forwarded. Re-issuing a statement is a tap, so short is the safer end to be wrong at.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.COUNT, value: 7 },
+
   { key: 'nipost_postal_fund_pct',      name: 'NIPOST Postal Fund Levy',
     description: 'Statutory contribution required of courier operators. Confirm with counsel whether the base is gross bookings or net revenue before scaling.',
     category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 2 },

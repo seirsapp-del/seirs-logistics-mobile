@@ -107,6 +107,97 @@ export class StatementsController {
     this.send(res, pdf, filename);
   }
 
+  // ── Issue, and hand back a link rather than bytes ──────────────────────
+
+  /**
+   * The three routes above stream a PDF, which a browser handles well
+   * and a React Native app does not: fetch there cannot write a binary
+   * anywhere shareable without a filesystem module none of the apps
+   * carry, and adding one is a native rebuild of all three.
+   *
+   * So these issue the statement and return its public download URL.
+   * The app opens that URL and the platform does the downloading, which
+   * also happens to be the thing the founder actually asked for: a
+   * document that can be emailed, not just shared out of one phone.
+   *
+   * The link is public and keyed on the statement's own unguessable
+   * code, so nothing is signed and nothing needs to be. It expires;
+   * verification by the same code does not.
+   */
+  private linkFor(code: string, expiresAt: Date | null) {
+    /**
+     * This has to be absolute. It is opened by a phone and pasted into
+     * emails, and a relative path is useless in both. PUBLIC_API_URL is
+     * set nowhere today, so the chain matters more than the first entry:
+     * Railway injects RAILWAY_PUBLIC_DOMAIN on every deploy, and the
+     * production host is the last resort so a link is never emitted
+     * without an origin.
+     */
+    const domain = process.env.RAILWAY_PUBLIC_DOMAIN;
+    const base = (
+      process.env.PUBLIC_API_URL
+      ?? (domain ? `https://${domain}` : undefined)
+      ?? 'https://seirs-logistics-mobile-production.up.railway.app'
+    ).replace(/\/+$/, '');
+
+    return {
+      code,
+      url: `${base}/api/v1/statements/download/${code}`,
+      expiresAt,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('statements/business/link')
+  async businessLink(
+    @CurrentUser() user: any,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const rows = await this.ds.query(
+      `SELECT "businessAccountId" FROM users WHERE id = $1 LIMIT 1`, [user.id],
+    );
+    const id = rows?.[0]?.businessAccountId;
+    if (!id) throw new ForbiddenException('You do not have a business account.');
+    const data = await this.svc.businessStatement(id, from, to);
+    const { code, expiresAt } = await this.svc.issueLink(data as any);
+    return this.linkFor(code, expiresAt);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('statements/partner/link')
+  async partnerLink(
+    @CurrentUser() user: any,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const rows = await this.ds.query(
+      `SELECT "partnerStoreId" FROM users WHERE id = $1 LIMIT 1`, [user.id],
+    );
+    const id = rows?.[0]?.partnerStoreId;
+    if (!id) throw new ForbiddenException('You do not run a partner store.');
+    const data = await this.svc.partnerStatement(id, from, to);
+    const { code, expiresAt } = await this.svc.issueLink(data);
+    return this.linkFor(code, expiresAt);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('statements/driver/link')
+  async driverLink(
+    @CurrentUser() user: any,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const rows = await this.ds.query(
+      `SELECT id FROM drivers WHERE "userId" = $1 LIMIT 1`, [user.id],
+    );
+    const id = rows?.[0]?.id;
+    if (!id) throw new ForbiddenException('You do not have a driver profile.');
+    const data = await this.svc.driverStatement(id, from, to);
+    const { code, expiresAt } = await this.svc.issueLink(data as any);
+    return this.linkFor(code, expiresAt);
+  }
+
   // ── Admin, on someone's behalf ─────────────────────────────────────────
 
   /**
@@ -142,6 +233,25 @@ export class StatementsController {
    * a bank or tax officer holding the document must be able to check it
    * without a SEIRS account.
    */
+  /**
+   * GET /api/v1/statements/download/:code
+   *
+   * The emailable half. A statement already carries an unguessable
+   * public code, and this serves the stored document against it, so
+   * there is no signing infrastructure here and none is needed: the
+   * code IS the credential, exactly as it is for tracking and
+   * collection links.
+   *
+   * Public on purpose. An accountant who was forwarded the link has no
+   * SEIRS account and is never going to make one.
+   */
+  @Public()
+  @Get('statements/download/:code')
+  async download(@Param('code') code: string, @Res() res: Response) {
+    const { pdf, filename } = await this.svc.downloadByCode(code);
+    this.send(res, pdf, filename);
+  }
+
   @Public()
   @Get('verify/:code')
   verify(@Param('code') code: string) {

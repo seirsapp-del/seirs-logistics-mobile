@@ -1451,6 +1451,64 @@ export type StatementEntry = {
   runningTotalNgn: number;
 };
 
+export type StatementLink = {
+  /** Printed on the document and on the verification page. */
+  code:      string;
+  /** Absolute, public, and safe to email. */
+  url:       string;
+  /** When the URL stops working. Verification by code never expires. */
+  expiresAt: string | null;
+};
+
+/**
+ * Server-generated statement PDFs.
+ *
+ * These return a LINK, never bytes, and that is deliberate. request()
+ * calls res.json() on everything, and no app carries a filesystem
+ * module, so there is nowhere for a React Native fetch to put a PDF.
+ * Adding one is a native rebuild of all three apps.
+ *
+ * Handing back a URL sidesteps that and delivers what was actually
+ * wanted: a document that can be emailed rather than only shared out of
+ * one phone. The URL is public and keyed on the statement's own
+ * unguessable code, the same way tracking and collection links work, so
+ * whoever receives it needs no SEIRS account.
+ *
+ * The routes behind these existed from 19 August and were reachable by
+ * nobody: nothing in any app referenced /statements until 2026-09-01.
+ */
+export const statementsApi = {
+  businessLink: (from?: string, to?: string) => statementLink('business', from, to),
+  partnerLink:  (from?: string, to?: string) => statementLink('partner',  from, to),
+  driverLink:   (from?: string, to?: string) => statementLink('driver',   from, to),
+
+  /**
+   * Public check of an issued statement. auth=false on purpose: a bank
+   * or tax officer holding the paper has no account and never will.
+   */
+  verify: (code: string) =>
+    request<{
+      valid:            boolean;
+      code?:            string;
+      issuedTo?:        string;
+      subjectType?:     string;
+      periodFrom?:      string;
+      periodTo?:        string;
+      totalPaidNgn?:    number;
+      totalPendingNgn?: number;
+      lineCount?:       number;
+      issuedAt?:        string;
+    }>('GET', `/verify/${encodeURIComponent(code)}`, undefined, false),
+};
+
+function statementLink(kind: 'business' | 'partner' | 'driver', from?: string, to?: string) {
+  const params = new URLSearchParams();
+  if (from) params.append('from', from);
+  if (to)   params.append('to', to);
+  const qs = params.toString();
+  return request<StatementLink>('GET', `/statements/${kind}/link${qs ? `?${qs}` : ''}`);
+}
+
 export type PartnerStatementEntry = {
   id:              string;
   date:            string;

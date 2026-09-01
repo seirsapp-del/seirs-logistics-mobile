@@ -38,6 +38,7 @@ export {
   deliveriesApi,
   documentsApi,
   paymentsApi,
+  statementsApi,
 } from '@seirs/shared/services/api';
 
 export type {
@@ -60,6 +61,7 @@ export type {
   BusinessStatement,
   PartnerStatementEntry,
   PartnerStatement,
+  StatementLink,
 } from '@seirs/shared/services/api';
 
 import { businessAuthApi, authApi as sharedAuthApi } from '@seirs/shared/services/api';

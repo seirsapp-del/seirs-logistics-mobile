@@ -219,7 +219,7 @@ export class StatementsService {
     const pending = data.lines.filter(l => !l.settled).reduce((a, l) => a + l.amountNgn, 0);
 
     const code = `STM-${secureCode(8)}`;
-    await this.records.save(this.records.create({
+    const record = await this.records.save(this.records.create({
       code,
       subjectType:     data.subjectType,
       subjectId:       data.subjectId,
@@ -248,8 +248,95 @@ export class StatementsService {
       pendingLabel: (data as any).pendingLabel,
     });
 
+    /**
+     * Keep the document itself, so a later download serves the bytes
+     * that were issued rather than re-rendering from data that may have
+     * moved since. A payment refunded after issue would otherwise
+     * produce a PDF disagreeing with the totals on its own verification
+     * page, which is the exact failure the verify link exists to
+     * prevent.
+     *
+     * Written after rendering rather than before, so a render that
+     * throws leaves a record with no bytes instead of a half-document.
+     * The download route treats missing bytes as expired.
+     */
+    const days = await this.downloadWindowDays();
+    await this.records.update(record.id, {
+      pdf,
+      downloadExpiresAt: new Date(Date.now() + days * 24 * 3600 * 1000),
+    });
+
     const stamp = data.window.to.toISOString().slice(0, 10);
     return { pdf, code, filename: `seirs-statement-${stamp}-${code}.pdf` };
+  }
+
+  /**
+   * Issue exactly as `issue` does, but hand back the reference instead
+   * of the bytes. Same record, same stored document, same expiry: the
+   * only difference is what the caller is given to do with it.
+   */
+  async issueLink(
+    data: Awaited<ReturnType<StatementsService['partnerStatement']>>,
+    issuedBy = 'self',
+  ): Promise<{ code: string; expiresAt: Date | null }> {
+    const { code } = await this.issue(data, issuedBy);
+    const rec = await this.records.findOne({ where: { code } });
+    return { code, expiresAt: rec?.downloadExpiresAt ?? null };
+  }
+
+  /**
+   * How long a download link stays alive, in days.
+   *
+   * A Fee Catalogue row with a compiled fallback, per the standing rule
+   * that every policy knob is admin-editable. Conservative by default:
+   * the link is emailed and email gets forwarded, so a short life is
+   * the safer end to be wrong at, and re-issuing costs a tap.
+   */
+  private async downloadWindowDays(): Promise<number> {
+    try {
+      const rows: Array<{ value: string }> = await this.ds.query(
+        `SELECT value FROM fees WHERE key = 'statement_download_expiry_days' AND active = true LIMIT 1`,
+      );
+      const n = Number(rows?.[0]?.value);
+      if (Number.isFinite(n) && n > 0 && n <= 365) return n;
+    } catch { /* fees table unavailable: fall through */ }
+    return 7;
+  }
+
+  /**
+   * Serve a previously issued document by its printed code.
+   *
+   * Public, and authenticated by the code itself, the same way tracking
+   * and collection links work: an unguessable reference in a 32^8 space,
+   * handed to the person who is meant to have it.
+   *
+   * It gives up MORE than the verification page does, which shows totals
+   * only and deliberately leaks nothing about the subject's business.
+   * This hands over every line. That is defensible for somebody holding
+   * the paper, since the paper already carries the lines, but it is why
+   * the link expires and the verification code does not.
+   */
+  async downloadByCode(code: string): Promise<{ pdf: Buffer; filename: string }> {
+    const rec = await this.records.findOne({ where: { code: String(code ?? '').trim().toUpperCase() } });
+    if (!rec) throw new NotFoundException('No statement matches that reference.');
+
+    // Rows issued before the bytes were kept, and rows whose render
+    // failed, both land here. Neither is a server error to the person
+    // holding the link: the document is simply no longer available.
+    if (!rec.pdf) {
+      throw new NotFoundException(
+        'This statement is no longer available to download. Open the SEIRS app to issue a fresh one.',
+      );
+    }
+    if (rec.downloadExpiresAt && rec.downloadExpiresAt.getTime() < Date.now()) {
+      throw new NotFoundException(
+        'This download link has expired. The statement can still be verified by its reference, '
+        + 'and a fresh copy can be issued from the SEIRS app.',
+      );
+    }
+
+    const stamp = new Date(rec.periodTo).toISOString().slice(0, 10);
+    return { pdf: rec.pdf, filename: `seirs-statement-${stamp}-${rec.code}.pdf` };
   }
 
   /**

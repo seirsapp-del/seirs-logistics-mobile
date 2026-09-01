@@ -45,6 +45,15 @@ export class StatementsModule implements OnModuleInit {
       await this.ds.query(
         `CREATE INDEX IF NOT EXISTS "statement_records_subject_idx" ON "statement_records" ("subjectId")`,
       );
+      // The issued document and the life of its download link
+      // (2026-09-01). Added after the table shipped, so they come in as
+      // ALTERs rather than in the CREATE above.
+      await this.ds.query(
+        `ALTER TABLE "statement_records" ADD COLUMN IF NOT EXISTS "pdf" bytea NULL`,
+      );
+      await this.ds.query(
+        `ALTER TABLE "statement_records" ADD COLUMN IF NOT EXISTS "downloadExpiresAt" timestamptz NULL`,
+      );
     } catch (e: any) {
       this.logger.error(`statements self-heal FAILED: ${e?.message ?? e}`);
     }
