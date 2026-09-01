@@ -847,7 +847,9 @@
     "exportData": "Sauke bayanaina",
     "exportDataSub": "Za mu aika maka kwafi cikin sa'o'i 24",
     "deleteAccount": "Share Asusu",
-    "deleteAccountSub": "Rufe asusunka na SEIRS gaba ɗaya"
+    "deleteAccountSub": "Rufe asusunka na SEIRS gaba ɗaya",
+    "statement": "Bayanin Kashe Kuɗi",
+    "statementSub": "Buga abin da ka kashe a kowane lokaci"
   },
   "schedule2": {
     "title": "Tsara Bayarwa",

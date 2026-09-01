@@ -30,6 +30,10 @@ export {
   supportApi,
   // Wave 16E addition
   maintenanceApi,
+  // Server-generated statement PDFs (2026-09-02). Whitelisted here
+  // deliberately: an export missing from this barrel resolves to
+  // undefined at runtime instead of failing the build.
+  statementsApi,
   // Raw request helper. The SOS screen reads GET /config/emergency-contacts,
   // an admin-managed list that has no typed wrapper in shared yet. Exported
   // here so the screen does not hand-roll a fetch and lose the auth header
@@ -56,6 +60,9 @@ export type {
   SavedAddressDTO,
   IdentityDocType,
   // Chat 5 support toolkit
+  CustomerStatement,
+  StatementEntry,
+  StatementLink,
   SupportTicketDTO,
   SupportThreadDTO,
   TicketTopic,

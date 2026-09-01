@@ -476,6 +476,21 @@ export const paymentsApi = {
       'POST', '/payments/initiate', { deliveryId, method, paymentOption },
     ),
   verify:   (reference: string) => request<any>('POST', `/payments/verify/${reference}`),
+  /**
+   * A person's own spend, bank-statement shaped.
+   *
+   * Sits beside history() rather than replacing it: history carries
+   * every charge including unsettled ones, and a statement deliberately
+   * excludes those, because a statement shows money that moved.
+   */
+  statement: (from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to)   params.append('to', to);
+    const qs = params.toString();
+    return request<CustomerStatement>('GET', `/payments/statement${qs ? `?${qs}` : ''}`);
+  },
+
   wallet:   () => request<{ balanceKobo: number; balanceNaira: number; currency: string }>('GET', '/payments/wallet'),
   history:  () => request<any[]>('GET', '/payments/history'),
   withdraw: (amountNaira: number) =>
@@ -1481,6 +1496,7 @@ export const statementsApi = {
   businessLink: (from?: string, to?: string) => statementLink('business', from, to),
   partnerLink:  (from?: string, to?: string) => statementLink('partner',  from, to),
   driverLink:   (from?: string, to?: string) => statementLink('driver',   from, to),
+  customerLink: (from?: string, to?: string) => statementLink('customer', from, to),
 
   /**
    * Public check of an issued statement. auth=false on purpose: a bank
@@ -1501,7 +1517,7 @@ export const statementsApi = {
     }>('GET', `/verify/${encodeURIComponent(code)}`, undefined, false),
 };
 
-function statementLink(kind: 'business' | 'partner' | 'driver', from?: string, to?: string) {
+function statementLink(kind: 'business' | 'partner' | 'driver' | 'customer', from?: string, to?: string) {
   const params = new URLSearchParams();
   if (from) params.append('from', from);
   if (to)   params.append('to', to);
@@ -1528,6 +1544,14 @@ export type PartnerStatement = {
   openingNote: string;
   entries:     PartnerStatementEntry[];
   totals:      { paidNgn: number; pendingNgn: number; entries: number };
+};
+
+export type CustomerStatement = {
+  /** ISO. Always printed above the total, so a figure can never read as lifetime spend. */
+  from:    string;
+  to:      string;
+  entries: StatementEntry[];
+  totals:  { paidNgn: number; entries: number };
 };
 
 export type BusinessStatement = {

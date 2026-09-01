@@ -1001,7 +1001,9 @@
     "exportData": "Download my data",
     "exportDataSub": "We email you a copy within 24 hours",
     "deleteAccount": "Delete Account",
-    "deleteAccountSub": "Close your SEIRS account for good"
+    "deleteAccountSub": "Close your SEIRS account for good",
+    "statement": "Spending Statement",
+    "statementSub": "Print what you spent in any period"
   },
   "chat": {
     "online": "Online",

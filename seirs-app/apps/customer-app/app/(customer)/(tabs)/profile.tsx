@@ -120,6 +120,15 @@ export default function ProfileScreen() {
         // Refer & Earn row is gone too; the referral banner below the
         // menu is the single entry.
         { icon: 'ticket-outline',    label: t('profile.promotions'),  sub: t('profile.promotionsSub', { count: activePromos ?? 0 }), onPress: () => router.push('/(customer)/promotions') },
+        /**
+         * Spending statement (2026-09-02).
+         *
+         * A customer account cannot become a business account, so
+         * somebody trading on a personal one has no other route to a
+         * statement, and a pile of per-delivery receipts is not a period
+         * a tax office will accept. This row is the only way in.
+         */
+        { icon: 'receipt-outline', label: t('profile.statement'), sub: t('profile.statementSub'), onPress: () => router.push('/(customer)/statement') },
       ],
     },
     {

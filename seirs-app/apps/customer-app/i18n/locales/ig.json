@@ -847,7 +847,9 @@
     "exportData": "Budata data m",
     "exportDataSub": "Anyị ga-ezitere gị otu oyiri n'ime awa 24",
     "deleteAccount": "Hichapụ Akaụntụ",
-    "deleteAccountSub": "Mechie akaụntụ SEIRS gị kpamkpam"
+    "deleteAccountSub": "Mechie akaụntụ SEIRS gị kpamkpam",
+    "statement": "Akwụkwọ Mmefu Ego",
+    "statementSub": "Bipụta ihe i mefuru n’oge ọ bụla"
   },
   "schedule2": {
     "title": "Hazie Nnyefe",

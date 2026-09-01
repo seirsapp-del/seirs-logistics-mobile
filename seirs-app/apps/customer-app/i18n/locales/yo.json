@@ -847,7 +847,9 @@
     "exportData": "Gba dátà mi wọlé",
     "exportDataSub": "A ó fi ẹ̀dà kan ránṣẹ́ sí ọ láàárín wákàtí 24",
     "deleteAccount": "Pa Àkàǹtì Rẹ́",
-    "deleteAccountSub": "Ti àkàǹtì SEIRS rẹ pa pátápátá"
+    "deleteAccountSub": "Ti àkàǹtì SEIRS rẹ pa pátápátá",
+    "statement": "Ìwé Ìnáwó",
+    "statementSub": "Tẹ̀ ohún tí o ná ní àkókò yòówù"
   },
   "schedule2": {
     "title": "Ètò Ìfiránṣẹ",
