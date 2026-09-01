@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { requireOptionalNativeModule } from 'expo-modules-core';
+import { Platform, useColorScheme as useRNColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -172,6 +174,38 @@ function AppContent() {
   );
 }
 
+
+/**
+ * Keep the Android system navigation bar in step with the app's theme.
+ *
+ * Without this Android paints it its own light grey regardless, which on a
+ * dark-mode phone leaves a bright strip under a dark app (founder spotted it
+ * 2026-09-01). Android-only: iOS has no such bar, and the calls no-op there.
+ */
+function SystemNavBar() {
+  const scheme = useRNColorScheme();
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    /**
+     * Ask the native registry FIRST.
+     *
+     * expo-navigation-bar is native, so a build made before it was added has
+     * no such module, and a top-level import throws while the module is being
+     * evaluated: at launch, taking the router and every route with it. That
+     * is exactly how the document picker took the whole app down on
+     * 2026-08-31, and this repeated it. On an older build the bar simply
+     * stays as Android painted it.
+     */
+    if (!requireOptionalNativeModule('ExpoNavigationBar')) return;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const NavigationBar = require('expo-navigation-bar');
+    const dark = scheme === 'dark';
+    NavigationBar.setBackgroundColorAsync(dark ? '#0D1117' : '#FFFFFF').catch(() => {});
+    NavigationBar.setButtonStyleAsync(dark ? 'light' : 'dark').catch(() => {});
+  }, [scheme]);
+  return null;
+}
+
 export default function RootLayout() {
   const [i18nReady, setI18nReady] = useState(false);
 
@@ -197,6 +231,7 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
+      <SystemNavBar />
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <ThemeProvider>
