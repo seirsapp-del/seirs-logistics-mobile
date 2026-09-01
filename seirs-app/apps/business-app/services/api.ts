@@ -53,6 +53,13 @@ export type {
   TicketTopic,
   TicketStatus,
   UserDocumentDTO,
+  // Billing statement (2026-09-01). Whitelisted here deliberately: a
+  // type missing from this barrel resolves to undefined at runtime and
+  // the screen red-screens instead of failing at compile time.
+  StatementEntry,
+  BusinessStatement,
+  PartnerStatementEntry,
+  PartnerStatement,
 } from '@seirs/shared/services/api';
 
 import { businessAuthApi, authApi as sharedAuthApi } from '@seirs/shared/services/api';

@@ -21,6 +21,37 @@ import { naira } from '@/utils/money';
 interface SpendYear   { year: number; spentNgn: number; payments: number; toppedUpNgn: number }
 interface PayoutYear  { year: number; paidNgn: number; payouts: number }
 
+// Statements are windowed now, so "everything" is an explicit window.
+// SEIRS took no payment before this.
+const ALL_TIME_FROM = '2020-01-01';
+const today = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * Roll statement lines up into the per-year documents this screen
+ * lists. Kept client-side rather than asking the backend for a second
+ * shape: there is now one statement endpoint per app and one meaning of
+ * the word, and a per-year rollup is a view of it, not a rival to it.
+ */
+function groupByYear<T extends { date: string }>(
+  entries: T[] | undefined,
+  amountOf: (e: T) => number,
+): Array<{ year: number; total: number; count: number }> {
+  const byYear = new Map<number, { year: number; total: number; count: number }>();
+  for (const e of entries ?? []) {
+    const year = new Date(e.date).getFullYear();
+    if (!Number.isFinite(year)) continue;
+    const row = byYear.get(year) ?? { year, total: 0, count: 0 };
+    row.total += Number(amountOf(e) ?? 0);
+    row.count += 1;
+    byYear.set(year, row);
+  }
+  // Two decimals kept: these figures go to an accountant and must
+  // reconcile against a bank statement to the kobo.
+  return [...byYear.values()]
+    .map(r => ({ ...r, total: Math.round(r.total * 100) / 100 }))
+    .sort((a, b) => b.year - a.year);
+}
+
 const DOC_ICON: Record<string, string> = {
   statement: 'Receipt',
   contract:  'FileSignature',
@@ -45,14 +76,32 @@ export default function BusinessDocumentsScreen() {
   const load = async () => {
     // Statements fetched best-effort: sender-only accounts have no
     // partner statement and vice versa; a 403 just hides that section.
+    //
+    // Both routes are bank-statement shaped now: a window of lines,
+    // not a per-year rollup. This screen lists a document per year, so
+    // it asks for everything and groups locally. The partner route has
+    // been this shape since 10 August and the client never caught up,
+    // so that section rendered nothing at all until today.
     const [d, s, p] = await Promise.all([
       documentsApi.mine().catch(() => [] as UserDocumentDTO[]),
-      businessApi.statement().catch(() => null),
-      partnerApi.statement().catch(() => null),
+      businessApi.statement(ALL_TIME_FROM, today()).catch(() => null),
+      partnerApi.statement(ALL_TIME_FROM, today()).catch(() => null),
     ]);
     setDocs(d ?? []);
-    setSpend(s);
-    setPayoutStmt(p);
+    setSpend(s ? {
+      companyName: s.companyName,
+      years: groupByYear(s.entries, e => e.amountNgn).map(g => ({
+        year: g.year, spentNgn: g.total, payments: g.count, toppedUpNgn: 0,
+      })),
+    } : null);
+    setPayoutStmt(p ? {
+      storeName: p.storeName,
+      // Paid lines only, matching what this screen has always claimed:
+      // money actually received, not money still owed.
+      years: groupByYear(p.entries.filter(e => e.settled), e => e.amountNgn).map(g => ({
+        year: g.year, paidNgn: g.total, payouts: g.count,
+      })),
+    } : null);
   };
 
   const shareSpendYear = (y: SpendYear) => {

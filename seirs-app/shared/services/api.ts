@@ -1400,11 +1400,68 @@ export const businessApi = {
       request<any>('DELETE', `/business/recurring-templates/${id}`),
   },
 
-  // Yearly spend statement for company accounting / FIRS expense records.
-  statement: () =>
-    request<{ companyName: string; years: Array<{ year: number; spentNgn: number; payments: number; toppedUpNgn: number }> }>(
-      'GET', '/business/statement',
-    ),
+  /**
+   * Spend statement for company accounting and FIRS expense records.
+   *
+   * Bank-statement shape: every settled charge in the window, in date
+   * order, with a running total. Was a yearly aggregate with no
+   * parameters and no lines behind it until 2026-09-01.
+   *
+   * Settled charges only. Pending never appears here by founder
+   * decision: it stays in the ordinary Payments list. Amounts are naira
+   * with kobo, never rounded, so the total reconciles against a bank
+   * statement.
+   */
+  statement: (from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to)   params.append('to', to);
+    const qs = params.toString();
+    return request<BusinessStatement>('GET', `/business/statement${qs ? `?${qs}` : ''}`);
+  },
+};
+
+export type StatementEntry = {
+  id:              string;
+  date:            string;
+  narrative:       string;
+  amountNgn:       number;
+  /** Null until the provider told us which rail was used. Show nothing, never a guess. */
+  method:          string | null;
+  reference:       string | null;
+  trackingCode:    string | null;
+  stops:           number | null;
+  runningTotalNgn: number;
+};
+
+export type PartnerStatementEntry = {
+  id:              string;
+  date:            string;
+  narrative:       string;
+  amountNgn:       number;
+  status:          string;
+  /** Paid out, as opposed to earned but not yet released. */
+  settled:         boolean;
+  runningPaidNgn:  number;
+};
+
+export type PartnerStatement = {
+  storeName:   string;
+  storeCode:   string | null;
+  from:        string;
+  to:          string;
+  openingNote: string;
+  entries:     PartnerStatementEntry[];
+  totals:      { paidNgn: number; pendingNgn: number; entries: number };
+};
+
+export type BusinessStatement = {
+  companyName: string;
+  /** ISO. Always printed above the total, so a figure can never read as lifetime spend. */
+  from:        string;
+  to:          string;
+  entries:     StatementEntry[];
+  totals:      { paidNgn: number; entries: number };
 };
 
 // ─── Partner Store ───────────────────────────────────────────────────────────
@@ -1421,11 +1478,22 @@ export const partnerApi = {
   markCollected:  (packageId: string) => request<any>('PATCH', `/partner/packages/${packageId}/collect`),
   earnings:       (period: 'week' | 'month') => request<any>('GET', `/partner/earnings?period=${period}`),
   payouts:        (page = 1) => request<any>('GET', `/partner/payouts?page=${page}`),
-  // Yearly PAID-payout statement for the partner's records/taxes.
-  statement:      () =>
-    request<{ storeName: string; years: Array<{ year: number; paidNgn: number; payouts: number }> }>(
-      'GET', '/partner/statement',
-    ),
+  /**
+   * Payout statement for the partner's records and tax filing.
+   *
+   * The client was still typed { storeName, years } and sent no window,
+   * while the route has returned { entries, totals } since 10 August.
+   * So every caller read `.years` off a response that had not carried
+   * it for three weeks and silently rendered nothing (found 2026-09-01
+   * while porting the same shape to the business side).
+   */
+  statement: (from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to)   params.append('to', to);
+    const qs = params.toString();
+    return request<PartnerStatement>('GET', `/partner/statement${qs ? `?${qs}` : ''}`);
+  },
   getSettings:    () => request<any>('GET', '/partner/settings'),
   updateSettings: (data: any) => request<any>('PATCH', '/partner/settings', data),
 
