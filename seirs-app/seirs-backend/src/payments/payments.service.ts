@@ -1230,14 +1230,30 @@ export class PaymentsService {
      * The escrow now stays HELD when the provider refuses, which is the
      * truthful state and leaves the refund retryable.
      */
+    /**
+     * Refund anything the provider collected, not just things labelled
+     * "card".
+     *
+     * This gated on method === CARD, which worked only by accident:
+     * every checkout path stamped CARD onto the row at creation whatever
+     * the customer actually used, so transfers and USSD payments fell
+     * through the gate and got refunded anyway. The moment method starts
+     * telling the truth, that accident stops, and a bank-transfer
+     * customer's refund would be skipped in silence.
+     *
+     * A transaction id IS the refundability test: it exists only when
+     * the provider took the money and can give it back. Wallet payments
+     * never get one, and the explicit WALLET exclusion says so out loud
+     * rather than relying on that.
+     */
     let providerRefundOk = true;
-    if (refundKobo > 0 && payment.method === PaymentMethod.CARD && payment.flutterwaveTransactionId) {
+    if (refundKobo > 0 && payment.flutterwaveTransactionId && payment.method !== PaymentMethod.WALLET) {
       try {
         await this.flutterwaveService.refundTransaction(
           payment.flutterwaveTransactionId,
           toNaira(refundKobo),
         );
-        this.logger.log(`Card refund issued via Flutterwave for delivery ${deliveryId}`);
+        this.logger.log(`Provider refund issued for delivery ${deliveryId} (method=${payment.method ?? 'unknown'})`);
       } catch (e) {
         providerRefundOk = false;
         this.logger.error(
@@ -1251,8 +1267,11 @@ export class PaymentsService {
       // Leave every other side effect alone: no status change, no loyalty
       // clawback. The customer keeps their points until they keep their
       // money.
+      // Not "to your card": this path now covers transfer and USSD too,
+      // and telling a transfer customer their card failed is a support
+      // ticket waiting to happen.
       throw new BadRequestException(
-        'We could not return this payment to your card. Nothing has been taken from you and ' +
+        'We could not return this payment to you. Nothing has been taken from you and ' +
         'our team has been alerted. Please contact support if it is not resolved shortly.',
       );
     }
