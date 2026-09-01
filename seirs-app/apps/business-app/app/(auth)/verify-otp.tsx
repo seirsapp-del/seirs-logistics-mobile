@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     width: 46, height: 54, borderRadius: 12, borderWidth: 1.5,
     textAlign: 'center', fontSize: 22, fontWeight: '700',
   },
-  btn:        { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
+  btn:        { height: 56, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   btnDisabled:{ opacity: 0.4 },
   btnText:    { color: '#fff', fontWeight: '700', fontSize: 16 },
   resend:     { alignItems: 'center', marginTop: 20 },

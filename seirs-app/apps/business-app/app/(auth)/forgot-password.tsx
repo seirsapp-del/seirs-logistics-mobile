@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, marginBottom: 14,
   },
   input:      { fontSize: 15, flex: 1 },
-  btn:        { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
+  btn:        { height: 56, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   btnDisabled:{ opacity: 0.5 },
   btnText:    { fontWeight: '700', fontSize: 16 },
   footer:     { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },

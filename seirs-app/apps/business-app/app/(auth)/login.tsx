@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/Icon';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { authApi } from '@/services/api';
@@ -52,43 +51,38 @@ export default function LoginScreen() {
   };
 
   // Brand gradient: Navy → lighter Navy. These are the canonical brand stops.
-  const headerGradient: [string, string] = [Palette.navy800, Palette.navy700];
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <LinearGradient colors={headerGradient} style={{ paddingTop: insets.top + 24, paddingBottom: 24 }}>
-        {/* Back to the carousel.
-            Customer and driver both have this; business did not, so the
-            only way back to onboarding was to reinstall (founder spotted
-            it 2026-09-01). Falls back to a push when there is no history,
-            because arriving here from a deep link leaves nothing to pop. */}
-        <Pressable
-          style={styles.backBtn}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => router.canGoBack() ? router.back() : router.push('/(auth)/onboarding' as any)}
-        >
-          <Icon name="ArrowLeft" size={22} color={Palette.white} />
-        </Pressable>
-
-        <View style={styles.logoRow}>
-          {/* Okada brand mark, same as every other SEIRS surface
-              (founder direction 2026-08-09: logo on all first-touch
-              screens). Replaced the generic briefcase square. */}
-          <SeirsMarkBold size={52} color={Palette.white} hubColor={Palette.navy800} />
-          <View>
-            <Text style={[styles.logoText, { color: Palette.white }]}>SEIRS</Text>
-            <Text style={[styles.logoSub, { color: 'rgba(255,255,255,0.5)' }]}>Business &amp; Partners</Text>
-          </View>
+      {/* Floating lockup, matching customer and driver. The navy bar was
+          the last place a pre-login screen did its own thing
+          (founder 2026-09-01). */}
+      <Pressable
+        style={styles.backBtn}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Back"
+        onPress={() => router.canGoBack() ? router.back() : router.push('/(auth)/onboarding' as any)}
+      >
+        <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
+          <Icon name="ArrowLeft" size={20} color={theme.text} />
         </View>
-      </LinearGradient>
+      </Pressable>
+
+      <View style={styles.header}>
+        <View style={styles.brandRow}>
+          <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
+          <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
+          <Text style={[styles.brandSub, { color: theme.textThird }]}>Business &amp; Partners</Text>
+        </View>
+        <Text style={[styles.title, { color: theme.text }]}>Welcome back</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecond }]}>Sign in to continue</Text>
+      </View>
 
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24, backgroundColor: theme.background }]}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={[styles.heading, { color: theme.text }]}>Sign In</Text>
 
         {error !== '' && (
           <View style={[styles.errorBox, { backgroundColor: isDark ? '#3F1F1F' : '#FEF2F2', borderColor: isDark ? '#7F1D1D' : '#FECACA' }]}>
@@ -172,7 +166,14 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  backBtn:    { paddingHorizontal: 20, paddingBottom: 8 },
+  backBtn:    { marginBottom: 16, paddingHorizontal: 24, paddingTop: 8 },
+  backCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  header:     { paddingHorizontal: 24, marginBottom: 24 },
+  brandRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  brand:      { fontSize: 15, fontWeight: '900', letterSpacing: 4 },
+  brandSub:   { fontSize: 12, marginTop: 1 },
+  title:      { fontSize: 26, fontWeight: '800', marginBottom: 4 },
+  subtitle:   { fontSize: 15 },
   logoRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24 },
   logoIcon:   {
     width: 40, height: 40, borderRadius: 12,
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
   },
   input:      { fontSize: 15, flex: 1 },
   fieldError: { fontSize: 13, marginTop: -10, marginBottom: 12, marginLeft: 4 },
-  btn:        { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
+  btn:        { height: 56, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   btnDisabled:{ opacity: 0.5 },
   btnText:    { fontWeight: '700', fontSize: 16 },
   rememberRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
