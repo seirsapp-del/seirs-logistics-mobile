@@ -303,9 +303,19 @@ export default function ProfileScreen() {
                   ]}
                   onPress={item.onPress}
                 >
-                  <View style={[styles.menuIcon, { backgroundColor: item.danger ? '#FEF2F2' : theme.surfaceSecond }]}>
-                    <Ionicons name={item.icon as any} size={19} color={item.danger ? '#EF4444' : theme.primary} />
-                  </View>
+                  {/* Plain muted glyph, no tinted tile. Customer and driver
+                      wrapped every row icon in a 38pt surfaceSecond square and
+                      drew it in theme.primary, so a dark-mode profile was a
+                      column of blue badges down the left edge. Business draws
+                      the glyph on its own in textSecond, and business is the
+                      restraint reference (founder 2026-09-01). Danger rows keep
+                      their colour, because there the colour carries meaning. */}
+                  <Ionicons
+                    name={item.icon as any}
+                    size={20}
+                    color={item.danger ? theme.error : theme.textSecond}
+                    style={styles.menuIcon}
+                  />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.menuLabel, { color: item.danger ? '#EF4444' : theme.text }]}>{item.label}</Text>
                     {item.sub && <Text style={[styles.menuSub, { color: theme.textSecond }]}>{item.sub}</Text>}
@@ -428,7 +438,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: Spacing.sm, paddingLeft: Spacing.xs },
   menuCard:     { borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden' },
   menuRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: 14 },
-  menuIcon:     { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  menuIcon:     { width: 24, textAlign: 'center' },
   menuLabel:    { fontSize: FontSize.base, fontWeight: FontWeight.medium },
   menuSub:      { fontSize: FontSize.xs, marginTop: 2 },
 

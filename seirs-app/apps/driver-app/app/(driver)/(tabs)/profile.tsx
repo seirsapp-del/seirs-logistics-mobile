@@ -310,9 +310,19 @@ export default function DriverProfileScreen() {
                   ]}
                   onPress={() => handleItemPress(item)}
                 >
-                  <View style={[styles.menuIcon, { backgroundColor: theme.surfaceSecond }]}>
-                    <Ionicons name={item.icon as any} size={18} color={item.danger ? '#EF4444' : theme.primary} />
-                  </View>
+                  {/* Plain muted glyph, no tinted tile. Customer and driver
+                      wrapped every row icon in a 38pt surfaceSecond square and
+                      drew it in theme.primary, so a dark-mode profile was a
+                      column of blue badges down the left edge. Business draws
+                      the glyph on its own in textSecond, and business is the
+                      restraint reference (founder 2026-09-01). Danger rows keep
+                      their colour, because there the colour carries meaning. */}
+                  <Ionicons
+                    name={item.icon as any}
+                    size={20}
+                    color={item.danger ? theme.error : theme.textSecond}
+                    style={styles.menuIcon}
+                  />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.menuLabel, { color: item.danger ? '#EF4444' : theme.text }]}>{item.label}</Text>
                     {item.sub ? <Text style={[styles.menuSub, { color: theme.textSecond }]}>{item.sub}</Text> : null}
@@ -442,7 +452,7 @@ const styles = StyleSheet.create({
   sectionHeader: { paddingHorizontal: Spacing.md + 4, paddingTop: Spacing.sm, paddingBottom: Spacing.xs, fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 1 },
   menuCard:      { marginHorizontal: Spacing.md, borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden', marginBottom: Spacing.sm },
   menuRow:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: 14, gap: Spacing.md },
-  menuIcon:      { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  menuIcon:      { width: 24, textAlign: 'center' },
   menuLabel:     { fontSize: FontSize.base, fontWeight: FontWeight.medium },
   menuSub:       { fontSize: FontSize.xs, marginTop: 1 },
   menuBadge:     { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.full },
