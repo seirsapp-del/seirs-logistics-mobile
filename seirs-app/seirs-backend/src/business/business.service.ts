@@ -1,4 +1,4 @@
-import { normaliseRcNumber, isValidRcNumber, RC_NUMBER_ERROR } from '../common/rc-number';
+import { canonicalRcNumber, isValidRcNumber, RC_NUMBER_ERROR } from '../common/rc-number';
 import {
   Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger,
   ConflictException,
@@ -1455,7 +1455,7 @@ export class BusinessService {
     if (body.companyName     !== undefined) updates.companyName     = body.companyName.trim();
     if (body.rcNumber        !== undefined) {
       if (!isValidRcNumber(body.rcNumber)) throw new BadRequestException(RC_NUMBER_ERROR);
-      updates.rcNumber = normaliseRcNumber(body.rcNumber);
+      updates.rcNumber = canonicalRcNumber(body.rcNumber);
     }
     if (body.businessAddress !== undefined) updates.businessAddress = body.businessAddress.trim();
     if (body.state           !== undefined) updates.state           = body.state.trim();

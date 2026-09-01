@@ -1,4 +1,4 @@
-import { normaliseRcNumber, isValidRcNumber, RC_NUMBER_ERROR } from '../common/rc-number';
+import { canonicalRcNumber, isValidRcNumber, RC_NUMBER_ERROR } from '../common/rc-number';
 import {
   Injectable,
   ConflictException,
@@ -690,7 +690,7 @@ export class AuthService {
     const biz = this.bizRepo.create({
       ownerId:         user.id,
       companyName:     data.companyName ?? data.name,
-      rcNumber:        normaliseRcNumber(data.rcNumber),
+      rcNumber:        canonicalRcNumber(data.rcNumber),
       businessAddress: data.businessAddress ?? '',
       // Structured parts (2026-05-11) - sent by the new register UI; older
       // clients omit them, which is fine because the columns are nullable.

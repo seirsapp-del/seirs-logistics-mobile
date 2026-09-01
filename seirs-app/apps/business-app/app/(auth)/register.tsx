@@ -57,7 +57,7 @@ import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { authApi } from '@/services/api';
 import { validatePassword, isPasswordValid } from '@seirs/shared';
 import { toE164Ng, toNationalInput, isValidNationalNg, NG_PHONE_HINT } from '@seirs/shared/utils/ngPhone';
-import { normaliseRc, isValidRc, RC_HINT, RC_ERROR } from '@seirs/shared/utils/rcNumber';
+import { normaliseRc, isValidRc, canonicalRc, RC_HINT, RC_ERROR } from '@seirs/shared/utils/rcNumber';
 import { StatePicker } from '@/components/StatePicker';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { PasswordInput } from '@/components/PasswordInput';
@@ -166,7 +166,7 @@ export default function RegisterScreen() {
         phone:           toE164Ng(form.phone),
         password:        form.password,
         companyName:     form.companyName.trim(),
-        rcNumber:        normaliseRc(form.rcNumber) || undefined,
+        rcNumber:        canonicalRc(form.rcNumber) || undefined,
         referralCode:    form.referralCode.trim().toUpperCase() || undefined,
         businessAddress,
         // Structured parts too, so the backend can index by state without
@@ -291,7 +291,7 @@ export default function RegisterScreen() {
             value={form.companyName} onChangeText={(v) => set('companyName', v)}
           />
           <Field theme={theme}
-            label="RC Number" optional icon="Hash" placeholder="RC123456"
+            label="RC Number" optional icon="Hash" placeholder="RC-123456"
             autoCapitalize="characters"
             value={form.rcNumber}
             onChangeText={(v) => set('rcNumber', normaliseRc(v))}
@@ -328,7 +328,7 @@ export default function RegisterScreen() {
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
-              placeholder="Min. 8 chars, upper + lower + number/symbol"
+              placeholder="At least 8 characters"
               placeholderTextColor={theme.textThird}
               autoComplete="new-password"
               backgroundColor={theme.surfaceSecond}

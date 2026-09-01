@@ -321,7 +321,7 @@ export default function DriverRegisterScreen() {
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
-              placeholder="Min 8 chars, upper + lower + number/symbol"
+              placeholder="At least 8 characters"
               placeholderTextColor={theme.textThird}
               backgroundColor={theme.surfaceSecond}
               borderColor={theme.border}
