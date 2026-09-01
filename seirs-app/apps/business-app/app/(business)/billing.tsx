@@ -48,6 +48,27 @@ type Payment = {
 const naira = nairaFromKobo;
 
 /**
+ * Printing, when the native side has it.
+ *
+ * window.print() is a browser API and this is React Native, so the
+ * printable statement goes through expo-print, which is already a
+ * dependency and already used this way by the driver app's tax docs.
+ *
+ * Probed through requireOptionalNativeModule so an older installed APK
+ * without ExpoPrint falls back to sharing the statement as text rather
+ * than red-screening, which is the same guard tax-docs.tsx uses.
+ */
+let Print: any = null;
+let Sharing: any = null;
+try {
+  const core = require('expo-modules-core');
+  if (core?.requireOptionalNativeModule?.('ExpoPrint')) {
+    Print   = require('expo-print');
+    Sharing = require('expo-sharing');
+  }
+} catch { /* stay on the text-share fallback */ }
+
+/**
  * Presets before pickers (spec, 2026-09-01). The founder's own example,
  * "the last two months", is a preset here rather than a date-picker
  * exercise. Custom exists for everything else.
@@ -114,6 +135,78 @@ const fullDateTime = (isoStr?: string) => {
   });
 };
 
+/**
+ * The statement as a printable page.
+ *
+ * Colours here are fixed rather than themed on purpose: this renders
+ * onto paper, which is white in both themes, and a dark-mode palette
+ * would print as a black rectangle. Same reasoning as the driver tax
+ * document.
+ *
+ * The period is in the heading AND above the total, because a printed
+ * page outlives the screen that produced it and a bare figure on a
+ * sheet of paper is exactly the lifetime-total problem again.
+ *
+ * Whole-month periods make this correct by construction: a page headed
+ * "1 Jul to 31 Aug" cannot be a partial month somebody misreads as one.
+ */
+function buildStatementHtml(st: BusinessStatement): string {
+  const generated = new Date().toLocaleString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+  const rows = st.entries.map(e => `
+    <tr>
+      <td class="d">${dayMonth(e.date)}</td>
+      <td>${escapeHtml(e.narrative)}${e.trackingCode ? `<span class="ref">${escapeHtml(e.trackingCode)}</span>` : ''}</td>
+      <td class="m">${e.method ? escapeHtml(e.method) : ''}</td>
+      <td class="a">${nairaFmt(e.amountNgn)}</td>
+      <td class="a run">${nairaFmt(e.runningTotalNgn)}</td>
+    </tr>`).join('');
+
+  return `<html><head><meta charset="utf-8"><style>
+    @page { margin: 18mm 14mm; }
+    @media print { .nobreak { break-inside: avoid; } thead { display: table-header-group; } }
+    body { font-family: -apple-system, Roboto, Helvetica, sans-serif; color: #111827; font-size: 12px; }
+    h1 { font-size: 19px; margin: 0 0 2px; }
+    .co { font-size: 13px; color: #374151; margin: 0 0 18px; }
+    .period { font-size: 11px; letter-spacing: 1px; color: #6B7280; text-transform: uppercase; margin: 0 0 4px; }
+    .total { font-size: 27px; font-weight: 800; margin: 0 0 2px; }
+    .sub { font-size: 12px; color: #6B7280; margin: 0 0 22px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .6px;
+         color: #6B7280; border-bottom: 1px solid #D1D5DB; padding: 0 0 6px; }
+    td { padding: 8px 0; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
+    td.d { width: 62px; color: #6B7280; white-space: nowrap; }
+    td.m { width: 90px; color: #6B7280; }
+    td.a { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    td.a.run { color: #6B7280; width: 92px; }
+    .ref { display: block; font-size: 10px; color: #9CA3AF; }
+    .foot { margin-top: 22px; font-size: 10px; color: #6B7280; line-height: 1.6; }
+  </style></head><body>
+    <h1>Statement</h1>
+    <p class="co">${escapeHtml(st.companyName ?? '')}</p>
+    <p class="period">${periodLabel(st.from, st.to)}</p>
+    <p class="total">${nairaFmt(st.totals.paidNgn)}</p>
+    <p class="sub">paid in this period &middot; ${st.totals.entries} ${st.totals.entries === 1 ? 'charge' : 'charges'}</p>
+    <table>
+      <thead><tr><th>Date</th><th>Description</th><th>Paid by</th><th style="text-align:right">Amount</th><th style="text-align:right">Running</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="foot">
+      Generated ${generated}. Every figure covers the period shown above and no other.
+      Settled charges only: anything still unsettled is not money that has moved and is
+      not counted here. Amounts include kobo so they reconcile against your bank statement.
+    </p>
+  </body></html>`;
+}
+
+/** A company name or address is free text and lands inside markup. */
+function escapeHtml(v: string): string {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 export default function BillingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -132,6 +225,7 @@ export default function BillingScreen() {
   const [openLine, setOpenLine]     = useState<StatementEntry | null>(null);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting]   = useState(false);
 
   const range = useMemo(() => rangeFor(preset, custom), [preset, custom]);
 
@@ -170,6 +264,53 @@ export default function BillingScreen() {
       `Date: ${fullDateTime(e.date)}`,
     ].filter(Boolean).join('\n');
     Share.share({ message: lines }).catch(() => {});
+  };
+
+  /**
+   * "printable" was the other half of what the founder asked for and it
+   * was nowhere: filterable landed, printable did not.
+   *
+   * Goes to a real print dialog and a real PDF through expo-print, so
+   * he can print or save today without waiting on the server-side
+   * generator. That one still lands in step 5 and is the version that
+   * gets emailed, because a document generated on the server is
+   * identical every time regardless of which phone asked for it.
+   *
+   * If the native module is missing on an older APK, the statement is
+   * shared as text rather than failing: the same fallback the driver
+   * tax document uses.
+   */
+  const exportStatement = async () => {
+    if (!statement || exporting) return;
+    setExporting(true);
+    try {
+      if (Print && Sharing) {
+        try {
+          const { uri } = await Print.printToFileAsync({ html: buildStatementHtml(statement) });
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `SEIRS statement ${periodLabel(statement.from, statement.to)}`,
+          });
+          return;
+        } catch { /* fall through to the text share */ }
+      }
+      const lines = [
+        'SEIRS Logistics statement',
+        statement.companyName ? `Business: ${statement.companyName}` : '',
+        `Period: ${periodLabel(statement.from, statement.to)}`,
+        `Paid in this period: ${nairaFmt(statement.totals.paidNgn)}`,
+        `Charges: ${statement.totals.entries}`,
+        '',
+        ...statement.entries.map(e =>
+          `${dayMonth(e.date)}  ${e.narrative}  ${nairaFmt(e.amountNgn)}`),
+        '',
+        'Settled charges only. Amounts include kobo so they reconcile',
+        'against your bank statement.',
+      ].filter(Boolean);
+      await Share.share({ message: lines.join('\n') });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const statusColor = (s: string) =>
@@ -284,6 +425,19 @@ export default function BillingScreen() {
                 </Text>
               </View>
             </View>
+          )}
+
+          {entries.length > 0 && (
+            <Pressable
+              onPress={exportStatement}
+              disabled={exporting}
+              style={[styles.exportBtn, { backgroundColor: colors.primary, opacity: exporting ? 0.6 : 1 }]}
+            >
+              <Icon name="Download" size={16} color={colors.textOnPrimary} />
+              <Text style={[styles.shareBtnText, { color: colors.textOnPrimary }]}>
+                {exporting ? 'Preparing...' : 'Export this statement'}
+              </Text>
+            </Pressable>
           )}
 
           {unsettled.length > 0 && (
@@ -459,6 +613,7 @@ const styles = StyleSheet.create({
   detailRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, gap: 16 },
   detailValue:     { fontSize: 14, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
   shareBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginTop: 18 },
+  exportBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginTop: 14 },
   shareBtnText:    { fontSize: 15, fontWeight: '700' },
 
   stepper:         { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, padding: 10, marginBottom: 10 },
