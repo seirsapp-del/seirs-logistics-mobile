@@ -33,7 +33,7 @@ interface AuthContextType {
   businessRole:    BusinessRole;
   isLoading:       boolean;
   isAuthenticated: boolean;
-  login:           (user: AuthUser) => Promise<void>;
+  login:           (user: AuthUser, remember?: boolean) => Promise<void>;
   logout:          () => Promise<void>;
   // Re-pull /users/me and merge into the stored session. Without this the
   // login-time snapshot never updates: partner approval, company edits and
@@ -93,8 +93,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch { /* offline: the stored snapshot stands */ }
   };
 
-  const login = async (authUser: AuthUser) => {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
+  /**
+   * Sign in.
+   *
+   * `remember` defaults to TRUE so every existing caller keeps the old
+   * behaviour. Only an explicit `false` opts out, and then the session lives
+   * in memory alone: nothing is written, so the next launch starts signed
+   * out. Until 2026-09-01 the checkbox on the customer login was inert, and
+   * this is what makes it mean something.
+   */
+  const login = async (authUser: AuthUser, remember = true) => {
+    if (remember) {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
+    } else {
+      // Clear any session a previous "remember" left behind, or unticking
+      // the box would silently keep the old one alive.
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    }
     setUser(authUser);
   };
 

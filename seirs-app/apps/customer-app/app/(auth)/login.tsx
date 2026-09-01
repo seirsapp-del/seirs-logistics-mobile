@@ -29,6 +29,9 @@ export default function LoginScreen() {
   const [password,   setPassword]   = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading,    setLoading]    = useState(false);
+
+  /** Nothing to submit until both fields carry something. */
+  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error,      setError]      = useState('');
 
@@ -59,7 +62,7 @@ export default function LoginScreen() {
     try {
       const idToken = await getGoogleIdToken();
       const res = await authApi.googleLogin(idToken);
-      await login({ ...res.user, token: res.token, rememberMe, pendingDeletion: (res as any).pendingDeletion ?? null });
+      await login({ ...res.user, token: res.token, pendingDeletion: (res as any).pendingDeletion ?? null }, rememberMe);
     } catch (e: any) {
       // Backing out is a decision, not a failure. Say nothing.
       if (e instanceof GoogleCancelled) return;
@@ -75,7 +78,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const res = await authApi.login(email.trim().toLowerCase(), password);
-      await login({ ...res.user, token: res.token, rememberMe, pendingDeletion: (res as any).pendingDeletion ?? null });
+      await login({ ...res.user, token: res.token, pendingDeletion: (res as any).pendingDeletion ?? null }, rememberMe);
     } catch (e: any) {
       const msg: string = e.message ?? '';
       // Account exists but email not verified: send them to OTP screen with
@@ -185,7 +188,7 @@ export default function LoginScreen() {
           <Pressable
             style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
             onPress={handleLogin}
-            disabled={loading}
+            disabled={!canSubmit}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />

@@ -25,6 +25,16 @@ export default function LoginScreen() {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [loading,  setLoading]  = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+
+  /**
+   * Nothing to submit until both fields carry something.
+   *
+   * The button used to be live from the first frame, so tapping it on
+   * an empty form round-tripped to the server to be told the obvious.
+   * Business already gated this; customer and driver did not.
+   */
+  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
   const [error,    setError]    = useState('');
 
   // Hardware back button: mirror the on-screen arrow so users can
@@ -44,7 +54,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const res = await authApi.login(email, password);
-      await login({ ...res.user, token: res.token });
+      await login({ ...res.user, token: res.token }, rememberMe);
     } catch (e: any) {
       const msg: string = e.message ?? '';
       if (msg.toLowerCase().includes('verify your email')) {
@@ -127,14 +137,32 @@ export default function LoginScreen() {
             />
           </View>
 
-          <Pressable style={styles.forgotRow} onPress={() => router.push('/(auth)/forgot-password' as any)}>
-            <Text style={[styles.forgotText, { color: theme.primary }]}>Forgot password?</Text>
-          </Pressable>
+          {/* Remember me sits beside the forgot link, matching the customer
+              app. Defaults to ticked: staying signed in is what a driver
+              working a shift expects, and unticking is the deliberate act. */}
+          <View style={styles.rememberRow}>
+            <Pressable style={styles.rememberLeft} onPress={() => setRememberMe(v => !v)}>
+              <View style={[
+                styles.checkbox,
+                {
+                  borderColor:     rememberMe ? theme.primary : theme.border,
+                  backgroundColor: rememberMe ? theme.primary : 'transparent',
+                },
+              ]}>
+                {rememberMe && <Text style={styles.checkmark}>{'\u2713'}</Text>}
+              </View>
+              <Text style={[styles.rememberText, { color: theme.textSecond }]}>Remember me</Text>
+            </Pressable>
+
+            <Pressable onPress={() => router.push('/(auth)/forgot-password' as any)}>
+              <Text style={[styles.forgotText, { color: theme.primary }]}>Forgot password?</Text>
+            </Pressable>
+          </View>
 
           <Pressable
-            style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+            style={[styles.submitBtn, { backgroundColor: theme.primary }, !canSubmit && { opacity: 0.5 }]}
             onPress={handleLogin}
-            disabled={loading}
+            disabled={!canSubmit}
           >
             {loading ? <ActivityIndicator color="#fff" /> : (
               <View style={styles.submitRow}>
@@ -174,6 +202,11 @@ const styles = StyleSheet.create({
   inputWrap:  { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },
   inputIcon:  { marginRight: Spacing.sm },
   input:      { flex: 1, fontSize: FontSize.base, height: '100%' },
+  rememberRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg },
+  rememberLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  checkbox:     { width: 20, height: 20, borderRadius: Radius.xs, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
+  checkmark:    { color: '#FFFFFF', fontSize: 12, fontWeight: FontWeight.bold as any, lineHeight: 14 },
+  rememberText: { fontSize: FontSize.sm },
   forgotRow:  { alignItems: 'flex-end', marginBottom: Spacing.lg, marginTop: -Spacing.xs },
   forgotText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
   submitBtn:  { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },

@@ -51,38 +51,21 @@ export default function ForgotPasswordScreen() {
     }
   };
 
-  /**
-   * The brand bar, rendered in BOTH states.
-   *
-   * It used to sit inside the form branch only, so submitting the form made
-   * the lockup disappear and left a bare screen. The business app keeps its
-   * header across both, which is the difference the founder noticed
-   * (2026-09-01).
-   */
-  const headerBar = (
-    <LinearGradient
-      colors={[Palette.navy800, Palette.navy700]}
-      style={{ paddingTop: insets.top + 24, paddingBottom: 24, paddingHorizontal: Spacing.lg }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
-        <SeirsMarkBold size={40} color="#FFFFFF" hubColor={Palette.navy800} />
-        <Text style={[styles.brand, { color: '#FFFFFF' }]}>SEIRS</Text>
-        <Text style={[styles.brandSub, { color: 'rgba(255,255,255,0.55)' }]}>DRIVER</Text>
-      </View>
-    </LinearGradient>
-  );
-
   if (sent) {
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        {headerBar}
         <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]} showsVerticalScrollIndicator={false}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
               <Ionicons name="arrow-back" size={20} color={theme.text} />
             </View>
           </Pressable>
+          <View style={styles.brandRow}>
+            <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
+            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
+            <Text style={[styles.brandSub, { color: theme.textThird }]}>DRIVER</Text>
+          </View>
           {/* Flat, not a raised card (founder 2026-09-01: the business
               app's version of this screen is the one to match, and it is
               the calmest of the three). A shadowed card around a single
@@ -127,7 +110,6 @@ export default function ForgotPasswordScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      {headerBar}
       <ScrollView
         contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -139,6 +121,11 @@ export default function ForgotPasswordScreen() {
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </View>
         </Pressable>
+          <View style={styles.brandRow}>
+            <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
+            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
+            <Text style={[styles.brandSub, { color: theme.textThird }]}>DRIVER</Text>
+          </View>
 
         {/* Header */}
         <View style={styles.header}>

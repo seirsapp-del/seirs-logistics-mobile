@@ -49,15 +49,15 @@ export default function ForgotPasswordScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <LinearGradient colors={headerGradient} style={{ paddingTop: insets.top + 24, paddingBottom: 24 }}>
-        <View style={styles.logoRow}>
-          <SeirsMarkBold size={52} color={Palette.white} hubColor={Palette.navy800} />
-          <View>
-            <Text style={[styles.logoText, { color: Palette.white }]}>SEIRS</Text>
-            <Text style={[styles.logoSub, { color: 'rgba(255,255,255,0.5)' }]}>Business &amp; Partners</Text>
-          </View>
-        </View>
-      </LinearGradient>
+
+      {/* Floating lockup, matching the customer app. The navy bar that
+          used to sit here was removed so every pre-login screen across
+          the three apps shares one treatment (founder 2026-09-01). */}
+      <View style={[styles.logoRow, { paddingTop: insets.top + 16, paddingBottom: 8 }]}>
+        <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
+        <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
+        <Text style={[styles.logoSub, { color: theme.textThird }]}>Business &amp; Partners</Text>
+      </View>
 
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24, backgroundColor: theme.background }]}
@@ -135,6 +135,7 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   logoRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24 },
   logoText:   { fontSize: 20, fontWeight: '900', letterSpacing: 3 },
+  brand:      { fontSize: 15, fontWeight: '900', letterSpacing: 4 },
   logoSub:    { fontSize: 12, marginTop: 1 },
   body:       { padding: 24, flexGrow: 1 },
   heading:    { fontSize: 24, fontWeight: '800', marginBottom: 8, marginTop: 8 },

@@ -25,6 +25,7 @@ export default function LoginScreen() {
   const [showPass,  setShowPass]  = useState(false);
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   // Login should not enforce password complexity: existing accounts may
   // pre-date the current policy. Just require non-empty.
@@ -35,7 +36,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const { token, user } = await authApi.login(email.trim().toLowerCase(), password);
-      await login({ ...user, token });
+      await login({ ...user, token }, rememberMe);
     } catch (e: any) {
       const msg: string = e.message ?? '';
       // Account exists but email not verified: route to OTP screen with
@@ -127,9 +128,27 @@ export default function LoginScreen() {
             <Icon name={showPass ? 'EyeOff' : 'Eye'} size={16} color={theme.textThird} />
           </Pressable>
         </View>
-        <Pressable style={styles.forgotRow} onPress={() => router.push('/(auth)/forgot-password' as any)}>
-          <Text style={[styles.footerLink, { color: theme.accent }]}>Forgot password?</Text>
-        </Pressable>
+        {/* Remember me beside the forgot link, matching customer and driver.
+            Ticked by default: staying signed in is the expectation, and
+            unticking is the deliberate act. */}
+        <View style={styles.rememberRow}>
+          <Pressable style={styles.rememberLeft} onPress={() => setRememberMe(v => !v)}>
+            <View style={[
+              styles.checkbox,
+              {
+                borderColor:     rememberMe ? theme.accent : theme.border,
+                backgroundColor: rememberMe ? theme.accent : 'transparent',
+              },
+            ]}>
+              {rememberMe && <Text style={styles.checkmark}>{'✓'}</Text>}
+            </View>
+            <Text style={[styles.rememberText, { color: theme.textSecond }]}>Remember me</Text>
+          </Pressable>
+
+          <Pressable onPress={() => router.push('/(auth)/forgot-password' as any)}>
+            <Text style={[styles.footerLink, { color: theme.accent }]}>Forgot password?</Text>
+          </Pressable>
+        </View>
         <Pressable
           style={[styles.btn, { backgroundColor: theme.primary }, !canSubmit && styles.btnDisabled]}
           onPress={handleLogin}
@@ -179,6 +198,11 @@ const styles = StyleSheet.create({
   btn:        { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   btnDisabled:{ opacity: 0.5 },
   btnText:    { fontWeight: '700', fontSize: 16 },
+  rememberRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  rememberLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  checkbox:     { width: 20, height: 20, borderRadius: 5, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
+  checkmark:    { color: '#FFFFFF', fontSize: 12, fontWeight: '700', lineHeight: 14 },
+  rememberText: { fontSize: 14 },
   forgotRow:  { alignSelf: 'flex-end', marginTop: -6, marginBottom: 4 },
   footer:     { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
   footerText: { fontSize: 15 },

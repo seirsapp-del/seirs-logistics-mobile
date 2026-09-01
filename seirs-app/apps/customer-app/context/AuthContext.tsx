@@ -30,7 +30,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   pendingDeletion: PendingDeletion | null;
-  login: (user: AuthUser) => Promise<void>;
+  login: (user: AuthUser, remember?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   // Re-fetch the current user profile from the API. Call this after edit-
   // profile / change-password / any flow that mutates user fields so the
@@ -72,8 +72,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const login = async (authUser: AuthUser) => {
-    await AsyncStorage.setItem('seirs_user', JSON.stringify(authUser));
+  /**
+   * Sign in.
+   *
+   * `remember` defaults to TRUE so every existing caller keeps the old
+   * behaviour. Only an explicit `false` opts out, and then the session lives
+   * in memory alone: nothing is written, so the next launch starts signed
+   * out. Until 2026-09-01 the checkbox on the customer login was inert, and
+   * this is what makes it mean something.
+   */
+  const login = async (authUser: AuthUser, remember = true) => {
+    if (remember) {
+      await AsyncStorage.setItem('seirs_user', JSON.stringify(authUser));
+    } else {
+      // Clear any session a previous "remember" left behind, or unticking
+      // the box would silently keep the old one alive.
+      await AsyncStorage.removeItem('seirs_user');
+    }
     setUser(authUser);
   };
 
