@@ -24,9 +24,9 @@ export class SosService {
   /**
    * Customer or driver presses the SOS button. Persists the event for the
    * audit log, then fans out via WS:
-   *   - all admins (room `admin`) get a real-time alert
-   *   - if there's an active delivery, the *other* party (driver if the
-   *     customer triggered, customer if the driver triggered) gets it too
+   *   - all admins (room `admin`) get a real-time alert, always
+   *   - nobody else. The other party in the trip is NOT notified: see the
+   *     note further down for why that was removed on 2026-09-01.
    *     so they know support is being engaged
    */
   async trigger(
@@ -89,33 +89,22 @@ export class SosService {
       createdAt:  saved.createdAt,
     });
 
-    // Notify the other party in the trip if applicable.
-    if (delivery) {
-      const otherUserId =
-        delivery.customer?.id === user.id
-          ? delivery.driver?.user?.id
-          : delivery.customer?.id;
-      if (otherUserId) {
-        this.trackingGateway.notifyUser(otherUserId, {
-          type:       'sos:peer-alert',
-          alertId:    saved.id,
-          deliveryId: delivery.id,
-          message:    `${user.name} pressed SOS - SEIRS support has been alerted.`,
-        });
-
-        // Persistent notification + (when FCM fully wired) push.
-        this.notifications
-          .create(
-            otherUserId,
-            'SOS - SEIRS support alerted',
-            `${user.name} pressed SOS during your active trip. Support is engaging.`,
-            NotificationType.SOS_ALERT,
-            delivery.id,
-            delivery.trackingCode,
-          )
-          .catch(() => {});
-      }
-    }
+    /*
+     * The other party in the trip is deliberately NOT told.
+     *
+     * This used to push "<name> pressed SOS during your active trip.
+     * Support is engaging." to whoever was on the other end of the run. The
+     * founder cut it on 2026-09-01, and he is right: a customer waiting on a
+     * parcel receives an alarming notification about a named stranger,
+     * cannot do a single useful thing with it, and now knows something is
+     * wrong with a person they have no duty of care for. The help comes from
+     * ops, who are alerted above and unconditionally.
+     *
+     * Worth recording: the socket half of this was already dead. No client
+     * in any of the three apps ever listened for 'sos:peer-alert'. Only the
+     * persistent notification actually reached anybody, which is the half
+     * that caused the harm.
+     */
 
     return saved;
   }

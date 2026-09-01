@@ -408,14 +408,17 @@ export default function SOSScreen() {
             )}
           </View>
 
-          {/* Share trip */}
-          <Pressable
-            style={styles.shareBtn}
-            onPress={() => router.push({ pathname: '/(customer)/share-trip', params: { id: params.deliveryId } })}
-          >
-            <Ionicons name="share-social-outline" size={18} color="#fff" />
-            <Text style={styles.shareBtnText}>{t('sos.shareLocationBtn')}</Text>
-          </Pressable>
+          {/*
+            The "share my location" button is gone (founder 2026-09-01).
+
+            Two reasons. It was redundant: the SOS button already shares the
+            location, which is the whole point of pressing it. And it was
+            broken: it pushed to share-trip with params.deliveryId and was
+            never gated on having one, so opening SOS from Profile, which is
+            the normal route, passed undefined and the button went nowhere.
+            On an emergency screen a control that does nothing is worse than
+            no control at all.
+          */}
 
         </ScrollView>
 

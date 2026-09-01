@@ -238,8 +238,8 @@ export default function BusinessSosScreen() {
           <View style={styles.idleState}>
             <Text style={styles.idleTitle}>Theft · Accident · Personal safety</Text>
             <Text style={styles.idleDesc}>
-              One tap shares your live location with SEIRS support + your
-              driver if a run is active. Use this for real emergencies only.
+              One tap shares your live location with SEIRS support. Use this
+              for real emergencies only.
             </Text>
           </View>
         ) : (

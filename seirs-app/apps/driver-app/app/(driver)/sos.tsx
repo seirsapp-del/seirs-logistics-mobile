@@ -249,7 +249,7 @@ export default function DriverSosScreen() {
     // corner (2026-08-25 dialog sweep).
     setSheet({
       title: 'Send SOS?',
-      message: 'This alerts SEIRS ops, shares your live location, and notifies your assigned customer if you are on a trip.',
+      message: 'This alerts SEIRS ops and shares your live location with them. Nobody else is told.',
       options: [{
         label: 'Send SOS now',
         sub: 'Ops are alerted immediately',
@@ -349,7 +349,7 @@ export default function DriverSosScreen() {
             <View style={styles.idleState}>
               <Text style={styles.idleTitle}>Vehicle trouble · Accident · Personal safety</Text>
               <Text style={styles.idleDesc}>
-                One tap shares your live location with SEIRS ops + your customer if you are mid-trip. Use this for real emergencies only.
+                One tap shares your live location with SEIRS ops. Use this for real emergencies only.
               </Text>
             </View>
           )}
