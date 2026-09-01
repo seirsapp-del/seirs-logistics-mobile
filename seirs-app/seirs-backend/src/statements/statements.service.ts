@@ -203,6 +203,170 @@ export class StatementsService {
     };
   }
 
+  // ── Customer ───────────────────────────────────────────────────────────
+
+  /**
+   * A person's own delivery and ride spend.
+   *
+   * Approved in the 1 September spec alongside the other three. The
+   * challenge to it, that a receipt already meets a payer's needs, does
+   * not survive one standing rule: a customer account cannot become a
+   * business account. Customer to driver and business to partner are the
+   * only conversions there are. So a trader running on a personal
+   * account has no route to a business statement, ever, and a pile of
+   * per-delivery receipts does not add up to a period a tax office will
+   * accept.
+   *
+   * Rides are included and named as rides. spendNarrative already
+   * distinguishes them, so "Ride to Ikeja" reads correctly next to a
+   * parcel on the same page.
+   */
+  async customerStatement(userId: string, from?: string, to?: string) {
+    const w = this.window(from, to);
+    const who = await this.ds.query(
+      `SELECT id, name, "accountId" FROM users WHERE id = $1 LIMIT 1`, [userId],
+    );
+    if (!who?.length) throw new NotFoundException('Account not found.');
+
+    const rows = await this.ds.query(
+      `SELECT p."createdAt", p."amountKobo", p.purpose, p.method,
+              d."trackingCode", d."pickupAddress", d."dropoffAddress", d.kind,
+              (SELECT COUNT(*)::int FROM delivery_stops s WHERE s."deliveryId" = d.id) AS stops
+         FROM payments p
+         LEFT JOIN deliveries d ON d.id = p."deliveryId"
+        WHERE p."customerId" = $1
+          AND p.status = 'success'
+          AND p.purpose <> 'card_verify'
+          AND p."createdAt" BETWEEN $2 AND $3
+        ORDER BY p."createdAt" ASC`,
+      [userId, w.from.toISOString(), w.to.toISOString()],
+    );
+
+    const lines: StatementLine[] = (rows as any[]).map((r) => {
+      const rail = methodLabel(r.method);
+      return {
+        date:      r.createdAt,
+        narrative: rail ? `${spendNarrative(r)} (${rail})` : spendNarrative(r),
+        amountNgn: Number(r.amountKobo ?? 0) / 100,
+        status:    'paid',
+        settled:   true,
+      };
+    });
+
+    return {
+      subjectType: 'customer' as const,
+      subjectId:   userId,
+      subjectName: who[0].name,
+      subjectMeta: who[0].accountId ? `Account ${who[0].accountId}` : undefined,
+      title:       'Delivery and Ride Spend',
+      window: w,
+      lines,
+      // Settled only, so a second total would be a zero nobody can read.
+      pendingLabel: null as string | null,
+    };
+  }
+
+  // ── Admin: see what has been issued ────────────────────────────────────
+
+  /**
+   * List issued statements.
+   *
+   * Two documents existed in production with nobody able to name them:
+   * the only admin route was issue-one-for-an-entity-you-already-know,
+   * and nothing enumerated the table. So "who is walking around with a
+   * SEIRS statement" was unanswerable from admin, from the apps and from
+   * the health probe alike (found 2026-09-01).
+   *
+   * The pdf column is never selected. It is the document itself, several
+   * kilobytes a row, and nothing in a list view renders it.
+   */
+  async adminList(opts: { page?: number; subjectType?: string; q?: string } = {}) {
+    const take = 25;
+    const page = Math.max(1, Number(opts.page ?? 1));
+    const args: any[] = [];
+    const where: string[] = [];
+
+    if (opts.subjectType) {
+      args.push(opts.subjectType);
+      where.push(`"subjectType" = $${args.length}`);
+    }
+    if (opts.q?.trim()) {
+      args.push(`%${opts.q.trim()}%`);
+      where.push(`("code" ILIKE $${args.length} OR "subjectName" ILIKE $${args.length})`);
+    }
+    const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const totalRows = await this.ds.query(
+      `SELECT COUNT(*)::int AS n FROM "statement_records" ${clause}`, args,
+    );
+    const total = totalRows?.[0]?.n ?? 0;
+
+    const rows = await this.ds.query(
+      `SELECT "code", "subjectType", "subjectId", "subjectName",
+              "periodFrom", "periodTo", "totalPaidNgn", "totalPendingNgn",
+              "lineCount", "issuedBy", "createdAt", "downloadExpiresAt",
+              ("pdf" IS NOT NULL) AS "hasDocument"
+         FROM "statement_records" ${clause}
+        ORDER BY "createdAt" DESC
+        LIMIT ${take} OFFSET ${(page - 1) * take}`,
+      args,
+    );
+
+    const now = Date.now();
+    return {
+      items: (rows as any[]).map(r => ({
+        ...r,
+        totalPaidNgn:    Number(r.totalPaidNgn),
+        totalPendingNgn: Number(r.totalPendingNgn),
+        // Two different reasons a link will not work, and support needs
+        // to tell them apart: never had a document, versus had one and
+        // the window closed.
+        hasDocument: r.hasDocument === true,
+        expired: !!r.downloadExpiresAt && new Date(r.downloadExpiresAt).getTime() < now,
+      })),
+      total, page, pages: Math.max(1, Math.ceil(total / take)),
+    };
+  }
+
+  /**
+   * Kill a download link now, without touching verification.
+   *
+   * The case this exists for is a statement emailed to the wrong
+   * address. The document is already out, so this is damage limitation
+   * rather than a recall, and the record stays verifiable because the
+   * paper somebody already holds must not stop checking out.
+   */
+  async adminRevoke(code: string) {
+    const rec = await this.records.findOne({ where: { code: String(code ?? '').trim().toUpperCase() } });
+    if (!rec) throw new NotFoundException('No statement matches that reference.');
+    await this.records.update(rec.id, { downloadExpiresAt: new Date(Date.now() - 1000) });
+    return { code: rec.code, revoked: true };
+  }
+
+  /**
+   * Issue a fresh statement over the same subject and window.
+   *
+   * Figures are recomputed from today's data on purpose. That is the
+   * whole point of a re-issue: if a payment was refunded since, the new
+   * document should say so, and it gets its own code rather than
+   * overwriting one somebody may be holding.
+   */
+  async adminReissue(code: string) {
+    const rec = await this.records.findOne({ where: { code: String(code ?? '').trim().toUpperCase() } });
+    if (!rec) throw new NotFoundException('No statement matches that reference.');
+
+    const from = rec.periodFrom.toISOString().slice(0, 10);
+    const to   = rec.periodTo.toISOString().slice(0, 10);
+    const data =
+      rec.subjectType === 'partner'  ? await this.partnerStatement(rec.subjectId, from, to)
+      : rec.subjectType === 'driver' ? await this.driverStatement(rec.subjectId, from, to)
+      : rec.subjectType === 'business' ? await this.businessStatement(rec.subjectId, from, to)
+      : await this.customerStatement(rec.subjectId, from, to);
+
+    const issued = await this.issueLink(data as any, 'support');
+    return { replaces: rec.code, ...issued };
+  }
+
   // ── Issue ──────────────────────────────────────────────────────────────
 
   /**

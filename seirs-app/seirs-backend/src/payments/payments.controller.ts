@@ -1,7 +1,7 @@
 import {
   Body, Controller, Get, Param, Post, Patch, Delete,
   UseGuards, RawBodyRequest, Req, Headers,
-  HttpCode, HttpStatus,
+  HttpCode, HttpStatus, Query,
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import { createHash, timingSafeEqual } from 'crypto';
@@ -136,6 +136,23 @@ export class PaymentsController {
 
   // GET /api/v1/payments/history
   @UseGuards(JwtAuthGuard)
+  /**
+   * GET /api/v1/payments/statement?from=YYYY-MM-DD&to=YYYY-MM-DD
+   *
+   * A person's own spend, bank-statement shaped: every settled charge in
+   * the window, in date order, with a running total. Sits beside
+   * /payments/history rather than replacing it, because history is where
+   * unsettled charges live and a statement deliberately excludes them.
+   */
+  @Get('statement')
+  customerStatement(
+    @CurrentUser() user: User,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.paymentsService.getCustomerStatement(user.id, from, to);
+  }
+
   @Get('history')
   getHistory(@CurrentUser() user: User) {
     return this.paymentsService.getPaymentHistory(user.id);

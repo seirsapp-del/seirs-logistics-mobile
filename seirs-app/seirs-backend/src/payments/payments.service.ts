@@ -6,6 +6,7 @@ import { Repository, DataSource } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Payment, PaymentMethod, PaymentStatus, EscrowStatus, PaymentPurpose } from './payment.entity';
 import { mapProviderMethod } from './flutterwave.service';
+import { spendNarrative, methodLabel } from '../business/spend-narrative';
 import { Wallet } from './wallet.entity';
 import { SavedCard } from './saved-card.entity';
 import { FlutterwaveService } from './flutterwave.service';
@@ -1085,6 +1086,81 @@ export class PaymentsService {
     }
 
     return payment;
+  }
+
+  /**
+   * A customer's own spend statement.
+   *
+   * Same shape as the business one and deliberately so: presets, a
+   * period total, lines in date order with a running total. The founder
+   * approved the same statement in all four apps on 1 September, each
+   * keeping its own meaning of the word, and for a person that meaning
+   * is what they spent on deliveries and rides.
+   *
+   * It matters more here than it looks. A customer account cannot become
+   * a business account: customer to driver and business to partner are
+   * the only conversions there are. So somebody trading on a personal
+   * account has no other route to a statement at all, and a pile of
+   * per-delivery receipts is not a period a tax office will accept.
+   *
+   * Settled charges only, per the same decision that governs the
+   * business statement: pending is money that has not moved.
+   */
+  async getCustomerStatement(userId: string, from?: string, to?: string) {
+    const toDate   = to   ? new Date(to)   : new Date();
+    const fromDate = from ? new Date(from) : new Date(toDate.getTime() - 90 * 24 * 3600 * 1000);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      throw new BadRequestException('from and to must be valid dates (YYYY-MM-DD).');
+    }
+    if (fromDate > toDate) {
+      throw new BadRequestException('The start date cannot be after the end date.');
+    }
+    toDate.setHours(23, 59, 59, 999);
+
+    // Columns named one by one, no user relation joined. The same rule
+    // that keeps bank details and KYC paths out of the business
+    // statement applies to a person's own.
+    const rows: Array<any> = await this.dataSource.query(
+      `SELECT p.id, p."createdAt", p."amountKobo", p.purpose, p.method,
+              p."providerReference",
+              d."trackingCode", d."pickupAddress", d."dropoffAddress", d.kind,
+              (SELECT COUNT(*)::int FROM delivery_stops s WHERE s."deliveryId" = d.id) AS stops
+         FROM payments p
+         LEFT JOIN deliveries d ON d.id = p."deliveryId"
+        WHERE p."customerId" = $1
+          AND p.status = 'success'
+          AND p.purpose <> 'card_verify'
+          AND p."createdAt" BETWEEN $2 AND $3
+        ORDER BY p."createdAt" ASC`,
+      [userId, fromDate.toISOString(), toDate.toISOString()],
+    );
+
+    let running = 0;
+    const entries = rows.map((r) => {
+      const amountNgn = Number(r.amountKobo ?? 0) / 100;
+      running += amountNgn;
+      return {
+        id:           r.id,
+        date:         r.createdAt,
+        narrative:    spendNarrative(r),
+        amountNgn:    Math.round(amountNgn * 100) / 100,
+        method:       methodLabel(r.method),
+        reference:    r.providerReference ?? null,
+        trackingCode: r.trackingCode ?? null,
+        stops:        r.stops ? Number(r.stops) : null,
+        runningTotalNgn: Math.round(running * 100) / 100,
+      };
+    });
+
+    return {
+      from:    fromDate.toISOString(),
+      to:      toDate.toISOString(),
+      entries,
+      totals: {
+        paidNgn: Math.round(entries.reduce((a, e) => a + e.amountNgn, 0) * 100) / 100,
+        entries: entries.length,
+      },
+    };
   }
 
   // ── Escrow release - called when delivery is completed ────────────────────

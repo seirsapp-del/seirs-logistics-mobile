@@ -1,5 +1,6 @@
 import {
-  Controller, Get, Param, Query, Res, UseGuards, ForbiddenException, NotFoundException,
+  Controller, Get, Post, Param, Query, Res, UseGuards, ForbiddenException, NotFoundException,
+  DefaultValuePipe, ParseIntPipe,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -107,6 +108,23 @@ export class StatementsController {
     this.send(res, pdf, filename);
   }
 
+  /**
+   * GET /api/v1/statements/customer?from=&to=
+   * A person's own delivery and ride spend, as a PDF.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('statements/customer')
+  async myCustomerStatement(
+    @CurrentUser() user: any,
+    @Res() res: Response,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const data = await this.svc.customerStatement(user.id, from, to);
+    const { pdf, filename } = await this.svc.issue(data as any);
+    this.send(res, pdf, filename);
+  }
+
   // ── Issue, and hand back a link rather than bytes ──────────────────────
 
   /**
@@ -182,6 +200,18 @@ export class StatementsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('statements/customer/link')
+  async customerLink(
+    @CurrentUser() user: any,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const data = await this.svc.customerStatement(user.id, from, to);
+    const { code, expiresAt } = await this.svc.issueLink(data as any);
+    return this.linkFor(code, expiresAt);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('statements/driver/link')
   async driverLink(
     @CurrentUser() user: any,
@@ -214,16 +244,58 @@ export class StatementsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    if (type !== 'partner' && type !== 'driver' && type !== 'business') {
-      throw new NotFoundException('Statement type must be partner, driver or business.');
+    if (!['partner', 'driver', 'business', 'customer'].includes(type)) {
+      throw new NotFoundException('Statement type must be partner, driver, business or customer.');
     }
-    const data = type === 'partner'
-      ? await this.svc.partnerStatement(id, from, to)
-      : type === 'business'
-        ? await this.svc.businessStatement(id, from, to)
-        : await this.svc.driverStatement(id, from, to);
+    const data =
+      type === 'partner'  ? await this.svc.partnerStatement(id, from, to)
+      : type === 'business' ? await this.svc.businessStatement(id, from, to)
+      : type === 'customer' ? await this.svc.customerStatement(id, from, to)
+      : await this.svc.driverStatement(id, from, to);
     const { pdf, filename } = await this.svc.issue(data as any, 'support');
     this.send(res, pdf, filename);
+  }
+
+  /**
+   * GET /api/v1/admin/statements?page=&subjectType=&q=
+   *
+   * Two statements existed in production and nobody could name them.
+   * The only admin route issued one for an entity you already knew, and
+   * nothing enumerated the table, so "who is holding a SEIRS statement"
+   * was unanswerable from admin, from the apps, and from the health
+   * probe alike.
+   */
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get('admin/statements')
+  adminStatements(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('subjectType') subjectType?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.svc.adminList({ page, subjectType, q });
+  }
+
+  /**
+   * Kill a download link now. For a statement emailed to the wrong
+   * address: the document is already out, so this limits the damage
+   * rather than recalling it, and verification is untouched because the
+   * paper somebody holds must keep checking out.
+   */
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post('admin/statements/:code/revoke')
+  adminRevoke(@Param('code') code: string) {
+    return this.svc.adminRevoke(code);
+  }
+
+  /**
+   * Issue a fresh document over the same subject and window, with its
+   * own code. Figures are recomputed from today's data, which is the
+   * point: a refund landing since should show.
+   */
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post('admin/statements/:code/reissue')
+  adminReissue(@Param('code') code: string) {
+    return this.svc.adminReissue(code);
   }
 
   // ── Public verification ────────────────────────────────────────────────
