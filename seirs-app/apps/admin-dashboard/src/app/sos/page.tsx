@@ -19,6 +19,23 @@ import { Siren, MapPin, Phone, Package, CheckCircle2, Copy, Quote, ClipboardChec
          PhoneCall, Navigation, Bell, BellOff, Repeat, UserRound, Clock } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
+/**
+ * Open the record that actually describes this person.
+ *
+ * A driver has a user account AND a rider record, and they are different
+ * pages: the account holds email, tickets and deletion state, the rider
+ * record holds their documents, vehicle and trips. Every link on this desk
+ * went to the account, so an operator on the phone to a rider mid-emergency
+ * landed on the page that knows least about them and carries no vehicle.
+ *
+ * Falls back to the account whenever the payload does not name a rider,
+ * which is correct: a customer has no rider record to open.
+ */
+function personHref(p?: { id?: string; role?: string | null; driverId?: string | null } | null): string {
+  if (p?.role === 'driver' && p?.driverId) return `/drivers/${p.driverId}`;
+  return `/users/${p?.id ?? ''}`;
+}
+
 export default function SosDeskPage() {
   const router  = useRouter();
   const [alerts,  setAlerts]  = useState<any[]>([]);
@@ -245,7 +262,7 @@ export default function SosDeskPage() {
                         never WHO they were (founder 2026-08-24). */}
                     {a.user?.id ? (
                       <Link
-                        href={`/users/${a.user.id}`}
+                        href={personHref(a.user)}
                         className="underline decoration-red-300 underline-offset-2 hover:text-red-700"
                       >
                         {a.user?.name ?? 'Unknown user'}
@@ -322,7 +339,7 @@ export default function SosDeskPage() {
               */}
               {a.raiserAlertCount > 1 && (
                 <Link
-                  href={`/users/${a.user?.id}`}
+                  href={personHref(a.user)}
                   className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                 >
                   <Repeat size={13} />
@@ -386,7 +403,7 @@ export default function SosDeskPage() {
                   </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
                     <Link
-                      href={`/users/${a.counterparty.id}`}
+                      href={personHref(a.counterparty)}
                       className="text-sm font-semibold text-gray-900 underline decoration-gray-300 underline-offset-2 hover:text-[#3A7BD5]"
                     >
                       {a.counterparty.name ?? 'Unknown'}

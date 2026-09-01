@@ -247,6 +247,26 @@ export class SosService {
       priorCounts.set(id as string, await this.repo.count({ where: { user: { id: id as string } } as any }));
     }
 
+    /**
+     * The rider record id for any raiser who is a driver, so the desk opens
+     * the RIDER, not the account page of the same person. A driver is a row
+     * in `drivers` pointing at a user, not a field on the user, so it has to
+     * be looked up. One query for the page.
+     */
+    const riderIds = new Map<string, string>();
+    const driverUserIds = [...new Set(
+      rows.filter((a: any) => a.user?.role === 'driver').map((a: any) => a.user.id),
+    )] as string[];
+    if (driverUserIds.length) {
+      const found = await this.repo.manager
+        .createQueryBuilder()
+        .select(['dr.id AS id', 'dr."userId" AS "userId"'])
+        .from('drivers', 'dr')
+        .where('dr."userId" IN (:...ids)', { ids: driverUserIds })
+        .getRawMany<{ id: string; userId: string }>();
+      found.forEach(r => riderIds.set(r.userId, r.id));
+    }
+
     return rows.map((a: any) => {
       const d = a.delivery;
       // Whoever is NOT the raiser. Null when the alert has no trip.
@@ -266,6 +286,22 @@ export class SosService {
       }
       return {
         ...a,
+        /**
+         * NARROWED. `user` is eager on SosAlert and this spread overrode
+         * delivery and counterparty but not the raiser, so the whole User
+         * entity went to the desk: fifty columns including the payout bank
+         * account number, the bank code and which ID document was approved.
+         * listHistory a few methods down has always narrowed it correctly;
+         * this one never did. Nothing on the screen rendered any of it.
+         */
+        user: a.user ? {
+          id:        a.user.id,
+          name:      a.user.name,
+          phone:     a.user.phone,
+          role:      a.user.role,
+          accountId: a.user.accountId,
+          driverId:  riderIds.get(a.user.id) ?? null,
+        } : null,
         delivery: d ? { id: d.id, trackingCode: d.trackingCode, status: d.status } : null,
         counterparty,
         /** Total alerts ever raised by this person, this one included. */
@@ -330,6 +366,21 @@ export class SosService {
 
     const rows = await qb.getMany();
 
+    // Same lookup as listActive, so a resolved alert opens the rider too.
+    const historyRiderIds = new Map<string, string>();
+    const histDriverUserIds = [...new Set(
+      rows.filter((a: any) => a.user?.role === 'driver').map((a: any) => a.user.id),
+    )] as string[];
+    if (histDriverUserIds.length) {
+      const found = await this.repo.manager
+        .createQueryBuilder()
+        .select(['dr.id AS id', 'dr."userId" AS "userId"'])
+        .from('drivers', 'dr')
+        .where('dr."userId" IN (:...ids)', { ids: histDriverUserIds })
+        .getRawMany<{ id: string; userId: string }>();
+      found.forEach(r => historyRiderIds.set(r.userId, r.id));
+    }
+
     return rows.map((a: any) => ({
       id:         a.id,
       status:     a.status,
@@ -343,6 +394,7 @@ export class SosService {
       user:       a.user ? {
         id: a.user.id, name: a.user.name, phone: a.user.phone,
         role: a.user.role, accountId: a.user.accountId,
+        driverId: historyRiderIds.get(a.user.id) ?? null,
       } : null,
       delivery:   a.delivery ? { id: a.delivery.id, trackingCode: a.delivery.trackingCode, status: a.delivery.status } : null,
       /** How long it stayed open. The number that says whether SEIRS responded. */
