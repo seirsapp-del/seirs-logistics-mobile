@@ -82,6 +82,16 @@ export class DriverDocument {
   @Column({ type: 'date', nullable: true })
   expiresAt: string | null;
 
+  /**
+   * When the rider was warned this is about to lapse.
+   *
+   * Stamped once, cleared on every new review decision, so re-uploading
+   * and being re-approved re-arms the warning and nobody is told the same
+   * thing every morning for thirty days.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  expiryWarnedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

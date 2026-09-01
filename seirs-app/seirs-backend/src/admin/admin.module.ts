@@ -78,6 +78,37 @@ export class AdminModule implements OnModuleInit {
    */
   async onModuleInit() {
     /**
+     * The admin sign-in log (2026-09-02). The founder asked for this three
+     * times: "i cant tell if she signed in or not as a super admin".
+     * synchronize is off in production, so the table is created here.
+     */
+    try {
+      await this.usersRepo.query(`
+        CREATE TABLE IF NOT EXISTS "admin_sign_in_events" (
+          "id"           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "userId"       uuid NULL,
+          "email"        varchar(180) NOT NULL,
+          "name"         varchar(120) NULL,
+          "adminRole"    varchar(40) NULL,
+          "outcome"      varchar(24) NOT NULL,
+          "ip"           varchar(60) NULL,
+          "userAgent"    varchar(400) NULL,
+          "lagosHour"    smallint NOT NULL,
+          "outsideHours" boolean NOT NULL DEFAULT false,
+          "createdAt"    timestamptz NOT NULL DEFAULT now()
+        )
+      `);
+      await this.usersRepo.query(
+        `CREATE INDEX IF NOT EXISTS "admin_sign_in_user_created"
+           ON "admin_sign_in_events" ("userId", "createdAt")`);
+      await this.usersRepo.query(
+        `CREATE INDEX IF NOT EXISTS "admin_sign_in_created"
+           ON "admin_sign_in_events" ("createdAt")`);
+    } catch (e: any) {
+      console.error(`admin_sign_in_events ensure failed: ${e?.message ?? e}`);
+    }
+
+    /**
      * Hand AdminService the security notifier after construction.
      *
      * It cannot be a constructor dependency: that creates a module cycle

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { SignInEvent } from '../admin/sign-in-event.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -14,7 +15,7 @@ import { PartnerStore } from '../business/partner-store.entity';
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([User, Driver, BusinessAccount, PartnerStore]),
+    TypeOrmModule.forFeature([User, Driver, BusinessAccount, PartnerStore, SignInEvent]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

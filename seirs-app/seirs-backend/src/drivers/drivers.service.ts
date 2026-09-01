@@ -59,6 +59,20 @@ function joinList(parts: string[]): string {
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
+/** What a rider calls each document, for anything they read. */
+const DOC_LABELS: Record<string, string> = {
+  national_id_front: 'Your National ID (front)',
+  national_id_back:  'Your National ID (back)',
+  drivers_license:   'Your driver licence',
+  vehicle_document:  'Your vehicle papers',
+  vehicle_photo:     'Your vehicle photo',
+  ownership_proof:   'Your proof of ownership',
+  insurance_cert:    'Your insurance certificate',
+  selfie:            'Your selfie',
+  guarantor:         'Your guarantor letter',
+  id_document:       'Your identity document',
+};
+
 // Spec V8 §2.1 - recognised KYC document IDs
 const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
   national_id_front: 'nationalIdFrontUrl',
@@ -2549,6 +2563,72 @@ export class DriversService {
     return buildKycQueue(this.repo.manager.connection);
   }
 
+  /**
+   * Warn a rider before a document stops being valid.
+   *
+   * This did not exist. expiresAt was captured, expiringSoon was computed,
+   * and the only place either surfaced was a banner on one admin page seen
+   * by whoever happened to open it. The rider, who is the only person who
+   * can actually fix it, was told nothing at all, and found out when a
+   * lapsed insurance certificate had already lapsed.
+   *
+   * Runs daily. Sends ONCE per document per decision: expiryWarnedAt is
+   * stamped when the notice goes out and cleared whenever the document is
+   * reviewed again, so re-uploading and being re-approved re-arms it and
+   * nobody is warned every morning for thirty days.
+   *
+   * Founder's standing decision, 1 September: this WARNS, it does not
+   * enforce. Nothing here suspends anybody or withdraws a job.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  async warnExpiringDocuments() {
+    const soon = new Date();
+    soon.setDate(soon.getDate() + 30);
+    const soonStr  = soon.toISOString().slice(0, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    let due: any[] = [];
+    try {
+      due = await this.docsRepo
+        .createQueryBuilder('d')
+        .leftJoin('drivers', 'dr', 'dr.id = d.driver_id')
+        .select(['d.id AS id', 'd."docId" AS "docId"', 'd."expiresAt" AS "expiresAt"',
+                 'dr."userId" AS "userId"'])
+        .where('d.status = :s', { s: 'approved' })
+        .andWhere('d."expiresAt" IS NOT NULL')
+        .andWhere('d."expiresAt" >= :today AND d."expiresAt" <= :soon', { today: todayStr, soon: soonStr })
+        .andWhere('d."expiryWarnedAt" IS NULL')
+        .getRawMany();
+    } catch (e: any) {
+      // The column is self-healed on boot; if that has not run yet, say so
+      // once rather than throwing inside a scheduled job.
+      this.logger?.warn?.(`expiry warning skipped: ${e?.message ?? e}`);
+      return { warned: 0 };
+    }
+
+    let warned = 0;
+    for (const row of due) {
+      const days  = Math.max(0, Math.ceil(
+        (new Date(row.expiresAt).getTime() - Date.now()) / 86_400_000));
+      const label = DOC_LABELS[row.docId] ?? 'One of your documents';
+      if (row.userId && this.notificationsService) {
+        try {
+          await this.notificationsService.create(
+            row.userId,
+            `${label} expires in ${days} day${days === 1 ? '' : 's'}`,
+            `${label} is valid until ${row.expiresAt}. Open KYC Verification in the app, tap it, and upload the new one. ` +
+            'You can keep working while you do this: nothing stops on that date, but ops will be told it has lapsed.',
+            'account_update' as any,
+          );
+          warned++;
+        } catch { /* one rider failing must not stop the rest */ }
+      }
+      await this.docsRepo.update(row.id, { expiryWarnedAt: new Date() } as any).catch(() => {});
+    }
+    if (warned) this.logger?.log?.(`expiry warnings sent: ${warned}`);
+    return { warned };
+  }
+
   async driverDocumentCounts() {
     const soon = new Date();
     soon.setDate(soon.getDate() + 30);
@@ -2590,11 +2670,17 @@ export class DriversService {
     reason?: string,
     expiresAt?: string | null,
   ) {
-    const doc = await this.docsRepo.findOne({ where: { id } });
+    /**
+     * The driver relation is loaded so the rider can be TOLD what was
+     * decided. Fetched before the update, so a failure to read the row
+     * stops the decision rather than deciding it and telling nobody.
+     */
+    const doc = await this.docsRepo.findOne({ where: { id }, relations: ['driver'] });
     if (!doc) throw new NotFoundException('Document not found.');
     if (decision === 'rejected' && !reason?.trim()) {
       throw new BadRequestException('Tell the driver why, or they will upload the same photo again.');
     }
+
     await this.docsRepo.update(id, {
       status:          decision,
       rejectionReason: decision === 'rejected' ? reason!.trim() : null,
@@ -2603,7 +2689,37 @@ export class DriversService {
       // Only an approval carries an expiry: a rejected document has no
       // validity to run out. Blank clears any date already there.
       ...(decision === 'approved' ? { expiresAt: expiresAt || null } : {}),
-    });
+      // A new decision restarts the expiry warning clock.
+      expiryWarnedAt: null,
+    } as any);
+
+    /**
+     * TELL THEM. This sent nothing at all until 2 September 2026.
+     *
+     * A rider whose licence was rejected had no way to learn it except by
+     * reopening the screen and noticing a chip had changed colour. They
+     * were, from their side, still waiting for a decision that had already
+     * been made, sometimes for weeks. The reason was already required from
+     * the reviewer and was being written for nobody to read.
+     *
+     * ACCOUNT_UPDATE rather than GENERAL: this is an admin changing their
+     * standing, and that class is not suppressible by notification
+     * preferences. Unawaited, because a push failure must not roll back a
+     * decision an admin has already made.
+     */
+    const riderUserId = (doc.driver as any)?.userId;
+    if (riderUserId && this.notificationsService) {
+      const label = DOC_LABELS[doc.docId] ?? 'A document';
+      this.notificationsService.create(
+        riderUserId,
+        decision === 'approved' ? `${label} approved` : `${label} needs redoing`,
+        decision === 'approved'
+          ? `${label} has been checked and accepted. Nothing else is needed for it.`
+          : `${label} was not accepted. ${reason!.trim()} Open KYC Verification to upload it again.`,
+        'account_update' as any,
+      ).catch((e: any) => this.logger?.warn?.(`doc decision notice failed: ${e?.message ?? e}`));
+    }
+
     return { id, status: decision };
   }
 

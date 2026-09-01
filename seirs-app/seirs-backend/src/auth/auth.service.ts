@@ -23,6 +23,7 @@ import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { MailService } from '../mail/mail.service';
+import { SignInEvent } from '../admin/sign-in-event.entity';
 import { AccountSecurityService } from '../notifications/account-security.service';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -41,8 +42,25 @@ import {
  * the new-device alert, and silence is the right answer when there is
  * nothing to tell one device from another.
  */
+/**
+ * The window an admin is expected to be working in, Lagos time.
+ *
+ * A code fallback only. The real values belong in the Fee Catalogue as
+ * admin_hours_start / admin_hours_end so ops can move them without a
+ * deploy, per the standing rule that every policy dial is editable.
+ *
+ * Nothing here blocks anybody: outside this window a successful sign-in is
+ * flagged and a super admin is emailed, with a one-tap suspend. Founder,
+ * 2 September 2026. Locking a super admin out of his own dashboard at 2am
+ * during a launch incident is its own kind of outage.
+ */
+const ADMIN_HOURS_START = 6;
+const ADMIN_HOURS_END   = 22;
+
 export interface SignInContext {
   userAgent?: string | null;
+  /** Recorded on admin sign-ins so an attempt can be placed. */
+  ip?: string | null;
 }
 
 @Injectable()
@@ -59,6 +77,7 @@ export class AuthService {
     private mailService: MailService,
     private cfg:         ConfigService,
     private security:    AccountSecurityService,
+    @InjectRepository(SignInEvent) private signIns: Repository<SignInEvent>,
   ) {
     this.googleClient = new OAuth2Client(cfg.get<string>('GOOGLE_CLIENT_ID'));
   }
@@ -305,6 +324,44 @@ export class AuthService {
   private noteSignInSuccess(userId: string, ctx?: SignInContext): void {
     this.security.recordSignIn(userId, { userAgent: ctx?.userAgent ?? null })
       .catch(e => this.logger.warn(`sign-in device check failed for ${userId}: ${e?.message ?? e}`));
+  }
+
+  /**
+   * Write one admin sign-in attempt to the log.
+   *
+   * Every outcome, not only success. Six bad passwords at 3am followed by
+   * one success is the only shape that shows an attack, and it needs both
+   * halves. Never stores a password, an attempted password, or a TOTP code.
+   *
+   * Fire-and-forget with its own catch: an audit write must not be able to
+   * fail a sign-in, and it must not be able to fail a 401 either.
+   */
+  private recordAdminSignIn(input: {
+    userId?: string | null; email: string; name?: string | null;
+    adminRole?: string | null; outcome: string; ctx?: SignInContext;
+  }): void {
+    // Lagos is UTC+1 year round, so this needs no tz database.
+    const lagosHour = (new Date().getUTCHours() + 1) % 24;
+    this.signIns.save(this.signIns.create({
+      userId:    input.userId ?? null,
+      email:     (input.email ?? '').slice(0, 180),
+      name:      input.name ?? null,
+      adminRole: input.adminRole ?? null,
+      outcome:   input.outcome,
+      ip:        input.ctx?.ip?.slice(0, 60) ?? null,
+      userAgent: input.ctx?.userAgent?.slice(0, 400) ?? null,
+      lagosHour,
+      outsideHours: lagosHour < ADMIN_HOURS_START || lagosHour >= ADMIN_HOURS_END,
+    }))
+      .then(ev => {
+        // Somebody signed in outside the window. Tell a super admin, and
+        // give them a one-tap suspend. Founder 2026-09-02: flag and mail,
+        // never block.
+        if (ev.outsideHours && input.outcome === 'success' && input.userId) {
+          this.security.adminOutsideHoursSignIn?.(ev).catch(() => {});
+        }
+      })
+      .catch(e => this.logger.warn(`sign-in log write failed: ${e?.message ?? e}`));
   }
 
   private noteAccountLocked(userId: string, unlockAt: Date): void {
@@ -734,11 +791,27 @@ export class AuthService {
       .getOne();
 
     if (!user || user.role !== UserRole.ADMIN) {
+      // Logged even though no account matched: an attempt against an
+      // address that does not exist is itself the signal.
+      this.recordAdminSignIn({
+        email, outcome: user ? 'not_admin' : 'no_account',
+        userId: user?.id ?? null, name: user?.name ?? null, ctx,
+      });
       throw new UnauthorizedException('Invalid email or password.');
     }
-    if (!user.isActive) throw new UnauthorizedException('Account suspended. Contact support.');
+    if (!user.isActive) {
+      this.recordAdminSignIn({
+        userId: user.id, email, name: user.name,
+        adminRole: (user as any).adminRole, outcome: 'suspended', ctx,
+      });
+      throw new UnauthorizedException('Account suspended. Contact support.');
+    }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
+      this.recordAdminSignIn({
+        userId: user.id, email, name: user.name,
+        adminRole: (user as any).adminRole, outcome: 'locked', ctx,
+      });
       const retryAfter = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
       throw new HttpException(
         `Too many failed attempts. Try again in ${retryAfter} minute${retryAfter === 1 ? '' : 's'}.`,
@@ -755,11 +828,19 @@ export class AuthService {
       }
       await this.usersRepo.update(user.id, update as any);
       if (update.lockedUntil) this.noteAccountLocked(user.id, update.lockedUntil);
+      this.recordAdminSignIn({
+        userId: user.id, email, name: user.name,
+        adminRole: (user as any).adminRole, outcome: 'bad_password', ctx,
+      });
       throw new UnauthorizedException('Invalid email or password.');
     }
 
     await this.usersRepo.update(user.id, { failedLoginAttempts: 0, lockedUntil: null });
     this.noteSignInSuccess(user.id, ctx);
+    this.recordAdminSignIn({
+      userId: user.id, email, name: user.name,
+      adminRole: (user as any).adminRole, outcome: 'success', ctx,
+    });
     return this.buildAuthResponse(user);
   }
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Ip, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -49,8 +49,11 @@ export class AuthController {
   adminLogin(
     @Body() body: { email: string; password: string },
     @Headers('user-agent') userAgent?: string,
+    // Recorded on the sign-in log so an attempt can be placed. Without it
+    // the log answers "who" and never "from where", which is half a log.
+    @Ip() ip?: string,
   ) {
-    return this.authService.adminLogin(body.email, body.password, { userAgent });
+    return this.authService.adminLogin(body.email, body.password, { userAgent, ip });
   }
 
   @Throttle({ default: { ttl: 60000, limit: 5 } })

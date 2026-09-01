@@ -224,6 +224,62 @@ export class AdminService {
   // Admin schedules a soft-delete on behalf of a user. Same 30-day grace as
   // self-service. Role-gated to compliance roles and audit-logged so the
   // trail matches hard-delete's paper trail.
+  /**
+   * Who has been signing in, and when.
+   *
+   * Super admin only. This is a security log: it names every staff member's
+   * movements, and a support agent has no business reading their manager's.
+   */
+  async signInLog(admin: any, page = 1, opts: { outcome?: string; userId?: string } = {}) {
+    this.ensureNdprAccess(admin, ['super_admin'], 'sign_in_log');
+    const take = 100;
+    const where: string[] = [];
+    const params: any[] = [];
+    if (opts.outcome) { params.push(opts.outcome); where.push(`"outcome" = $${params.length}`); }
+    if (opts.userId)  { params.push(opts.userId);  where.push(`"userId"  = $${params.length}`); }
+    const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    params.push(take, (page - 1) * take);
+
+    const rows = await this.usersRepo.query(
+      `SELECT * FROM "admin_sign_in_events" ${clause}
+        ORDER BY "createdAt" DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
+    );
+    const [{ count }] = await this.usersRepo.query(
+      `SELECT COUNT(*)::int AS count FROM "admin_sign_in_events" ${clause}`,
+      params.slice(0, params.length - 2),
+    );
+    return { items: rows, total: count, page, take };
+  }
+
+  /**
+   * Hours worked, derived from the log rather than self-reported.
+   *
+   * First and last sign-in per staff member per day, plus how many of those
+   * days started or ended outside the permitted window. Deliberately NOT
+   * called "hours worked": a sign-in is not a timesheet, and presenting it
+   * as one would invite somebody to be paid or disciplined on it.
+   */
+  async signInHours(admin: any, days = 30) {
+    this.ensureNdprAccess(admin, ['super_admin'], 'sign_in_hours');
+    return this.usersRepo.query(
+      `SELECT "userId", MAX("name") AS name, MAX("email") AS email,
+              MAX("adminRole") AS "adminRole",
+              COUNT(*) FILTER (WHERE "outcome" = 'success')      AS "signIns",
+              COUNT(*) FILTER (WHERE "outcome" = 'bad_password') AS "failed",
+              COUNT(*) FILTER (WHERE "outsideHours" AND "outcome" = 'success') AS "outsideHours",
+              MIN("lagosHour") FILTER (WHERE "outcome" = 'success') AS "earliestHour",
+              MAX("lagosHour") FILTER (WHERE "outcome" = 'success') AS "latestHour",
+              MAX("createdAt") AS "lastSeen"
+         FROM "admin_sign_in_events"
+        WHERE "userId" IS NOT NULL
+          AND "createdAt" > now() - ($1 || ' days')::interval
+        GROUP BY "userId"
+        ORDER BY "lastSeen" DESC`,
+      [String(days)],
+    );
+  }
+
   async adminSoftDeleteUser(targetUserId: string, admin: any, reason: string, ip?: string) {
     this.ensureNdprAccess(admin, this.NDPR_DELETE_ROLES, 'ndpr_soft_delete');
     if (!reason || reason.trim().length < 6) {
@@ -2434,6 +2490,16 @@ export class AdminService {
          gave, rather than blanking the record of why they were rejected
          in the first place. */
       ...(reason ? { statusReason: reason.slice(0, 2000) } : {}),
+      /**
+       * Off the road immediately.
+       *
+       * The only status gate was in toggleOnline, so rejecting or
+       * suspending a rider stopped their NEXT sign-in and did nothing about
+       * the session they were in. Claiming a job re-checks nothing, and
+       * findAvailable explicitly fails open, so somebody suspended at noon
+       * kept taking work until they happened to toggle off.
+       */
+      ...(status !== DriverStatus.APPROVED ? { isOnline: false } : {}),
       statusChangedByUserId: actor?.id ?? null,
       statusChangedAt: new Date(),
     } as any);

@@ -111,6 +111,20 @@ export const adminApi = {
   stats: () => req<any>('/admin/stats'),
 
   /**
+   * Every admin sign-in attempt, and a per-staff summary derived from it.
+   *
+   * Built 2026-09-02 after the founder asked three times: "i cant tell if
+   * she signed in or not as a super admin, thats not good." Nothing existed;
+   * adminLogin recorded absolutely nothing.
+   */
+  signIns: {
+    list:  (page = 1, outcome?: string, userId?: string) =>
+      req<{ items: any[]; total: number; page: number; take: number }>(
+        `/admin/sign-ins?page=${page}${outcome ? `&outcome=${outcome}` : ''}${userId ? `&userId=${userId}` : ''}`),
+    hours: (days = 30) => req<any[]>(`/admin/sign-ins/hours?days=${days}`),
+  },
+
+  /**
    * Every queue with the age of its oldest item. A bare count cannot be
    * triaged: two KYC reviews from this morning and two from three weeks
    * ago are the same number and opposite problems.

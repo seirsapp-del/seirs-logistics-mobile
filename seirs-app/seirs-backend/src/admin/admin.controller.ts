@@ -842,6 +842,27 @@ export class AdminController {
     return this.adminService.updateDriverStatus(id, 'rejected', reason, actor, ip);
   }
 
+  // GET /api/v1/admin/sign-ins?page=&outcome=&userId=
+  // Every admin sign-in attempt, successes and failures. Super admin only:
+  // this names every staff member's movements.
+  @Get('sign-ins')
+  signInLog(
+    @CurrentUser() admin: any,
+    @Query('page') page?: string,
+    @Query('outcome') outcome?: string,
+    @Query('userId') userId?: string,
+  ) {
+    return this.adminService.signInLog(admin, Number(page) || 1, { outcome, userId });
+  }
+
+  // GET /api/v1/admin/sign-ins/hours?days=30
+  // Per-staff summary derived from the log: sign-ins, failures, how many
+  // fell outside the permitted window, earliest and latest hour.
+  @Get('sign-ins/hours')
+  signInHours(@CurrentUser() admin: any, @Query('days') days?: string) {
+    return this.adminService.signInHours(admin, Number(days) || 30);
+  }
+
   // ── Support Tickets ───────────────────────────────────────────────────────
 
   // GET /api/v1/admin/tickets?page=1&status=open

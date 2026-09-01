@@ -362,6 +362,50 @@ export class AccountSecurityService {
    * guessing. Says when it lifts so the real owner does not think they
    * have lost the account.
    */
+  /**
+   * A staff member signed in outside the permitted window.
+   *
+   * Founder's decision, 2 September 2026, when asked block or flag: flag,
+   * mail a super admin, and give them the ability to block immediately.
+   * Blocking automatically would lock somebody out of the dashboard at 2am
+   * during a launch incident, which is its own kind of outage. A colleague
+   * working late gets a raised eyebrow; an intruder gets suspended by a
+   * person in one tap.
+   *
+   * Goes to EVERY super admin, not to the person who signed in. Telling the
+   * possible intruder that their sign-in was noticed is not a security
+   * control, it is a warning shot.
+   */
+  async adminOutsideHoursSignIn(ev: {
+    userId: string | null; name: string | null; email: string;
+    adminRole: string | null; lagosHour: number; ip: string | null;
+  }): Promise<void> {
+    try {
+      const supers = await this.usersRepo.find({
+        where:  { role: 'admin' as any, adminRole: 'super_admin' as any },
+        select: ['id', 'name', 'email'],
+      });
+      const hour = `${String(ev.lagosHour).padStart(2, '0')}:00 Lagos time`;
+      const who  = ev.name ?? ev.email;
+      for (const sa of supers) {
+        if (sa.id === ev.userId) continue;   // do not tell them about themselves
+        await this.deliver({
+          userId: sa.id,
+          type:   NotificationType.SECURITY_ALERT,
+          title:  'Staff sign-in outside working hours',
+          body:   `${who} (${ev.adminRole ?? 'staff'}) signed in to the admin dashboard at ${hour}`
+                  + `${ev.ip ? ` from ${ev.ip}` : ''}. Nothing has been blocked. `
+                  + 'If this was not them, open Staff sign-ins and suspend the account.',
+          templateKey: 'security_admin_outside_hours',
+          vars: { who, hour, ip: ev.ip ?? 'an unknown address', role: ev.adminRole ?? 'staff' },
+        });
+      }
+    } catch {
+      // An alert that cannot be sent must never fail the sign-in that
+      // triggered it. The row is already in the log either way.
+    }
+  }
+
   async accountLocked(userId: string, unlockAt: Date, at: Date = new Date()): Promise<void> {
     const when     = AccountSecurityService.when(at);
     const unlock   = AccountSecurityService.clock(unlockAt);

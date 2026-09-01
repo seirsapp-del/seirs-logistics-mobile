@@ -84,6 +84,10 @@ export class DriversModule implements OnModuleInit {
       await this.ds.query(
         `ALTER TABLE "driver_documents" ADD COLUMN IF NOT EXISTS "expiresAt" date NULL`,
       );
+      // Warn-once bookkeeping for the daily expiry notice (2026-09-02).
+      await this.ds.query(
+        `ALTER TABLE "driver_documents" ADD COLUMN IF NOT EXISTS "expiryWarnedAt" timestamptz NULL`,
+      );
     } catch (e: any) {
       console.error(`driver_documents table ensure failed: ${e?.message ?? e}`);
     }
