@@ -314,9 +314,27 @@ export default function DriverDetailPage() {
             sidebar or the browser button (founder 2026-08-24: "why can't
             i click back here and it will take me back to the previous
             screen"). Same affordance as the delivery detail page. */}
-        <Link href="/drivers" className="inline-flex items-center gap-1 text-sm text-[#3A7BD5] hover:underline mb-4">
-          <ArrowLeft size={14} /> All drivers
-        </Link>
+        <div className="mb-4 flex flex-wrap items-center gap-4">
+          <Link href="/drivers" className="inline-flex items-center gap-1 text-sm text-[#3A7BD5] hover:underline">
+            <ArrowLeft size={14} /> All drivers
+          </Link>
+          {/*
+            The crossing existed in one direction only. /users/:id has
+            carried "Open their driver record" since the founder asked why
+            a rider's page called them a customer, and the rider page had
+            no way back, so account facts (email, tickets, a pending
+            deletion) were a search away from the person you were reading
+            about.
+          */}
+          {accountUserId && (
+            <Link
+              href={`/users/${accountUserId}`}
+              className="inline-flex items-center gap-1 rounded-lg border border-[#E5E7EB] px-2.5 py-1 text-xs font-semibold text-[#0F2B4C] hover:bg-gray-50"
+            >
+              Open their account
+            </Link>
+          )}
+        </div>
 
         {error && (
           <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

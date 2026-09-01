@@ -151,7 +151,7 @@ export function SosHistory({
         <p className="text-sm text-gray-500">{personLabel} has never pressed SOS.</p>
       )}
 
-      {rows !== null && rows.length > 0 && (
+      {showBody && rows !== null && rows.length > 0 && (
         <div className="space-y-2">
           {rows.map((a: any) => {
             const status = String(a?.status ?? 'active');
@@ -220,7 +220,7 @@ export function SosHistory({
 
       {/* A pattern is the reason this panel exists, so it is stated rather
           than left for whoever is reading to count the cards. */}
-      {rows !== null && rows.length > 1 && (
+      {showBody && rows !== null && rows.length > 1 && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
           <span className="font-semibold">{personLabel} has pressed SOS {rows.length} times.</span>{' '}
           Read them together before deciding what this one is. A driver
