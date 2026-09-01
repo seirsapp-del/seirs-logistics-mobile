@@ -70,7 +70,7 @@ export default function BusinessProfileTab() {
     router.replace('/(auth)/onboarding');
   };
 
-  const sections: Array<{ title: string; items: Array<{ icon: string; label: string; onPress: () => void }> }> = [
+  const sections: Array<{ title: string; items: Array<{ icon: string; label: string; onPress: () => void; danger?: boolean }> }> = [
     {
       title: t('profile.account', { defaultValue: 'Account' }),
       items: [
@@ -136,15 +136,53 @@ export default function BusinessProfileTab() {
       ],
     },
     {
+      /*
+       * Support, reworked 2026-09-01 to one shape the three apps share.
+       *
+       * The three used to name the same thing three ways: "Help Center",
+       * "Help & Support", "Help & FAQ", and driver folded the ticket row
+       * into help while the other two kept it separate. One name now, in
+       * the same order, everywhere.
+       *
+       * Help points at the website rather than an in-app screen. Founder's
+       * call: the site is edited without shipping a release, and it teaches
+       * people SEIRS has a site they can navigate on their own.
+       */
       title: t('profile.support', { defaultValue: 'Support' }),
       items: [
-        { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }), onPress: () => router.push('/(business)/support/new' as any) },
         { icon: 'HelpCircle',    label: t('drawer.help',           { defaultValue: 'Help & FAQ' }),      onPress: () => Linking.openURL(`${SITE}/faq`) },
-        { icon: 'Lock',          label: t('drawer.privacy',        { defaultValue: 'Privacy Policy' }),  onPress: () => Linking.openURL(`${SITE}/privacy-policy`) },
-        // Google Play requires in-app account deletion wherever an app
-        // creates accounts. Customer and driver have had it; business had
-        // a register screen and no way out (store audit 2026-08-30).
-        { icon: 'Trash2',        label: t('drawer.deleteAccount',  { defaultValue: 'Delete Account' }),  onPress: () => router.push('/(business)/delete-account' as any) },
+        { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }), onPress: () => router.push('/(business)/support/new' as any) },
+        // Was reachable only from the drawer, so the account type most
+        // likely to be moving valuable cargo had emergency help one layer
+        // deeper than a customer sending a parcel (founder 2026-09-01).
+        { icon: 'AlertTriangle', label: t('drawer.sos',            { defaultValue: 'SOS Emergency' }),   onPress: () => router.push('/(business)/sos' as any), danger: true },
+      ],
+    },
+    {
+      /*
+       * Legal was scattered: customer linked Terms and not Privacy,
+       * business linked Privacy and not Terms, driver linked neither.
+       * Nobody offered both. Both, in every app, from now on.
+       */
+      title: t('profile.legal', { defaultValue: 'Legal' }),
+      items: [
+        { icon: 'FileText', label: t('drawer.terms',   { defaultValue: 'Terms of Service' }), onPress: () => Linking.openURL(`${SITE}/terms-of-service`) },
+        { icon: 'Lock',     label: t('drawer.privacy', { defaultValue: 'Privacy Policy' }),   onPress: () => Linking.openURL(`${SITE}/privacy-policy`) },
+      ],
+    },
+    {
+      /*
+       * Its own group, at the end, in red.
+       *
+       * Google Play requires in-app account deletion wherever an app
+       * creates accounts, and the requirement is not merely that it exists
+       * but that a person can find it. It was sitting in the middle of
+       * Support between a privacy link and a help link, which is where you
+       * put something you would rather nobody found.
+       */
+      title: t('profile.dangerZone', { defaultValue: 'Account actions' }),
+      items: [
+        { icon: 'Trash2', label: t('drawer.deleteAccount', { defaultValue: 'Delete Account' }), onPress: () => router.push('/(business)/delete-account' as any), danger: true },
       ],
     },
   ];
@@ -237,8 +275,8 @@ export default function BusinessProfileTab() {
                 style={[styles.row, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
                 onPress={item.onPress}
               >
-                <Icon name={item.icon as any} size={20} color={colors.textSecond} />
-                <Text style={[styles.rowLabel, { color: colors.text }]}>{item.label}</Text>
+                <Icon name={item.icon as any} size={20} color={item.danger ? colors.error : colors.textSecond} />
+                <Text style={[styles.rowLabel, { color: item.danger ? colors.error : colors.text }]}>{item.label}</Text>
                 <Icon name="ChevronRight" size={18} color={colors.textThird ?? colors.textSecond} />
               </Pressable>
             ))}
