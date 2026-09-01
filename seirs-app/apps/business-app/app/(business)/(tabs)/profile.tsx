@@ -5,7 +5,7 @@
  * for reach-anywhere), presented as a screen in the app's restrained
  * business style: account card, SEIRS ID, grouped menu, sign out.
  */
-import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Image } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Image, Platform } from 'react-native';
 import { useEffect, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useSeirsDialog } from '@/components/SeirsDialog';
@@ -185,10 +185,25 @@ export default function BusinessProfileTab() {
           style={[styles.idRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => router.push('/(business)/seirs-id' as any)}
         >
-          <Text style={[styles.idLabel, { color: colors.textSecond }]}>
-            {t('profile.seirsIdTap2', { defaultValue: 'SEIRS ID · WHAT IT DOES + QR' })}
-          </Text>
-          <Text style={[styles.idValue, { color: colors.text }]}>{user.accountId}</Text>
+          {/* Stacked label over a monospaced ID with a QR glyph on the
+              right, matching the driver app. It used to sit on one line with
+              no icon, which read as plain text rather than something you can
+              tap (founder 2026-09-01). The label also called seirsIdTap2,
+              a key that does not exist, so it fell through to a dev
+              placeholder while the real string, translated into all four
+              languages, sat unused as seirsIdTap. */}
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.idLabel, { color: colors.textSecond }]}>
+              {t('profile.seirsIdTap', { defaultValue: 'SEIRS ID · TAP FOR QR' })}
+            </Text>
+            <Text style={[
+              styles.idValue,
+              { color: colors.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+            ]}>
+              {user.accountId}
+            </Text>
+          </View>
+          <Icon name="QrCode" size={18} color={colors.textThird} />
         </Pressable>
       )}
 
@@ -240,12 +255,12 @@ const styles = StyleSheet.create({
   name:       { fontSize: 17, fontWeight: '700' },
   sub:        { fontSize: 14, marginTop: 2 },
   idRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginHorizontal: 20, marginTop: 10, paddingHorizontal: 16, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: 20, marginTop: 10, paddingHorizontal: 16, paddingVertical: 10,
     borderRadius: 12, borderWidth: 1,
   },
-  idLabel:      { fontSize: 13, fontWeight: '600', letterSpacing: 0.4 },
-  idValue:      { fontSize: 15, fontWeight: '700', letterSpacing: 0.6 },
+  idLabel:      { fontSize: 10, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
+  idValue:      { fontSize: 13, fontWeight: '700', letterSpacing: 1, marginTop: 2 },
   sectionTitle: { fontSize: 13, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', paddingHorizontal: 24, marginTop: 22, marginBottom: 8 },
   group:        { marginHorizontal: 20, borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
   row:          { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
