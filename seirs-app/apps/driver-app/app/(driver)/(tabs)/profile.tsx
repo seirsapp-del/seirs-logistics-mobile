@@ -22,7 +22,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
-import { driversApi, earningsApi, notificationsApi } from '@/services/api';
+import { driversApi, earningsApi, notificationsApi, usersApi } from '@/services/api';
 import { naira, nairaShort } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 
@@ -123,7 +123,6 @@ export default function DriverProfileScreen() {
          * nobody would ever turn off is furniture that implies these are
          * optional. They are not.
          */
-        { icon: 'lock-closed-outline',   label: 'Privacy & Data',        route: '/(driver)/privacy' },
         {
           icon:  'contrast-outline',
           label: 'Appearance',
@@ -183,10 +182,28 @@ export default function DriverProfileScreen() {
        */
       title: 'Account actions',
       items: [
-        { icon: 'trash-outline', label: 'Delete Account', sub: 'Close your SEIRS account for good', route: '/(driver)/delete-account', danger: true },
+        /*
+         * Carried off the Privacy & Data screen when that screen was
+         * deleted (founder 2026-09-01). It is the only thing on it that
+         * did something: GET /users/me/export really exists and really
+         * queues an export. Everything else there was a duplicate, a dead
+         * link, or a toggle nothing honoured.
+         */
+        { icon: 'download-outline', label: 'Download my data', sub: 'We email you a copy within 24 hours', onPress: () => handleExportData() },
+        { icon: 'trash-outline',    label: 'Delete Account',   sub: 'Close your SEIRS account for good', route: '/(driver)/delete-account', danger: true },
       ],
     },
   ];
+
+  const handleExportData = async () => {
+    try {
+      await usersApi.exportData();
+      alertDialog('Export queued',
+        'Your data export has been requested. You will receive an email with the download link within 24 hours.');
+    } catch {
+      alertDialog('Export failed', 'Please try again later, or contact support.');
+    }
+  };
 
   const handleLogout = () => {
     setSheet({
