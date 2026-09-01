@@ -57,6 +57,7 @@ import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { authApi } from '@/services/api';
 import { validatePassword, isPasswordValid } from '@seirs/shared';
 import { toE164Ng, toNationalInput, isValidNationalNg, NG_PHONE_HINT } from '@seirs/shared/utils/ngPhone';
+import { normaliseRc, isValidRc, RC_HINT, RC_ERROR } from '@seirs/shared/utils/rcNumber';
 import { StatePicker } from '@/components/StatePicker';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { PasswordInput } from '@/components/PasswordInput';
@@ -100,6 +101,8 @@ export default function RegisterScreen() {
   const passValid  = isPasswordValid(form.password);
   const passError  = form.password.length > 0 ? validatePassword(form.password) : null;
   const passMatch  = form.password === form.confirmPassword;
+  // Optional, but not a free-text box: see shared/utils/rcNumber.ts.
+  const rcOk       = isValidRc(form.rcNumber);
 
   /** The first human-readable reason the form cannot submit, or null.
    *  Drives both the gate and the message shown on tap. */
@@ -113,6 +116,7 @@ export default function RegisterScreen() {
     // user who mistyped was told their prefix is invalid (B-6.6).
     if (!phoneValid)                 return NG_PHONE_HINT;
     if (!form.companyName.trim())    return 'Please enter your company name.';
+    if (!rcOk)                       return RC_ERROR;
     if (!form.state)                 return 'Please pick your state.';
     if (!form.city.trim())           return 'Please enter your city or LGA (e.g. Ikeja, Surulere, Lekki).';
     if (!form.streetAddress.trim())  return 'Please enter your street address (street name + building number / landmark).';
@@ -162,7 +166,7 @@ export default function RegisterScreen() {
         phone:           toE164Ng(form.phone),
         password:        form.password,
         companyName:     form.companyName.trim(),
-        rcNumber:        form.rcNumber.trim() || undefined,
+        rcNumber:        normaliseRc(form.rcNumber) || undefined,
         referralCode:    form.referralCode.trim().toUpperCase() || undefined,
         businessAddress,
         // Structured parts too, so the backend can index by state without
@@ -287,10 +291,15 @@ export default function RegisterScreen() {
             value={form.companyName} onChangeText={(v) => set('companyName', v)}
           />
           <Field theme={theme}
-            label="RC Number" optional icon="Hash" placeholder="RC-123456"
+            label="RC Number" optional icon="Hash" placeholder="RC123456"
             autoCapitalize="characters"
-            value={form.rcNumber} onChangeText={(v) => set('rcNumber', v)}
+            value={form.rcNumber}
+            onChangeText={(v) => set('rcNumber', normaliseRc(v))}
+            hint={RC_HINT}
           />
+          {form.rcNumber.length > 0 && !rcOk
+            ? <Text style={[styles.fieldError, { color: theme.error, marginTop: -Spacing.sm, marginBottom: Spacing.md }]}>{RC_ERROR}</Text>
+            : null}
 
           {/* Structured address: the state picker locks the canonical name so
               dispatch and zone pricing can filter reliably. City/LGA stays

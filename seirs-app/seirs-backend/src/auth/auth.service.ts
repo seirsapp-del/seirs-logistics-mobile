@@ -1,3 +1,4 @@
+import { normaliseRcNumber, isValidRcNumber, RC_NUMBER_ERROR } from '../common/rc-number';
 import {
   Injectable,
   ConflictException,
@@ -640,6 +641,10 @@ export class AuthService {
       return { requiresOtp: true, email, message: 'Verification code re-sent.' };
     }
 
+    if (!isValidRcNumber(data.rcNumber)) {
+      throw new BadRequestException(RC_NUMBER_ERROR);
+    }
+
     const hashed = await bcrypt.hash(data.password, 12);
     // Always BIZ-, never PART- (cleanup 2026-08-12). Partner is a
     // CAPABILITY of a business account, not a separate kind of account:
@@ -685,7 +690,7 @@ export class AuthService {
     const biz = this.bizRepo.create({
       ownerId:         user.id,
       companyName:     data.companyName ?? data.name,
-      rcNumber:        data.rcNumber ?? '',
+      rcNumber:        normaliseRcNumber(data.rcNumber),
       businessAddress: data.businessAddress ?? '',
       // Structured parts (2026-05-11) - sent by the new register UI; older
       // clients omit them, which is fine because the columns are nullable.

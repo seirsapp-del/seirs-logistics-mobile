@@ -21,6 +21,7 @@ import { usersApi, businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { normaliseRc, isValidRc, RC_ERROR } from '@seirs/shared/utils/rcNumber';
 
 // Spec V8 §4. business / partner profile editor. Edits both the User
 // row (name, phone) AND the BusinessAccount row (companyName, RC,
@@ -180,7 +181,8 @@ export default function BusinessEditProfileScreen() {
       if (biz && isOwner) {
         const bizUpdates: any = {};
         if (companyName.trim()   !== (biz.companyName    ?? '')) bizUpdates.companyName   = companyName.trim();
-        if (rcNumber.trim()      !== (biz.rcNumber       ?? '')) bizUpdates.rcNumber      = rcNumber.trim();
+        if (!isValidRc(rcNumber)) { alertDialog('Check the RC number', RC_ERROR); return; }
+        if (normaliseRc(rcNumber) !== (biz.rcNumber      ?? '')) bizUpdates.rcNumber      = normaliseRc(rcNumber);
         if (streetAddress.trim() !== (biz.streetAddress  ?? '')) bizUpdates.streetAddress = streetAddress.trim();
         if (city.trim()          !== (biz.city           ?? '')) bizUpdates.city          = city.trim();
         if (state.trim()         !== (biz.state          ?? '')) bizUpdates.state         = state.trim();
@@ -364,9 +366,12 @@ export default function BusinessEditProfileScreen() {
                 <Text style={[styles.label, { color: colors.textSecond }]}>RC NUMBER</Text>
                 <TextInput
               onFocus={onFieldFocus}
-                  value={rcNumber} onChangeText={setRcNumber} editable={isOwner}
+                  value={rcNumber} onChangeText={(v) => setRcNumber(normaliseRc(v))} editable={isOwner}
                   style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: isOwner ? 1 : 0.6 }]}
                   placeholder="RC1234567" placeholderTextColor={colors.textThird} />
+                {rcNumber.length > 0 && !isValidRc(rcNumber)
+                  ? <Text style={{ color: colors.error, fontSize: 12, marginTop: 6 }}>{RC_ERROR}</Text>
+                  : null}
               </View>
 
               {/* Was a plain text box, so a business could save an address
