@@ -186,7 +186,7 @@ export default function LoginScreen() {
           </View>
 
           <Pressable
-            style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+            style={[styles.submitBtn, { backgroundColor: theme.primary }, !canSubmit && { opacity: 0.5 }]}
             onPress={handleLogin}
             disabled={!canSubmit}
           >

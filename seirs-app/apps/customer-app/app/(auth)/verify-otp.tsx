@@ -167,9 +167,9 @@ export default function VerifyOtpScreen() {
           </View>
 
           <Pressable
-            style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+            style={[styles.submitBtn, { backgroundColor: theme.primary }, (loading || otp.some(d => !d)) && { opacity: 0.5 }]}
             onPress={() => handleVerify()}
-            disabled={loading}
+            disabled={loading || otp.some(d => !d)}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />

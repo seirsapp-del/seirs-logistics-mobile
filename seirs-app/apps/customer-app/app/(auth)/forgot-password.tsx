@@ -89,7 +89,7 @@ export default function ForgotPasswordScreen() {
             </Text>
           </View>
           <Pressable
-            style={[styles.btn, { backgroundColor: theme.primary }, !canSubmit && { opacity: 0.5 }]}
+            style={[styles.btn, { backgroundColor: theme.primary }]}
             onPress={() => router.back()}
           >
             {/* the same glyph already sits in the circle at the top */}
@@ -157,7 +157,7 @@ export default function ForgotPasswordScreen() {
           </View>
 
           <Pressable
-            style={[styles.btn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+            style={[styles.btn, { backgroundColor: theme.primary }, !canSubmit && { opacity: 0.5 }]}
             onPress={handleSubmit}
             disabled={!canSubmit}
           >

@@ -149,7 +149,7 @@ export default function VerifyOtpScreen() {
           </View>
 
           <Pressable
-            style={[styles.verifyBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+            style={[styles.verifyBtn, { backgroundColor: theme.primary }, (loading || otp.some(d => !d)) && { opacity: 0.5 }]}
             onPress={() => handleVerify(otp.join(''))}
             disabled={loading || otp.some(d => !d)}
           >
