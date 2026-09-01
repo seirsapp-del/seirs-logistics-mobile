@@ -21,7 +21,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword } from '@seirs/shared';
-import { isValidNigerianMobile, toE164Ng, NG_MOBILE_HINT } from '@/constants/phone';
+import { isValidNigerianMobile, toE164Ng, toNationalInput, NG_PHONE_HINT } from '@/constants/phone';
 
 type VehicleType = 'bicycle' | 'motorcycle' | 'tricycle' | 'car' | 'van' | 'truck_small' | 'truck_large';
 
@@ -65,7 +65,7 @@ export default function DriverRegisterScreen() {
       return;
     }
     if (!isValidNigerianMobile(phone)) {
-      setError(NG_MOBILE_HINT);
+      setError(NG_PHONE_HINT);
       return;
     }
     const pwErr = validatePassword(password);
@@ -167,33 +167,27 @@ export default function DriverRegisterScreen() {
           ) : null}
 
           {/* Name row */}
-          <View style={styles.nameRow}>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={[styles.label, { color: theme.textSecond }]}>First name *</Text>
-              <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                <User size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="First"
-                  placeholderTextColor={theme.textThird}
-                  autoCapitalize="words"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                />
-              </View>
-            </View>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={[styles.label, { color: theme.textSecond }]}>Last name *</Text>
-              <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                <TextInput
-                  style={[styles.input, { color: theme.text, paddingLeft: Spacing.sm }]}
-                  placeholder="Last"
-                  placeholderTextColor={theme.textThird}
-                  autoCapitalize="words"
-                  value={lastName}
-                  onChangeText={setLastName}
-                />
-              </View>
+
+          <Text style={[styles.legend, { color: theme.textThird }]}>
+            Fields marked <Text style={{ color: theme.error }}>*</Text> are required.
+          </Text>
+
+          {/* Names stacked, not side by side. Nigerian names are long and a
+              half-width field scrolled the start of the name out of view:
+              "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
+              not see what they had typed (founder, 2026-09-01). */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>First name<Text style={{ color: theme.error }}> *</Text></Text>
+            <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <User size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="First"
+                placeholderTextColor={theme.textThird}
+                autoCapitalize="words"
+                value={firstName}
+                onChangeText={setFirstName}
+              />
             </View>
           </View>
 
@@ -214,7 +208,21 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Email address *</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Last name<Text style={{ color: theme.error }}> *</Text></Text>
+            <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="Last"
+                placeholderTextColor={theme.textThird}
+                autoCapitalize="words"
+                value={lastName}
+                onChangeText={setLastName}
+              />
+            </View>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Email address<Text style={{ color: theme.error }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Mail size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
               <TextInput
@@ -230,7 +238,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Phone number *</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Phone number<Text style={{ color: theme.error }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
                 <Phone size={14} color={theme.textThird} strokeWidth={1.5} />
@@ -238,19 +246,19 @@ export default function DriverRegisterScreen() {
               </View>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="08012345678"
+                placeholder="8012345678"
                 placeholderTextColor={theme.textThird}
                 keyboardType="phone-pad"
-                maxLength={11}
+                maxLength={10}
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(v) => setPhone(toNationalInput(v))}
               />
             </View>
-            <Text style={[styles.hint, { color: theme.textThird }]}>Nigerian numbers only: 080x / 081x / 070x / 090x / 091x</Text>
+            <Text style={[styles.hint, { color: theme.textThird }]}>{NG_PHONE_HINT}</Text>
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Password *</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.error }}> *</Text></Text>
             <PasswordInput
               placeholder="Min 8 chars, upper + lower + number/symbol"
               placeholderTextColor={theme.textThird}
@@ -262,7 +270,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm password *</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm password<Text style={{ color: theme.error }}> *</Text></Text>
             <PasswordInput
               placeholder="Re-enter password"
               placeholderTextColor={theme.textThird}
@@ -276,7 +284,7 @@ export default function DriverRegisterScreen() {
 
         {/* Vehicle selector */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Vehicle type *</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Vehicle type<Text style={{ color: theme.error }}> *</Text></Text>
         </View>
         <View style={styles.vehicleGrid}>
           {VEHICLES.map(v => {
@@ -363,7 +371,7 @@ const styles = StyleSheet.create({
   card:          { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.md },
   errorBox:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
   errorText:     { fontSize: FontSize.sm, fontWeight: FontWeight.medium as any, flex: 1 },
-  nameRow:       { flexDirection: 'row', gap: Spacing.sm },
+  legend:        { fontSize: FontSize.xs, marginBottom: Spacing.md },
   field:         { marginBottom: Spacing.md, gap: Spacing.xs },
   label:         { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
   optLabel:      { fontWeight: '400' as any },

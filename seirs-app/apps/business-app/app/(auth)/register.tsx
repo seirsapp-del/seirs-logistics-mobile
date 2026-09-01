@@ -4,19 +4,46 @@
  * 2026-05-11 hybrid-account redesign: removed the upfront "Sender vs Partner
  * Store" picker. Everyone signs up as a Business Sender (instant access,
  * canSend=true). Operating as a Partner Store is now an *additive* role
- * applied for via Settings → "Apply to be a Partner Store": admin reviews
- * KYC docs, flips canPartner=true, and the user gets a context switcher
- * at the top of the app to swap between sending and partnering modes.
+ * applied for via Settings, "Apply to be a Partner Store": admin reviews KYC
+ * docs, flips canPartner=true, and the user gets a context switcher at the
+ * top of the app to swap between sending and partnering modes.
  *
- * This matches real Nigerian SME pattern: a shop owner can simultaneously
+ * This matches the real Nigerian SME pattern: a shop owner can simultaneously
  * ship their own goods (Sender) AND accept SEIRS drop-offs from neighbours
- * (Partner Store): under one account.
+ * (Partner Store), under one account.
+ *
+ * Rebuilt 2026-09-01 on the customer app's register, style and field order
+ * both, at the founder's direction. Two things here were not cosmetic:
+ *
+ *   1. Every colour on this screen was a hardcoded light-mode hex, and the
+ *      old stylesheet said so out loud ("a full per-element theming pass can
+ *      come later"). On a dark phone that meant #374151 labels and a #0F2B4C
+ *      back arrow on a near-black background, and white input wells. This is
+ *      the screen where someone hands over their name, company and password.
+ *   2. The age and terms boxes were collected and never sent. They are sent
+ *      now, matching customer's payload. Do NOT read that as consent being
+ *      recorded: checking the server showed the User entity has no
+ *      ageConfirmed or termsAcceptedAt column and neither register path
+ *      writes one, so BOTH apps show a Terms checkbox and discard the
+ *      answer. This makes the two clients identical so the backend has to
+ *      be fixed in one place, and the gap is the founder's call.
+ *
+ * Field order follows customer where the two overlap (name row, middle name,
+ * email, phone, address, passwords, consent). The company block is the one
+ * business-only group and sits after the personal details, before the
+ * address, which is where it already was.
+ *
+ * Kept from business deliberately: the submit stays tappable and names the
+ * first missing field, rather than greying out and leaving someone to hunt
+ * through thirteen inputs for the problem. Customer greys its button; on a
+ * form this long that is worse, so this is the one place business does not
+ * follow it.
  */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Linking,
+  View, Text, TextInput, Pressable, StyleSheet, Linking,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
 } from 'react-native';
 
 // Canonical legal docs live on the marketing site so they stay in sync
@@ -28,106 +55,110 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { authApi } from '@/services/api';
-import { validatePassword, isPasswordValid, PASSWORD_HELP_TEXT } from '@seirs/shared';
+import { validatePassword, isPasswordValid } from '@seirs/shared';
+import { toE164Ng, toNationalInput, isValidNationalNg, NG_PHONE_HINT } from '@seirs/shared/utils/ngPhone';
 import { StatePicker } from '@/components/StatePicker';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
-import { useColors } from '@/context/ThemeContext';
+import { PasswordInput } from '@/components/PasswordInput';
+import { useTheme } from '@/context/ThemeContext';
+import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 
 export default function RegisterScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colors = useColors();
+  const router     = useRouter();
+  const insets     = useSafeAreaInsets();
+  const { isDark } = useTheme();
+  const theme      = Colors[isDark ? 'dark' : 'light'];
 
   const [form, setForm] = useState({
     firstName: '', middleName: '', lastName: '',
     email: '', phone: '', password: '', confirmPassword: '',
     companyName: '', rcNumber: '',
-    // Address now broken into 3 structured parts so the dispatch system
-    // can compute zone pricing + filter deliveries by state. On submit
-    // they're joined into one canonical businessAddress string.
+    // Address is broken into 3 structured parts so dispatch can compute zone
+    // pricing and filter deliveries by state. On submit they are joined into
+    // one canonical businessAddress string.
     state: '', city: '', streetAddress: '',
   });
-  const [showPass,        setShowPass]        = useState(false);
-  const [showConfirmPass, setShowConfirmPass] = useState(false);
-  const [error,           setError]           = useState('');
-  const [loading,   setLoading]   = useState(false);
-  const [termsOk,   setTermsOk]   = useState(false);
-  const [ageOk,     setAgeOk]     = useState(false);
+  const [error,   setError]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [termsOk, setTermsOk] = useState(false);
+  const [ageOk,   setAgeOk]   = useState(false);
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  // Nigerian mobile numbers are 11 digits total: 0 + 2-digit network code + 8 digits.
-  // Accept the `+234` international prefix too: normalise to 0-prefixed before
-  // testing. (Earlier regex only allowed \d{7} = 10 digits total, rejecting
-  // every valid Nigerian number.)
-  const normalisedPhone = form.phone.replace(/[\s-]/g, '').replace(/^\+234/, '0');
-  const phoneValid = /^0(70|71|80|81|90|91)\d{8}$/.test(normalisedPhone);
+  // Nigerian mobile numbers are 11 digits total: 0 + 2-digit network code + 8
+  // digits. Accept the +234 international prefix too by normalising to the
+  // 0-prefixed form before testing.
+  const phoneValid = isValidNationalNg(form.phone);
   const passValid  = isPasswordValid(form.password);
   const passError  = form.password.length > 0 ? validatePassword(form.password) : null;
   const passMatch  = form.password === form.confirmPassword;
 
-  /** Returns the first human-readable reason the form can't submit,
-   *  or null if everything's fine. Used both to gate the submit and
-   *  to show the user exactly what needs fixing on tap. */
+  /** The first human-readable reason the form cannot submit, or null.
+   *  Drives both the gate and the message shown on tap. */
   const whatIsMissing = (): string | null => {
-    if (!form.firstName.trim())                  return 'Please enter your first name.';
-    if (!form.lastName.trim())                   return 'Please enter your last name.';
-    if (!form.email.trim())                      return 'Please enter your email address.';
-    if (!form.email.includes('@'))               return 'Please enter a valid email address.';
-    if (!form.phone.trim())                      return 'Please enter your phone number.';
-    // 071 is in the regex above and was missing from this list, so a Glo
-    // 071 user who mistyped was told their prefix is invalid (B-6.6).
-    if (!phoneValid)                             return 'Phone must be a Nigerian number starting with 070, 071, 080, 081, 090, or 091 (11 digits total: e.g. 08012345678).';
-    if (!form.companyName.trim())                return 'Please enter your company name.';
-    if (!form.state)                              return 'Please pick your state.';
-    if (!form.city.trim())                        return 'Please enter your city or LGA (e.g. Ikeja, Surulere, Lekki).';
-    if (!form.streetAddress.trim())               return 'Please enter your street address (street name + building number / landmark).';
-    if (!passValid)                              return passError ?? 'Password does not meet the requirements above.';
-    if (!passMatch)                              return 'Passwords do not match. Please re-type your confirm password.';
-    if (!ageOk)                                  return 'Please confirm you are 18 or older.';
-    if (!termsOk)                                return 'Please accept the Terms of Service.';
+    if (!form.firstName.trim())      return 'Please enter your first name.';
+    if (!form.lastName.trim())       return 'Please enter your last name.';
+    if (!form.email.trim())          return 'Please enter your email address.';
+    if (!form.email.includes('@'))   return 'Please enter a valid email address.';
+    if (!form.phone.trim())          return 'Please enter your phone number.';
+    // 071 is in the regex above and was missing from this list, so a Glo 071
+    // user who mistyped was told their prefix is invalid (B-6.6).
+    if (!phoneValid)                 return NG_PHONE_HINT;
+    if (!form.companyName.trim())    return 'Please enter your company name.';
+    if (!form.state)                 return 'Please pick your state.';
+    if (!form.city.trim())           return 'Please enter your city or LGA (e.g. Ikeja, Surulere, Lekki).';
+    if (!form.streetAddress.trim())  return 'Please enter your street address (street name + building number / landmark).';
+    if (!passValid)                  return passError ?? 'Password does not meet the requirements above.';
+    if (!passMatch)                  return 'Passwords do not match. Please re-type your confirm password.';
+    if (!ageOk)                      return 'Please confirm you are 18 or older.';
+    if (!termsOk)                    return 'Please accept the Terms of Service.';
     return null;
   };
 
-  const formValid = whatIsMissing() === null;
-
   const handleRegister = async () => {
-    // Always-tappable submit: show the specific missing field instead
-    // of leaving the user staring at a greyed-out button with no clue.
+    // Always tappable: name the missing field rather than leaving someone
+    // staring at a greyed-out button with no clue which of thirteen inputs
+    // is at fault.
     const missing = whatIsMissing();
-    if (missing) {
-      setError(missing);
-      return;
-    }
+    if (missing) { setError(missing); return; }
+
     setError('');
     setLoading(true);
     try {
       const fullName = [form.firstName.trim(), form.middleName.trim(), form.lastName.trim()]
         .filter(Boolean)
         .join(' ');
-      // Combine the 3 structured address parts into the canonical
-      // `businessAddress` field the backend expects. Format:
-      // "<street>, <city/LGA>, <state> State, Nigeria"
+      // Combine the 3 structured parts into the canonical businessAddress the
+      // backend expects: "<street>, <city/LGA>, <state> State, Nigeria".
       const businessAddress = [
         form.streetAddress.trim(),
         form.city.trim(),
         `${form.state} State`,
         'Nigeria',
       ].filter(Boolean).join(', ');
+
       await authApi.register({
         accountType:     'sender',
         name:            fullName,
         email:           form.email.trim().toLowerCase(),
-        phone:           form.phone.trim().replace(/\s/g, ''),
+        // E.164, matching customer and driver. Business was the lone app
+        // storing the raw 0-prefixed number, so the same person signing up
+        // on two apps was recorded two different ways.
+        phone:           toE164Ng(form.phone),
         password:        form.password,
         companyName:     form.companyName.trim(),
         rcNumber:        form.rcNumber.trim() || undefined,
         businessAddress,
-        // Send structured parts too so backend can index by state
-        // without re-parsing the combined string.
+        // Structured parts too, so the backend can index by state without
+        // re-parsing the combined string.
         state:           form.state,
         city:            form.city.trim(),
         streetAddress:   form.streetAddress.trim(),
+        // Consent. Sent from 2026-09-01 to match customer. Nothing on the
+        // server persists these yet, on either register path, so this is
+        // the client half of a fix that still needs its backend half.
+        ageConfirmed:    true,
+        termsAcceptedAt: new Date().toISOString(),
       });
       router.push({
         pathname: '/(auth)/verify-otp',
@@ -142,184 +173,224 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      // 'padding' on iOS, 'height' on Android: together they ensure the
-      // ScrollView resizes above the keyboard so focused inputs aren't
-      // hidden. Android also benefits from adjustResize in AndroidManifest
-      // which Expo sets by default.
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+      style={{ flex: 1, backgroundColor: theme.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.form, {
-          backgroundColor: colors.background,
-          paddingTop:    insets.top + 16,
-          // Bigger bottom pad so the last field sits well above the soft
-          // keyboard even on shorter phones.
-          paddingBottom: insets.bottom + 120,
-        }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
       >
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
-        </Pressable>
-
-        {/* This screen carried no branding, the same gap the OTP screen had.
-            Sign-up is the first real commitment somebody makes, so it is a
-            poor place to drop the mark (founder 2026-09-01). */}
-        <View style={styles.brandRow}>
-          <SeirsMarkBold size={38} color="#0F2B4C" hubColor="#FFFFFF" />
-          <Text style={styles.brand}>SEIRS</Text>
-          <Text style={styles.brandSub}>Business &amp; Partners</Text>
-        </View>
-
-        <Text style={styles.heading}>Create Business Account</Text>
-        <Text style={styles.sub}>
-          Sign up as a Business Sender. You can apply to also become a Partner Store
-          from your Settings after signup.
-        </Text>
-
-        {error !== '' && (
-          <View style={styles.errorBox}>
-            <Icon name="AlertCircle" size={16} color="#DC2626" />
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {/* Personal info: Nigerian users commonly have 3 names; first +
-            optional middle + last keeps the form readable and respects
-            naming conventions instead of forcing a single Full Name field. */}
-        <Field label="First Name" value={form.firstName} onChangeText={(v) => set('firstName', v)}
-          placeholder="Adebayo" />
-        <Field label="Middle Name (optional)" value={form.middleName} onChangeText={(v) => set('middleName', v)}
-          placeholder="Chinedu" />
-        <Field label="Last Name" value={form.lastName} onChangeText={(v) => set('lastName', v)}
-          placeholder="Yusuf" />
-        <Field label="Email Address" value={form.email} onChangeText={(v) => set('email', v)}
-          placeholder="adebayo@company.ng" keyboardType="email-address" autoCapitalize="none" />
-        <Field label="Phone Number (+234)" value={form.phone} onChangeText={(v) => set('phone', v)}
-          placeholder="08012345678" keyboardType="phone-pad" />
-
-        <Field label="Company Name" value={form.companyName} onChangeText={(v) => set('companyName', v)}
-          placeholder="Okafor Trading Ltd" />
-        <Field label="RC Number (optional)" value={form.rcNumber} onChangeText={(v) => set('rcNumber', v)}
-          placeholder="RC-123456" />
-
-        {/* Structured address: state picker locks the canonical name so
-            dispatch + zone pricing can filter reliably. City/LGA and the
-            street remain free-text since exhaustive LGA lists are noisy. */}
-        <StatePicker
-          label="State"
-          value={form.state}
-          onChange={(s) => set('state', s)}
-        />
-        <Field label="City / LGA" value={form.city} onChangeText={(v) => set('city', v)}
-          placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi" />
-        {/* Google Places autocomplete biased to the selected state: same
-            engine as the customer-app Send/Request flow, so a user typing
-            "15 adeola" while Lagos is selected sees real Lagos streets,
-            not a free-text guess. */}
-        <View style={{ marginBottom: 14 }}>
-          <StreetAutocomplete
-            label="Street Address & Landmark"
-            value={form.streetAddress}
-            onChangeText={(v) => set('streetAddress', v)}
-            state={form.state}
-            placeholder="Start typing a street or landmark…"
-          />
-        </View>
-
-        {/* Password */}
-        <Text style={styles.label}>Password</Text>
-        <View style={styles.inputWrap}>
-          <TextInput
-            style={[styles.input, { flex: 1 }]}
-            value={form.password}
-            onChangeText={(v) => set('password', v)}
-            placeholder={PASSWORD_HELP_TEXT}
-            placeholderTextColor="#9CA3AF"
-            secureTextEntry={!showPass}
-          />
-          <Pressable onPress={() => setShowPass((v) => !v)}>
-            <Icon name={showPass ? 'EyeOff' : 'Eye'} size={16} color="#9CA3AF" />
-          </Pressable>
-        </View>
-        {passError && (
-          <Text style={styles.fieldError}>{passError}</Text>
-        )}
-
-        {/* Confirm Password: mirror of the Password field with its own
-            eye toggle so the user can verify what they typed if the two
-            don't match. Without the toggle they're stuck guessing. */}
-        <Text style={styles.label}>Confirm Password</Text>
-        <View style={styles.inputWrap}>
-          <TextInput
-            style={[styles.input, { flex: 1 }]}
-            value={form.confirmPassword}
-            onChangeText={(v) => set('confirmPassword', v)}
-            placeholder="Repeat password"
-            placeholderTextColor="#9CA3AF"
-            secureTextEntry={!showConfirmPass}
-          />
-          <Pressable onPress={() => setShowConfirmPass((v) => !v)}>
-            <Icon name={showConfirmPass ? 'EyeOff' : 'Eye'} size={16} color="#9CA3AF" />
-          </Pressable>
-        </View>
-        {form.confirmPassword.length > 0 && !passMatch && (
-          <Text style={styles.fieldError}>Passwords do not match</Text>
-        )}
-
-        <CheckRow
-          value={ageOk}
-          onToggle={() => setAgeOk((v) => !v)}
-          label="I confirm I am 18 years or older"
-        />
-        {/* Terms + Privacy: the document names are tappable independently of
-            the checkbox, so a user can read either doc on seirs.co before
-            agreeing. The checkbox itself only toggles when the box (or the
-            non-link text) is tapped: tapping a link won't accidentally
-            consent for them. */}
-        <CheckRow
-          value={termsOk}
-          onToggle={() => setTermsOk((v) => !v)}
-          label={
-            <Text style={styles.checkLabel}>
-              I accept the{' '}
-              <Text
-                style={styles.linkText}
-                onPress={() => Linking.openURL(TERMS_URL)}
-              >Terms of Service</Text>
-              {' '}and{' '}
-              <Text
-                style={styles.linkText}
-                onPress={() => Linking.openURL(PRIVACY_URL)}
-              >Privacy Policy</Text>
-            </Text>
-          }
-        />
-
-        {/* Button is always tappable: if the form is incomplete, tapping
-            shows the user exactly what's missing in the error box above.
-            Better than a greyed-out button they can't diagnose. */}
+        {/* Back */}
         <Pressable
-          style={[styles.btn, loading && styles.btnDisabled]}
-          onPress={handleRegister}
-          disabled={loading}
+          style={styles.backBtn}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          onPress={() => router.back()}
         >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <>
-                <Text style={styles.btnText}>Create Account</Text>
-                <Icon name="ArrowRight" size={18} color="#fff" />
-              </>
-          }
+          <View style={[styles.backCircle, { backgroundColor: theme.surface }, Shadows.xs]}>
+            <Icon name="ArrowLeft" size={20} color={theme.text} />
+          </View>
         </Pressable>
 
-        <View style={styles.signinRow}>
-          <Text style={styles.signinText}>Already have an account? </Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.brandRow}>
+            <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
+            <Text style={[styles.brand,    { color: theme.primary }]}>SEIRS</Text>
+            <Text style={[styles.brandSub, { color: theme.textThird }]}>BUSINESS &amp; PARTNERS</Text>
+          </View>
+          <Text style={[styles.title, { color: theme.text }]}>Create Business Account</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecond }]}>
+            Sign up as a Business Sender. You can apply to also become a Partner Store
+            from your Settings after signup.
+          </Text>
+        </View>
+
+        {/* Form */}
+        <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
+          {!!error && (
+            <View style={[styles.errorBox, { backgroundColor: theme.error + '18' }]}>
+              <Icon name="AlertCircle" size={16} color={theme.error} />
+              <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
+            </View>
+          )}
+
+          <Text style={[styles.legend, { color: theme.textThird }]}>
+            Fields marked <Text style={{ color: theme.error }}>*</Text> are required.
+          </Text>
+
+          {/* Names stacked, not side by side. Nigerian names are long and a
+              half-width field scrolled the start of the name out of view:
+              "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
+              not see what they had typed (founder, 2026-09-01). */}
+          <Field theme={theme}
+            label="First Name" required icon="User" placeholder="Adebayo"
+            autoComplete="given-name" autoCapitalize="words"
+            value={form.firstName} onChangeText={(v) => set('firstName', v)}
+          />
+          <Field theme={theme}
+            label="Middle Name" optional icon="User" placeholder="Chinedu"
+            autoCapitalize="words"
+            value={form.middleName} onChangeText={(v) => set('middleName', v)}
+          />
+          <Field theme={theme}
+            label="Last Name" required icon="User" placeholder="Yusuf"
+            autoComplete="family-name" autoCapitalize="words"
+            value={form.lastName} onChangeText={(v) => set('lastName', v)}
+          />
+
+          <Field theme={theme}
+            label="Email Address" required icon="Mail" placeholder="adebayo@company.ng"
+            keyboardType="email-address" autoCapitalize="none" autoComplete="email"
+            value={form.email} onChangeText={(v) => set('email', v)}
+          />
+
+          {/* Phone with a locked +234, matching customer: type the number the
+              way it is written on a card (08012345678) and the prefix is
+              added for you on submit. */}
+          <Field theme={theme} label="Phone Number" required icon="Phone" hint={NG_PHONE_HINT}>
+            <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
+              <Text style={[styles.prefix, { color: theme.text }]}>+234</Text>
+            </View>
+            <TextInput
+              style={[styles.input, { color: theme.text, paddingLeft: Spacing.sm }]}
+              placeholder="8012345678"
+              placeholderTextColor={theme.textThird}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              maxLength={10}
+              value={form.phone}
+              onChangeText={(v) => set('phone', toNationalInput(v))}
+            />
+          </Field>
+
+          {/* The one business-only group. */}
+          <Field theme={theme}
+            label="Company Name" required icon="Building2" placeholder="Okafor Trading Ltd"
+            autoCapitalize="words"
+            value={form.companyName} onChangeText={(v) => set('companyName', v)}
+          />
+          <Field theme={theme}
+            label="RC Number" optional icon="Hash" placeholder="RC-123456"
+            autoCapitalize="characters"
+            value={form.rcNumber} onChangeText={(v) => set('rcNumber', v)}
+          />
+
+          {/* Structured address: the state picker locks the canonical name so
+              dispatch and zone pricing can filter reliably. City/LGA stays
+              free text since exhaustive LGA lists are noisy, and the street
+              is Places autocomplete pinned to the chosen state. Unlike
+              customer, where the address is optional, business needs it:
+              nothing can be priced or dispatched without a state. */}
+          <View style={styles.field}>
+            <StatePicker label="State *" value={form.state} onChange={(s) => set('state', s)} />
+          </View>
+          <Field theme={theme}
+            label="City / LGA" required placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi"
+            value={form.city} onChangeText={(v) => set('city', v)}
+          />
+          <View style={styles.field}>
+            <StreetAutocomplete
+              label="Street Address & Landmark *"
+              value={form.streetAddress}
+              onChangeText={(v) => set('streetAddress', v)}
+              state={form.state}
+              placeholder="Start typing a street or landmark…"
+            />
+          </View>
+
+          {/* Password */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.error }}> *</Text></Text>
+            <PasswordInput
+              placeholder="Min. 8 chars, upper + lower + number/symbol"
+              placeholderTextColor={theme.textThird}
+              autoComplete="new-password"
+              backgroundColor={theme.surfaceSecond}
+              borderColor={theme.border}
+              value={form.password}
+              onChangeText={(v) => set('password', v)}
+            />
+            {passError ? <Text style={[styles.fieldError, { color: theme.error }]}>{passError}</Text> : null}
+          </View>
+
+          {/* Confirm password. Kept as its own toggleable field so somebody
+              whose two entries disagree can actually look at what they
+              typed instead of guessing. */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm Password<Text style={{ color: theme.error }}> *</Text></Text>
+            <PasswordInput
+              placeholder="Repeat password"
+              placeholderTextColor={theme.textThird}
+              autoComplete="new-password"
+              backgroundColor={theme.surfaceSecond}
+              borderColor={theme.border}
+              value={form.confirmPassword}
+              onChangeText={(v) => set('confirmPassword', v)}
+            />
+            {form.confirmPassword.length > 0 && !passMatch
+              ? <Text style={[styles.fieldError, { color: theme.error }]}>Passwords do not match</Text>
+              : null}
+          </View>
+
+          {/* Age */}
+          <View style={[styles.checkSection, { borderColor: theme.border }]}>
+            <Checkbox theme={theme}
+              checked={ageOk}
+              onToggle={() => setAgeOk((v) => !v)}
+              label="I confirm I am 18 years or older"
+            />
+          </View>
+
+          {/* Terms + Privacy. The document names are tappable independently of
+              the checkbox, so a user can read either before agreeing, and
+              tapping a link will not accidentally consent for them. */}
+          <View style={[styles.checkSection, { borderColor: theme.border }]}>
+            <Checkbox theme={theme}
+              checked={termsOk}
+              onToggle={() => setTermsOk((v) => !v)}
+              label={
+                <Text style={[styles.checkLabel, { color: theme.text }]}>
+                  I accept the{' '}
+                  <Text style={[styles.linkText, { color: theme.accent }]} onPress={() => Linking.openURL(TERMS_URL)}>
+                    Terms of Service
+                  </Text>
+                  {' '}and{' '}
+                  <Text style={[styles.linkText, { color: theme.accent }]} onPress={() => Linking.openURL(PRIVACY_URL)}>
+                    Privacy Policy
+                  </Text>
+                </Text>
+              }
+            />
+          </View>
+
+          <Pressable
+            style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? <ActivityIndicator color={theme.textOnPrimary} /> : (
+              <View style={styles.submitRow}>
+                <Text style={[styles.submitText, { color: theme.textOnPrimary }]}>Create Account</Text>
+                <Icon name="ArrowRight" size={18} color={theme.textOnPrimary} />
+              </View>
+            )}
+          </Pressable>
+
+          <Text style={[styles.otpNote, { color: theme.textThird }]}>
+            We will email you a 6-digit code to confirm your address.
+          </Text>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>Already have an account?</Text>
           <Pressable onPress={() => router.push('/(auth)/login' as any)}>
-            <Text style={styles.signinLink}>Sign In</Text>
+            <Text style={[styles.footerLink, { color: theme.accent }]}> Sign In</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -327,73 +398,88 @@ export default function RegisterScreen() {
   );
 }
 
-function Field({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
+type ThemeShape = typeof Colors.light;
+
+/**
+ * A labelled input in the customer app's field shape.
+ *
+ * Defined at module level ON PURPOSE. Declaring it inside RegisterScreen
+ * makes a new component type on every render, so React unmounts and remounts
+ * the TextInput and the keyboard drops focus after each character typed.
+ */
+function Field({ theme, label, optional, required, icon, hint, children, ...props }: {
+  theme: ThemeShape; label: string; optional?: boolean; required?: boolean;
+  icon?: string; hint?: string; children?: ReactNode;
+} & React.ComponentProps<typeof TextInput>) {
   return (
-    <>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputWrap}>
-        <TextInput style={[styles.input, { flex: 1 }]} placeholderTextColor="#9CA3AF" {...props} />
+    <View style={styles.field}>
+      <Text style={[styles.label, { color: theme.textSecond }]}>
+        {label}
+        {required ? <Text style={{ color: theme.error }}> *</Text> : null}
+        {optional ? <Text style={{ fontWeight: FontWeight.regular as any, color: theme.textThird }}> (optional)</Text> : null}
+      </Text>
+      <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+        {icon ? <Icon name={icon} size={15} color={theme.textThird} /> : null}
+        {children ?? (
+          <TextInput
+            style={[styles.input, { color: theme.text }]}
+            placeholderTextColor={theme.textThird}
+            {...props}
+          />
+        )}
       </View>
-    </>
+      {hint ? <Text style={[styles.fieldHint, { color: theme.textThird }]}>{hint}</Text> : null}
+    </View>
   );
 }
 
-function CheckRow({ value, onToggle, label }: { value: boolean; onToggle: () => void; label: ReactNode }) {
+function Checkbox({ theme, checked, onToggle, label }: {
+  theme: ThemeShape; checked: boolean; onToggle: () => void; label: ReactNode;
+}) {
   return (
     <Pressable style={styles.checkRow} onPress={onToggle}>
-      <View style={[styles.checkbox, value && styles.checkboxActive]}>
-        {value && <Icon name="Check" size={12} color="#fff" strokeWidth={2.5} />}
+      <Icon name={checked ? 'CheckSquare' : 'Square'} size={22} color={checked ? theme.accent : theme.border} />
+      <View style={styles.checkTextWrap}>
+        {typeof label === 'string'
+          ? <Text style={[styles.checkLabel, { color: theme.text }]}>{label}</Text>
+          : label}
       </View>
-      {typeof label === 'string'
-        ? <Text style={styles.checkLabel}>{label}</Text>
-        : <View style={{ flex: 1 }}>{label}</View>}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  form:       { paddingHorizontal: 24 },
-  // Note: heading/text/label colors stay in StyleSheet for the light-mode
-  // path that matches the user's preferred design. In dark mode the
-  // outer KeyboardAvoidingView + ScrollView backgrounds flip via inline
-  // overrides at the use site, so the screen is at minimum readable -
-  // a full per-element theming pass can come later if needed since
-  // register is a one-shot screen seen only during signup.
-  brandRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', marginBottom: 20 },
-  brand:     { fontSize: 15, fontWeight: '900', letterSpacing: 4, color: '#0F2B4C' },
-  brandSub:  { fontSize: 12, marginTop: 1, color: '#6B7280' },
-  backBtn:    { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginLeft: -8 },
-  heading:    { fontSize: 24, fontWeight: '800', color: '#0F2B4C', marginBottom: 8 },
-  sub:        { fontSize: 15, color: '#6B7280', marginBottom: 24, lineHeight: 20 },
-  errorBox:   {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
-    borderRadius: 10, padding: 12, marginBottom: 16,
-  },
-  errorText:  { color: '#DC2626', fontSize: 14, flex: 1 },
-  label:      { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6 },
-  inputWrap:  {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
-    borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 14,
-  },
-  input:      { fontSize: 15, color: '#0F2B4C' },
-  fieldError: { color: '#EF4444', fontSize: 13, marginTop: -10, marginBottom: 12, marginLeft: 4 },
-  checkRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
-  checkbox:   {
-    width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: '#D1D5DB',
-    alignItems: 'center', justifyContent: 'center', marginTop: 1,
-  },
-  checkboxActive: { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
-  checkLabel: { flex: 1, fontSize: 14, color: '#374151', lineHeight: 20 },
-  linkText:   { color: '#3A7BD5', fontWeight: '600', textDecorationLine: 'underline' },
-  btn:        {
-    backgroundColor: '#0F2B4C', borderRadius: 14, paddingVertical: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8,
-  },
-  btnDisabled: { opacity: 0.4 },
-  btnText:    { color: '#fff', fontWeight: '700', fontSize: 16 },
-  signinRow:  { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  signinText: { color: '#6B7280', fontSize: 15 },
-  signinLink: { color: '#3A7BD5', fontWeight: '600', fontSize: 15 },
+  container:    { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.xxl, paddingBottom: Spacing.xl },
+  backBtn:      { marginBottom: Spacing.lg },
+  backCircle:   { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  header:       { marginBottom: Spacing.xl },
+  brandRow:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.md },
+  brand:        { fontSize: FontSize.sm, fontWeight: FontWeight.black as any, letterSpacing: 3 },
+  brandSub:     { fontSize: 9, fontWeight: FontWeight.medium as any, letterSpacing: 1.5, marginTop: 1 },
+  title:        { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold as any, marginBottom: Spacing.xs },
+  subtitle:     { fontSize: FontSize.base, lineHeight: 22 },
+  card:         { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },
+  errorBox:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
+  errorText:    { fontSize: FontSize.sm, fontWeight: FontWeight.medium as any, flex: 1 },
+  legend:       { fontSize: FontSize.xs, marginBottom: Spacing.md },
+  field:        { marginBottom: Spacing.md, gap: Spacing.xs },
+  label:        { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+  inputWrap:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },
+  input:        { flex: 1, fontSize: FontSize.base, height: '100%' },
+  prefixWrap:   { paddingRight: Spacing.sm, borderRightWidth: 1 },
+  prefix:       { fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
+  fieldHint:    { fontSize: FontSize.xs, marginTop: 2, lineHeight: 16 },
+  fieldError:   { fontSize: FontSize.xs, marginTop: 2 },
+  checkSection: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.md },
+  checkRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+  checkTextWrap:{ flex: 1 },
+  checkLabel:   { fontSize: FontSize.sm, fontWeight: FontWeight.medium as any, lineHeight: 20 },
+  linkText:     { fontWeight: FontWeight.semibold as any, textDecorationLine: 'underline' },
+  submitBtn:    { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.sm },
+  submitRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  submitText:   { fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
+  otpNote:      { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.md, lineHeight: 18 },
+  footer:       { flexDirection: 'row', justifyContent: 'center' },
+  footerText:   { fontSize: FontSize.base },
+  footerLink:   { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
 });

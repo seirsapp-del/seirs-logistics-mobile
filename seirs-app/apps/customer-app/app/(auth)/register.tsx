@@ -19,16 +19,14 @@ import { StatePicker } from '@/components/StatePicker';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword } from '@seirs/shared';
+import { isValidNigerianMobile, toE164Ng, toNationalInput, NG_PHONE_HINT } from '@seirs/shared/utils/ngPhone';
 import {
   ArrowLeft, ArrowRight, Truck, User, Mail, Phone, CheckSquare, Square,
 } from 'lucide-react-native';
 
-// Nigerian mobile numbers are 11 digits total: 0 + 2-digit network code + 8 digits.
-// Earlier regex used \d{7} (10 digits total) which rejected every valid number.
-// Normalise +234 prefix to 0 in callers before testing.
-const NIGERIAN_PHONE_RE = /^0(70|71|80|81|90|91)\d{8}$/;
-export const normalisePhone = (raw: string) =>
-  raw.replace(/[\s-]/g, '').replace(/^\+234/, '0');
+// Nigerian mobile validation lives in shared/utils/ngPhone.ts. This file
+// used to carry its own fixed prefix list, which meant a network code the
+// NCC issues tomorrow could not be registered.
 
 function validate(
   firstName: string, lastName: string, email: string, phone: string,
@@ -39,8 +37,7 @@ function validate(
   if (!lastName.trim())  return 'Last name is required.';
   if (!email.trim())     return 'Email address is required.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Enter a valid email address.';
-  const digits = normalisePhone(phone);
-  if (!NIGERIAN_PHONE_RE.test(digits)) return 'Enter a valid Nigerian number (e.g. 08012345678: 11 digits starting with 070/071/080/081/090/091; +234 prefix also accepted).';
+  if (!isValidNigerianMobile(phone)) return NG_PHONE_HINT;
   const pwErr = validatePassword(password);
   if (pwErr) return pwErr;
   if (password !== confirmPassword) return 'Passwords do not match.';
@@ -87,12 +84,11 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(' ');
-      const digits   = phone.replace(/\s/g, '');
 
       await authApi.register({
         name:            fullName,
         email:           email.trim().toLowerCase(),
-        phone:           `+234${digits.substring(1)}`,
+        phone:           toE164Ng(phone),
         password,
         role:            'customer',
         ageConfirmed:    true,
@@ -172,39 +168,31 @@ export default function RegisterScreen() {
           )}
 
           {/* Name row: First + Last */}
-          <View style={styles.nameRow}>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.firstName')}</Text>
-              <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                <User size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Adebayo"
-                  placeholderTextColor={theme.textThird}
-                  autoComplete="given-name"
-                  autoCapitalize="words"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                />
-              </View>
-            </View>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.lastName')}</Text>
-              <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                <TextInput
-                  style={[styles.input, { color: theme.text, paddingLeft: Spacing.md }]}
-                  placeholder="Yusuf"
-                  placeholderTextColor={theme.textThird}
-                  autoComplete="family-name"
-                  autoCapitalize="words"
-                  value={lastName}
-                  onChangeText={setLastName}
-                />
-              </View>
+
+          <Text style={[styles.legend, { color: theme.textThird }]}>
+            Fields marked <Text style={{ color: theme.error }}>*</Text> are required.
+          </Text>
+
+          {/* Names stacked, not side by side. Nigerian names are long and a
+              half-width field scrolled the start of the name out of view:
+              "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
+              not see what they had typed (founder, 2026-09-01). */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.firstName')}<Text style={{ color: theme.error }}> *</Text></Text>
+            <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <User size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="Adebayo"
+                placeholderTextColor={theme.textThird}
+                autoComplete="given-name"
+                autoCapitalize="words"
+                value={firstName}
+                onChangeText={setFirstName}
+              />
             </View>
           </View>
 
-          {/* Middle name */}
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>
               {t('auth.middleName')} <Text style={{ fontWeight: FontWeight.regular, color: theme.textThird }}>{t('auth.middleNameOptional')}</Text>
@@ -222,9 +210,24 @@ export default function RegisterScreen() {
             </View>
           </View>
 
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.lastName')}<Text style={{ color: theme.error }}> *</Text></Text>
+            <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="Yusuf"
+                placeholderTextColor={theme.textThird}
+                autoComplete="family-name"
+                autoCapitalize="words"
+                value={lastName}
+                onChangeText={setLastName}
+              />
+            </View>
+          </View>
+
           {/* Email */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.emailAddress')}</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.emailAddress')}<Text style={{ color: theme.error }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Mail size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
               <TextInput
@@ -242,7 +245,7 @@ export default function RegisterScreen() {
 
           {/* Phone: +234 locked prefix */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.phone')}</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.phone')}<Text style={{ color: theme.error }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Phone size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
               <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
@@ -250,17 +253,17 @@ export default function RegisterScreen() {
               </View>
               <TextInput
                 style={[styles.input, { color: theme.text, paddingLeft: Spacing.sm }]}
-                placeholder="080 1234 5678"
+                placeholder="8012345678"
                 placeholderTextColor={theme.textThird}
                 keyboardType="phone-pad"
                 autoComplete="tel"
-                maxLength={11}
+                maxLength={10}
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(v) => setPhone(toNationalInput(v))}
               />
             </View>
             <Text style={[styles.fieldHint, { color: theme.textThird }]}>
-              {t('auth.phoneHint')}
+              {NG_PHONE_HINT}
             </Text>
           </View>
 
@@ -305,7 +308,7 @@ export default function RegisterScreen() {
 
           {/* Password */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.password')}</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.password')}<Text style={{ color: theme.error }}> *</Text></Text>
             <PasswordInput
               placeholder="Min. 8 chars, upper + lower + number/symbol"
               placeholderTextColor={theme.textThird}
@@ -319,7 +322,7 @@ export default function RegisterScreen() {
 
           {/* Confirm Password */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.confirmPassword')}</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.confirmPassword')}<Text style={{ color: theme.error }}> *</Text></Text>
             <PasswordInput
               placeholder={t('auth.confirmPassword')}
               placeholderTextColor={theme.textThird}
@@ -407,7 +410,7 @@ const styles = StyleSheet.create({
   card:         { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },
   errorBox:     { padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
   errorText:    { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  nameRow:      { flexDirection: 'row', gap: Spacing.sm },
+  legend:       { fontSize: FontSize.xs, marginBottom: Spacing.md },
   field:        { marginBottom: Spacing.md, gap: Spacing.xs },
   label:        { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   inputWrap:    { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },

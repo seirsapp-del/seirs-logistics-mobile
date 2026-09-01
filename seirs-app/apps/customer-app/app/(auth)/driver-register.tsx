@@ -115,35 +115,24 @@ export default function DriverRegisterScreen() {
           ) : null}
 
           {/* Name row */}
-          <View style={styles.nameRow}>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={[styles.label, { color: theme.textSecond }]}>First name</Text>
-              <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                <Ionicons name="person-outline" size={16} color={theme.textThird} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Adebayo"
-                  placeholderTextColor={theme.textThird}
-                  autoComplete="given-name"
-                  autoCapitalize="words"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                />
-              </View>
-            </View>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={[styles.label, { color: theme.textSecond }]}>Last name</Text>
-              <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                <TextInput
-                  style={[styles.input, { color: theme.text, paddingLeft: Spacing.md }]}
-                  placeholder="Adeyemi"
-                  placeholderTextColor={theme.textThird}
-                  autoComplete="family-name"
-                  autoCapitalize="words"
-                  value={lastName}
-                  onChangeText={setLastName}
-                />
-              </View>
+
+          {/* Names stacked, not side by side. Nigerian names are long and a
+              half-width field scrolled the start of the name out of view:
+              "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
+              not see what they had typed (founder, 2026-09-01). */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>First name</Text>
+            <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <Ionicons name="person-outline" size={16} color={theme.textThird} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="Adebayo"
+                placeholderTextColor={theme.textThird}
+                autoComplete="given-name"
+                autoCapitalize="words"
+                value={firstName}
+                onChangeText={setFirstName}
+              />
             </View>
           </View>
 
@@ -160,6 +149,21 @@ export default function DriverRegisterScreen() {
                 autoCapitalize="words"
                 value={middleName}
                 onChangeText={setMiddleName}
+              />
+            </View>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Last name</Text>
+            <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="Adeyemi"
+                placeholderTextColor={theme.textThird}
+                autoComplete="family-name"
+                autoCapitalize="words"
+                value={lastName}
+                onChangeText={setLastName}
               />
             </View>
           </View>
@@ -294,7 +298,6 @@ const styles = StyleSheet.create({
   card:       { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },
   errorBox:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
   errorText:  { fontSize: FontSize.sm, fontWeight: FontWeight.medium, flex: 1 },
-  nameRow:    { flexDirection: 'row', gap: Spacing.sm },
   field:      { marginBottom: Spacing.md, gap: Spacing.xs },
   label:      { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   inputWrap:  { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },

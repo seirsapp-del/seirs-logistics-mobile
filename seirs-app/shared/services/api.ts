@@ -1228,6 +1228,14 @@ export const businessAuthApi = {
     storeName?:       string;
     storeAddress?:    string;
     capacity?:        number;
+    // Signup consent, sent to match the customer app's payload.
+    // WARNING 2026-09-01: nothing on the server stores these yet. The User
+    // entity has no ageConfirmed/termsAcceptedAt column and neither register
+    // path writes one, so BOTH apps currently show the user a Terms checkbox
+    // and then discard the answer. Sending them here keeps the two clients
+    // identical so the backend only has to be fixed once.
+    ageConfirmed?:    boolean;
+    termsAcceptedAt?: string;
   }) => request<{ requiresOtp: boolean; email: string }>(
     'POST', '/auth/business-register', data, false,
   ),
