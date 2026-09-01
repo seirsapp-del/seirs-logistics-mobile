@@ -738,13 +738,35 @@ export class TravelBuddyService {
     const lateShare = Number.isFinite(latePct) && latePct > 0 ? Math.min(100, latePct) : 100;
     const keepsFee = processingPct > 0;
 
+    /**
+     * These said "less the 1.4% card charge we already paid", which was
+     * false in three ways at once, all of them favouring SEIRS, in a
+     * sentence shown to a passenger about their own money.
+     *
+     * Checked against the one real payment on the account
+     * (SRS-PAY-BDC811FE, 2026-08-24): the provider added its fee ON TOP
+     * of the fare, so the PASSENGER paid it, not us. We paid only the
+     * tax on that fee, which is a fraction of what this sentence
+     * claimed. And the figure quoted was the catalogue row, which is
+     * not what was actually deducted.
+     *
+     * It also said "card" when checkout takes transfer and USSD as
+     * well, so a passenger who paid by transfer was told about a card.
+     *
+     * No percentage is named now. The number is under review and a
+     * sentence a passenger consents to must not go stale the moment an
+     * admin edits a row. What is stated is the part that is true
+     * whatever the row lands on: a processing charge was taken when the
+     * payment went through, and refunding the fare does not bring it
+     * back.
+     */
     const lines = [
       `The driver waits ${waitMinutes} minutes at your boarding point. Be there before that.`,
       `If you are not there when the wait ends, the driver may leave and your fare is not refunded. They still made the journey and held your seat, so it is paid to them in full.`,
-      `Cancel more than ${freeCancelHours} hours before departure and you are refunded${keepsFee ? `, less the ${processingPct}% card charge we already paid` : ' in full'}.`,
+      `Cancel more than ${freeCancelHours} hours before departure and you are refunded${keepsFee ? ', less the processing charge taken when you paid, which a refund does not bring back' : ' in full'}.`,
       lateShare >= 100
-        ? `Cancel closer to departure and you are still refunded${keepsFee ? `, less that same ${processingPct}% card charge` : ' in full'}.`
-        : `Cancel closer to departure and ${lateShare}% of the fare is returned${keepsFee ? `, less the ${processingPct}% card charge` : ''}.`,
+        ? `Cancel closer to departure and you are still refunded${keepsFee ? ', less that same processing charge' : ' in full'}.`
+        : `Cancel closer to departure and ${lateShare}% of the fare is returned${keepsFee ? ', less the processing charge' : ''}.`,
       `Your seat is only held once payment lands. Until then somebody else can take it.`,
     ];
 
