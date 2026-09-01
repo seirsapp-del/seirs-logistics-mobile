@@ -41,7 +41,7 @@ export function PasswordInput({ borderColor, backgroundColor, style, ...props }:
 }
 
 const styles = StyleSheet.create({
-  wrap:   { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.md, borderWidth: 1.5, paddingLeft: Spacing.md, paddingRight: 4 },
+  wrap:   { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingLeft: Spacing.md, paddingRight: 4 },
   input:  { flex: 1, fontSize: FontSize.base },
   toggle: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
 });
