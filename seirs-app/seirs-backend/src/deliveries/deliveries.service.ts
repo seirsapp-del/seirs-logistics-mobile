@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { aVehicle } from '../common/vehicle-labels';
+import { Payment, PaymentStatus } from '../payments/payment.entity';
 import { TicketTopic } from '../support/support-ticket.entity';
 import { SupportService } from '../support/support.service';
 import { RoutingService } from '../routing/routing.service';
@@ -4382,6 +4383,35 @@ export class DeliveriesService {
           .execute();
       } catch (e: any) {
         this.logger.warn(`stop status sync skipped for ${id}: ${e?.message ?? e}`);
+      }
+
+      /**
+       * Close out the checkout that never completed.
+       *
+       * PaymentStatus.CANCELLED existed in the enum and was assigned
+       * NOWHERE in the codebase, so cancelling a delivery left its
+       * payment sitting at PENDING forever. The founder found seven such
+       * orphans on one account on 2026-09-01, every one of them for a
+       * delivery that had been cancelled weeks earlier.
+       *
+       * Only PENDING rows are touched. A SUCCESS payment stays successful
+       * and is reversed through the refund path, which keeps the reversal
+       * visible in the record instead of leaving a gap; a FAILED row keeps
+       * its own outcome.
+       */
+      try {
+        const closed = await this.repo.manager.getRepository(Payment)
+          .createQueryBuilder()
+          .update(Payment)
+          .set({ status: PaymentStatus.CANCELLED })
+          .where('"deliveryId" = :id', { id })
+          .andWhere('status = :pending', { pending: PaymentStatus.PENDING })
+          .execute();
+        if (closed.affected) {
+          this.logger.log(`delivery ${id} ${status}: closed ${closed.affected} pending payment(s)`);
+        }
+      } catch (e: any) {
+        this.logger.warn(`payment close-out skipped for ${id}: ${e?.message ?? e}`);
       }
     }
 
