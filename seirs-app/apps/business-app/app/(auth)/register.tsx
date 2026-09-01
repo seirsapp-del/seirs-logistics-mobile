@@ -409,12 +409,14 @@ export default function RegisterScreen() {
             )}
           </Pressable>
 
-          {!!missing && !loading && (
-            <Text style={[styles.gateHint, { color: theme.textThird }]}>{missing}</Text>
-          )}
-
-          <Text style={[styles.otpNote, { color: theme.textThird }]}>
-            We will email you a 6-digit code to confirm your address.
+          {/* One line under the button, never two. While the form is
+              incomplete it says what is still missing; once it is ready it
+              says what happens next. The two used to stack, and two grey
+              lines in a row read as one run-on sentence. */}
+          <Text style={[styles.gateHint, { color: theme.textThird }]}>
+            {missing && !loading
+              ? missing
+              : 'We will email you a 6-digit code to confirm your address.'}
           </Text>
         </View>
 
@@ -509,7 +511,7 @@ const styles = StyleSheet.create({
   submitBtn:    { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.sm },
   submitRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   submitText:   { fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
-  gateHint:     { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.sm, lineHeight: 18 },
+  gateHint:     { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.sm, marginBottom: Spacing.md, lineHeight: 18 },
   otpNote:      { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.md, lineHeight: 18 },
   footer:       { flexDirection: 'row', justifyContent: 'center' },
   footerText:   { fontSize: FontSize.base },

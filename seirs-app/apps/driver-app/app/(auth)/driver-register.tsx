@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   checkRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
   checkLabel:    { flex: 1, fontSize: FontSize.sm, lineHeight: 20 },
   linkText:      { fontWeight: FontWeight.semibold, textDecorationLine: 'underline' },
-  gateHint:      { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.sm, lineHeight: 18 },
+  gateHint:      { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.sm, marginBottom: Spacing.lg, lineHeight: 18 },
   submitBtn:     { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.lg },
   submitText:    { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
   footer:        { flexDirection: 'row', justifyContent: 'center' },
