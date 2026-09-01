@@ -39,6 +39,87 @@ import { breakdownForCustomer, breakdownForDriver } from '../deliveries/redact-b
  */
 const PER_PACKAGE_RATE_FALLBACK = 500;
 
+/**
+ * The narrative column of a spend statement line.
+ *
+ * A statement is read by somebody reconciling it against a bank
+ * statement months later, so every line has to say what the money
+ * bought without them opening the app. Non-delivery charges are named
+ * outright rather than lumped in as "payment": a redirect fee that
+ * reads the same as a fare is exactly the line that generates the
+ * phone call.
+ */
+function spendNarrative(r: {
+  purpose?: string | null;
+  kind?: string | null;
+  stops?: number | string | null;
+  pickupAddress?: string | null;
+  dropoffAddress?: string | null;
+  trackingCode?: string | null;
+}): string {
+  switch (r.purpose) {
+    case 'redirect_fee':     return 'Redirect to a partner store';
+    case 'address_change':   return 'Address change';
+    case 'return_to_sender': return 'Return to sender';
+    case 'store_dropoff':    return 'Partner store drop-off';
+    case 'store_topup':      return 'Weight top-up at the counter';
+  }
+
+  if (r.kind === 'ride') {
+    const to = shortAddress(r.dropoffAddress);
+    return to ? `Ride to ${to}` : 'Ride';
+  }
+
+  const stops = Number(r.stops ?? 0);
+  if (stops > 1) {
+    const area = areaOf(r.pickupAddress);
+    return area ? `${area} · ${stops} stops` : `${stops} stops`;
+  }
+
+  return shortAddress(r.dropoffAddress) || r.trackingCode || 'Delivery';
+}
+
+/**
+ * The area a multi-stop run covers, pulled off the pickup address.
+ *
+ * A heuristic, not a lookup: Nigerian addresses here are free text, so
+ * this reads the usual "street, area, state" shape and takes the area.
+ * Worst case it prints a slightly wrong label next to a right amount,
+ * which is why the stop count and the run code travel alongside it.
+ */
+function areaOf(address?: string | null): string {
+  const parts = String(address ?? '').split(',').map(x => x.trim()).filter(Boolean);
+  if (parts.length >= 3) return parts[parts.length - 2];
+  if (parts.length === 2) return parts[1];
+  return parts[0] ?? '';
+}
+
+/** Street and area, short enough to sit on one line of a phone. */
+function shortAddress(address?: string | null): string {
+  const parts = String(address ?? '').split(',').map(x => x.trim()).filter(Boolean);
+  const short = parts.slice(0, 2).join(', ');
+  return short.length > 42 ? `${short.slice(0, 41)}…` : short;
+}
+
+/**
+ * How the money arrived, in words a sender recognises.
+ *
+ * Null in, null out: a rail nobody recorded is left off the line rather
+ * than guessed at. No processor is ever named here, and "card" is only
+ * ever one of the answers, never the label for all of them.
+ */
+function methodLabel(method?: string | null): string | null {
+  switch (method) {
+    case 'card':              return 'Card';
+    case 'bank_transfer':     return 'Bank transfer';
+    case 'ussd':              return 'USSD';
+    case 'mobile_money':      return 'Mobile money';
+    case 'wallet':            return 'SEIRS balance';
+    case 'cash_on_delivery':  return 'Cash on delivery';
+    default:                  return null;
+  }
+}
+
 // Per-stop verification code for multi-drop runs. STP- prefix keeps it
 // visually distinct from SRS- tracking codes and SDR- drop codes so
 // support agents can identify what kind of code a user is reading out.
@@ -365,46 +446,117 @@ export class BusinessService {
   }
 
   /**
-   * Yearly spend statement (founder direction 2026-08-10): wallet debits
-   * are delivery spend, credits are top-ups, grouped per calendar year.
-   * For company accounting and FIRS expense records.
+   * A spend statement a trader can hand to an accountant.
+   *
+   * This returned one row per YEAR: a single lifetime-shaped total with
+   * nothing behind it, and the screen above it led with "PAID TO SEIRS"
+   * and a figure that only grew. Founder, 2026-09-01: "from human
+   * psycology showing them how much they have spend total would make
+   * they think they are spending too much, so they should see the
+   * payment and be able to filter it incase the want to print their
+   * invoice and a total, like a bank statement will work".
+   *
+   * So it is a bank statement now, deliberately built to the same shape
+   * as getPartnerPayoutStatement below rather than a new one: pick a
+   * window, get every line in it in date order with a running total,
+   * plus the totals for that window and nothing wider. Defaults to the
+   * last 90 days, which is the common case of opening the screen.
+   *
+   * PENDING IS EXCLUDED ENTIRELY, founder 2026-09-01: "no pending in
+   * statement at all". Not in the lines, not in the total, not in the
+   * PDF. A statement shows what moved, and a pending charge has not
+   * moved. Unsettled charges stay in the ordinary Payments list, which
+   * is where somebody chasing a failed booking should be looking.
+   *
+   * Refunds are excluded for the same reason the old yearly version
+   * excluded them: a reversed charge is not spend, and a statement that
+   * overstates spend is worse than no statement, because it goes to an
+   * accountant.
    */
-  async getSpendStatement(userId: string) {
+  async getSpendStatement(userId: string, from?: string, to?: string) {
     const biz = await this.getBizAccount(userId);
+
+    const toDate   = to   ? new Date(to)   : new Date();
+    const fromDate = from ? new Date(from) : new Date(toDate.getTime() - 90 * 24 * 3600 * 1000);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      throw new BadRequestException('from and to must be valid dates (YYYY-MM-DD).');
+    }
+    if (fromDate > toDate) {
+      throw new BadRequestException('The start date cannot be after the end date.');
+    }
+    // Include the whole closing day, not up to midnight of it.
+    toDate.setHours(23, 59, 59, 999);
+
     /**
-     * Reads the payments actually taken, not the retired wallet ledger.
+     * Columns are named one by one, and the customer relation is not
+     * joined at all. A leftJoinAndSelect onto the user here would carry
+     * bank details and KYC document paths into a response that renders
+     * none of them.
      *
-     * It used to sum business_wallet_transactions, which stopped being
-     * written the moment senders stopped holding balances, and counted a
-     * cancelled, fully refunded run as 10,103 of spend on the 2026
-     * statement (found 2026-08-16). A statement that overstates spend is
-     * worse than none: it goes to an accountant.
+     * card_verify is excluded by name. It is the tokenisation charge,
+     * refunded immediately, and it is not spend. It cannot be left to
+     * the refund filter either: if that refund ever fails the row stays
+     * SUCCESS, and it would appear on an accountant's statement as a
+     * real charge.
      *
-     * Refunded payments are excluded, and only delivery charges count, so
-     * the card-tokenisation charge never appears as business spend.
+     * Every other purpose is included. A redirect fee or a return leg is
+     * money the company genuinely paid SEIRS, and a statement that
+     * silently omits it will not reconcile against their bank.
      */
-    const rows: Array<{ year: number; spent: string; payments: string; topups: string }> =
-      await this.walletTxRepo.query(
-        `SELECT EXTRACT(YEAR FROM p."createdAt")::int              AS year,
-                COALESCE(SUM(p."amountKobo"), 0) / 100.0           AS spent,
-                COUNT(*)                                          AS payments,
-                0                                                 AS topups
+    const rows: Array<any> = await this.dataSource.query(
+      `SELECT p.id,
+              p."createdAt",
+              p."amountKobo",
+              p.purpose,
+              p.method,
+              p."providerReference",
+              d."trackingCode",
+              d."pickupAddress",
+              d."dropoffAddress",
+              d.kind,
+              (SELECT COUNT(*)::int FROM delivery_stops s WHERE s."deliveryId" = d.id) AS stops
          FROM payments p
-         WHERE p."customerId" = $1
-           AND p.status = 'success'
-           AND p.purpose = 'delivery'
-         GROUP BY 1
-         ORDER BY 1 DESC`,
-        [biz.ownerId],
-      );
+         LEFT JOIN deliveries d ON d.id = p."deliveryId"
+        WHERE p."customerId" = $1
+          AND p.status = 'success'
+          AND p.purpose <> 'card_verify'
+          AND p."createdAt" BETWEEN $2 AND $3
+        ORDER BY p."createdAt" ASC`,
+      [biz.ownerId, fromDate.toISOString(), toDate.toISOString()],
+    );
+
+    let running = 0;
+    const entries = rows.map((r) => {
+      const amountNgn = Number(r.amountKobo ?? 0) / 100;
+      running += amountNgn;
+      return {
+        id:        r.id,
+        date:      r.createdAt,
+        narrative: spendNarrative(r),
+        amountNgn: Math.round(amountNgn * 100) / 100,
+        // Only once it is known. A rail we were never told is left out
+        // rather than guessed at, which is the whole reason the method
+        // column became nullable.
+        method:       methodLabel(r.method),
+        reference:    r.providerReference ?? null,
+        trackingCode: r.trackingCode ?? null,
+        stops:        r.stops ? Number(r.stops) : null,
+        runningTotalNgn: Math.round(running * 100) / 100,
+      };
+    });
+
     return {
       companyName: biz.companyName,
-      years: rows.map(r => ({
-        year:        Number(r.year),
-        spentNgn:    Number(r.spent),
-        payments:    Number(r.payments),
-        toppedUpNgn: Number(r.topups),
-      })),
+      from:        fromDate.toISOString(),
+      to:          toDate.toISOString(),
+      entries,
+      totals: {
+        // The hero figure. Scoped to this window and nothing wider, and
+        // the period travels with it so the screen can never print the
+        // number without the dates above it.
+        paidNgn: Math.round(entries.reduce((a, e) => a + e.amountNgn, 0) * 100) / 100,
+        entries: entries.length,
+      },
     };
   }
 

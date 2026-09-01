@@ -22,13 +22,24 @@ export class BusinessController {
     return this.svc.businessDashboard(user.id);
   }
 
-  // Yearly spend statement for company accounting / FIRS expense records
-  // (founder direction 2026-08-10: business + partner need statements
-  // like drivers do). Aggregates successful payments by year.
+  // Spend statement for company accounting / FIRS expense records.
+  // GET /api/v1/business/statement?from=YYYY-MM-DD&to=YYYY-MM-DD
+  //
+  // Bank-statement shape: every settled charge in the window, in date
+  // order, with a running total. Defaults to the last 90 days. Was a
+  // yearly aggregate with no parameters until 2026-09-01; the same
+  // shape the partner route below has had since 10 August.
+  //
+  // Pending charges do not appear here at all, by founder decision.
+  // They stay in the ordinary Payments list.
   @UseGuards(BusinessAccountGuard)
   @Get('business/statement')
-  businessStatement(@CurrentUser() user: User) {
-    return this.svc.getSpendStatement(user.id);
+  businessStatement(
+    @CurrentUser() user: User,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.svc.getSpendStatement(user.id, from, to);
   }
 
   @UseGuards(BusinessAccountGuard)
