@@ -1,6 +1,59 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
+import { PaymentMethod } from './payment.entity';
+
+/**
+ * Translate the provider's payment_type into the rail SEIRS records.
+ *
+ * Returns null for anything unrecognised, and that is the point. The
+ * old behaviour was to assume CARD, which is how every transfer and
+ * USSD payment on the platform came to describe itself as a card. An
+ * unknown rail is a thing we do not know, not a card, and a receipt is
+ * better off silent than confidently wrong.
+ *
+ * Nothing here may ever return WALLET. In this codebase WALLET means
+ * the internal SEIRS balance, so mapping a provider rail onto it would
+ * file provider money against the wrong ledger. Provider wallets such
+ * as barter or opay are deliberately absent rather than guessed at.
+ */
+export function mapProviderMethod(paymentType?: string | null): PaymentMethod | null {
+  const t = String(paymentType ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (!t) return null;
+
+  switch (t) {
+    case 'card':
+    case 'credit':
+    case 'debit_card':
+    case 'applepay':
+    case 'apple_pay':
+    case 'googlepay':
+    case 'google_pay':
+      return PaymentMethod.CARD;
+
+    case 'ussd':
+      return PaymentMethod.USSD;
+
+    case 'account':
+    case 'account_debit':
+    case 'banktransfer':
+    case 'bank_transfer':
+    case 'pay_with_bank_transfer':
+    case 'nqr':
+      return PaymentMethod.BANK;
+
+    case 'mobilemoney':
+    case 'mobile_money':
+    case 'mobilemoneyghana':
+    case 'mobilemoneyuganda':
+    case 'mobilemoneyfranco':
+    case 'mpesa':
+      return PaymentMethod.MOBILE_MONEY;
+
+    default:
+      return null;
+  }
+}
 
 // Flutterwave is the sole payment processor for Seirs.
 // Covers: card payments, bank transfers, mobile money (GHS/KES/UGX/TZS),
@@ -79,6 +132,8 @@ export class FlutterwaveService {
     amount:        number;
     currency:      string;
     transactionId: number;
+    /** Provider's raw payment_type. Null when it reports none. */
+    paymentType:   string | null;
   }> {
     const data = await this.request<any>(
       'GET',
@@ -93,19 +148,26 @@ export class FlutterwaveService {
       amount:        Number(data.data.amount),
       currency:      data.data.currency,
       transactionId: data.data.id,
+      // The rail the customer actually used. This was read off the
+      // response and dropped on the floor, which is why every payment
+      // row claimed to be a card.
+      paymentType:   data.data.payment_type ?? null,
     };
   }
 
   async verifyTransaction(id: string): Promise<{
-    success: boolean;
-    amount:  number;
-    txRef:   string;
+    success:     boolean;
+    amount:      number;
+    txRef:       string;
+    /** Provider's raw payment_type. Null when it reports none. */
+    paymentType: string | null;
   }> {
     const data = await this.request<any>('GET', `/transactions/${id}/verify`);
     return {
-      success: data.data.status === 'successful',
-      amount:  data.data.amount,
-      txRef:   data.data.tx_ref,
+      success:     data.data.status === 'successful',
+      amount:      data.data.amount,
+      txRef:       data.data.tx_ref,
+      paymentType: data.data.payment_type ?? null,
     };
   }
 

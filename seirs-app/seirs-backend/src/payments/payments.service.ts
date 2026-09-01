@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Payment, PaymentMethod, PaymentStatus, EscrowStatus, PaymentPurpose } from './payment.entity';
+import { mapProviderMethod } from './flutterwave.service';
 import { Wallet } from './wallet.entity';
 import { SavedCard } from './saved-card.entity';
 import { FlutterwaveService } from './flutterwave.service';
@@ -148,6 +149,10 @@ export class PaymentsService {
     const payment = this.paymentsRepo.create({
       customer,
       amountKobo:        toKobo(this.CARD_VERIFY_NAIRA),
+      // CARD stands here, unlike the other creation paths, because this
+      // checkout passes paymentOption 'card': no other rail is on offer,
+      // so this is a fact about the request and not an assumption about
+      // the customer. Settle still overwrites it with what came back.
       method:            PaymentMethod.CARD,
       status:            PaymentStatus.PENDING,
       // Tagged so the webhook does not mistake a ₦100 tokenization
@@ -302,11 +307,13 @@ export class PaymentsService {
       paymentOption: opts?.paymentOption,
     });
 
+    // No method: the hosted page offers card, transfer, mobile money and
+    // USSD, and which one the customer picks is not knowable until they
+    // have picked it. It is written from the provider's answer at settle.
     const payment = this.paymentsRepo.create({
       customer,
       delivery,
       amountKobo:        toKobo(delivery.price),
-      method:            PaymentMethod.CARD,
       status:            PaymentStatus.PENDING,
       provider:          'flutterwave',
       providerReference: txRef,
@@ -355,6 +362,8 @@ export class PaymentsService {
       customer:          user,
       delivery,
       amountKobo:        toKobo(delivery.price),
+      // CARD stands here too: this charges a stored card token directly,
+      // with no checkout page in between that could offer another rail.
       method:            PaymentMethod.CARD,
       status:            PaymentStatus.PENDING,
       provider:          'flutterwave',
@@ -540,7 +549,7 @@ export class PaymentsService {
       customer,
       delivery,
       amountKobo:        toKobo(amount),
-      method:            PaymentMethod.CARD,
+      // Rail unknown until the hosted page settles. See above.
       status:            PaymentStatus.PENDING,
       purpose:           PaymentPurpose.REDIRECT_FEE,
       provider:          'flutterwave',
@@ -632,7 +641,7 @@ export class PaymentsService {
       customer,
       dropoffId,
       amountKobo:        toKobo(amountNgn),
-      method:            PaymentMethod.CARD,
+      // Rail unknown until the hosted page settles. See above.
       status:            PaymentStatus.PENDING,
       purpose:           kind === 'topup' ? PaymentPurpose.STORE_TOPUP : PaymentPurpose.STORE_DROPOFF,
       provider:          'flutterwave',
@@ -786,11 +795,44 @@ export class PaymentsService {
         return null;
       }
 
+      /**
+       * The rail the customer actually used, resolved ONCE here and
+       * written by every settle branch below.
+       *
+       * Position matters. Two later decisions read payment.method and
+       * both of them silently do nothing if it is still null:
+       *
+       *   - card tokenisation, further down this method, reads the
+       *     in-memory object, which is why the mirror on the next line
+       *     is not decoration
+       *   - the escrow refund gate in refundEscrow, which reloads the
+       *     row, which is why the DB write matters there
+       *
+       * So this sits above all seven branches, and each branch spreads
+       * methodPatch into its own update.
+       *
+       * The patch is empty when the provider reported nothing
+       * recognisable. That leaves an existing value alone rather than
+       * erasing it, and leaves an unknown rail null rather than calling
+       * it a card, which is the whole point of the exercise.
+       */
+      const settledMethod = mapProviderMethod(result.paymentType);
+      const methodPatch: { method?: PaymentMethod } = settledMethod ? { method: settledMethod } : {};
+      if (settledMethod) payment.method = settledMethod;
+      if (!settledMethod && result.paymentType) {
+        // An unmapped rail is a gap in mapProviderMethod, not a customer
+        // problem. Name it so it can be added rather than discovered.
+        this.logger.warn(
+          `Unmapped provider payment_type "${result.paymentType}" on ${txRef}; method left null.`,
+        );
+      }
+
       // A card-tokenization charge is not a fare. It must never be
       // escrowed or earn loyalty points; verifyAndRefundCardCharge owns
       // the rest of its lifecycle and refunds it.
       if (payment.purpose === PaymentPurpose.CARD_VERIFICATION) {
         await this.paymentsRepo.update(payment.id, {
+          ...methodPatch,
           status:                   PaymentStatus.SUCCESS,
           flutterwaveTransactionId: result.transactionId,
         });
@@ -808,6 +850,7 @@ export class PaymentsService {
       // A return settles outright and then turns the package around.
       if (payment.purpose === PaymentPurpose.RETURN_TO_SENDER) {
         await this.paymentsRepo.update(payment.id, {
+          ...methodPatch,
           status:                   PaymentStatus.SUCCESS,
           flutterwaveTransactionId: result.transactionId,
         });
@@ -825,6 +868,7 @@ export class PaymentsService {
 
       if (payment.purpose === PaymentPurpose.ADDRESS_CHANGE) {
         await this.paymentsRepo.update(payment.id, {
+          ...methodPatch,
           status:                   PaymentStatus.SUCCESS,
           flutterwaveTransactionId: result.transactionId,
         });
@@ -842,6 +886,7 @@ export class PaymentsService {
 
       if (payment.purpose === PaymentPurpose.REDIRECT_FEE) {
         await this.paymentsRepo.update(payment.id, {
+          ...methodPatch,
           status:                   PaymentStatus.SUCCESS,
           flutterwaveTransactionId: result.transactionId,
         });
@@ -864,6 +909,7 @@ export class PaymentsService {
        */
       if (payment.purpose === PaymentPurpose.STORE_DROPOFF || payment.purpose === PaymentPurpose.STORE_TOPUP) {
         await this.paymentsRepo.update(payment.id, {
+          ...methodPatch,
           status:                   PaymentStatus.SUCCESS,
           escrowStatus:             EscrowStatus.HELD,
           flutterwaveTransactionId: result.transactionId,
@@ -891,6 +937,7 @@ export class PaymentsService {
        */
       if (payment.delivery && String(payment.delivery.status) === 'cancelled') {
         await this.paymentsRepo.update(payment.id, {
+          ...methodPatch,
           status:                   PaymentStatus.SUCCESS,
           escrowStatus:             EscrowStatus.REFUNDED,
           flutterwaveTransactionId: result.transactionId,
@@ -924,6 +971,7 @@ export class PaymentsService {
       }
 
       await this.paymentsRepo.update(payment.id, {
+        ...methodPatch,
         status:                    PaymentStatus.SUCCESS,
         escrowStatus:              EscrowStatus.HELD,
         flutterwaveTransactionId:  result.transactionId,
@@ -994,9 +1042,16 @@ export class PaymentsService {
         }
       }
 
-      // If the customer paid by card AND opted to save it, persist the
-      // Flutterwave token so future charges are one-tap. We rely on the
-      // customer's `saveCard` flag stored in payment.meta (set at initiate).
+      /**
+       * Tokenise the card, if a card is what was used.
+       *
+       * This READS the method resolved above, from the in-memory object.
+       * It used to match every single payment, because every payment
+       * claimed to be a card, and then asked the provider for a token
+       * that a transfer or USSD transaction never had. The null return
+       * hid it. Now it only asks when a card was really used, which is
+       * both correct and one fewer provider call per transfer.
+       */
       if (payment.method === PaymentMethod.CARD && result.transactionId) {
         try {
           const card = await this.flutterwaveService.fetchCardTokenFromTransaction(result.transactionId);
