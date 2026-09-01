@@ -25,6 +25,10 @@ import {
   // pages between one parcel's ticket and the next, and ArrowLeft is
   // already spoken for by the header back button on that screen.
   ChevronLeft, ExternalLink, Route,
+  // Added 2026-09-01 for the rebuilt register: customer draws the
+  // unchecked box as a Square glyph beside CheckSquare, and this
+  // registry renders NOTHING for a name it does not know.
+  Square,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -55,6 +59,10 @@ const ICONS: Record<string, LucideIcon> = {
   // pages between one parcel's ticket and the next, and ArrowLeft is
   // already spoken for by the header back button on that screen.
   ChevronLeft, ExternalLink, Route,
+  // Added 2026-09-01 for the rebuilt register: customer draws the
+  // unchecked box as a Square glyph beside CheckSquare, and this
+  // registry renders NOTHING for a name it does not know.
+  Square,
 };
 
 // Last-resort glyph, borrowed from the `FALLBACK[name] ?? something` shape

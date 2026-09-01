@@ -140,6 +140,17 @@ export default function VerifyOtpScreen() {
                 value={digit}
                 onChangeText={t => handleChange(t, i)}
                 onKeyPress={e => handleKeyPress(e, i)}
+                onFocus={() => {
+                  // Tapping straight into a later box let people type a code
+                  // with holes in it: the founder produced "2 2 _ 6 6 _" on
+                  // the business app, 2026-09-01. A forward tap now snaps
+                  // back to the first empty box. Tapping BACK to correct a
+                  // digit already entered is still allowed, which is why
+                  // this compares against the gap rather than pinning focus.
+                  const gap      = otp.findIndex(d => !d);
+                  const furthest = gap === -1 ? otp.length - 1 : gap;
+                  if (i > furthest) inputRefs.current[furthest]?.focus();
+                }}
                 keyboardType="number-pad"
                 maxLength={1}
                 textAlign="center"
