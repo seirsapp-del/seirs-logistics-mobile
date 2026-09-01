@@ -8,6 +8,7 @@ import {
   StatusBar,
   Platform,
   Modal,
+  Linking,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
@@ -24,6 +25,11 @@ import { HamburgerButton } from '@/components/HamburgerButton';
 import { driversApi, earningsApi, notificationsApi } from '@/services/api';
 import { naira, nairaShort } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+
+// The marketing site is the single home for FAQ and the legal documents:
+// it is edited without shipping a release, and it teaches people SEIRS
+// has a site they can navigate on their own (founder 2026-09-01).
+const SITE = 'https://seirs-website.vercel.app';
 
 interface MenuSection {
   title: string;
@@ -104,7 +110,19 @@ export default function DriverProfileScreen() {
     {
       title: 'Preferences',
       items: [
-        { icon: 'notifications-outline', label: 'Notification Settings', route: '/(driver)/notification-settings' },
+        /*
+         * No Notifications row here, matching business (founder 2026-08-16,
+         * restated 2026-09-01). Two reasons, and the second is the real one:
+         *
+         * The bell in this screen's own header already opens the inbox, so
+         * this was a second door to the same place.
+         *
+         * And there is nothing worth configuring. Everything the app sends
+         * is something the person wants: a job offer, an earning, a message
+         * from the other party, a payment. A settings screen full of toggles
+         * nobody would ever turn off is furniture that implies these are
+         * optional. They are not.
+         */
         { icon: 'lock-closed-outline',   label: 'Privacy & Data',        route: '/(driver)/privacy' },
         {
           icon:  'contrast-outline',
@@ -124,13 +142,48 @@ export default function DriverProfileScreen() {
       ],
     },
     {
+      /*
+       * Support, Legal and Account actions now match business and customer,
+       * which the founder signed off on 2026-09-01. Driver was the only one
+       * of the three that folded the ticket row into help, so a rider who
+       * wanted to raise something had no obvious row for it.
+       *
+       * Help opens the website rather than the in-app help screen: it is
+       * edited without shipping a release, and it teaches riders SEIRS has
+       * a site they can navigate on their own.
+       */
       title: 'Support',
       items: [
-        { icon: 'help-circle-outline', label: 'Help & Support', sub: 'FAQs and live chat', route: '/(driver)/help' },
-        // Deliberately duplicated from the drawer (founder 2026-08-10),
-        // like Documents and SOS.
-        { icon: 'book-outline',        label: 'Driver Code of Conduct', sub: 'The standard every SEIRS driver agrees to', route: '/(driver)/code-of-conduct' },
-        { icon: 'alert-circle-outline', label: 'SOS Emergency', sub: 'Immediate help with live location', route: '/(driver)/sos', danger: true },
+        { icon: 'help-circle-outline',  label: 'Help & FAQ',      sub: 'Answers to the common questions', onPress: () => Linking.openURL(`${SITE}/faq`).catch(() => {}) },
+        { icon: 'chatbubble-outline',   label: 'Contact Support', sub: 'Raise a ticket with a person',    route: '/(driver)/support/new' },
+        { icon: 'alert-circle-outline', label: 'SOS Emergency',   sub: 'Immediate help with live location', route: '/(driver)/sos', danger: true },
+      ],
+    },
+    {
+      /*
+       * Legal was scattered: customer linked Terms and not Privacy,
+       * business linked Privacy and not Terms, driver linked neither. Both
+       * documents in every app now. The Code of Conduct joins them here,
+       * because it is the third thing a rider agrees to and it belongs
+       * beside the other two rather than under Support.
+       */
+      title: 'Legal',
+      items: [
+        { icon: 'document-text-outline', label: 'Terms of Service', sub: 'The agreement you signed up under', onPress: () => Linking.openURL(`${SITE}/terms-of-service`).catch(() => {}) },
+        { icon: 'lock-closed-outline',   label: 'Privacy Policy',   sub: 'How SEIRS handles your data',      onPress: () => Linking.openURL(`${SITE}/privacy-policy`).catch(() => {}) },
+        { icon: 'book-outline',          label: 'Driver Code of Conduct', sub: 'The standard every SEIRS driver agrees to', route: '/(driver)/code-of-conduct' },
+      ],
+    },
+    {
+      /*
+       * Its own group, at the end, in red. Google Play requires in-app
+       * account deletion wherever an app creates accounts, and it has to be
+       * findable, not merely present. The screen existed already, reachable
+       * only from inside Privacy.
+       */
+      title: 'Account actions',
+      items: [
+        { icon: 'trash-outline', label: 'Delete Account', sub: 'Close your SEIRS account for good', route: '/(driver)/delete-account', danger: true },
       ],
     },
   ];

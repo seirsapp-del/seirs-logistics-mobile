@@ -178,13 +178,9 @@ export default function CustomerNotificationsScreen() {
               <Icon name="Trash2" size={18} color={theme.textSecond} />
             </Pressable>
           )}
-          <Pressable
-            onPress={() => router.push('/(customer)/notification-settings' as any)}
-            hitSlop={8}
-            accessibilityLabel="Notification settings"
-          >
-            <Icon name="Settings" size={18} color={theme.textSecond} />
-          </Pressable>
+        {/* The settings link is gone with the row that fed it. Everything
+            this app sends is something the person wants, so there is
+            nothing here to turn off (founder 2026-09-01). */}
         </View>
       </View>
 

@@ -18,6 +18,11 @@ import { HamburgerButton } from '@/components/HamburgerButton';
 import { deliveriesApi, loyaltyApi, promotionsApi } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
+
+// The marketing site is the single home for FAQ and the legal documents:
+// it is edited without shipping a release, and it teaches people SEIRS
+// has a site they can navigate on their own (founder 2026-09-01).
+const SITE = 'https://seirs-website.vercel.app';
 type MenuSection = { title: string; items: MenuItem[] };
 type MenuItem = { icon: string; label: string; sub?: string; onPress: () => void; danger?: boolean };
 
@@ -110,7 +115,19 @@ export default function ProfileScreen() {
     {
       title: t('profile.sectionPreferences'),
       items: [
-        { icon: 'notifications-outline', label: t('profile.notifications'), sub: t('profile.notificationsSub'), onPress: () => router.push('/(customer)/notifications' as any) },
+        /*
+         * No Notifications row here, matching business (founder 2026-08-16,
+         * restated 2026-09-01). Two reasons, and the second is the real one:
+         *
+         * The bell in this screen's own header already opens the inbox, so
+         * this was a second door to the same place.
+         *
+         * And there is nothing worth configuring. Everything the app sends
+         * is something the person wants: a job offer, an earning, a message
+         * from the other party, a payment. A settings screen full of toggles
+         * nobody would ever turn off is furniture that implies these are
+         * optional. They are not.
+         */
         { icon: 'document-text-outline', label: 'Documents', sub: 'Letters and documents from SEIRS', onPress: () => router.push('/(customer)/documents' as any) },
         { icon: 'language-outline',      label: t('profile.language'),      sub: t('profile.languageSub'),      onPress: () => router.push('/(customer)/language') },
         { icon: 'lock-closed-outline',   label: t('profile.privacy'),       sub: t('profile.privacySub'),       onPress: () => router.push('/(customer)/privacy') },
@@ -132,14 +149,47 @@ export default function ProfileScreen() {
       ],
     },
     {
+      /*
+       * Support, Legal and Account actions now match business, which the
+       * founder signed off on 2026-09-01. The three apps used to name the
+       * same thing three ways ("Help Center", "Help & Support",
+       * "Help & FAQ") and only driver folded the ticket row into help.
+       *
+       * Help opens the website rather than the in-app help screen. His
+       * call: the site is edited without shipping a release, and it teaches
+       * people SEIRS has a site they can navigate on their own.
+       */
       title: t('profile.sectionSupport'),
       items: [
-        // One help entry, not two: the old "Live Chat" row went to the
-        // exact same help screen. Live chat now means a real ticket.
-        { icon: 'help-circle-outline',   label: t('profile.helpCenter'), sub: t('profile.helpCenterSub'), onPress: () => router.push('/(customer)/help') },
-        { icon: 'chatbubble-outline',    label: t('profile.liveChat'),   sub: t('profile.liveChatSub'),   onPress: () => router.push('/(customer)/support/new' as any) },
-        { icon: 'alert-circle-outline',  label: t('profile.sos', { defaultValue: 'SOS Emergency' }), sub: t('profile.sosSub', { defaultValue: 'Immediate help with live location' }), onPress: () => router.push('/(customer)/sos' as any), danger: true },
-        { icon: 'document-text-outline', label: t('profile.terms'),      sub: t('profile.termsSub'),      onPress: () => Linking.openURL('https://seirs-website.vercel.app/terms-of-service').catch(() => alertDialog(t('common.comingSoon'), t('profile.termsComingSoon'))) },
+        { icon: 'help-circle-outline',  label: t('profile.helpCenter', { defaultValue: 'Help & FAQ' }), sub: t('profile.helpCenterSub'), onPress: () => Linking.openURL(`${SITE}/faq`).catch(() => alertDialog(t('common.comingSoon'), t('profile.termsComingSoon'))) },
+        { icon: 'chatbubble-outline',   label: t('profile.contactSupport', { defaultValue: 'Contact Support' }), sub: t('profile.liveChatSub'), onPress: () => router.push('/(customer)/support/new' as any) },
+        { icon: 'alert-circle-outline', label: t('profile.sos', { defaultValue: 'SOS Emergency' }), sub: t('profile.sosSub', { defaultValue: 'Immediate help with live location' }), onPress: () => router.push('/(customer)/sos' as any), danger: true },
+      ],
+    },
+    {
+      /*
+       * Legal was scattered across the three: customer linked Terms and not
+       * Privacy, business linked Privacy and not Terms, driver linked
+       * neither. Both documents, in every app, from now on.
+       */
+      title: t('profile.sectionLegal', { defaultValue: 'Legal' }),
+      items: [
+        { icon: 'document-text-outline', label: t('profile.terms', { defaultValue: 'Terms of Service' }), sub: t('profile.termsSub'), onPress: () => Linking.openURL(`${SITE}/terms-of-service`).catch(() => alertDialog(t('common.comingSoon'), t('profile.termsComingSoon'))) },
+        { icon: 'lock-closed-outline',   label: t('profile.privacyPolicy', { defaultValue: 'Privacy Policy' }), sub: t('profile.privacyPolicySub', { defaultValue: 'How SEIRS handles your data' }), onPress: () => Linking.openURL(`${SITE}/privacy-policy`).catch(() => alertDialog(t('common.comingSoon'), t('profile.termsComingSoon'))) },
+      ],
+    },
+    {
+      /*
+       * Its own group, at the end, in red. Google Play requires in-app
+       * account deletion wherever an app creates accounts, and the
+       * requirement is not merely that it exists but that a person can find
+       * it. The screen has existed all along, reachable only from inside
+       * Privacy, which is where you put something you would rather nobody
+       * found.
+       */
+      title: t('profile.sectionAccountActions', { defaultValue: 'Account actions' }),
+      items: [
+        { icon: 'trash-outline', label: t('profile.deleteAccount', { defaultValue: 'Delete Account' }), sub: t('profile.deleteAccountSub', { defaultValue: 'Close your SEIRS account for good' }), onPress: () => router.push('/(customer)/delete-account' as any), danger: true },
       ],
     },
   ];
