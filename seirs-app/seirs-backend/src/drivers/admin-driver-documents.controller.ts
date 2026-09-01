@@ -35,6 +35,15 @@ export class AdminDriverDocumentsController {
     return this.drivers.listDriverDocuments(status, page, driverId);
   }
 
+  // GET /api/v1/admin/driver-documents/queue
+  // One row per rider waiting on ANY decision: account approval, documents,
+  // or a vehicle change. Replaces three separate lists a reviewer had to
+  // reconcile in their head.
+  @Get('queue')
+  queue() {
+    return this.drivers.kycQueue();
+  }
+
   // GET /api/v1/admin/driver-documents/counts
   // Feeds the dashboard: waiting, expired, expiring within 30 days.
   @Get('counts')

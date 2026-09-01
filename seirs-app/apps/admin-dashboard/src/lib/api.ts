@@ -579,6 +579,13 @@ export const adminApi = {
      * The route has existed since 2026-08-31 and nothing called it, so the
      * counts were computed and shown to nobody.
      */
+    /**
+     * One row per rider waiting on ANY decision. Replaces the three lists a
+     * reviewer had to reconcile: pending accounts, submitted documents, and
+     * pending vehicle changes.
+     */
+    queue: () => req<{ count: number; items: any[] }>('/admin/driver-documents/queue'),
+
     counts: () =>
       req<{ waiting: number; expired: number; expiringSoon: number; driversWaiting: number }>(
         '/admin/driver-documents/counts'),

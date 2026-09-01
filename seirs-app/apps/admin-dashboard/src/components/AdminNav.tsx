@@ -98,13 +98,29 @@ function useKycWaitingCount() {
       Promise.allSettled([
         adminApi.drivers(1, 'pending'),
         adminApi.vehicleChange.pending(),
-      ]).then(([pending, veh]) => {
+        adminApi.driverDocuments.counts(),
+      ]).then(([pending, veh, docs]) => {
         if (!alive) return;
         const p = pending.status === 'fulfilled'
           ? Number((pending.value as any)?.total ?? (pending.value as any)?.drivers?.length ?? 0)
           : 0;
-        const v = veh.status === 'fulfilled' ? Number((veh.value as any)?.count ?? 0) : 0;
-        setCount(p + v);
+        const v = veh.status  === 'fulfilled' ? Number((veh.value  as any)?.count ?? 0) : 0;
+        /**
+         * Documents from an ALREADY-APPROVED rider.
+         *
+         * This was here, I took it out, and taking it out was the bug. The
+         * first version used driversWaiting alone and missed applicants who
+         * had uploaded nothing; I swapped it for pending accounts instead of
+         * adding to it, and so removed the only signal that an approved rider
+         * had sent something in.
+         *
+         * The founder uploaded four documents from his phone and the
+         * dashboard stayed silent, because his rider account is approved and
+         * therefore not pending. Both numbers matter and neither replaces the
+         * other.
+         */
+        const d = docs.status === 'fulfilled' ? Number((docs.value as any)?.driversWaiting ?? 0) : 0;
+        setCount(p + v + d);
       });
     };
     load();

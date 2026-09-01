@@ -97,14 +97,22 @@ export default function DriverDetailPage() {
     if (decision === 'approved' && EXPIRES.has(String(d.docId))) {
       const answer = await promptFor({
         title:   'When does this expire?',
-        message: 'YYYY-MM-DD, from the document itself. Ops is warned 30 days before, and again once it lapses. Leave it blank if the document carries no date.',
-        placeholder: 'YYYY-MM-DD',
+        message: 'Pick the date printed on the document. The rider is emailed 30 days before with what to re-upload, and ops is warned again once it lapses.',
+        label:   'Expiry date',
+        date:    true,
+        helper:  'Leave it blank if the document carries no expiry date.',
         confirmLabel: 'Approve',
       });
       if (answer === null) return;                    // reviewer backed out
       const clean = String(answer).trim();
+      /*
+       * A calendar hands back ISO already, so this guard should never fire.
+       * Kept because a browser with no date support degrades to a text box,
+       * and a silently mis-stored expiry is the failure this whole feature
+       * exists to prevent.
+       */
       if (clean && !/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-        setError('That date is not YYYY-MM-DD, so it was not saved. Approve again with the date as written on the document.');
+        setError('That did not come back as a date, so nothing was saved. Try again.');
         return;
       }
       expiresAt = clean || null;

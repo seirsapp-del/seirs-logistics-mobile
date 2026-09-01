@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { PageIntro } from '@/components/PageIntro';
-import { VehicleChangeQueue } from '@/components/VehicleChangeQueue';
+import { KycQueue } from '@/components/KycQueue';
 import { EmptyState } from '@/components/EmptyState';
 import { useConfirm, useNotify, usePrompt } from '@/components/ConfirmDialog';
 import { driverStatus, humanHint } from '@/lib/labels';
@@ -28,11 +28,13 @@ import { driverStatus, humanHint } from '@/lib/labels';
  * starts. Both decisions now sit directly under the evidence.
  */
 
-const STATUSES = ['pending', 'approved', 'suspended', 'rejected'] as const;
+// 'pending' is gone: those riders are in the queue above, with everything
+// else they are waiting on beside them. These tabs are for looking up a
+// decision that has already been made.
+const STATUSES = ['approved', 'suspended', 'rejected'] as const;
 type Status = typeof STATUSES[number];
 
 const STATUS_STYLES: Record<Status, string> = {
-  pending:   'bg-amber-100 text-amber-800',
   approved:  'bg-emerald-100 text-emerald-700',
   suspended: 'bg-red-100 text-red-700',
   rejected:  'bg-[#0F2B4C]/5 text-[#0F2B4C]/50',
@@ -70,7 +72,7 @@ export default function DriverKycQueuePage() {
   const prompt  = usePrompt();
   const notify  = useNotify();
 
-  const [status,  setStatus]  = useState<Status>('pending');
+  const [status,  setStatus]  = useState<Status>('approved');
   const [search,  setSearch]  = useState('');
   const [page,    setPage]    = useState(1);
   const [data,    setData]    = useState<any>(null);
@@ -303,21 +305,30 @@ export default function DriverKycQueuePage() {
         </div>
       )}
 
-      {/* The machine, under the same roof as the person. Above the roster
-          because it is a decision somebody is waiting on, and the roster
-          below is a list you browse. */}
+      {/*
+        THE queue. One row per rider, whatever they are waiting on: a new
+        account, uploaded documents, a vehicle change, or all three at once.
+
+        This replaced a "Vehicle changes" block that sat above the roster as
+        a second list. The founder's objection to that was exact: stacking
+        two fields on one page is not wiring them together, and a rider who
+        needed two decisions still appeared twice.
+
+        The status tabs below are for browsing what has already been decided,
+        which is a different job from working a queue.
+      */}
       <section className="mb-8">
         <div className="mb-3 flex items-center gap-2">
           <h2 className="text-sm font-bold uppercase tracking-wide text-[#0F2B4C]/60">
-            Vehicle changes
+            Waiting on you
           </h2>
           {vehChanges > 0 && (
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 tabular-nums">
-              {vehChanges} waiting
+              {vehChanges} rider{vehChanges === 1 ? '' : 's'}
             </span>
           )}
         </div>
-        <VehicleChangeQueue onCountChange={setVehChanges} />
+        <KycQueue onCountChange={setVehChanges} />
       </section>
 
       {/* Rejected and Suspended are tabs here so a decision made on this
@@ -361,10 +372,9 @@ export default function DriverKycQueuePage() {
         )}
       </div>
 
-      {/* Newest first is the server's order and cannot be changed from
-          here, so say which end the longest wait is at rather than let
-          somebody work the queue backwards without knowing. */}
-      {status === 'pending' && lastPage > 1 && !loading && (
+      {/* Kept for the decided tabs only. The queue above sorts itself
+          oldest-first, so it never needs this. */}
+      {false && lastPage > 1 && !loading && (
         <p className="mb-3 text-xs text-[#0F2B4C]/50">
           Newest applications first. The drivers who have waited longest are on page {lastPage}.{' '}
           <button onClick={() => load(lastPage)} className="font-semibold text-[#3A7BD5] hover:underline">
@@ -400,13 +410,6 @@ export default function DriverKycQueuePage() {
               title={`Nothing matches "${search.trim()}"`}
               body={`No ${driverStatus(status).toLowerCase()} driver matches that name, email, phone, SEIRS ID or plate.`}
               action={{ label: 'Clear the search', onClick: () => setSearch('') }}
-            />
-          ) : status === 'pending' ? (
-            <EmptyState
-              icon={<ShieldCheck size={20} />}
-              tone="good"
-              title="No driver is waiting to be approved"
-              body="Every application has been decided. New sign-ups arrive here on their own."
             />
           ) : (
             <EmptyState

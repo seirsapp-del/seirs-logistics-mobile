@@ -18,6 +18,7 @@ import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-tic
 import { DriverEarning } from '../earnings/driver-earning.entity';
 import { vehicleIdentityForPassenger } from '../common/redact-driver';
 import { DriverDocument, DriverDocStatus } from './driver-document.entity';
+import { buildKycQueue } from './kyc-queue';
 
 /**
  * The five documents a vehicle change carries, keyed exactly as the driver
@@ -2541,6 +2542,13 @@ export class DriversService {
    * half: a licence that lapses is not a document anyone re-submits
    * unprompted.
    */
+  /**
+   * One row per rider waiting on anything. See kyc-queue.ts for why.
+   */
+  async kycQueue() {
+    return buildKycQueue(this.repo.manager.connection);
+  }
+
   async driverDocumentCounts() {
     const soon = new Date();
     soon.setDate(soon.getDate() + 30);

@@ -47,6 +47,16 @@ export interface PromptOptions {
   /** Small print under the field: who sees this text, what it is kept for. */
   helper?:       string;
   numeric?:      boolean;
+  /**
+   * Render a real calendar instead of a text box.
+   *
+   * Document expiry was a typed YYYY-MM-DD field, which asks a reviewer
+   * holding a Nigerian licence printed 12/03/2027 to work out whether that
+   * is March or December and then reverse it. `<input type="date">` opens
+   * the browser's own picker, in the reviewer's own locale, and hands back
+   * an unambiguous ISO date. No dependency.
+   */
+  date?:         boolean;
 }
 
 export interface NotifyOptions {
@@ -228,6 +238,7 @@ export function PromptDialog({
   minLength    = 0,
   helper,
   numeric      = false,
+  date         = false,
   onSubmit,
   onCancel,
 }: PromptOptions & { onSubmit: (value: string) => void; onCancel: () => void }) {
@@ -261,6 +272,7 @@ export function PromptDialog({
         />
       ) : (
         <input
+          type={date ? 'date' : 'text'}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
