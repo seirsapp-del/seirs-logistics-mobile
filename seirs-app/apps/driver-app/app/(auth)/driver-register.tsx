@@ -351,7 +351,7 @@ export default function DriverRegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:     { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.xl, paddingBottom: Spacing.xl },
+  container:     { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.xxl, paddingBottom: Spacing.xl },
   backBtn:       { marginBottom: Spacing.lg },
   backCircle:    { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   header:        { marginBottom: Spacing.lg },

@@ -26,6 +26,7 @@ const PRIVACY_URL = 'https://seirs-website.vercel.app/privacy-policy';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
+import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { authApi } from '@/services/api';
 import { validatePassword, isPasswordValid, PASSWORD_HELP_TEXT } from '@seirs/shared';
 import { StatePicker } from '@/components/StatePicker';
@@ -163,6 +164,15 @@ export default function RegisterScreen() {
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
         </Pressable>
+
+        {/* This screen carried no branding, the same gap the OTP screen had.
+            Sign-up is the first real commitment somebody makes, so it is a
+            poor place to drop the mark (founder 2026-09-01). */}
+        <View style={styles.brandRow}>
+          <SeirsMarkBold size={38} color="#0F2B4C" hubColor="#FFFFFF" />
+          <Text style={styles.brand}>SEIRS</Text>
+          <Text style={styles.brandSub}>Business &amp; Partners</Text>
+        </View>
 
         <Text style={styles.heading}>Create Business Account</Text>
         <Text style={styles.sub}>
@@ -349,6 +359,9 @@ const styles = StyleSheet.create({
   // overrides at the use site, so the screen is at minimum readable -
   // a full per-element theming pass can come later if needed since
   // register is a one-shot screen seen only during signup.
+  brandRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', marginBottom: 20 },
+  brand:     { fontSize: 15, fontWeight: '900', letterSpacing: 4, color: '#0F2B4C' },
+  brandSub:  { fontSize: 12, marginTop: 1, color: '#6B7280' },
   backBtn:    { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginLeft: -8 },
   heading:    { fontSize: 24, fontWeight: '800', color: '#0F2B4C', marginBottom: 8 },
   sub:        { fontSize: 15, color: '#6B7280', marginBottom: 24, lineHeight: 20 },
