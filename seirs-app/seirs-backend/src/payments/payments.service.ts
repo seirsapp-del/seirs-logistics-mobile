@@ -451,14 +451,27 @@ export class PaymentsService {
       },
     });
 
+    /**
+     * Built with the entity's real column names, and without the `as
+     * any` that hid the fact that it was not.
+     *
+     * This said `user` and `amount`. There is no user column and no
+     * amount column: they are customer and amountKobo, in kobo, not
+     * naira. TypeORM drops keys it does not recognise, so the insert
+     * went in with a null amountKobo against a NOT NULL bigint and
+     * threw. Nobody could pay for a return at all. The cast is what
+     * kept the compiler quiet about it, so it is gone.
+     */
     const payment = this.paymentsRepo.create({
+      customer,
       delivery,
-      user:              customer,
-      amount,
-      purpose:           PaymentPurpose.RETURN_TO_SENDER,
+      amountKobo:        toKobo(amount),
       status:            PaymentStatus.PENDING,
+      purpose:           PaymentPurpose.RETURN_TO_SENDER,
+      provider:          'flutterwave',
       providerReference: txRef,
-    } as any);
+      authorizationUrl:  paymentLink,
+    });
     await this.paymentsRepo.save(payment);
 
     return { authorizationUrl: paymentLink, reference: txRef, amountNgn: amount };
@@ -494,14 +507,18 @@ export class PaymentsService {
       },
     });
 
+    // Same broken shape as the return path above, same fix: real column
+    // names, kobo not naira, and no cast to hide the next one.
     const payment = this.paymentsRepo.create({
+      customer,
       delivery,
-      user:              customer,
-      amount,
-      purpose:           PaymentPurpose.ADDRESS_CHANGE,
+      amountKobo:        toKobo(amount),
       status:            PaymentStatus.PENDING,
+      purpose:           PaymentPurpose.ADDRESS_CHANGE,
+      provider:          'flutterwave',
       providerReference: txRef,
-    } as any);
+      authorizationUrl:  paymentLink,
+    });
     await this.paymentsRepo.save(payment);
 
     return { authorizationUrl: paymentLink, reference: txRef, amountNgn: amount };
