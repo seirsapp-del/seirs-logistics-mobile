@@ -5,20 +5,44 @@
  * land on the admin desk; misuse is an account offence, but a real
  * emergency never meets a cooldown.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, StatusBar, Alert, Linking, ActivityIndicator,
-  Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView,
+  Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView, Animated, Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Icon } from '@/components/Icon';
-import { Colors } from '@/constants/theme';
+import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'expo-router';
 import { sosApi } from '@/services/api';
+import type { EmergencyContactDTO } from '@seirs/shared/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
+/** Which glyph a directory entry gets, from the category an admin set. */
+const CATEGORY_ICON: Record<string, string> = {
+  emergency: 'AlertCircle',
+  national:  'AlertCircle',
+  police:    'Shield',
+  fire:      'Flame',
+  medical:   'AlertCircle',
+  ambulance: 'AlertCircle',
+  road:      'Car',
+  traffic:   'Car',
+};
+
+/**
+ * Dialled when the network is gone. Deliberately the national lines only:
+ * a wrong number here is worse than a short list.
+ */
+const FALLBACK_CONTACTS: EmergencyContactDTO[] = [
+  { id: 'fallback-112', name: 'Emergency (all services)', numbers: ['112'],
+    instruction: 'The national emergency line. Dial this first if you are hurt or in danger.' },
+  { id: 'fallback-199', name: 'Fire Service', numbers: ['199'],
+    instruction: 'Fire, or a vehicle burning. For anything else use 112.' },
+];
+
 export default function BusinessSosScreen() {
   const router     = useRouter();
   const { isDark } = useTheme();
@@ -26,6 +50,25 @@ export default function BusinessSosScreen() {
 
   const [firing,    setFiring]    = useState(false);
   const [alertId,   setAlertId]   = useState<string | null>(null);
+
+  /**
+   * The five second window, brought over from customer and driver.
+   *
+   * Business fired instantly and offered a "false alarm" only AFTER the
+   * alert had already landed on the ops desk. The other two show a visible
+   * countdown first, so a misfire can be taken back before anyone is
+   * troubled by it. Same API underneath: the alert really is sent, and
+   * cancel really does withdraw it. What the countdown adds is the person
+   * KNOWING they still can (founder 2026-09-01).
+   */
+  const [countdown, setCountdown] = useState(5);
+
+  // The two breathing rings behind the button, ported from driver.
+  const pulse1 = useRef(new Animated.Value(1)).current;
+  const pulse2 = useRef(new Animated.Value(1)).current;
+
+  /** The dialled-from directory, served by the backend and admin-editable. */
+  const [contacts, setContacts] = useState<EmergencyContactDTO[]>(FALLBACK_CONTACTS);
 
   // "What is happening?" state. Asked only AFTER the alert has gone out:
   // an SOS must never become a form, so the button is the alarm and the
@@ -37,6 +80,51 @@ export default function BusinessSosScreen() {
   const [noteText,   setNoteText]   = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteSent,   setNoteSent]   = useState(false);
+
+  /**
+   * Load the directory BEFORE anything happens, never after the button is
+   * pressed: the founder's intent is that a person dials help themselves
+   * while SEIRS also responds, so the numbers have to be on screen already.
+   *
+   * Business used to hardcode 112 and 767, which meant changing an
+   * emergency number needed an app release, and it was missing 199 (fire)
+   * and 122 (road safety) that the server already serves. The fallback
+   * stays because this screen must work with no network at all.
+   */
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse1, { toValue: 1.4, duration: 1000, useNativeDriver: true, easing: Easing.out(Easing.ease) }),
+      Animated.timing(pulse1, { toValue: 1,   duration: 1000, useNativeDriver: true, easing: Easing.in(Easing.ease) }),
+    ]));
+    const loop2 = Animated.loop(Animated.sequence([
+      Animated.delay(400),
+      Animated.timing(pulse2, { toValue: 1.7, duration: 1000, useNativeDriver: true, easing: Easing.out(Easing.ease) }),
+      Animated.timing(pulse2, { toValue: 1,   duration: 1000, useNativeDriver: true, easing: Easing.in(Easing.ease) }),
+    ]));
+    loop.start(); loop2.start();
+    return () => { loop.stop(); loop2.stop(); };
+  }, [pulse1, pulse2]);
+
+  useEffect(() => {
+    let dead = false;
+    sosApi.emergencyContacts()
+      .then((res) => {
+        if (dead) return;
+        const items = (res?.items ?? [])
+          .filter(c => c && Array.isArray(c.numbers) && c.numbers.length > 0)
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+        if (items.length) setContacts(items);
+      })
+      .catch(() => { /* keep the fallback; never shout on this screen */ });
+    return () => { dead = true; };
+  }, []);
+
+  // Tick the window down once the alert is away.
+  useEffect(() => {
+    if (!alertId || countdown === 0) return;
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [alertId, countdown]);
 
   const fire = async () => {
     setFiring(true);
@@ -53,6 +141,7 @@ export default function BusinessSosScreen() {
       // actually typed after the alert went out, and "Business app SOS"
       // told the ops desk nothing the role badge did not already say.
       const created = await sosApi.trigger({ lat, lng });
+      setCountdown(5);
       setAlertId(created?.id ?? null);
       // Ask what is happening the moment it is sent. Unlike driver and
       // customer there is no timed undo window to protect here: the false
@@ -80,6 +169,7 @@ export default function BusinessSosScreen() {
     if (!alertId) return;
     sosApi.cancel(alertId).catch(() => {});
     setAlertId(null);
+    setCountdown(5);
     setNoteOpen(false);
     setNoteText('');
     setNoteSent(false);
@@ -105,13 +195,17 @@ export default function BusinessSosScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#7F1D1D' }} edges={['top', 'bottom']}>
+    /* Near-black in dark mode, deep red in light: driver's treatment, which
+       the founder picked as the best of the three. Business flooded the whole
+       screen #7F1D1D in BOTH themes, so on a dark phone it was a wall of red
+       with nothing for the button to stand against (founder 2026-09-01). */
+    <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#0A0000' : '#7F1D1D' }} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
           <Icon name="ArrowLeft" size={20} color="#fff" />
         </Pressable>
-        <Text style={styles.title}>Emergency SOS</Text>
+        <Text style={styles.title}>SOS Emergency</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -124,27 +218,39 @@ export default function BusinessSosScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.sosWrap}>
+          <Animated.View style={[styles.ring2, { transform: [{ scale: pulse2 }] }]} />
+          <Animated.View style={[styles.ring1, { transform: [{ scale: pulse1 }] }]} />
+          <Pressable style={styles.sosBtn} onPress={confirmFire} disabled={firing || !!alertId}>
+            {firing ? <ActivityIndicator color="#fff" size="large" /> : (
+              <>
+                <Icon name="AlertTriangle" size={44} color="#fff" />
+                <Text style={styles.sosBtnText}>SOS</Text>
+                {!!alertId && countdown > 0 && (
+                  <Text style={styles.sosCountdown}>{countdown}</Text>
+                )}
+              </>
+            )}
+          </Pressable>
+        </View>
+
         {!alertId ? (
-          <>
-            <Pressable style={styles.sosBtn} onPress={confirmFire} disabled={firing}>
-              {firing
-                ? <ActivityIndicator color="#7F1D1D" size="large" />
-                : <Text style={styles.sosBtnText}>SOS</Text>}
-            </Pressable>
-            <Text style={styles.hint}>
-              Tap if you or anyone around you is in danger. SEIRS support sees
-              your location and account instantly: it does not have to be about
-              a delivery.
+          <View style={styles.idleState}>
+            <Text style={styles.idleTitle}>Theft · Accident · Personal safety</Text>
+            <Text style={styles.idleDesc}>
+              One tap shares your live location with SEIRS support + your
+              driver if a run is active. Use this for real emergencies only.
             </Text>
-          </>
+          </View>
         ) : (
-          <>
-            <View style={[styles.sosBtn, { backgroundColor: '#Fca5a5' }]}>
-              <Icon name="CheckCircle2" size={54} color="#7F1D1D" />
-            </View>
-            <Text style={styles.sentTitle}>Alert sent</Text>
-            <Text style={styles.hint}>
-              SEIRS support has your location. Keep your phone with you.
+          <View style={styles.idleState}>
+            <Text style={styles.sentTitle}>
+              {countdown > 0 ? 'SOS sent' : 'SOS Activated!'}
+            </Text>
+            <Text style={styles.idleDesc}>
+              {countdown > 0
+                ? `Support has been alerted and your location is being shared. Cancel within ${countdown}s if this was a mistake.`
+                : 'Help is on the way. Keep your phone with you.'}
             </Text>
 
             {/* Stays available after the modal is answered or skipped: what
@@ -162,20 +268,39 @@ export default function BusinessSosScreen() {
             </Pressable>
 
             <Pressable style={styles.cancelBtn} onPress={falseAlarm}>
-              <Text style={styles.cancelBtnText}>False alarm: cancel the alert</Text>
+              <Text style={styles.cancelBtnText}>
+                {countdown > 0 ? 'Cancel SOS' : 'False alarm: cancel the alert'}
+              </Text>
             </Pressable>
-          </>
+          </View>
         )}
 
-        <View style={styles.numbersCard}>
-          <Text style={styles.numbersTitle}>NATIONAL EMERGENCY LINES</Text>
-          {[['112', 'National emergency'], ['767', 'Lagos emergency']].map(([num, label]) => (
-            <Pressable key={num} style={styles.numberRow} onPress={() => Linking.openURL(`tel:${num}`)}>
-              <Icon name="Phone" size={16} color="#fff" />
-              <Text style={styles.numberText}>{num}</Text>
-              <Text style={styles.numberLabel}>{label}</Text>
-            </Pressable>
-          ))}
+        <View style={styles.emergencySection}>
+          <Text style={styles.emergencySectionTitle}>Quick Dial</Text>
+          <View style={styles.emergencyRow}>
+            {contacts.map(c => {
+              const dial = c.numbers[0];
+              const alt  = c.numbers.slice(1);
+              return (
+                <Pressable
+                  key={c.id}
+                  style={styles.emergencyCard}
+                  onPress={() => Linking.openURL('tel:' + dial.replace(/[^0-9+*#]/g, '')).catch(() => {})}
+                  accessibilityRole="button"
+                  accessibilityLabel={'Call ' + c.name + ' on ' + dial}
+                >
+                  <View style={styles.emergencyIcon}>
+                    <Icon name={CATEGORY_ICON[String(c.category ?? '')] ?? 'Phone'} size={22} color="#EF4444" />
+                  </View>
+                  <Text style={styles.emergencyLabel} numberOfLines={2}>{c.name}</Text>
+                  <Text style={styles.emergencyNum}>{dial}</Text>
+                  {alt.length > 0 && (
+                    <Text style={styles.emergencyAlt} numberOfLines={1}>or {alt.join(', ')}</Text>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
       </ScrollView>
 
@@ -248,10 +373,10 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   title:   { color: '#fff', fontSize: 17, fontWeight: '700' },
 
-  body:    { flexGrow: 1, alignItems: 'center', paddingHorizontal: 28, paddingTop: 40, gap: 18 },
-  sosBtn:  { width: 170, height: 170, borderRadius: 85, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
-             shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 16, elevation: 10 },
-  sosBtnText: { color: '#B91C1C', fontSize: 44, fontWeight: '900', letterSpacing: 2 },
+  body:    { flexGrow: 1, alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
+  sosBtn:  { width: 140, height: 140, borderRadius: 70, backgroundColor: '#EF4444',
+             alignItems: 'center', justifyContent: 'center', gap: 4 },
+  sosBtnText: { color: '#fff', fontSize: FontSize.xl, fontWeight: FontWeight.bold as any, letterSpacing: 2 },
   sentTitle:  { color: '#fff', fontSize: 20, fontWeight: '800' },
   hint:    { color: 'rgba(255,255,255,0.85)', fontSize: 14, lineHeight: 20, textAlign: 'center' },
   cancelBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 999, paddingHorizontal: 20, paddingVertical: 12 },
@@ -278,6 +403,22 @@ const styles = StyleSheet.create({
   noteSendText: { color: '#7F1D1D', fontSize: 15, fontWeight: '800' },
 
   numbersCard: { marginTop: 'auto', marginBottom: 24, width: '100%', backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 14, padding: 16, gap: 10 },
+  sosWrap: { alignItems: 'center', justifyContent: 'center', width: 220, height: 220, alignSelf: 'center' },
+  ring2:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(239,68,68,0.08)' },
+  ring1:   { position: 'absolute', width: 180, height: 180, borderRadius: 90,  backgroundColor: 'rgba(239,68,68,0.15)' },
+  sosCountdown:{ color: 'rgba(255,255,255,0.85)', fontSize: FontSize.sm },
+  idleState:  { alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md },
+  idleTitle:  { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold as any, textAlign: 'center' },
+  idleDesc:   { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
+  emergencySection:     { width: '100%', gap: Spacing.sm },
+  emergencySectionTitle:{ color: 'rgba(255,255,255,0.65)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold as any, textTransform: 'uppercase', letterSpacing: 0.5 },
+  emergencyRow:         { flexDirection: 'row', gap: Spacing.sm },
+  emergencyCard:        { flex: 1, alignItems: 'center', gap: 6, padding: Spacing.md, borderRadius: Radius.xl, backgroundColor: 'rgba(255,255,255,0.08)' },
+  emergencyIcon:        { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(239,68,68,0.15)', justifyContent: 'center', alignItems: 'center' },
+  emergencyLabel:       { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold as any, textAlign: 'center' },
+  emergencyNum:         { color: '#EF4444', fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
+  emergencyAlt:         { color: 'rgba(255,255,255,0.5)', fontSize: 10, textAlign: 'center' },
+  numberHint:   { color: 'rgba(255,255,255,0.72)', fontSize: 12, lineHeight: 16, paddingHorizontal: 4, paddingBottom: 10, marginTop: -4 },
   numbersTitle:{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
   numberRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
   numberText: { color: '#fff', fontSize: 16, fontWeight: '800', width: 44 },

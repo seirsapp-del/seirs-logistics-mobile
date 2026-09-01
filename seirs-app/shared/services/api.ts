@@ -1025,7 +1025,30 @@ export interface SosAlertDTO {
   resolutionNote?: string | null;
 }
 
+export interface EmergencyContactDTO {
+  id:          string;
+  name:        string;
+  numbers:     string[];
+  instruction: string;
+  category?:   string;
+  sortOrder?:  number;
+}
+
 export const sosApi = {
+  /**
+   * The emergency directory the SOS screen dials from.
+   *
+   * Added to sosApi rather than exposing apiRequest, because sosApi is
+   * already whitelisted in all three app barrels and a new export would
+   * otherwise resolve to undefined at runtime.
+   *
+   * Live and populated: 112 (all services), 199 (fire), 122 (FRSC), each
+   * with an instruction saying when to dial it. Callers must still keep a
+   * hardcoded fallback: this screen has to work with no network.
+   */
+  emergencyContacts: () =>
+    request<{ items?: EmergencyContactDTO[] }>('GET', '/config/emergency-contacts', undefined, false),
+
   // Customer or driver presses SOS. Backend persists + WS-fans to admins
   // and the other party in the trip.
   trigger: (body: { deliveryId?: string; lat?: number; lng?: number; note?: string }) =>

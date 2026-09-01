@@ -29,6 +29,10 @@ import {
   // unchecked box as a Square glyph beside CheckSquare, and this
   // registry renders NOTHING for a name it does not know.
   Square,
+  // Added 2026-09-01 for the SOS quick-dial cards: the fire service row
+  // needs a flame, and this registry draws NOTHING for a name it does
+  // not know, which on an emergency screen is the worst place for it.
+  Flame,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -63,6 +67,10 @@ const ICONS: Record<string, LucideIcon> = {
   // unchecked box as a Square glyph beside CheckSquare, and this
   // registry renders NOTHING for a name it does not know.
   Square,
+  // Added 2026-09-01 for the SOS quick-dial cards: the fire service row
+  // needs a flame, and this registry draws NOTHING for a name it does
+  // not know, which on an emergency screen is the worst place for it.
+  Flame,
 };
 
 // Last-resort glyph, borrowed from the `FALLBACK[name] ?? something` shape
