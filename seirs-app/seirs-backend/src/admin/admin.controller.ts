@@ -996,11 +996,14 @@ export class AdminController {
   @Post('users/:id/vehicle-change')
   resolveVehicleChange(
     @Param('id') id: string,
-    @Body() body: { approve: boolean },
+    @Body() body: { approve: boolean; note?: string; rejectedItems?: string[] },
     @CurrentUser() admin: any,
     @Req() req: Request,
   ) {
-    return this.adminService.resolveVehicleChange(id, body?.approve === true, admin, req.ip);
+    return this.adminService.resolveVehicleChange(id, body?.approve === true, admin, req.ip, {
+      note:          body?.note,
+      rejectedItems: Array.isArray(body?.rejectedItems) ? body.rejectedItems : undefined,
+    });
   }
 
   // POST /api/v1/admin/users/:id/bank-change  { approve: boolean }

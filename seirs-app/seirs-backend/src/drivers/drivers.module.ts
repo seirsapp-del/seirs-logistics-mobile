@@ -88,6 +88,18 @@ export class DriversModule implements OnModuleInit {
       console.error(`driver_documents table ensure failed: ${e?.message ?? e}`);
     }
 
+    // Which documents a turned-down vehicle change was turned down over
+    // (2026-09-01). Additive and safe to re-run. Nullable on purpose: every
+    // decision made before today has no such list, and inventing one would
+    // put words in a reviewer's mouth.
+    try {
+      await this.ds.query(
+        `ALTER TABLE "driver_vehicle_changes" ADD COLUMN IF NOT EXISTS "rejectedItems" text NULL`,
+      );
+    } catch (e: any) {
+      console.error(`vehicle-change rejectedItems self-heal failed: ${e?.message ?? e}`);
+    }
+
     try {
       await this.ds.query(`
         ALTER TABLE "drivers"

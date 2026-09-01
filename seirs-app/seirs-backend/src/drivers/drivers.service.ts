@@ -19,6 +19,45 @@ import { DriverEarning } from '../earnings/driver-earning.entity';
 import { vehicleIdentityForPassenger } from '../common/redact-driver';
 import { DriverDocument, DriverDocStatus } from './driver-document.entity';
 
+/**
+ * The five documents a vehicle change carries, keyed exactly as the driver
+ * app names its upload slots so the same word travels the whole way: the
+ * rider's tile, the admin's checkbox, the stored row, and the message that
+ * comes back. Anything not in this map is discarded rather than shown,
+ * because a rejection naming a document nobody recognises is worse than
+ * one naming none.
+ */
+const VEHICLE_DOC_LABELS: Record<string, string> = {
+  exterior:       'the photo of the outside',
+  interior:       'the photo of the inside',
+  plate:          'the plate number photo',
+  ownershipProof: 'the vehicle ownership papers',
+  insuranceCert:  'the insurance certificate',
+};
+
+/**
+ * What a rider actually reads when a change is turned down.
+ *
+ * The old message was one fixed sentence for every rejection, so someone
+ * with one blurred photo and four good ones learned only that they had
+ * failed. Redoing all five and waiting another cycle was the rational
+ * response to that message, and it is the thing this exists to stop.
+ */
+function rejectionMessage(items: string[] | null, note: string | null): string {
+  const named = (items ?? []).map(k => VEHICLE_DOC_LABELS[k]).filter(Boolean);
+  const head = named.length
+    ? `Your vehicle change was turned down over ${joinList(named)}. Everything else you sent was fine: upload ${named.length === 1 ? 'that one again' : 'those again'} and resubmit.`
+    : 'Your vehicle change was turned down. Your registered vehicle is unchanged.';
+  const tail = note?.trim() ? ` Reviewer's note: ${note.trim()}` : '';
+  return `${head}${tail} Reply here if this does not look right.`;
+}
+
+/** "a, b and c" rather than "a, b, c", which reads as a truncated list. */
+function joinList(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? '';
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
 // Spec V8 §2.1 - recognised KYC document IDs
 const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
   national_id_front: 'nationalIdFrontUrl',
@@ -1907,6 +1946,32 @@ export class DriversService {
       order:  { createdAt: 'DESC' },
     });
 
+    /**
+     * The last decision, so a turned-down rider can be told why.
+     *
+     * This query did not exist. The screen looked for a rejection inside
+     * `pendingChange`, which is filtered to PENDING above, so the test
+     * `pendingChange.status === 'rejected'` could never once be true and
+     * the rejection card never rendered. The outcome only ever reached
+     * the rider as a support-ticket message, which is not where anybody
+     * looks after tapping My Vehicle.
+     *
+     * Only surfaced while it is still the latest word: an approval after
+     * a rejection clears it, because the rider has since been let through
+     * and does not need to be shown an old refusal.
+     */
+    const lastDecided = pending ? null : await this.vehicleChangesRepo.findOne({
+      where: { driverId: driver.id, status: VehicleChangeStatus.REJECTED },
+      order: { decidedAt: 'DESC' },
+    });
+    const lastApproved = lastDecided ? await this.vehicleChangesRepo.findOne({
+      where: { driverId: driver.id, status: VehicleChangeStatus.APPROVED },
+      order: { decidedAt: 'DESC' },
+    }) : null;
+    const supersededByApproval =
+      !!lastApproved?.decidedAt && !!lastDecided?.decidedAt &&
+      lastApproved.decidedAt.getTime() > lastDecided.decidedAt.getTime();
+
     const details = (driver.vehicleDetails ?? {}) as any;
     return {
       status:       driver.status,
@@ -1933,6 +1998,15 @@ export class DriversService {
         ownerConsentAt:     driver.vehicleOwnerConsentAt ?? null,
       },
       pendingChange: pending ?? null,
+      lastDecision: lastDecided && !supersededByApproval ? {
+        status:        lastDecided.status,
+        decidedAt:     lastDecided.decidedAt,
+        decisionNote:  lastDecided.decisionNote,
+        rejectedItems: lastDecided.rejectedItems ?? [],
+        // Deliberately NOT the whole row. It carries the owner's name,
+        // phone and ID photo, and none of that belongs in a payload whose
+        // only job is to say which documents to redo.
+      } : null,
     };
   }
 
@@ -2203,7 +2277,7 @@ export class DriversService {
   async resolveVehicleChange(
     targetUserId: string,
     approve: boolean,
-    opts?: { adminId?: string; note?: string },
+    opts?: { adminId?: string; note?: string; rejectedItems?: string[] },
   ) {
     const driver = await this.findByUserId(targetUserId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
@@ -2261,14 +2335,25 @@ export class DriversService {
       patch.vehicleDetails = vd;
 
       await this.repo.update(driver.id, patch);
+      // Only meaningful on a rejection. An approval carrying a list of
+      // failed documents is a contradiction, so it is dropped rather than
+      // stored for someone to puzzle over later.
+      const rejectedItems = !approve && opts?.rejectedItems?.length
+        ? opts.rejectedItems.filter(k => VEHICLE_DOC_LABELS[k]).slice(0, 5)
+        : null;
+
       await this.vehicleChangesRepo.update(pending.id, {
         status:           approve ? VehicleChangeStatus.APPROVED : VehicleChangeStatus.REJECTED,
         decidedAt:        new Date(),
         decidedByAdminId: opts?.adminId ?? null,
         decisionNote:     opts?.note ? String(opts.note).slice(0, 500) : null,
+        rejectedItems:    rejectedItems?.length ? rejectedItems : null,
       });
 
-      await this.closeVehicleChangeTicket(pending.ticketId, approve);
+      await this.closeVehicleChangeTicket(pending.ticketId, approve, {
+        note:          opts?.note ?? null,
+        rejectedItems: rejectedItems,
+      });
       return { approved: approve };
     }
 
@@ -2299,7 +2384,11 @@ export class DriversService {
     return { approved: approve };
   }
 
-  private async closeVehicleChangeTicket(ticketId: string | null, approve: boolean) {
+  private async closeVehicleChangeTicket(
+    ticketId: string | null,
+    approve: boolean,
+    detail?: { note?: string | null; rejectedItems?: string[] | null },
+  ) {
     if (!ticketId) return;
     try {
       await this.repo.manager.query(
@@ -2308,7 +2397,7 @@ export class DriversService {
         [
           approve
             ? 'Your vehicle change was approved. Your profile now shows the new vehicle, and jobs will match it from now on.'
-            : 'Your vehicle change was rejected. Your registered vehicle is unchanged. Reply here if you did not expect this.',
+            : rejectionMessage(detail?.rejectedItems ?? null, detail?.note ?? null),
           ticketId,
         ],
       );
@@ -2397,6 +2486,31 @@ export class DriversService {
       take,
       skip: (page - 1) * take,
     });
+    /**
+     * Who signed each one off, by name.
+     *
+     * The founder asked to see "all who audited them and approved them".
+     * reviewedById has been stored since the queue was built and was never
+     * returned, so the profile could say a document was approved but not
+     * by whom, which is the half a compliance question actually asks.
+     *
+     * Fetched as a separate narrow query rather than a relation join: the
+     * reviewer is a staff User, and joining that entity would pull their
+     * password hash, bank details and KYC columns into memory to render
+     * one name.
+     */
+    const reviewerIds = [...new Set(rows.map(d => d.reviewedById).filter(Boolean))] as string[];
+    const reviewerNames = new Map<string, string>();
+    if (reviewerIds.length) {
+      const staff = await this.repo.manager
+        .createQueryBuilder()
+        .select(['u.id AS id', 'u.name AS name'])
+        .from('users', 'u')
+        .where('u.id IN (:...ids)', { ids: reviewerIds })
+        .getRawMany<{ id: string; name: string }>();
+      staff.forEach(s => reviewerNames.set(s.id, s.name));
+    }
+
     return {
       items: rows.map(d => ({
         id:              d.id,
@@ -2407,6 +2521,8 @@ export class DriversService {
         version:         d.version,
         createdAt:       d.createdAt,
         reviewedAt:      d.reviewedAt,
+        reviewedById:    d.reviewedById,
+        reviewedByName:  d.reviewedById ? reviewerNames.get(d.reviewedById) ?? null : null,
         expiresAt:       d.expiresAt,
         driverId:        d.driverId,
         driverName:      d.driver?.user?.name ?? null,

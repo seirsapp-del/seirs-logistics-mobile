@@ -169,6 +169,27 @@ export class DriverVehicleChange {
   @Column({ type: 'text', nullable: true })
   decisionNote: string | null;
 
+  /**
+   * Which of the five documents were the problem, by slot key.
+   *
+   * WHY a list rather than a status per document. A vehicle change is one
+   * decision: the rider either rides the new vehicle or does not, so five
+   * independent statuses would model a state ("plate approved, insurance
+   * rejected") that dispatch has no way to act on. What was actually
+   * missing is narrower than that, and it is the only part the rider
+   * needs: WHICH documents to redo. Until now one dark photo turned the
+   * whole submission down with the message "Your vehicle change was
+   * rejected", and a rider with five acceptable documents and one blurred
+   * one had no way to learn which, so the usual response was to
+   * rephotograph all five and wait another cycle.
+   *
+   * Empty or null on an approval, and on a rejection that was not about
+   * the documents at all (a plate that does not match the papers, say).
+   * The note carries that case.
+   */
+  @Column({ type: 'simple-array', nullable: true })
+  rejectedItems: string[] | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

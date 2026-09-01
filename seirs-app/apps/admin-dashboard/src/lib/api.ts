@@ -991,10 +991,31 @@ export const adminApi = {
     pending: () =>
       req<{ count: number; items: any[] }>('/admin/vehicle-changes'),
 
-    resolve: (userId: string, approve: boolean) =>
+    /**
+     * `rejectedItems` names WHICH documents failed, by the same slot keys
+     * the driver app uses for its upload tiles. The rider is told exactly
+     * those and keeps the rest, instead of the old fixed sentence that
+     * sent someone with one blurred photo back to redo all five.
+     *
+     * Both extras are ignored on an approval.
+     */
+    resolve: (
+      userId: string,
+      approve: boolean,
+      detail?: { note?: string; rejectedItems?: string[] },
+    ) =>
       req<{ approved: boolean }>(
         `/admin/users/${userId}/vehicle-change`,
-        { method: 'POST', body: JSON.stringify({ approve }) },
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            approve,
+            ...(approve ? {} : {
+              note:          detail?.note ?? undefined,
+              rejectedItems: detail?.rejectedItems ?? undefined,
+            }),
+          }),
+        },
       ),
   },
 

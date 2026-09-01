@@ -52,7 +52,6 @@ export default function DriverDetailPage() {
   const [docs,      setDocs]      = useState<any[] | null>(null);
   const [docReason, setDocReason] = useState<Record<string, string>>({});
   const [docBusy,   setDocBusy]   = useState<string | null>(null);
-  const [docsOpen,  setDocsOpen]  = useState(true);
   const [delivOpen, setDelivOpen] = useState(false);
   const docsWaiting = (docs ?? []).filter((d: any) => d.status === 'submitted').length;
 
@@ -436,27 +435,32 @@ export default function DriverDetailPage() {
               state at all. The founder's rule: everything about a driver
               lives on the driver, so the decision happens here rather than
               on a separate queue page he has to know exists. */}
-          <div className="border-t border-gray-50 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700">Documents</h3>
-              <div className="flex items-center gap-2">
-                {docsWaiting > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                    {docsWaiting} waiting on you
-                  </span>
-                )}
-                {!!docs?.length && (
-                  <button type="button" onClick={() => setDocsOpen((v) => !v)}
-                    className="text-xs text-gray-500 hover:text-gray-800 underline">
-                    {docsOpen ? 'Hide' : `Show ${docs.length}`}
-                  </button>
-                )}
-              </div>
-            </div>
-
+          {/* The shared Section rather than a private Show/Hide, so this
+              panel remembers its state per admin like every other one on
+              the page. Open by default only while something is waiting: a
+              reviewer with a queue should land on it, and everyone else
+              should not have to scroll past a settled pile of documents. */}
+          <Section
+            title="Documents"
+            storageKey="driver-documents"
+            bare
+            defaultOpen={docsWaiting > 0}
+            summary={
+              docs === null ? 'loading' : (
+                <span className="flex items-center gap-2">
+                  {docsWaiting > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      {docsWaiting} waiting on you
+                    </span>
+                  )}
+                  <span>{docs.length} on record</span>
+                </span>
+              )
+            }
+          >
             {docs === null ? (
               <p className="text-sm text-gray-400">Loading documents...</p>
-            ) : !docsOpen ? null : docs.length === 0 ? (
+            ) : docs.length === 0 ? (
               <p className="text-sm text-gray-400">
                 This driver has not uploaded any documents yet.
               </p>
@@ -482,6 +486,42 @@ export default function DriverDetailPage() {
                       {d.rejectionReason && (
                         <p className="mt-1 text-xs text-red-700">Rejected: {d.rejectionReason}</p>
                       )}
+
+                      {/* Who signed it off, and when it stops being true.
+                          Both were stored and neither was shown, so the
+                          profile could say "approved" without saying by
+                          whom, which is the half a compliance question
+                          actually asks. */}
+                      {d.reviewedAt && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          {d.status === 'approved' ? 'Approved' : 'Reviewed'} by{' '}
+                          <span className="font-medium text-gray-700">
+                            {d.reviewedByName ?? 'a staff account since removed'}
+                          </span>{' '}
+                          on {new Date(d.reviewedAt).toLocaleDateString('en-GB', {
+                            day: 'numeric', month: 'short', year: 'numeric',
+                          })}
+                        </p>
+                      )}
+                      {d.expiresAt && (() => {
+                        const days = Math.ceil(
+                          (new Date(d.expiresAt).getTime() - Date.now()) / 86_400_000,
+                        );
+                        const tone = days < 0 ? 'text-red-700'
+                                   : days <= 30 ? 'text-amber-700'
+                                   : 'text-gray-500';
+                        return (
+                          <p className={`mt-0.5 text-xs ${tone}`}>
+                            {days < 0
+                              ? `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago`
+                              : days === 0 ? 'Expires today'
+                              : `Expires in ${days} day${days === 1 ? '' : 's'}`}
+                            {' '}({new Date(d.expiresAt).toLocaleDateString('en-GB', {
+                              day: 'numeric', month: 'short', year: 'numeric',
+                            })})
+                          </p>
+                        );
+                      })()}
                       {d.status === 'submitted' && (
                         <div className="mt-2 flex flex-col sm:flex-row gap-2">
                           <input
@@ -513,7 +553,7 @@ export default function DriverDetailPage() {
                 ))}
               </div>
             )}
-          </div>
+          </Section>
         </div>
 
         {/* Work record.

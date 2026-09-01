@@ -32,9 +32,26 @@ interface Props {
    * full-width strip, which is what a single document wants.
    */
   tall?: boolean;
+  /**
+   * This is one of the documents a reviewer turned the last submission
+   * down over. Outlined so the rider can see at a glance which tile to
+   * redo, rather than reading a list and then counting tiles to find it.
+   */
+  flagged?: boolean;
 }
 
-export function DocUploadTile({ label, hint, url, busy, onPress, locked = false, tall = false }: Props) {
+/**
+ * Sniffed from the URL rather than passed in, so every existing call site
+ * is fixed without being touched. The query string is tolerated because
+ * signed storage URLs carry one.
+ */
+function isPdf(url: string): boolean {
+  return /\.pdf($|\?|#)/i.test(url);
+}
+
+export function DocUploadTile({
+  label, hint, url, busy, onPress, locked = false, tall = false, flagged = false,
+}: Props) {
   const cs    = useColorScheme();
   const theme = Colors[cs ?? 'light'];
 
@@ -45,7 +62,10 @@ export function DocUploadTile({ label, hint, url, busy, onPress, locked = false,
       style={[
         tall ? styles.tall : styles.wide,
         {
-          borderColor: url ? theme.success : theme.border,
+          // A flagged tile outranks the green "on file" border: the whole
+          // point is that this one is on file AND is the one to replace.
+          borderColor: flagged ? theme.warning : url ? theme.success : theme.border,
+          borderWidth: flagged ? 2 : 1.5,
           backgroundColor: theme.background,
           opacity: locked ? 0.7 : 1,
         },
@@ -55,9 +75,30 @@ export function DocUploadTile({ label, hint, url, busy, onPress, locked = false,
         <ActivityIndicator color={theme.primary} />
       ) : url ? (
         <>
-          <Image source={{ uri: url }} style={styles.img} />
+          {isPdf(url) ? (
+            /**
+             * A PDF has no thumbnail, and an <Image> pointed at one renders
+             * an empty box. KYC has accepted PDF certificates since August
+             * and showed exactly that: a rider who attached the insurance
+             * document their insurer emailed saw a blank tile and no sign
+             * the upload had worked, so the usual next move was to upload
+             * it again, or photograph their own screen instead.
+             */
+            <View style={styles.doc}>
+              <Ionicons name="document-text" size={tall ? 26 : 22} color={theme.success} />
+              <Text style={[styles.docLabel, { color: theme.text }]} numberOfLines={1}>
+                PDF attached
+              </Text>
+            </View>
+          ) : (
+            <Image source={{ uri: url }} style={styles.img} />
+          )}
           <View style={styles.check}>
-            <Ionicons name="checkmark-circle" size={20} color={theme.success} />
+            <Ionicons
+              name={flagged ? 'alert-circle' : 'checkmark-circle'}
+              size={20}
+              color={flagged ? theme.warning : theme.success}
+            />
           </View>
         </>
       ) : (
@@ -84,6 +125,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
   },
   img:   { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  doc:   { alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 4 },
+  docLabel: { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any, textAlign: 'center' },
   check: { position: 'absolute', top: 6, right: 6, backgroundColor: '#fff', borderRadius: 12 },
   label: { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any, textAlign: 'center' },
   hint:  { fontSize: 10, lineHeight: 13, textAlign: 'center' },

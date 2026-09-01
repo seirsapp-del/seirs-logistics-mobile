@@ -716,6 +716,23 @@ export interface VehicleRecordDTO {
     ownerConsentAt:     string | null;
   };
   pendingChange: VehicleChangeDTO | null;
+  /**
+   * The last decision, when it was a refusal and still stands.
+   *
+   * Separate from pendingChange because that field is filtered to PENDING
+   * server-side, so the screen's old test for a rejection inside it could
+   * never be true and the rejection card never rendered once.
+   *
+   * `rejectedItems` names which documents failed, using the same slot keys
+   * the upload tiles use, so the rider redoes those and keeps the rest.
+   * Empty means the refusal was not about the documents.
+   */
+  lastDecision: {
+    status:        string;
+    decidedAt:     string | null;
+    decisionNote:  string | null;
+    rejectedItems: string[];
+  } | null;
 }
 
 export const driversApi = {

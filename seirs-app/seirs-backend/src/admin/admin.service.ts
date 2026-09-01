@@ -189,16 +189,35 @@ export class AdminService {
     return this.driversService.listPendingVehicleChanges();
   }
 
-  async resolveVehicleChange(targetUserId: string, approve: boolean, admin: any, ip?: string) {
+  async resolveVehicleChange(
+    targetUserId: string,
+    approve: boolean,
+    admin: any,
+    ip?: string,
+    detail?: { note?: string; rejectedItems?: string[] },
+  ) {
     this.ensureNdprAccess(admin, this.PII_VIEW_ROLES, 'vehicle_change_review');
     // Name the reviewer on the change row itself, not only in the audit
     // log. A compliance question a year later ("who accepted this
     // ownership document?") is asked against the request, and
     // driver_vehicle_changes.decidedByAdminId was sitting empty.
     const result = await this.driversService.resolveVehicleChange(targetUserId, approve, {
-      adminId: admin?.id ?? admin?.sub ?? undefined,
+      adminId:       admin?.id ?? admin?.sub ?? undefined,
+      note:          detail?.note,
+      rejectedItems: detail?.rejectedItems,
     });
-    await this.logAudit(admin, approve ? 'vehicle_change_approved' : 'vehicle_change_rejected', `user:${targetUserId}`, {}, ip);
+    // The audit entry carries the same detail the rider was given, so the
+    // trail and the message can never tell two different stories.
+    await this.logAudit(
+      admin,
+      approve ? 'vehicle_change_approved' : 'vehicle_change_rejected',
+      `user:${targetUserId}`,
+      approve ? {} : {
+        note:          detail?.note?.slice(0, 500) ?? null,
+        rejectedItems: detail?.rejectedItems ?? null,
+      },
+      ip,
+    );
     return result;
   }
 

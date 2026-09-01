@@ -34,6 +34,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { canAttachFiles, pickDocument } from '@/utils/documentPicker';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { driversApi, uploadApi } from '@/services/api';
@@ -74,6 +75,18 @@ const PAPERS: { key: PhotoSlot; label: string; hint: string }[] = [
 const EMPTY_PHOTOS: Record<PhotoSlot, string | null> = {
   exterior: null, interior: null, plate: null, ownershipProof: null, insuranceCert: null,
 };
+
+/**
+ * The two slots that accept a PDF as well as a photo.
+ *
+ * Deliberately not all five. Ownership papers and insurance certificates
+ * arrive from portals and insurers as PDFs already, and asking a rider to
+ * photograph their own screen produces the unreadable document that gets
+ * the submission turned down. The other three are photographs OF the
+ * vehicle in front of them: a PDF of "full side view" is not a thing, and
+ * offering the option there would only invite the wrong file.
+ */
+const PDF_SLOTS = new Set<PhotoSlot>(['ownershipProof', 'insuranceCert']);
 
 export default function VehicleScreen() {
   const router = useRouter();
@@ -147,17 +160,35 @@ export default function VehicleScreen() {
     options: [
       { label: 'Take a photo',        variant: 'primary', icon: 'camera-outline', onPress: () => grab(slot, 'camera') },
       { label: 'Choose from gallery', icon: 'images-outline',                     onPress: () => grab(slot, 'library') },
+      // Only where a PDF makes sense, and only on a build that can honour
+      // it, so nobody taps a row that ends in an apology.
+      ...(PDF_SLOTS.has(slot) && canAttachFiles()
+        ? [{
+            label: 'Attach a PDF',
+            sub: 'A file from your email or your insurer',
+            icon: 'document-text-outline' as const,
+            onPress: () => grab(slot, 'document'),
+          }]
+        : []),
     ],
   });
 
-  const grab = async (slot: PhotoSlot, source: 'camera' | 'library') => {
+  const grab = async (slot: PhotoSlot, source: 'camera' | 'library' | 'document') => {
     try {
       let uri: string | null = null;
+      // The upload helper defaults to image/jpeg, which would store a PDF
+      // under a type nothing can open, so the real one travels with it.
+      let mime = 'image/jpeg';
       if (source === 'camera') {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (perm.status !== 'granted') { setError('Camera access is needed to photograph the vehicle.'); return; }
         const r = await ImagePicker.launchCameraAsync({ quality: 0.75, allowsEditing: false, exif: false });
         uri = r.canceled ? null : r.assets[0].uri;
+      } else if (source === 'document') {
+        const picked = await pickDocument((title, message) => setError(`${title}. ${message}`));
+        if (!picked) return;
+        uri  = picked.uri;
+        mime = picked.mimeType;
       } else {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (perm.status !== 'granted') { setError('Photo library access is needed.'); return; }
@@ -167,7 +198,7 @@ export default function VehicleScreen() {
       if (!uri) return;
       setUploadingSlot(slot);
       setError(null);
-      const up = await uploadApi.file(uri, 'image/jpeg', 'kyc');
+      const up = await uploadApi.file(uri, mime);
       setPhotos(prev => ({ ...prev, [slot]: up.url }));
     } catch (e: any) {
       setError(e?.message ?? 'Upload failed. Check your connection and try again.');
@@ -275,8 +306,20 @@ export default function VehicleScreen() {
     || VEHICLE_TYPES.find(v => v.id === record?.vehicleType)?.label
     || 'Vehicle on file';
   const liveSub = [record?.color, record?.vehiclePlate].filter(Boolean).join(' · ');
-  const lastDecision = record?.pendingChange && record.pendingChange.status === 'rejected'
-    ? record.pendingChange : null;
+  /**
+   * Comes from its own field now. It used to read `pendingChange.status
+   * === 'rejected'`, but the server filters that field to PENDING, so the
+   * test could never pass and this card never once appeared: a turned-down
+   * rider opened My Vehicle and saw nothing at all about it.
+   */
+  const lastDecision = record?.lastDecision?.status === 'rejected' ? record.lastDecision : null;
+
+  /** The documents to redo, in the order the form asks for them. */
+  const faultedSlots: PhotoSlot[] = (lastDecision?.rejectedItems ?? [])
+    .filter((s): s is PhotoSlot => s in EMPTY_PHOTOS);
+  const faultedLabels = [...VEHICLE_PHOTOS, ...PAPERS]
+    .filter(p => faultedSlots.includes(p.key))
+    .map(p => p.label.toLowerCase());
 
   return (
     // 'bottom' is deliberately NOT in edges. The sticky CTA bar below
@@ -381,9 +424,26 @@ export default function VehicleScreen() {
                       <Ionicons name="close-circle-outline" size={20} color={theme.error} />
                       <Text style={[styles.pendingTitle, { color: theme.error }]}>Last request was not approved</Text>
                     </View>
-                    <Text style={[styles.pendingText, { color: theme.textSecond }]}>
-                      {lastDecision.decisionNote || 'No reason was recorded. Ask support what is missing before resubmitting.'}
-                    </Text>
+                    {faultedLabels.length > 0 ? (
+                      <Text style={[styles.pendingText, { color: theme.textSecond }]}>
+                        {faultedLabels.length === 1
+                          ? `Only ${faultedLabels[0]} needs redoing. Everything else you sent was accepted, so leave it as it is.`
+                          : `These need redoing: ${faultedLabels.join(', ')}. Everything else you sent was accepted, so leave the rest as it is.`}
+                      </Text>
+                    ) : (
+                      <Text style={[styles.pendingText, { color: theme.textSecond }]}>
+                        {lastDecision.decisionNote
+                          || 'No reason was recorded. Ask support what is missing before resubmitting.'}
+                      </Text>
+                    )}
+                    {/* The note is shown as well as the list, never instead
+                        of it: it is usually the part that says what was
+                        actually wrong with the document. */}
+                    {faultedLabels.length > 0 && !!lastDecision.decisionNote && (
+                      <Text style={[styles.pendingText, { color: theme.textThird, marginTop: 4 }]}>
+                        {lastDecision.decisionNote}
+                      </Text>
+                    )}
                   </View>
                 )}
 
@@ -465,6 +525,7 @@ export default function VehicleScreen() {
                         hint={slot.hint}
                         url={photos[slot.key]}
                         busy={uploadingSlot === slot.key}
+                        flagged={faultedSlots.includes(slot.key)}
                         onPress={() => choosePhoto(slot.key, slot.label)}
                       />
                     ))}
@@ -482,6 +543,7 @@ export default function VehicleScreen() {
                         label={p.label}
                         url={photos[p.key]}
                         busy={uploadingSlot === p.key}
+                        flagged={faultedSlots.includes(p.key)}
                         onPress={() => choosePhoto(p.key, p.label)}
                       />
                     </View>

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import { requireOptionalNativeModule } from 'expo-modules-core';
+import { canAttachFiles, pickDocument } from '@/utils/documentPicker';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec, type SeirsSheetOption } from '@/components/SeirsSheet';
@@ -77,32 +77,10 @@ const INSURANCE_PARTNERS = [
   { name: 'Cornerstone Insurance', desc: 'Motor & liability cover', url: 'https://cornerstoneinsuranceplc.com' },
 ];
 
-/**
- * The file picker, if this build has it.
- *
- * Resolved once and remembered: undefined means not yet tried, null means
- * the native module is genuinely absent from this build.
- */
-let cachedPicker: typeof import('expo-document-picker') | null | undefined;
-function getDocumentPicker() {
-  if (cachedPicker === undefined) {
-    // Ask the native registry first. Requiring the JS wrapper when the
-    // native side is missing throws while the module is being evaluated,
-    // and Metro hands that to the global error handler before rethrowing,
-    // so a try/catch here would still surface a fatal red box.
-    if (!requireOptionalNativeModule('ExpoDocumentPicker')) {
-      cachedPicker = null;
-    } else {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        cachedPicker = require('expo-document-picker');
-      } catch {
-        cachedPicker = null;
-      }
-    }
-  }
-  return cachedPicker;
-}
+// The picker itself now lives in utils/documentPicker, because My Vehicle
+// asks for the same two papers this screen does and had no picker at all.
+// Two private copies of a native-module guard is how a fix to one of them
+// silently misses the other.
 
 export default function KycScreen() {
   const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
@@ -232,7 +210,7 @@ export default function KycScreen() {
     // document that gets rejected.
     // Offered only when this build can actually honour it, so nobody taps
     // a row that ends in an apology.
-    const fileRow: SeirsSheetOption[] = getDocumentPicker()
+    const fileRow: SeirsSheetOption[] = canAttachFiles()
       ? [{ label: 'Attach a PDF', sub: 'A file from your email or a portal', icon: 'document-text-outline', onPress: () => doUpload(docId, 'document') }]
       : [];
 
@@ -258,41 +236,25 @@ export default function KycScreen() {
    * and every route in the app rather than just this screen. Drivers on an
    * older build are offered photos only, and the app opens.
    */
-  const pickDocument = async (): Promise<string | null> => {
-    const picker = getDocumentPicker();
-    if (!picker) {
-      alertDialog(
-        'Update the app first',
-        'Attaching a file needs a newer version of SEIRS Driver. Take a photo of the document instead, or update from the Play Store.',
-      );
-      return null;
-    }
-    try {
-      const r = await picker.getDocumentAsync({
-        type: ['application/pdf', 'image/*'],
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-      if (r.canceled || !r.assets?.length) return null;
-      const a = r.assets[0];
-      // Guard the size here rather than letting a 40MB scan fail halfway
-      // through an upload on a Lagos connection.
-      if (a.size && a.size > 10 * 1024 * 1024) {
-        alertDialog('File too large', 'That file is over 10MB. Send a smaller scan or a photo instead.');
-        return null;
-      }
-      return a.uri;
-    } catch {
-      return null;
-    }
-  };
-
   const doUpload = async (docId: string, source: 'camera' | 'library' | 'document') => {
-    const uri = source === 'document' ? await pickDocument() : await pickImage(source);
+    let uri: string | null;
+    // The mime type has to travel with the file. uploadFile defaults to
+    // image/jpeg, so until now every PDF attached here was stored under a
+    // type that does not match its bytes: the tile could not preview it
+    // and an admin opening it got a download rather than a document.
+    let mime = 'image/jpeg';
+    if (source === 'document') {
+      const picked = await pickDocument(alertDialog);
+      if (!picked) return;
+      uri  = picked.uri;
+      mime = picked.mimeType;
+    } else {
+      uri = await pickImage(source);
+    }
     if (!uri) return;
     setUploading(docId);
     try {
-      const uploaded = await uploadApi.uploadFile(uri, 'kyc');
+      const uploaded = await uploadApi.uploadFile(uri, 'kyc', mime);
       // Persist URL against driver record so admin KYC review sees it
       await driversApi.updateKycDoc(docId, uploaded.url);
       setDocs(prev => prev.map(d =>
