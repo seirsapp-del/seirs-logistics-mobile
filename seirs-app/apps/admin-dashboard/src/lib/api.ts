@@ -960,6 +960,17 @@ export const adminApi = {
   // Driver vehicle change review (2026-08-10 policy: vehicle swaps need
   // compliance approval). Same pattern as bankChange.
   vehicleChange: {
+    /**
+     * Every change waiting on a decision.
+     *
+     * Added 2026-09-01. Only resolve() existed, so an admin could approve a
+     * vehicle change but had no way to FIND one: the sole path in was a
+     * support ticket whose creation is best-effort and swallows its own
+     * failure, leaving the request real and invisible.
+     */
+    pending: () =>
+      req<{ count: number; items: any[] }>('/admin/vehicle-changes'),
+
     resolve: (userId: string, approve: boolean) =>
       req<{ approved: boolean }>(
         `/admin/users/${userId}/vehicle-change`,

@@ -170,8 +170,8 @@ export default function ProfileScreen() {
        */
       title: t('profile.sectionSupport'),
       items: [
-        { icon: 'help-circle-outline',  label: t('profile.helpCenter', { defaultValue: 'Help & FAQ' }), sub: t('profile.helpCenterSub'), onPress: () => Linking.openURL(`${SITE}/faq`).catch(() => alertDialog(t('common.comingSoon'), t('profile.termsComingSoon'))) },
-        { icon: 'chatbubble-outline',   label: t('profile.contactSupport', { defaultValue: 'Contact Support' }), sub: t('profile.liveChatSub'), onPress: () => router.push('/(customer)/support/new' as any) },
+        { icon: 'help-circle-outline',  label: t('profile.helpCenter'), sub: t('profile.helpCenterSub'), onPress: () => Linking.openURL(`${SITE}/faq`).catch(() => alertDialog(t('common.comingSoon'), t('profile.termsComingSoon'))) },
+        { icon: 'chatbubble-outline',   label: t('profile.contactSupport'), sub: t('profile.liveChatSub'), onPress: () => router.push('/(customer)/support/new' as any) },
         { icon: 'alert-circle-outline', label: t('profile.sos', { defaultValue: 'SOS Emergency' }), sub: t('profile.sosSub', { defaultValue: 'Immediate help with live location' }), onPress: () => router.push('/(customer)/sos' as any), danger: true },
       ],
     },

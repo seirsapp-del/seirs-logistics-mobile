@@ -178,6 +178,17 @@ export class AdminService {
    * policy: a driver always has a vehicle and cannot change it without
    * compliance approval). Same review-ticket pattern as bank changes.
    */
+  /**
+   * The pending vehicle-change queue.
+   *
+   * Existed only as a resolve route before this: an admin could approve a
+   * change but had no way to find one, because the sole path in was a support
+   * ticket whose creation is best-effort and swallows its own failure.
+   */
+  async listPendingVehicleChanges() {
+    return this.driversService.listPendingVehicleChanges();
+  }
+
   async resolveVehicleChange(targetUserId: string, approve: boolean, admin: any, ip?: string) {
     this.ensureNdprAccess(admin, this.PII_VIEW_ROLES, 'vehicle_change_review');
     // Name the reviewer on the change row itself, not only in the audit

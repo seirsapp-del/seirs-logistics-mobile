@@ -984,6 +984,12 @@ export class AdminController {
     return this.adminService.adminHardDeleteUser(id, admin, body?.reason ?? '', req.ip);
   }
 
+  // GET /api/v1/admin/vehicle-changes  -> every change awaiting a decision
+  @Get('vehicle-changes')
+  listVehicleChanges() {
+    return this.adminService.listPendingVehicleChanges();
+  }
+
   // POST /api/v1/admin/users/:id/vehicle-change  { approve: boolean }
   // Approve/reject a driver's pending vehicle change. Same review-ticket
   // pattern as bank changes; PII-role gated + audit-logged.

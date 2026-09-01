@@ -2136,6 +2136,70 @@ export class DriversService {
    * driver row, which is the only moment vehicleType is allowed to move.
    * Reject leaves the live vehicle exactly as it was.
    */
+  /**
+   * Every vehicle change awaiting a decision.
+   *
+   * WHY this exists: submitting one writes a driver_vehicle_changes row and
+   * then tries to open a support ticket so an admin sees it. That ticket
+   * creation is wrapped in a catch that only warns, so when it fails the row
+   * is real, the rider is told "our team has it", and NOTHING anywhere
+   * surfaces the request. There was no list endpoint, so the only route to a
+   * pending change was the ticket that may not exist. Found 2026-09-01.
+   *
+   * Ordered oldest first: the rider who has waited longest is the one being
+   * failed hardest, and a queue sorted newest-first hides exactly that.
+   */
+  async listPendingVehicleChanges() {
+    const rows = await this.vehicleChangesRepo.find({
+      where: { status: VehicleChangeStatus.PENDING },
+      order: { createdAt: 'ASC' },
+    });
+    if (!rows.length) return { items: [], count: 0 };
+
+    // Name the rider without dragging the whole user relation in: that is how
+    // bank details and KYC scans have leaked before.
+    const driverIds = [...new Set(rows.map(r => r.driverId))];
+    const drivers = await this.repo
+      .createQueryBuilder('d')
+      .leftJoin('d.user', 'u')
+      .select(['d.id', 'd.vehicleType', 'u.id', 'u.name', 'u.phone', 'u.accountId'])
+      .where('d.id IN (:...ids)', { ids: driverIds })
+      .getMany();
+    const byDriver = new Map(drivers.map(d => [d.id, d]));
+
+    return {
+      count: rows.length,
+      items: rows.map(r => {
+        const d: any = byDriver.get(r.driverId);
+        return {
+          id:            r.id,
+          createdAt:     r.createdAt,
+          waitingDays:   Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 86400000),
+          ticketId:      (r as any).ticketId ?? null,
+          /** True when the support ticket never got created: this row is why the list exists. */
+          orphaned:      !((r as any).ticketId),
+          driverId:      r.driverId,
+          userId:        d?.user?.id ?? null,
+          driverName:    d?.user?.name ?? null,
+          driverPhone:   d?.user?.phone ?? null,
+          accountId:     d?.user?.accountId ?? null,
+          currentVehicle: d?.vehicleType ?? null,
+          requestedVehicle: r.vehicleType,
+          vehiclePlate:  r.vehiclePlate,
+          make: r.make, model: r.model, year: r.year, color: r.color,
+          ownership:     r.ownership,
+          ownerName:     (r as any).ownerName ?? null,
+          ownerPhone:    (r as any).ownerPhone ?? null,
+          photoExteriorUrl:  r.photoExteriorUrl,
+          photoInteriorUrl:  r.photoInteriorUrl,
+          photoPlateUrl:     r.photoPlateUrl,
+          ownershipProofUrl: r.ownershipProofUrl,
+          insuranceCertUrl:  r.insuranceCertUrl,
+        };
+      }),
+    };
+  }
+
   async resolveVehicleChange(
     targetUserId: string,
     approve: boolean,

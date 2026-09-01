@@ -243,6 +243,9 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/fraud':                   'fraud',
   '/duplicates':              'duplicates',
   '/recycle-bin':             'users',
+  // A vehicle swap is a DRIVER compliance decision, so it rides the
+  // drivers grant rather than earning its own.
+  '/vehicle-changes':         'drivers',
   '/kyc':                     'kyc',
   '/identity':                'identity',
   '/disputes':                'disputes',
@@ -523,6 +526,7 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     items: [
       { href: '/deliveries', label: 'Deliveries',       icon: 'Package' },
       { href: '/drivers',    label: 'Drivers',          icon: 'Truck'   },
+      { href: '/vehicle-changes', label: 'Vehicle changes', icon: 'Car' },
       { href: '/users',      label: 'Customers',        icon: 'Users'   },
       /**
        * Zones lives with operations, not with pricing.
