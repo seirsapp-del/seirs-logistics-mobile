@@ -374,8 +374,8 @@ const styles = StyleSheet.create({
   title:   { color: '#fff', fontSize: 17, fontWeight: '700' },
 
   body:    { flexGrow: 1, alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
-  sosBtn:  { width: 140, height: 140, borderRadius: 70, backgroundColor: '#EF4444',
-             alignItems: 'center', justifyContent: 'center', gap: 4 },
+  sosBtn:  { width: 140, height: 140, borderRadius: 70, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center', gap: 4,
+             shadowColor: '#EF4444', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 16 },
   sosBtnText: { color: '#fff', fontSize: FontSize.xl, fontWeight: FontWeight.bold as any, letterSpacing: 2 },
   sentTitle:  { color: '#fff', fontSize: 20, fontWeight: '800' },
   hint:    { color: 'rgba(255,255,255,0.85)', fontSize: 14, lineHeight: 20, textAlign: 'center' },
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   noteSendText: { color: '#7F1D1D', fontSize: 15, fontWeight: '800' },
 
   numbersCard: { marginTop: 'auto', marginBottom: 24, width: '100%', backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 14, padding: 16, gap: 10 },
-  sosWrap: { alignItems: 'center', justifyContent: 'center', width: 220, height: 220, alignSelf: 'center' },
+  sosWrap: { alignItems: 'center', justifyContent: 'center', width: 220, height: 220 },
   ring2:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(239,68,68,0.08)' },
   ring1:   { position: 'absolute', width: 180, height: 180, borderRadius: 90,  backgroundColor: 'rgba(239,68,68,0.15)' },
   sosCountdown:{ color: 'rgba(255,255,255,0.85)', fontSize: FontSize.sm },

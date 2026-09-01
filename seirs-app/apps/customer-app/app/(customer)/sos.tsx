@@ -355,8 +355,10 @@ export default function SOSScreen() {
 
           {/* Emergency directory */}
           <View style={styles.directorySection}>
-            <Text style={styles.directoryTitle}>{t('sos.directoryTitle')}</Text>
-            <Text style={styles.directorySub}>{t('sos.directorySub')}</Text>
+            {/* Small uppercase label and nothing else, as driver and
+                business have it. The old bold title plus an explanatory
+                subtitle was two lines of reading above the numbers. */}
+            <Text style={styles.emergencySectionTitle}>Quick Dial</Text>
 
             {contacts === null ? (
               <View style={styles.directoryLoading}>
@@ -372,38 +374,40 @@ export default function SOSScreen() {
                   </View>
                 )}
 
-                {contacts.map(c => (
-                  <View key={c.id} style={styles.contactRow}>
-                    <View style={styles.contactIcon}>
-                      <Ionicons
-                        name={(CATEGORY_ICON[(c.category ?? '').toLowerCase()] ?? 'call-outline') as any}
-                        size={20}
-                        color="#FFE4E4"
-                      />
-                    </View>
-                    <View style={styles.contactBody}>
-                      <Text style={styles.contactName}>{c.name}</Text>
-                      {!!c.instruction && (
-                        <Text style={styles.contactInstruction} numberOfLines={2}>{c.instruction}</Text>
-                      )}
-                      <View style={styles.numberRow}>
-                        {c.numbers.map(n => (
-                          <Pressable
-                            key={n}
-                            onPress={() => dial(n)}
-                            hitSlop={6}
-                            style={styles.numberChip}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${t('sos.callDialog')} ${c.name} ${n}`}
-                          >
-                            <Ionicons name="call" size={13} color="#7F1D1D" />
-                            <Text style={styles.numberChipText}>{n}</Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                ))}
+                {/* Quick Dial cards, the same treatment driver and business
+                    use. This was a stacked list of rows with number chips,
+                    which is more reading than anybody frightened should have
+                    to do. Cards put the service and the number side by side
+                    and make each one a single large target (founder
+                    2026-09-01, after comparing the three). */}
+                <View style={styles.emergencyRow}>
+                  {contacts.map(c => {
+                    const first = c.numbers[0];
+                    const alt   = c.numbers.slice(1);
+                    return (
+                      <Pressable
+                        key={c.id}
+                        style={styles.emergencyCard}
+                        onPress={() => dial(first)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${t('sos.callDialog')} ${c.name} ${first}`}
+                      >
+                        <View style={styles.emergencyIcon}>
+                          <Ionicons
+                            name={(CATEGORY_ICON[(c.category ?? '').toLowerCase()] ?? 'call-outline') as any}
+                            size={22}
+                            color="#EF4444"
+                          />
+                        </View>
+                        <Text style={styles.emergencyLabel} numberOfLines={2}>{c.name}</Text>
+                        <Text style={styles.emergencyNum}>{first}</Text>
+                        {alt.length > 0 && (
+                          <Text style={styles.emergencyAlt} numberOfLines={1}>or {alt.join(', ')}</Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </>
             )}
           </View>
@@ -490,7 +494,7 @@ const styles = StyleSheet.create({
   backBtn:     { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
 
-  body: { flexGrow: 1, alignItems: 'center', gap: Spacing.lg, paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.xxl },
+  body: { flexGrow: 1, alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
 
   sosWrap: { alignItems: 'center', justifyContent: 'center', width: 220, height: 220 },
   ring2:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(239,68,68,0.08)' },
@@ -531,8 +535,7 @@ const styles = StyleSheet.create({
   noteSendText: { color: '#7F1D1D', fontSize: FontSize.base, fontWeight: FontWeight.bold },
 
   directorySection: { width: '100%', gap: Spacing.sm },
-  directoryTitle:   { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },
-  directorySub:     { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.xs, lineHeight: 17, marginTop: -4 },
+  emergencySectionTitle: { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5 },
 
   directoryLoading:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md },
   directoryLoadingText: { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.sm },
@@ -540,16 +543,14 @@ const styles = StyleSheet.create({
   offlineBanner:     { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: Spacing.sm, borderRadius: Radius.lg, backgroundColor: 'rgba(255,255,255,0.10)' },
   offlineBannerText: { flex: 1, color: '#FFE4E4', fontSize: FontSize.xs, lineHeight: 17 },
 
-  contactRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, backgroundColor: 'rgba(255,255,255,0.08)' },
-  contactIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(239,68,68,0.20)', justifyContent: 'center', alignItems: 'center' },
-  contactBody: { flex: 1, gap: 4 },
-  contactName: { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  emergencyRow:   { flexDirection: 'row', gap: Spacing.sm },
+  emergencyCard:  { flex: 1, alignItems: 'center', gap: 6, padding: Spacing.md, borderRadius: Radius.xl, backgroundColor: 'rgba(255,255,255,0.08)' },
+  emergencyIcon:  { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(239,68,68,0.15)', justifyContent: 'center', alignItems: 'center' },
+  emergencyLabel: { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textAlign: 'center' },
+  emergencyNum:   { color: '#EF4444', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+  emergencyAlt:   { color: 'rgba(255,255,255,0.5)', fontSize: 10, textAlign: 'center' },
   // The "when to use this" line is the whole point of the directory: a
   // number without a reason gets dialled wrong under stress.
-  contactInstruction: { color: 'rgba(255,255,255,0.70)', fontSize: FontSize.xs, lineHeight: 17 },
-  numberRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
-  numberChip:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: '#FFE4E4' },
-  numberChipText: { color: '#7F1D1D', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 
   shareBtn:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: 14, borderRadius: Radius.full, backgroundColor: 'rgba(255,255,255,0.15)' },
   shareBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
