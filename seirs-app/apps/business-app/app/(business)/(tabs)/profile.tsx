@@ -9,6 +9,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Image, Platform
 import { useEffect, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useSeirsDialog } from '@/components/SeirsDialog';
+import { Drawer } from '@/components/Drawer';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +31,7 @@ export default function BusinessProfileTab() {
   const { t } = useTranslation();
   const { user, logout, refresh } = useAuth();
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   /**
    * Storefront photo (founder 2026-08-16): businesses put a face on the
@@ -148,14 +150,27 @@ export default function BusinessProfileTab() {
   ];
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[styles.screenTitle, { color: colors.text }]}>
-        {t('profile.title', { defaultValue: 'Profile' })}
-      </Text>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Drawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+      >
+      {/* Profile was the only one of the five business tabs with no way into
+          the drawer, and the only Profile across the three apps without one:
+          driver and customer both have it (founder 2026-09-01). The screen
+          repeats the drawer's destinations, which is presumably why someone
+          thought it redundant, but that is just as true in the other two
+          apps, and it left the drawer unreachable from this tab. */}
+      <View style={styles.titleRow}>
+        <Pressable onPress={() => setDrawerOpen(true)} hitSlop={10}>
+          <Icon name="AlignLeft" size={22} color={colors.text} />
+        </Pressable>
+        <Text style={[styles.screenTitle, { color: colors.text }]}>
+          {t('profile.title', { defaultValue: 'Profile' })}
+        </Text>
+      </View>
 
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Pressable onPress={changePhoto} disabled={photoBusy}>
@@ -236,11 +251,13 @@ export default function BusinessProfileTab() {
         <Text style={styles.signOutText}>{t('drawer.signOut', { defaultValue: 'Sign Out' })}</Text>
       </Pressable>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screenTitle:  { fontSize: 24, fontWeight: '700', paddingHorizontal: 20, marginBottom: 16 },
+  titleRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, marginBottom: 16 },
+  screenTitle:  { fontSize: 24, fontWeight: '700' },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     marginHorizontal: 20, padding: 16, borderRadius: 16, borderWidth: 1,
