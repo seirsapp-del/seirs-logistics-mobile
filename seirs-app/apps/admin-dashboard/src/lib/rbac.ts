@@ -245,7 +245,6 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/recycle-bin':             'users',
   // A vehicle swap is a DRIVER compliance decision, so it rides the
   // drivers grant rather than earning its own.
-  '/vehicle-changes':         'drivers',
   '/kyc':                     'kyc',
   '/identity':                'identity',
   '/disputes':                'disputes',
@@ -476,7 +475,7 @@ export interface NavItem {
   label:      string;
   icon:       string;
   permission: string;
-  badge?:     'tickets' | 'fraud';
+  badge?:     'tickets' | 'fraud' | 'kyc';
 }
 
 // A nav entry carries no permission of its own any more. It is looked up
@@ -487,7 +486,7 @@ interface NavItemDef {
   href:   string;
   label:  string;
   icon:   string;
-  badge?: 'tickets' | 'fraud';
+  badge?: 'tickets' | 'fraud' | 'kyc';
 }
 
 // A route missing from ROUTE_PERMISSIONS gets this sentinel, which no
@@ -526,7 +525,6 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     items: [
       { href: '/deliveries', label: 'Deliveries',       icon: 'Package' },
       { href: '/drivers',    label: 'Drivers',          icon: 'Truck'   },
-      { href: '/vehicle-changes', label: 'Vehicle changes', icon: 'Car' },
       { href: '/users',      label: 'Customers',        icon: 'Users'   },
       /**
        * Zones lives with operations, not with pricing.
@@ -588,7 +586,7 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     items: [
       { href: '/fraud',                 label: 'Fraud & Risk',          icon: 'ShieldAlert',    badge: 'fraud' },
       { href: '/duplicates',            label: 'Duplicate Accounts',    icon: 'Copy'           },
-      { href: '/kyc',                   label: 'Driver KYC Queue',      icon: 'ClipboardCheck' },
+      { href: '/kyc',                   label: 'Driver KYC Queue',      icon: 'ClipboardCheck', badge: 'kyc' },
       { href: '/identity',              label: 'Customer ID Queue',     icon: 'ShieldCheck'    },
       { href: '/disputes',              label: 'Liability Disputes',    icon: 'ShieldCheck'    },
       { href: '/agreement-breaches',    label: 'Broken Agreements',     icon: 'Handshake'      },

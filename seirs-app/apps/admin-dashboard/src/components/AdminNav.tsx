@@ -67,6 +67,38 @@ function useOpenFraudCount() {
   return count;
 }
 
+/**
+ * Riders waiting on the KYC desk: unreviewed documents plus vehicle changes.
+ *
+ * The founder uploaded a full set of documents, went to the dashboard, and
+ * saw a badge on Support and nothing at all on Driver KYC Queue, which is
+ * where the actual work had landed. The endpoint reported five waiting the
+ * whole time; no nav item asked it.
+ *
+ * Both counts, because both are decided on that one page now.
+ */
+function useKycWaitingCount() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      Promise.allSettled([
+        adminApi.driverDocuments.counts(),
+        adminApi.vehicleChange.pending(),
+      ]).then(([docs, veh]) => {
+        if (!alive) return;
+        const d = docs.status === 'fulfilled' ? Number((docs.value as any)?.driversWaiting ?? 0) : 0;
+        const v = veh.status  === 'fulfilled' ? Number((veh.value  as any)?.count ?? 0) : 0;
+        setCount(d + v);
+      });
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+  return count;
+}
+
 function useOpenTicketCount() {
   const [count, setCount] = useState(0);
   useEffect(() => {
@@ -90,6 +122,7 @@ function useOpenTicketCount() {
 
 export default function AdminNav() {
   const openTickets = useOpenTicketCount();
+  const kycWaiting  = useKycWaitingCount();
   const openFraud   = useOpenFraudCount();
   const router   = useRouter();
   const pathname = usePathname();
@@ -246,6 +279,18 @@ export default function AdminNav() {
                         title={`${openTickets} ticket${openTickets === 1 ? '' : 's'} waiting on support`}
                       >
                         {openTickets > 99 ? '99+' : openTickets}
+                      </span>
+                    )}
+                    {item.badge === 'kyc' && kycWaiting > 0 && (
+                      <span
+                        className={`rounded-full bg-red-500 text-white text-[10px] font-bold leading-none ${
+                          collapsed
+                            ? 'absolute top-1.5 right-1.5 h-4 min-w-4 px-1 flex items-center justify-center'
+                            : 'px-1.5 py-0.5'
+                        }`}
+                        title={`${kycWaiting} rider${kycWaiting === 1 ? '' : 's'} waiting on a decision`}
+                      >
+                        {kycWaiting > 99 ? '99+' : kycWaiting}
                       </span>
                     )}
                     {item.badge === 'fraud' && openFraud > 0 && (

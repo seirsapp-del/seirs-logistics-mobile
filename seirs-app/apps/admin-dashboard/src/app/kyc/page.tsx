@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { PageIntro } from '@/components/PageIntro';
+import { VehicleChangeQueue } from '@/components/VehicleChangeQueue';
 import { EmptyState } from '@/components/EmptyState';
 import { useConfirm, useNotify, usePrompt } from '@/components/ConfirmDialog';
 import { driverStatus, humanHint } from '@/lib/labels';
@@ -121,6 +122,9 @@ export default function DriverKycQueuePage() {
    * loop is its own kind of harm.
    */
   const [docCounts, setDocCounts] = useState<{ expired: number; expiringSoon: number } | null>(null);
+  // Vehicle changes live on this page now, not on a second queue of their
+  // own (founder 2026-09-01: "we already have a driver kyc queue").
+  const [vehChanges, setVehChanges] = useState(0);
   useEffect(() => {
     adminApi.driverDocuments.counts()
       .then(r => setDocCounts({ expired: r?.expired ?? 0, expiringSoon: r?.expiringSoon ?? 0 }))
@@ -298,6 +302,23 @@ export default function DriverKycQueuePage() {
           </span>
         </div>
       )}
+
+      {/* The machine, under the same roof as the person. Above the roster
+          because it is a decision somebody is waiting on, and the roster
+          below is a list you browse. */}
+      <section className="mb-8">
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-[#0F2B4C]/60">
+            Vehicle changes
+          </h2>
+          {vehChanges > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 tabular-nums">
+              {vehChanges} waiting
+            </span>
+          )}
+        </div>
+        <VehicleChangeQueue onCountChange={setVehChanges} />
+      </section>
 
       {/* Rejected and Suspended are tabs here so a decision made on this
           page can be reversed from this page. */}

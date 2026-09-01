@@ -295,6 +295,13 @@ export class SupportService {
             email:     t.user.email,
             phone:     t.user.phone ?? null,
             accountId: (t.user as any).accountId ?? null,
+            // Two narrow fields, added so the dashboard can open the RIGHT
+            // record. Without them an agent clicking a rider's name landed on
+            // the customer page, which is not their profile and carries none
+            // of their documents, vehicle or trips. Deliberately only these
+            // two: the rest of the user stays out of the queue response.
+            role:      t.user.role ?? null,
+            driverId:  (t.user as any).driverId ?? null,
           }
         : null,
     })) as any;

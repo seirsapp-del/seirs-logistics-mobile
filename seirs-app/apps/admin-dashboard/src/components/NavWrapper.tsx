@@ -112,7 +112,10 @@ export default function NavWrapper({ children }: { children: React.ReactNode }) 
         <div className="flex-1 flex flex-col overflow-hidden">
           <SosBanner />
           <TopBar />
-          <main ref={mainRef} className="flex-1 overflow-y-auto bg-[#F5F5F0]">
+          {/* pb-16 here rather than on forty pages. Each page brings its own p-8,
+              which leaves 32px under the last row of a long table: enough that
+              nothing is clipped, not enough to read as the end of the page. */}
+          <main ref={mainRef} className="flex-1 overflow-y-auto bg-[#F5F5F0] pb-16">
             {/* Wraps children, not the chrome: a denied admin keeps the
                 sidebar so they can navigate somewhere they do hold. */}
             <RouteGuard>{children}</RouteGuard>

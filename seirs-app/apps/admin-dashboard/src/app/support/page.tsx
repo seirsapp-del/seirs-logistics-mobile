@@ -43,7 +43,9 @@ interface Ticket {
   autoClosedAt:      string | null;
   lastMessageAt:     string;
   createdAt:         string;
-  user?:             { id: string; name: string; email: string; phone?: string | null; accountId?: string | null };
+  // role and driverId are carried so an agent clicking a rider's name opens
+  // the rider, not the customer record of the same person.
+  user?:             { id: string; name: string; email: string; phone?: string | null; accountId?: string | null; role?: string | null; driverId?: string | null };
 }
 
 interface Message {
@@ -695,7 +697,12 @@ export default function SupportInboxPage() {
                   <div className="mt-0.5 text-[11px] text-gray-500">
                     {t.user?.id ? (
                       <Link
-                        href={`/users/${t.user.id}`}
+                        /* A driver opened at /users/:id lands on the customer
+                           record, which is not their profile and carries none
+                           of their documents or trips. Route by who they are. */
+                        href={t.user.role === 'driver' && t.user.driverId
+                          ? `/drivers/${t.user.driverId}`
+                          : `/users/${t.user.id}`}
                         className="font-semibold text-[#3A7BD5] hover:underline"
                         title="Open this person's full record: their deliveries, payments and other tickets"
                       >

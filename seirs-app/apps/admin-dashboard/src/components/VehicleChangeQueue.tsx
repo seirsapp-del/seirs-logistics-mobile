@@ -3,35 +3,32 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, Car, Loader2, Phone, ShieldCheck, XCircle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
-import { PageIntro } from '@/components/PageIntro';
 import { EmptyState } from '@/components/EmptyState';
 import { useConfirm, useNotify, usePrompt } from '@/components/ConfirmDialog';
 
 /**
- * The vehicle change queue.
+ * Riders waiting on a decision about the machine, as a section of the KYC
+ * queue rather than a page of its own.
  *
- * WHY this page exists. Submitting a vehicle change writes a
- * driver_vehicle_changes row and then TRIES to open a support ticket so an
- * admin sees it. That ticket creation sits in a catch that only warns. When it
- * fails, the row is real, the rider is told "our team has it", and nothing
- * anywhere surfaces the request: there was a resolve endpoint but no way to
- * list one, so the only route in was the ticket that may not exist.
+ * It WAS its own page for about two hours. The founder's objection landed
+ * immediately and was right: "we already have a driver kyc queue". Two
+ * queues both asking a reviewer to look at a rider's documents is the same
+ * mistake the driver app had, where KYC and My Vehicle were separate screens
+ * asking for three of the same documents. One reviewer, one place.
  *
- * A rider stuck here keeps being offered jobs sized for the vehicle they no
- * longer have, which is a pricing and a safety problem, not just a wait.
+ * The split that remains is real and is only a heading: the documents above
+ * are about the person, this is about the machine, and the second one repeats
+ * whenever they change vehicle.
  *
- * Rows the ticket never reached are marked. Those are the ones this page was
- * built for.
+ * Photos render as photos. The first version listed them as five text links,
+ * so deciding meant opening five tabs and coming back, and a reviewer with
+ * forty of these will not do that forty times.
  */
 
 const ORPHAN_HELP =
   'No support ticket was created for this request, so it appears nowhere else in the dashboard.';
 
-/**
- * The five documents, keyed exactly as the driver app names its upload
- * slots and the backend stores them. One vocabulary end to end means the
- * word an admin ticks here is the word the rider reads back.
- */
+/** Keyed exactly as the driver app names its upload slots and the backend stores them. */
 const DOCS: { slot: string; label: string; urlKey: string }[] = [
   { slot: 'exterior',       label: 'Outside',   urlKey: 'photoExteriorUrl'  },
   { slot: 'interior',       label: 'Inside',    urlKey: 'photoInteriorUrl'  },
@@ -40,15 +37,33 @@ const DOCS: { slot: string; label: string; urlKey: string }[] = [
   { slot: 'insuranceCert',  label: 'Insurance', urlKey: 'insuranceCertUrl'  },
 ];
 
-export default function VehicleChangesPage() {
-  const [items,   setItems]   = useState<any[] | null>(null);
-  const [error,   setError]   = useState<string | null>(null);
-  const [busyId,  setBusyId]  = useState<string | null>(null);
+const isPdf = (url: string) => /\.pdf($|\?|#)/i.test(url);
+
+export function VehicleChangeQueue({ onCountChange }: { onCountChange?: (n: number) => void }) {
+  const [items,  setItems]  = useState<any[] | null>(null);
+  const [error,  setError]  = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   /** Which documents the reviewer has marked as the problem, per request. */
-  const [faults,  setFaults]  = useState<Record<string, string[]>>({});
+  const [faults, setFaults] = useState<Record<string, string[]>>({});
   const confirm = useConfirm();
   const prompt  = usePrompt();
   const notify  = useNotify();
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const res = await adminApi.vehicleChange.pending();
+      const list = res?.items ?? [];
+      setItems(list);
+      onCountChange?.(list.length);
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not load vehicle changes.');
+      setItems([]);
+      onCountChange?.(0);
+    }
+  }, [onCountChange]);
+
+  useEffect(() => { void load(); }, [load]);
 
   const toggleFault = (rowId: string, slot: string) =>
     setFaults(prev => {
@@ -59,23 +74,9 @@ export default function VehicleChangesPage() {
       };
     });
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const res = await adminApi.vehicleChange.pending();
-      setItems(res?.items ?? []);
-    } catch (e: any) {
-      setError(e?.message ?? 'Could not load the queue.');
-      setItems([]);
-    }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
   const decide = async (row: any, approve: boolean) => {
     const marked = faults[row.id] ?? [];
     const named  = DOCS.filter(d => marked.includes(d.slot)).map(d => d.label.toLowerCase());
-
     let note: string | undefined;
 
     if (approve) {
@@ -86,17 +87,14 @@ export default function VehicleChangesPage() {
       });
       if (!ok) return;
     } else {
-      // The note is optional, but the message the rider gets is much
-      // better with it, so the prompt says what it is for rather than
-      // asking for "a reason" and hoping.
       const answer = await prompt({
         title: 'Turn down this vehicle change?',
         message: named.length
           ? `The rider will be told to redo ${named.join(', ')} and to leave the rest alone.`
           : 'You have not marked any document as the problem, so the rider is only told the request was turned down. Tick the documents that failed before turning down if this was about the paperwork.',
-        label:       'Anything to add? (optional)',
-        placeholder: 'Plate in the photo does not match the papers',
-        helper:      'The rider reads this word for word in their app Messages.',
+        label:        'Anything to add? (optional)',
+        placeholder:  'Plate in the photo does not match the papers',
+        helper:       'The rider reads this word for word in their app Messages.',
         confirmLabel: 'Turn down',
         multiline: true,
         danger: true,
@@ -120,7 +118,7 @@ export default function VehicleChangesPage() {
         message: !approve && named.length
           ? `The rider has been told to redo ${named.join(', ')}.`
           : 'The rider has been told in their app Messages.',
-        tone:    'success',
+        tone: 'success',
       });
       setFaults(prev => { const next = { ...prev }; delete next[row.id]; return next; });
       await load();
@@ -131,13 +129,19 @@ export default function VehicleChangesPage() {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <PageIntro
-        title="Vehicle changes"
-        purpose="Riders who have bought or swapped a vehicle and are waiting on a decision. Oldest first: the rider who has waited longest is the one being failed hardest. Identity documents are not re-checked here, only the proof about the machine."
+  if (items !== null && items.length === 0 && !error) {
+    return (
+      <EmptyState
+        icon={<Car className="h-5 w-5" />}
+        title="No vehicle changes waiting"
+        body="Riders who buy or swap a vehicle appear here. Their identity documents are not re-checked, only the proof about the machine."
+        tone="good"
       />
+    );
+  }
 
+  return (
+    <div className="space-y-4">
       {error && (
         <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -146,24 +150,24 @@ export default function VehicleChangesPage() {
       )}
 
       {items === null ? (
-        <div className="flex items-center gap-2 py-16 text-sm text-[#0F2B4C]/50">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading the queue…
+        <div className="flex items-center gap-2 py-10 text-sm text-[#0F2B4C]/50">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading vehicle changes…
         </div>
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={<Car className="h-5 w-5" />}
-          title="Nothing waiting"
-          body="Every vehicle change has been decided. New requests appear here the moment a rider submits one."
-          tone="good"
-        />
       ) : (
-        <div className="space-y-4">
-          {items.map((row) => (
+        items.map((row) => {
+          const marked = faults[row.id] ?? [];
+          return (
             <div key={row.id} className="rounded-xl border border-[#DCE3EB] bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-[#0F2B4C]">{row.driverName ?? 'Unnamed rider'}</span>
+                    {/* The rider's own record, not the customer page. */}
+                    <Link
+                      href={`/drivers/${row.driverId}`}
+                      className="font-semibold text-[#0F2B4C] hover:underline"
+                    >
+                      {row.driverName ?? 'Unnamed rider'}
+                    </Link>
                     {row.accountId && (
                       <span className="rounded bg-[#0F2B4C]/5 px-2 py-0.5 font-mono text-xs text-[#0F2B4C]/70">
                         {row.accountId}
@@ -203,52 +207,73 @@ export default function VehicleChangesPage() {
               )}
 
               {/*
-                Open each document, and tick the ones that are wrong as you
-                go. Ticking happens here rather than in a modal because the
-                reviewer is looking at these five links while they decide,
-                and a dialog that covers them asks them to remember instead.
+                The documents, as documents. Click one to open it full size;
+                tick it if it is the problem. Both actions sit on the thing
+                being judged, so a reviewer decides from this card without
+                opening five tabs and trying to remember which was which.
               */}
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {DOCS.map(({ slot, label, urlKey }) => {
-                  const url    = row[urlKey];
-                  const marked = (faults[row.id] ?? []).includes(slot);
+                  const url = row[urlKey];
+                  const bad = marked.includes(slot);
                   return (
-                    <label
-                      key={slot}
-                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 ${
-                        marked ? 'border-amber-300 bg-amber-50' : 'border-transparent'
-                      } ${url ? 'cursor-pointer' : 'cursor-default'}`}
-                      title={url ? 'Tick if this document is the problem' : undefined}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={marked}
-                        disabled={!url || busyId === row.id}
-                        onChange={() => toggleFault(row.id, slot)}
-                        className="h-3.5 w-3.5 accent-amber-600 disabled:opacity-30"
-                      />
-                      {url ? (
-                        <Link href={String(url)} target="_blank" className="text-[#3A7BD5] underline underline-offset-2">
-                          {label}
-                        </Link>
-                      ) : (
-                        <span className="text-[#0F2B4C]/35">{label} missing</span>
-                      )}
-                    </label>
+                    <div key={slot} className="space-y-1.5">
+                      <div
+                        className={`relative aspect-[4/3] overflow-hidden rounded-lg border-2 bg-[#F5F5F0] ${
+                          bad ? 'border-amber-400' : 'border-[#E5E7EB]'
+                        }`}
+                      >
+                        {url ? (
+                          <Link href={String(url)} target="_blank" className="block h-full w-full">
+                            {isPdf(String(url)) ? (
+                              <span className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#3A7BD5]">
+                                <ShieldCheck className="h-6 w-6" />
+                                <span className="text-[11px] font-semibold">PDF, open it</span>
+                              </span>
+                            ) : (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                src={String(url)}
+                                alt={label}
+                                className="h-full w-full object-cover transition hover:scale-[1.03]"
+                              />
+                            )}
+                          </Link>
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-[11px] text-[#0F2B4C]/35">
+                            not provided
+                          </span>
+                        )}
+                      </div>
+                      <label
+                        className={`flex cursor-pointer items-center gap-1.5 text-xs ${
+                          bad ? 'font-semibold text-amber-700' : 'text-[#5C6E82]'
+                        }`}
+                        title={url ? 'Tick if this document is the problem' : undefined}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={bad}
+                          disabled={!url || busyId === row.id}
+                          onChange={() => toggleFault(row.id, slot)}
+                          className="h-3.5 w-3.5 accent-amber-600 disabled:opacity-30"
+                        />
+                        {label}
+                      </label>
+                    </div>
                   );
                 })}
               </div>
 
-              {(faults[row.id] ?? []).length > 0 && (
-                <p className="mt-2 text-xs text-amber-700">
+              {marked.length > 0 && (
+                <p className="mt-3 text-xs text-amber-700">
                   Turning down will tell the rider to redo{' '}
-                  {DOCS.filter(d => (faults[row.id] ?? []).includes(d.slot))
-                       .map(d => d.label.toLowerCase()).join(', ')}
+                  {DOCS.filter(d => marked.includes(d.slot)).map(d => d.label.toLowerCase()).join(', ')}
                   , and to leave everything else as it is.
                 </p>
               )}
 
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={busyId === row.id}
@@ -265,18 +290,24 @@ export default function VehicleChangesPage() {
                 >
                   <XCircle className="h-4 w-4" /> Turn down
                 </button>
+                <Link
+                  href={`/drivers/${row.driverId}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-[#3A7BD5] hover:underline"
+                >
+                  Open the rider
+                </Link>
                 {row.ticketId && (
                   <Link
                     href={`/support?ticket=${row.ticketId}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-[#3A7BD5]"
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-[#3A7BD5] hover:underline"
                   >
                     Open the ticket
                   </Link>
                 )}
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })
       )}
     </div>
   );
