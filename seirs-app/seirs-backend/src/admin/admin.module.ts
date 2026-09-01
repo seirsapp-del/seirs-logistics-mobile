@@ -113,6 +113,12 @@ export class AdminModule implements OnModuleInit {
       `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deletionScheduledAt" timestamptz NULL`,
       `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deletionRequestedBy" varchar(128) NULL`,
       `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deletionReason" text NULL`,
+      // Signup consent, 2026-09-01. Both apps collected the age and terms
+      // ticks and then discarded them: no columns existed and neither
+      // register path wrote one. Default false on the backfill because we
+      // genuinely have no record for anyone who signed up before today.
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "ageConfirmed" boolean NOT NULL DEFAULT false`,
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "termsAcceptedAt" timestamptz NULL`,
       `CREATE INDEX IF NOT EXISTS "users_deletion_scheduled_idx" ON "users" ("deletionScheduledAt")`,
     ]) {
       try {

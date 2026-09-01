@@ -152,6 +152,18 @@ export class AuthService {
       throw new BadRequestException('Vehicle type is required for driver registration.');
     }
 
+    // Drivers must have an address on file. Customers may skip it (signup is
+    // where people drop out and a sender can add it at first booking), but a
+    // courier holding other people's goods cannot: founder's call 2026-09-01,
+    // "in case of theft". Enforced here as well as in the app so it does not
+    // rest on a client gate anyone can bypass by posting directly.
+    if (dto.role === UserRole.DRIVER) {
+      const a = dto.homeAddress;
+      if (!a?.state?.trim() || !a?.city?.trim() || !a?.street?.trim()) {
+        throw new BadRequestException('A home address (state, city and street) is required for driver registration.');
+      }
+    }
+
     if (!AuthService.PASSWORD_REGEX.test(dto.password)) {
       throw new BadRequestException(
         'Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number or symbol.',
@@ -173,8 +185,13 @@ export class AuthService {
       emailVerified:  false,
       referredByCode: dto.referralCode?.trim().toUpperCase() || null,
       // Optional at signup, so null when the sender skipped it. Same jsonb
-      // shape the profile screen edits later.
+      // shape the profile screen edits later. Drivers must send it: a courier
+      // holding other people's goods has to have an address on file.
       homeAddress:    dto.homeAddress ?? null,
+      // Consent. The DTO has accepted these since it was written and nothing
+      // ever stored them (2026-09-01).
+      ageConfirmed:    dto.ageConfirmed === true,
+      termsAcceptedAt: dto.termsAcceptedAt ? new Date(dto.termsAcceptedAt) : null,
     });
     await this.usersRepo.save(user);
 
@@ -652,6 +669,13 @@ export class AuthService {
       capabilities:  { canSend: true, canPartner: false },
       accountId,
       emailVerified: false,
+      // Referral attribution, 2026-09-01. Customer and driver signups have
+      // always set this; business never did, so a business that arrived
+      // through someone's referral link earned that person nothing.
+      referredByCode: data.referralCode?.trim().toUpperCase() || null,
+      // Consent, same gap as the other path.
+      ageConfirmed:    data.ageConfirmed === true,
+      termsAcceptedAt: data.termsAcceptedAt ? new Date(data.termsAcceptedAt) : null,
     });
     await this.usersRepo.save(user);
 

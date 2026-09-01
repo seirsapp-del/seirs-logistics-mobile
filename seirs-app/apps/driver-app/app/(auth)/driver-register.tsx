@@ -20,6 +20,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+import { StatePicker } from '@/components/StatePicker';
+import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { validatePassword } from '@seirs/shared';
 import { isValidNigerianMobile, toE164Ng, toNationalInput, NG_PHONE_HINT } from '@/constants/phone';
 
@@ -53,6 +55,12 @@ export default function DriverRegisterScreen() {
   const [password,     setPassword]     = useState('');
   const [confirmPass,  setConfirmPass]  = useState('');
   const [vehicle,      setVehicle]      = useState<VehicleType | null>(null);
+  // Home address. REQUIRED for drivers, unlike customers where it is optional:
+  // a courier carrying other people's goods has to have an address on file
+  // (founder 2026-09-01, "in case of theft").
+  const [addrState,    setAddrState]    = useState('');
+  const [addrCity,     setAddrCity]     = useState('');
+  const [addrStreet,   setAddrStreet]   = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [termsConfirmed, setTermsConfirmed] = useState(false);
@@ -71,6 +79,9 @@ export default function DriverRegisterScreen() {
     : !isValidNigerianMobile(phone)   ? NG_PHONE_HINT
     : pwProblem                       ? pwProblem
     : password !== confirmPass        ? 'Passwords do not match.'
+    : !addrState                      ? 'Pick the state you live in.'
+    : !addrCity.trim()                ? 'Enter your city or LGA.'
+    : !addrStreet.trim()              ? 'Enter your street address.'
     : !vehicle                        ? 'Select a vehicle type.'
     : !ageConfirmed                   ? 'Confirm you are 18 years or older.'
     : !termsConfirmed                 ? 'Accept the Terms of Service and Privacy Policy.'
@@ -78,7 +89,8 @@ export default function DriverRegisterScreen() {
   const canSubmit = missing === null && !loading;
 
   const handleRegister = async () => {
-    if (!firstName.trim() || !lastName.trim() || !email || !phone || !password || !confirmPass || !vehicle) {
+    if (!firstName.trim() || !lastName.trim() || !email || !phone || !password || !confirmPass || !vehicle
+        || !addrState || !addrCity.trim() || !addrStreet.trim()) {
       setError('Please fill in all required fields and select a vehicle type.');
       return;
     }
@@ -118,6 +130,13 @@ export default function DriverRegisterScreen() {
         password,
         role: 'driver',
         vehicleType: vehicle!,
+        // Required for drivers. Same jsonb shape the profile screen edits later.
+        homeAddress: {
+          label:  'Home',
+          street: addrStreet.trim(),
+          city:   addrCity.trim(),
+          state:  addrState,
+        },
         ageConfirmed: true,
         termsAcceptedAt: new Date().toISOString(),
         ...(trimmedRef ? { referralCode: trimmedRef } : {}),
@@ -269,6 +288,34 @@ export default function DriverRegisterScreen() {
               />
             </View>
             <Text style={[styles.hint, { color: theme.textThird }]}>{NG_PHONE_HINT}</Text>
+          </View>
+
+          <View style={styles.field}>
+            <StatePicker label="State *" value={addrState} onChange={setAddrState} />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>City / LGA<Text style={{ color: theme.textThird }}> *</Text></Text>
+            <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="e.g. Ikeja, Surulere, Lekki"
+                placeholderTextColor={theme.textThird}
+                autoCapitalize="words"
+                value={addrCity}
+                onChangeText={setAddrCity}
+              />
+            </View>
+          </View>
+
+          <View style={styles.field}>
+            <StreetAutocomplete
+              label="Street Address & Landmark *"
+              value={addrStreet}
+              onChangeText={setAddrStreet}
+              state={addrState}
+              placeholder="15 Adeola Odeku Street, Victoria Island"
+            />
           </View>
 
           <View style={styles.field}>

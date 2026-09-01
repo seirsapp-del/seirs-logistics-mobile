@@ -176,6 +176,26 @@ export class User {
   @Column({ nullable: true })
   referredByCode: string;
 
+  /**
+   * Signup consent.
+   *
+   * Every app has shown an "I am 18 or older" box and a Terms box since the
+   * forms were written, and the RegisterDto has declared both fields all
+   * along, but nothing was ever persisted: there were no columns, and
+   * neither register path assigned them. So the answer was collected from
+   * every user who ever signed up and dropped on the floor (found
+   * 2026-09-01). These are what make the tick mean something.
+   *
+   * ageConfirmed defaults false so rows created before today read as "we do
+   * not have a record", which is the truth, rather than silently claiming
+   * consent nobody stored.
+   */
+  @Column({ default: false })
+  ageConfirmed: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  termsAcceptedAt: Date | null;
+
   // Legacy enum-based admin sub-role. Kept for backwards compat with
   // older sessions / clients; new role assignments populate roleId
   // (Spec V8 dynamic roles) and that takes precedence.

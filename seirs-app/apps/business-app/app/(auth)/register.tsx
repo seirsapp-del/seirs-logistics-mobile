@@ -50,7 +50,7 @@ import {
 // across web + all 3 mobile apps without bundling text.
 const TERMS_URL   = 'https://seirs-website.vercel.app/terms-of-service';
 const PRIVACY_URL = 'https://seirs-website.vercel.app/privacy-policy';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
@@ -69,10 +69,17 @@ export default function RegisterScreen() {
   const { isDark } = useTheme();
   const theme      = Colors[isDark ? 'dark' : 'light'];
 
+  // Captured from a deep link (seirsbusiness://register?ref=BIZ-XXXXX), the
+  // same way customer does it, and still typeable by hand below for someone
+  // who was given a code verbally.
+  const { ref: refParam } = useLocalSearchParams<{ ref?: string }>();
+
   const [form, setForm] = useState({
     firstName: '', middleName: '', lastName: '',
     email: '', phone: '', password: '', confirmPassword: '',
     companyName: '', rcNumber: '',
+    // Seeded from the deep link, still editable by hand.
+    referralCode: (refParam ?? '').toString().trim().toUpperCase(),
     // Address is broken into 3 structured parts so dispatch can compute zone
     // pricing and filter deliveries by state. On submit they are joined into
     // one canonical businessAddress string.
@@ -84,6 +91,7 @@ export default function RegisterScreen() {
   const [ageOk,   setAgeOk]   = useState(false);
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
 
   // Nigerian mobile numbers are 11 digits total: 0 + 2-digit network code + 8
   // digits. Accept the +234 international prefix too by normalising to the
@@ -155,6 +163,7 @@ export default function RegisterScreen() {
         password:        form.password,
         companyName:     form.companyName.trim(),
         rcNumber:        form.rcNumber.trim() || undefined,
+        referralCode:    form.referralCode.trim().toUpperCase() || undefined,
         businessAddress,
         // Structured parts too, so the backend can index by state without
         // re-parsing the combined string.
@@ -339,6 +348,13 @@ export default function RegisterScreen() {
               ? <Text style={[styles.fieldError, { color: theme.error }]}>Passwords do not match</Text>
               : null}
           </View>
+
+          <Field theme={theme}
+            label="Referral Code" optional icon="Gift" placeholder="e.g. BIZ-4K2P9X"
+            autoCapitalize="characters"
+            value={form.referralCode} onChangeText={(v) => set('referralCode', v.toUpperCase())}
+            hint="Someone shared SEIRS with you? Their code goes here."
+          />
 
           {/* Age */}
           <View style={[styles.checkSection, { borderColor: theme.border }]}>

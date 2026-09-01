@@ -1228,6 +1228,9 @@ export const businessAuthApi = {
     storeName?:       string;
     storeAddress?:    string;
     capacity?:        number;
+    // Referral attribution. Business was the only signup without it, so a
+    // business arriving through someone's link earned that person nothing.
+    referralCode?:    string;
     // Signup consent, sent to match the customer app's payload.
     // WARNING 2026-09-01: nothing on the server stores these yet. The User
     // entity has no ageConfirmed/termsAcceptedAt column and neither register
