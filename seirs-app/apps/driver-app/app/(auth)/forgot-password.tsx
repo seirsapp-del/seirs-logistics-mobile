@@ -6,8 +6,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows, Palette } from '@/constants/theme';
 import { authApi } from '@/services/api';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 
@@ -50,31 +51,59 @@ export default function ForgotPasswordScreen() {
     }
   };
 
+  /**
+   * The brand bar, rendered in BOTH states.
+   *
+   * It used to sit inside the form branch only, so submitting the form made
+   * the lockup disappear and left a bare screen. The business app keeps its
+   * header across both, which is the difference the founder noticed
+   * (2026-09-01).
+   */
+  const headerBar = (
+    <LinearGradient
+      colors={[Palette.navy800, Palette.navy700]}
+      style={{ paddingTop: insets.top + 24, paddingBottom: 24, paddingHorizontal: Spacing.lg }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
+        <SeirsMarkBold size={40} color="#FFFFFF" hubColor={Palette.navy800} />
+        <Text style={[styles.brand, { color: '#FFFFFF' }]}>SEIRS</Text>
+        <Text style={[styles.brandSub, { color: 'rgba(255,255,255,0.55)' }]}>DRIVER</Text>
+      </View>
+    </LinearGradient>
+  );
+
   if (sent) {
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        {headerBar}
         <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]} showsVerticalScrollIndicator={false}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
               <Ionicons name="arrow-back" size={20} color={theme.text} />
             </View>
           </Pressable>
-          <View style={[styles.sentCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-            {/* Was success green. Nothing succeeded: we deliberately do
-                not say whether the account exists, so a green tick reads as
-                a confirmation we have not given. Brand blue is the honest
-                colour for "we have done our part". */}
+          {/* Flat, not a raised card (founder 2026-09-01: the business
+              app's version of this screen is the one to match, and it is
+              the calmest of the three). A shadowed card around a single
+              message was furniture.
+
+              Brand blue, not success green: nothing succeeded, and we
+              deliberately do not say whether the account exists, so a green
+              tick would read as a confirmation we have not given.
+
+              The expiry is stated because it is FIFTEEN minutes
+              (auth.service.ts:476). The business screen used to claim an
+              hour and the customer copy said "within a few minutes"; both
+              sent people back to a link that had already died. */}
+          <View style={styles.sentWrap}>
             <View style={[styles.sentIconWrap, { backgroundColor: theme.primary + '18' }]}>
-              <Ionicons name="mail-open-outline" size={52} color={theme.primary} />
+              <Ionicons name="mail-open-outline" size={40} color={theme.primary} />
             </View>
             <Text style={[styles.sentTitle, { color: theme.text }]}>Check your inbox</Text>
             <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
-              If <Text style={{ fontWeight: FontWeight.semibold, color: theme.text }}>{email}</Text> is registered,
-              you'll receive a reset link by email.
-            </Text>
-            <Text style={[styles.sentHint, { color: theme.textThird }]}>
-              Check your spam folder if you don't see it.
+              If <Text style={{ fontWeight: FontWeight.semibold, color: theme.text }}>{email.trim().toLowerCase()}</Text> is registered,
+              we sent a reset link. It expires in 15 minutes. Check spam if you do not see it.
             </Text>
           </View>
           <Pressable
@@ -98,6 +127,7 @@ export default function ForgotPasswordScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      {headerBar}
       <ScrollView
         contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -112,13 +142,6 @@ export default function ForgotPasswordScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.brandRow}>
-            {/* Same lockup as onboarding (founder 2026-08-10): okada mark
-                + spaced SEIRS wordmark + small DRIVER tag. */}
-            <SeirsMarkBold size={40} color={theme.primary} hubColor={theme.background} />
-            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
-            <Text style={[styles.brandSub, { color: theme.textThird }]}>DRIVER</Text>
-          </View>
           <Text style={[styles.title, { color: theme.text }]}>Forgot password?</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
             Enter your email and we'll send you a link to reset your password.
@@ -201,10 +224,8 @@ const styles = StyleSheet.create({
   footer:     { flexDirection: 'row', justifyContent: 'center' },
   footerText: { fontSize: FontSize.base },
   footerLink: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
-
-  sentCard:     { borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.lg },
+  sentWrap:     { alignItems: 'center', gap: 8, marginTop: 24, marginBottom: 24 },
   sentIconWrap: { width: 88, height: 88, borderRadius: 44, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.xs },
   sentTitle:    { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
   sentDesc:     { fontSize: FontSize.base, lineHeight: 22, textAlign: 'center' },
-  sentHint:     { fontSize: FontSize.sm, textAlign: 'center' },
 });

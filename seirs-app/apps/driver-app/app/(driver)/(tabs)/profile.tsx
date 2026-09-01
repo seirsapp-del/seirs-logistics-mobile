@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/context/ThemeContext';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -26,13 +27,14 @@ import { alertDialog } from '@/components/SeirsDialog';
 
 interface MenuSection {
   title: string;
-  items: { icon: string; label: string; sub?: string; route?: string; danger?: boolean; badge?: string }[];
+  items: { icon: string; label: string; sub?: string; route?: string; danger?: boolean; badge?: string; onPress?: () => void }[];
 }
 
 export default function DriverProfileScreen() {
   const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router           = useRouter();
   const cs               = useColorScheme();
+  const { setTheme, setFollowSystem, followSystem } = useTheme();
   const theme            = Colors[cs ?? 'light'];
   const isDark           = cs === 'dark';
   const { user, logout } = useAuth();
@@ -104,6 +106,21 @@ export default function DriverProfileScreen() {
       items: [
         { icon: 'notifications-outline', label: 'Notification Settings', route: '/(driver)/notification-settings' },
         { icon: 'lock-closed-outline',   label: 'Privacy & Data',        route: '/(driver)/privacy' },
+        {
+          icon:  'contrast-outline',
+          label: 'Appearance',
+          sub:   followSystem ? 'Following your phone' : (isDark ? 'Dark' : 'Light'),
+          onPress: () => alertDialog(
+            'Appearance',
+            `How should the app look? Currently ${isDark ? 'Dark' : 'Light'}.`,
+            [
+              { text: 'Follow my phone', onPress: () => setFollowSystem(true) },
+              { text: 'Light',           onPress: () => setTheme('light') },
+              { text: 'Dark',            onPress: () => setTheme('dark') },
+              { text: 'Cancel', style: 'cancel' },
+            ],
+          ),
+        },
       ],
     },
     {
@@ -128,6 +145,10 @@ export default function DriverProfileScreen() {
   };
 
   const handleItemPress = (item: MenuSection['items'][0]) => {
+    // onPress wins: a row that does something in place (Appearance) has no
+    // route to push. Every pre-existing row defines route and not onPress,
+    // so this changes none of them.
+    if (item.onPress) { item.onPress(); return; }
     if (item.route) router.push(item.route as any);
   };
 

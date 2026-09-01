@@ -8,8 +8,9 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SeirsMarkBold } from '@/components/SeirsLogoV2';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows, Palette } from '@/constants/theme';
 import { authApi } from '@/services/api';
 
 export default function ForgotPasswordScreen() {
@@ -47,28 +48,50 @@ export default function ForgotPasswordScreen() {
     }
   };
 
+  /**
+   * The brand bar, rendered in BOTH states.
+   *
+   * It used to sit inside the form branch only, so submitting the form made
+   * the lockup disappear and left a bare screen. The business app keeps its
+   * header across both, which is the difference the founder noticed
+   * (2026-09-01).
+   */
+  const headerBar = (
+    <LinearGradient
+      colors={[Palette.navy800, Palette.navy700]}
+      style={{ paddingTop: insets.top + 24, paddingBottom: 24, paddingHorizontal: Spacing.lg }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
+        <SeirsMarkBold size={40} color="#FFFFFF" hubColor={Palette.navy800} />
+        <Text style={[styles.brand, { color: '#FFFFFF' }]}>SEIRS</Text>
+      </View>
+    </LinearGradient>
+  );
+
   if (sent) {
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        {headerBar}
         <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]} showsVerticalScrollIndicator={false}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
               <Ionicons name="arrow-back" size={20} color={theme.text} />
             </View>
           </Pressable>
-          <View style={[styles.sentCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-            {/* Was success green; nothing succeeded, and we deliberately
-                do not reveal whether the account exists. */}
+          {/* Flat, not a raised card (founder 2026-09-01: the business
+              app's version of this screen is the one to match). A shadowed
+              card around a single message was doing nothing except adding
+              furniture. Colour stays brand blue rather than success green:
+              nothing succeeded, and we deliberately do not reveal whether
+              the account exists. */}
+          <View style={styles.sentWrap}>
             <View style={[styles.sentIconWrap, { backgroundColor: theme.primary + '18' }]}>
-              <Ionicons name="mail-open-outline" size={52} color={theme.primary} />
+              <Ionicons name="mail-open-outline" size={40} color={theme.primary} />
             </View>
             <Text style={[styles.sentTitle, { color: theme.text }]}>{t('auth.checkInbox')}</Text>
             <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
-              {t('auth.checkInboxDesc')}
-            </Text>
-            <Text style={[styles.sentHint, { color: theme.textThird }]}>
-              {t('auth.checkSpam')}
+              {t('auth.checkInboxDesc')} {t('auth.checkSpam')}
             </Text>
           </View>
           <Pressable
@@ -89,6 +112,7 @@ export default function ForgotPasswordScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      {headerBar}
       <ScrollView
         contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -103,10 +127,6 @@ export default function ForgotPasswordScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <SeirsMarkBold size={40} color={theme.primary} hubColor={theme.background} />
-            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
-          </View>
           <Text style={[styles.title, { color: theme.text }]}>{t('auth.forgotTitle')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
             {t('auth.forgotDesc')}
@@ -188,10 +208,8 @@ const styles = StyleSheet.create({
   footer:     { flexDirection: 'row', justifyContent: 'center' },
   footerText: { fontSize: FontSize.base },
   footerLink: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
-
-  sentCard:     { borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.lg },
-  sentIconWrap: { width: 88, height: 88, borderRadius: 44, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.xs },
+  sentWrap:     { alignItems: 'center', gap: 8, marginTop: 24, marginBottom: 24 },
+  sentIconWrap: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.xs },
   sentTitle:    { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
   sentDesc:     { fontSize: FontSize.base, lineHeight: 22, textAlign: 'center' },
-  sentHint:     { fontSize: FontSize.sm, textAlign: 'center' },
 });

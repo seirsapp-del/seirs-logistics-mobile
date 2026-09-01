@@ -24,7 +24,7 @@ import {
   // Added 2026-08-24 for the package QR screen: the multi-package run
   // pages between one parcel's ticket and the next, and ArrowLeft is
   // already spoken for by the header back button on that screen.
-  ChevronLeft, ExternalLink,
+  ChevronLeft, ExternalLink, Route,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -54,7 +54,7 @@ const ICONS: Record<string, LucideIcon> = {
   // Added 2026-08-24 for the package QR screen: the multi-package run
   // pages between one parcel's ticket and the next, and ArrowLeft is
   // already spoken for by the header back button on that screen.
-  ChevronLeft, ExternalLink,
+  ChevronLeft, ExternalLink, Route,
 };
 
 // Last-resort glyph, borrowed from the `FALLBACK[name] ?? something` shape

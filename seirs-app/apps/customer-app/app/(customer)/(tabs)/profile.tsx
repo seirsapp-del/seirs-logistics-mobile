@@ -10,6 +10,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
@@ -23,6 +24,7 @@ type MenuItem = { icon: string; label: string; sub?: string; onPress: () => void
 export default function ProfileScreen() {
   const router           = useRouter();
   const cs               = useColorScheme();
+  const { setTheme, setFollowSystem, followSystem } = useTheme();
   const theme            = Colors[cs ?? 'light'];
   const isDark           = cs === 'dark';
   const { user, logout } = useAuth();
@@ -112,6 +114,21 @@ export default function ProfileScreen() {
         { icon: 'document-text-outline', label: 'Documents', sub: 'Letters and documents from SEIRS', onPress: () => router.push('/(customer)/documents' as any) },
         { icon: 'language-outline',      label: t('profile.language'),      sub: t('profile.languageSub'),      onPress: () => router.push('/(customer)/language') },
         { icon: 'lock-closed-outline',   label: t('profile.privacy'),       sub: t('profile.privacySub'),       onPress: () => router.push('/(customer)/privacy') },
+        {
+          icon:  'contrast-outline',
+          label: 'Appearance',
+          sub:   followSystem ? 'Following your phone' : (isDark ? 'Dark' : 'Light'),
+          onPress: () => alertDialog(
+            'Appearance',
+            `How should the app look? Currently ${isDark ? 'Dark' : 'Light'}.`,
+            [
+              { text: 'Follow my phone', onPress: () => setFollowSystem(true) },
+              { text: 'Light',           onPress: () => setTheme('light') },
+              { text: 'Dark',            onPress: () => setTheme('dark') },
+              { text: 'Cancel', style: 'cancel' },
+            ],
+          ),
+        },
       ],
     },
     {

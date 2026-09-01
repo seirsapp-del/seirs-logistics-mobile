@@ -9,6 +9,8 @@ interface ThemeContextType {
   theme:       Theme;
   isDark:      boolean;
   toggleTheme: () => void;
+  /** Set a specific mode. Business had this; these two only had a flip. */
+  setTheme: (mode: Theme) => void;
   followSystem: boolean;
   setFollowSystem: (v: boolean) => void;
 }
@@ -17,6 +19,7 @@ const ThemeContext = createContext<ThemeContextType>({
   theme:        'light',
   isDark:       false,
   toggleTheme:  () => {},
+  setTheme:     () => {},
   followSystem: true,
   setFollowSystem: () => {},
 });
@@ -53,6 +56,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEY, next);
   };
 
+  /**
+   * Pick a mode outright. Writing the key is what pins it: an absent key
+   * means "follow the phone", which is exactly what updateFollowSystem
+   * relies on below.
+   */
+  const setTheme = async (mode: Theme) => {
+    setThemeState(mode);
+    setFollowSystem(false);
+    await AsyncStorage.setItem(STORAGE_KEY, mode);
+  };
+
   const updateFollowSystem = async (v: boolean) => {
     setFollowSystem(v);
     if (v) {
@@ -70,6 +84,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       theme,
       isDark:       theme === 'dark',
       toggleTheme,
+      setTheme,
       followSystem,
       setFollowSystem: updateFollowSystem,
     }}>

@@ -42,7 +42,7 @@
     "sendResetLink": "Send Reset Link",
     "rememberPassword": "Remember your password?",
     "checkInbox": "Check your inbox",
-    "checkInboxDesc": "If your email is registered, you'll receive a reset link within a few minutes.",
+    "checkInboxDesc": "If your email is registered, we sent a reset link. It expires in 15 minutes.",
     "checkSpam": "Check your spam folder if you don't see it.",
     "backToSignIn": "Back to Sign In",
     "enterEmail": "Please enter your email address."

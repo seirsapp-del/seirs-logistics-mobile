@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen() {
               <Text style={[styles.heading, { textAlign: 'center', color: theme.text }]}>Check your inbox</Text>
               <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
                 If an account exists for {email.trim().toLowerCase()}, we sent a reset link.
-                It expires in 1 hour. Check spam if you do not see it.
+                It expires in 15 minutes. Check spam if you do not see it.
               </Text>
             </View>
             <Pressable style={[styles.btn, { backgroundColor: theme.primary }]} onPress={() => router.back()}>

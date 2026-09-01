@@ -30,7 +30,7 @@ const SLIDES = [
   {
     id: 'send',
     Icon: Package,
-    headline: 'Sent by a verified driver.',
+    headline: 'Carried by a verified driver.',
     sub: 'Documents, parcels, hot food or fragile goods, each on the right vehicle.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
@@ -113,7 +113,7 @@ export default function OnboardingScreen() {
   const handleBecomeDriver = () => {
     const url = Platform.OS === 'ios'
       ? 'https://apps.apple.com/app/seirs-driver'
-      : 'https://play.google.com/store/apps/details?id=com.seirs.driver';
+      : 'https://play.google.com/store/apps/details?id=co.seirs.driver';
     Linking.openURL(url).catch(() => {});
   };
 

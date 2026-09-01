@@ -56,6 +56,21 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <LinearGradient colors={headerGradient} style={{ paddingTop: insets.top + 24, paddingBottom: 24 }}>
+        {/* Back to the carousel.
+            Customer and driver both have this; business did not, so the
+            only way back to onboarding was to reinstall (founder spotted
+            it 2026-09-01). Falls back to a push when there is no history,
+            because arriving here from a deep link leaves nothing to pop. */}
+        <Pressable
+          style={styles.backBtn}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          onPress={() => router.canGoBack() ? router.back() : router.push('/(auth)/onboarding' as any)}
+        >
+          <Icon name="ArrowLeft" size={22} color={Palette.white} />
+        </Pressable>
+
         <View style={styles.logoRow}>
           {/* Okada brand mark, same as every other SEIRS surface
               (founder direction 2026-08-09: logo on all first-touch
@@ -138,6 +153,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  backBtn:    { paddingHorizontal: 20, paddingBottom: 8 },
   logoRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24 },
   logoIcon:   {
     width: 40, height: 40, borderRadius: 12,
