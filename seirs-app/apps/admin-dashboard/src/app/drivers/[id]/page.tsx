@@ -624,7 +624,7 @@ export default function DriverDetailPage() {
                       }`}>
                         <p className="text-[11px] font-bold uppercase tracking-wide text-[#0F2B4C]/50">{d}</p>
                         <p className={`mt-0.5 text-xs tabular-nums ${on ? 'text-emerald-800' : 'text-[#0F2B4C]/30'}`}>
-                          {on ? `${row.start}–${row.end}` : 'off'}
+                          {on ? `${row.start} - ${row.end}` : 'off'}
                         </p>
                       </div>
                     );

@@ -84,7 +84,7 @@ export default function StatementsPage() {
   const reissue = async (row: any) => {
     const ok = await confirm({
       title:   'Issue a fresh statement?',
-      message: 'Same subject and period, recomputed from today’s figures, with its own new reference. Anything settled or refunded since will show. The existing copy is not overwritten and keeps verifying.',
+      message: 'Same subject and period, recomputed from today's figures, with its own new reference. Anything settled or refunded since will show. The existing copy is not overwritten and keeps verifying.',
       confirmLabel: 'Reissue',
     });
     if (!ok) return;
@@ -178,7 +178,7 @@ export default function StatementsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-[#5C6E82]">
-                    {fmt(r.periodFrom)} – {fmt(r.periodTo)}
+                    {fmt(r.periodFrom)} - {fmt(r.periodTo)}
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-[#5C6E82]">
                     {fmt(r.createdAt)}
