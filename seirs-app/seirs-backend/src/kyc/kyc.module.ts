@@ -6,6 +6,20 @@ import { KycDocumentsService } from './kyc-documents.service';
 import { AuditLogEntry } from '../admin/audit-log.entity';
 
 /**
+ * What the boot-time heal actually did, readable from /health.
+ *
+ * Every step below is wrapped in try/catch so one failure cannot stop the
+ * service coming up. That is right, and it is also how the partner
+ * backfill inserted nothing on 2026-09-02 while the deploy looked
+ * perfectly healthy: five stores, one file on them, zero rows copied, and
+ * the reason was in a Railway log nobody can reach without a login.
+ *
+ * A caught error that nobody can see is the same as no error handling at
+ * all. This is how it becomes one curl.
+ */
+export const KYC_HEAL_REPORT: Record<string, { ok: boolean; rows?: number; error?: string }> = {};
+
+/**
  * The shared KYC document store.
  *
  * Global because four modules need the same review flow and none of them
@@ -102,8 +116,11 @@ export class KycModule implements OnModuleInit {
       `);
       const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
       if (n) this.logger.log(`driver documents copied into the shared store: ${n}`);
+      KYC_HEAL_REPORT.driverCopyIn = { ok: true, rows: n };
     } catch (e: any) {
-      this.logger.error(`driver document copy-in failed: ${e?.message ?? e}`);
+      const msg = e?.message ?? String(e);
+      this.logger.error(`driver document copy-in failed: ${msg}`);
+      KYC_HEAL_REPORT.driverCopyIn = { ok: false, error: msg };
     }
 
     /**
@@ -135,8 +152,11 @@ export class KycModule implements OnModuleInit {
       `);
       const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
       if (n) this.logger.log(`vehicle documents backfilled into the shared store: ${n}`);
+      KYC_HEAL_REPORT.vehicleBackfill = { ok: true, rows: n };
     } catch (e: any) {
-      this.logger.error(`vehicle document backfill failed: ${e?.message ?? e}`);
+      const msg = e?.message ?? String(e);
+      this.logger.error(`vehicle document backfill failed: ${msg}`);
+      KYC_HEAL_REPORT.vehicleBackfill = { ok: false, error: msg };
     }
 
     /**
@@ -144,38 +164,50 @@ export class KycModule implements OnModuleInit {
      *
      * Their three documents live as URL columns on partner_stores with one
      * status and one review note across all of them, so there is no
-     * per-document decision to preserve: the store's own status is the
-     * only signal that exists. Approved where the store is approved, which
-     * is true by construction because a human approved the application
-     * having looked at them, and 'active' is the legacy spelling of
-     * approved on older rows.
+     * per-document decision to preserve: the store's own status is the only
+     * signal that exists. Approved where the store is approved, which is
+     * true by construction because a human approved the application having
+     * looked at them, and 'active' is the legacy spelling on older rows.
      *
-     * Anything else lands as 'submitted', which puts it in the queue,
-     * which is where an unreviewed document belongs.
+     * Anything else lands as 'submitted', which puts it in the queue, which
+     * is where an unreviewed document belongs.
      *
      * No expiry is invented. Nobody recorded when these certificates run
      * out, and a made-up date is worse than an empty one: it would either
      * warn about nothing or stay silent about something real.
+     *
+     * Three plain statements rather than one CROSS JOIN LATERAL. The
+     * clever version inserted nothing in production and, being wrapped in
+     * a catch, said nothing about why. Each column is now its own insert,
+     * so a failure names which document type it failed on.
      */
-    try {
-      const r = await this.ds.query(`
-        INSERT INTO "kyc_documents" ("ownerType", "ownerId", "ownerUserId", "docId", "url", "status", "reviewedAt")
-        SELECT 'partner_store', ps.id, ps."userId", v.doc_id, v.url,
-               CASE WHEN ps.status IN ('approved', 'active') THEN 'approved' ELSE 'submitted' END,
-               CASE WHEN ps.status IN ('approved', 'active') THEN ps."reviewedAt" ELSE NULL END
-          FROM "partner_stores" ps
-          CROSS JOIN LATERAL (VALUES
-            ('storefront_photo', ps."storefrontPhotoUrl"),
-            ('cac_registration', ps."cacRegUrl"),
-            ('owner_id',         ps."ownerIdUrl")
-          ) AS v(doc_id, url)
-         WHERE v.url IS NOT NULL AND v.url <> ''
-        ON CONFLICT ("ownerType", "ownerId", "docId") DO NOTHING
-      `);
-      const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
-      if (n) this.logger.log(`partner store documents backfilled: ${n}`);
-    } catch (e: any) {
-      this.logger.error(`partner document backfill failed: ${e?.message ?? e}`);
+    const PARTNER_DOCS: Array<[string, string]> = [
+      ['storefront_photo', 'storefrontPhotoUrl'],
+      ['cac_registration', 'cacRegUrl'],
+      ['owner_id',         'ownerIdUrl'],
+    ];
+
+    let partnerRows = 0;
+    for (const [docId, column] of PARTNER_DOCS) {
+      try {
+        const r = await this.ds.query(`
+          INSERT INTO "kyc_documents" ("ownerType", "ownerId", "ownerUserId", "docId", "url", "status", "reviewedAt")
+          SELECT 'partner_store', ps.id, ps."userId", $1, ps."${column}",
+                 CASE WHEN ps.status IN ('approved', 'active') THEN 'approved' ELSE 'submitted' END,
+                 CASE WHEN ps.status IN ('approved', 'active') THEN ps."reviewedAt" ELSE NULL END
+            FROM "partner_stores" ps
+           WHERE ps."${column}" IS NOT NULL AND ps."${column}" <> ''
+          ON CONFLICT ("ownerType", "ownerId", "docId") DO NOTHING
+        `, [docId]);
+        const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
+        partnerRows += n;
+        KYC_HEAL_REPORT[`partner_${docId}`] = { ok: true, rows: n };
+      } catch (e: any) {
+        const msg = e?.message ?? String(e);
+        this.logger.error(`partner backfill failed for ${docId}: ${msg}`);
+        KYC_HEAL_REPORT[`partner_${docId}`] = { ok: false, error: msg };
+      }
     }
+    if (partnerRows) this.logger.log(`partner store documents backfilled: ${partnerRows}`);
   }
 }

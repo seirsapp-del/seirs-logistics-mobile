@@ -5,6 +5,7 @@ import { DataSource, Repository } from 'typeorm';
 import { Public } from '../common/decorators/public.decorator';
 import { PricingService } from '../pricing/pricing.service';
 import { MailService } from '../mail/mail.service';
+import { KYC_HEAL_REPORT } from '../kyc/kyc.module';
 
 /**
  * GET /api/v1/health - public liveness + readiness probe.
@@ -266,6 +267,8 @@ export class HealthController {
         documents: counts,
         legacyDriverDocuments: inLegacy,
         partnerStores: partnerSource?.[0] ?? null,
+        // What the boot-time heal did, including anything it caught.
+        heal: KYC_HEAL_REPORT,
         ...(partnerSource?.[0] && partnerSource[0].filesOnStores > (counts.partner_store ?? 0)
           ? { warnPartner: `${partnerSource[0].filesOnStores} partner files on stores, ${counts.partner_store ?? 0} in the shared store` }
           : {}),
