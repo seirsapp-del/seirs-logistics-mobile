@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { createHash } from 'crypto';
 import { NotificationsService } from './notifications.service';
+import { adminsWithPermission } from './admin-audience';
 import { NotificationType } from './notification.entity';
 import { MailService } from '../mail/mail.service';
 import { User } from '../users/user.entity';
@@ -381,14 +382,23 @@ export class AccountSecurityService {
     adminRole: string | null; lagosHour: number; ip: string | null;
   }): Promise<void> {
     try {
-      const supers = await this.usersRepo.find({
-        where:  { role: 'admin' as any, adminRole: 'super_admin' as any },
-        select: ['id', 'name', 'email'],
-      });
+      /**
+       * Whoever can read the sign-in log, not "super admin" hardcoded.
+       *
+       * super_admin_only is the permission gating /sign-ins, so the people
+       * who can act on this alert are exactly the people who can open the
+       * page it points at. Today that is super admins; if the founder later
+       * grants it to a security role, they start receiving with no change
+       * here.
+       */
+      const supers = (await adminsWithPermission(
+        this.usersRepo.manager.connection, 'super_admin_only', { exclude: ev.userId },
+      )).map(id => ({ id }));
       const hour = `${String(ev.lagosHour).padStart(2, '0')}:00 Lagos time`;
       const who  = ev.name ?? ev.email;
       for (const sa of supers) {
-        if (sa.id === ev.userId) continue;   // do not tell them about themselves
+        // The exclude above already drops the person who signed in: telling a
+        // possible intruder they were noticed is a warning shot, not a control.
         await this.deliver({
           userId: sa.id,
           type:   NotificationType.SECURITY_ALERT,

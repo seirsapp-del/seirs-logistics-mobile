@@ -20,6 +20,7 @@ import { vehicleIdentityForPassenger } from '../common/redact-driver';
 import { KycDocument, KycDocStatus } from '../kyc/kyc-document.entity';
 import { KycDocumentsService } from '../kyc/kyc-documents.service';
 import { buildKycQueue } from './kyc-queue';
+import { adminsWithPermission } from '../notifications/admin-audience';
 import { withinWorkingHours } from './working-hours';
 
 /**
@@ -2760,12 +2761,19 @@ export class DriversService {
         const breakdown = (rows as any[])
           .map(r => `${r.n} ${LABEL[r.ownerType] ?? r.ownerType}`)
           .join(', ');
-        const admins = await this.repo.manager.query(
-          `SELECT id FROM users WHERE role = 'admin' AND "adminRole" = 'super_admin'`,
-        );
-        for (const a of admins) {
+        /**
+         * Whoever holds 'kyc', not super admins alone.
+         *
+         * driver_compliance exists specifically to review rider documents,
+         * and an expired licence is precisely their work. Sending only to
+         * super_admin meant the one role whose job this is never heard about
+         * it, while somebody managing the website would have, had the
+         * routing been any broader. Founder, 2 September.
+         */
+        const admins = await adminsWithPermission(this.repo.manager.connection, 'kyc');
+        for (const adminId of admins) {
           await this.notificationsService.create(
-            a.id,
+            adminId,
             `${total} document${total === 1 ? '' : 's'} expired`,
             `${total} approved document${total === 1 ? ' has' : 's have'} passed its expiry date (${breakdown}). `
             + 'Nothing has been suspended. Open the KYC queue, Expiring documents, to decide.',
