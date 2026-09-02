@@ -200,7 +200,21 @@ function SystemNavBar() {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const NavigationBar = require('expo-navigation-bar');
     const dark = scheme === 'dark';
-    NavigationBar.setBackgroundColorAsync(dark ? '#0D1117' : '#FFFFFF').catch(() => {});
+    /**
+     * Button style only. NOT setBackgroundColorAsync.
+     *
+     * The rebuild on 2 September finally put this native module in the APK,
+     * and the first launch immediately warned:
+     * "`setBackgroundColorAsync` is not supported with edge-to-edge enabled."
+     *
+     * Android 15 draws apps edge to edge, so the navigation bar is
+     * transparent and shows whatever is behind it. Painting it is not just
+     * unsupported, it is the wrong idea: the bar already picks up the
+     * screen's own background, which is what "follows the theme" meant.
+     *
+     * What DOES need setting is the icon colour, or the three navigation
+     * buttons are dark grey on a dark screen and effectively invisible.
+     */
     NavigationBar.setButtonStyleAsync(dark ? 'light' : 'dark').catch(() => {});
   }, [scheme]);
   return null;
