@@ -598,13 +598,31 @@ export default function DriverDetailPage() {
                           actually asks. */}
                       {d.reviewedAt && (
                         <p className="mt-1 text-xs text-gray-500">
-                          {d.status === 'approved' ? 'Approved' : 'Reviewed'} by{' '}
-                          <span className="font-medium text-gray-700">
-                            {d.reviewedByName ?? 'a staff account since removed'}
-                          </span>{' '}
-                          on {new Date(d.reviewedAt).toLocaleDateString('en-GB', {
-                            day: 'numeric', month: 'short', year: 'numeric',
-                          })}
+                          {/*
+                            A null reviewer is NOT a deleted account. This said
+                            "a staff account since removed" on three of Emeka's
+                            documents and nobody had been removed: they came
+                            from the backfill, which carries documents over
+                            from an approved vehicle change and stamps a date
+                            with no reviewer, because no person ever looked at
+                            them individually. Saying so is the honest version
+                            and it also tells a reviewer these are the ones
+                            worth opening.
+                          */}
+                          {d.reviewedByName ? (
+                            <>
+                              {d.status === 'approved' ? 'Approved' : 'Reviewed'} by{' '}
+                              <span className="font-medium text-gray-700">{d.reviewedByName}</span>{' '}
+                              on {new Date(d.reviewedAt).toLocaleDateString('en-GB', {
+                                day: 'numeric', month: 'short', year: 'numeric',
+                              })}
+                            </>
+                          ) : (
+                            <>
+                              Carried over from their approved vehicle, not reviewed on its own.
+                              Open it if you want to check it.
+                            </>
+                          )}
                         </p>
                       )}
                       {/* Settable at any time, not only at the moment of
@@ -626,6 +644,23 @@ export default function DriverDetailPage() {
                             className="text-xs font-semibold text-amber-700 hover:underline disabled:opacity-50"
                           >
                             Ask for a new one
+                          </button>
+                          {/*
+                            Reject, after approval. It used to appear only
+                            while a document was 'submitted', so an approval
+                            made in error, or a forgery noticed later, could
+                            not be undone from this page at all: the founder
+                            went looking for the button and there was none.
+                            Worded to separate it from "ask for a new one",
+                            which is the no-fault path.
+                          */}
+                          <button
+                            type="button"
+                            disabled={docBusy === d.id}
+                            onClick={() => void reviewDoc(d, 'rejected')}
+                            className="text-xs font-semibold text-red-700 hover:underline disabled:opacity-50"
+                          >
+                            Reject this
                           </button>
                         </span>
                       )}

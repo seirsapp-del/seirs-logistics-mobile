@@ -223,6 +223,44 @@ export class KycDocumentsService {
       url:       doc.url,
     });
 
+    /**
+     * Approving an identity document marks the person ID-verified.
+     *
+     * WHY. There were two identity systems and they did not speak to each
+     * other. A National ID approved HERE left users.identityVerifiedAt null,
+     * because only the Customer ID Queue (identity_verifications) ever set
+     * it. The same document, submitted twice, reviewed in two places.
+     *
+     * Not cosmetic: drivers.service.ts lowers a rider's value level when
+     * identityVerifiedAt is null, and deliveries.service.ts reads it too. So
+     * a rider whose ID had been checked and approved was still scored as
+     * unverified. The founder found it from the other side: the badge was
+     * green on a seeded account and would have been grey on every real one.
+     *
+     * Only ever SET, never cleared. Rejecting a photo is about the photo;
+     * withdrawing a verification is a deliberate act with its own route and
+     * its own audit line. COALESCE keeps the original verification date if
+     * one already exists, because that is when they were first verified.
+     */
+    const ID_DOC_TYPE: Record<string, string> = {
+      national_id_front: 'nin',
+      national_id_back:  'nin',
+      drivers_license:   'drivers_licence',
+    };
+    if (decision === 'approved' && ID_DOC_TYPE[doc.docId] && doc.ownerUserId) {
+      try {
+        await this.docs.manager.query(
+          `UPDATE "users"
+              SET "identityVerifiedAt" = COALESCE("identityVerifiedAt", now()),
+                  "identityDocType"    = COALESCE("identityDocType", $2)
+            WHERE id = $1`,
+          [doc.ownerUserId, ID_DOC_TYPE[doc.docId]],
+        );
+      } catch {
+        // Never fail an approval an admin has already made over this.
+      }
+    }
+
     return { id, status: decision };
   }
 

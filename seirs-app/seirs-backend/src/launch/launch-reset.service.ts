@@ -1162,6 +1162,26 @@ const TARGETS: Target[] = [
   { order: 25, table: 'driver_vehicle_changes', label: 'Driver vehicle changes',
     where: (i) => anyOf([['driverId', [...i.driverIds, ...i.userIds]]]) },
 
+  /**
+   * KYC documents, which until 2 September 2026 were removed by nothing in
+   * this file and did not need to be.
+   *
+   * driver_documents.driver_id carried REFERENCES drivers(id) ON DELETE
+   * CASCADE, and 'drivers' is listed below, so a demo rider's documents went
+   * with them for free. When the table became shared across drivers, partner
+   * stores, businesses and customers, the foreign key could not survive the
+   * polymorphic key, and that cascade went with it.
+   *
+   * So without this entry the reset would delete a demo account and leave
+   * its ID photographs and certificates in the table, unreferenced and
+   * unreachable, which is the worst possible thing to carry into launch.
+   *
+   * Keyed on ownerUserId, which is denormalised onto every row precisely so
+   * one predicate covers all four owner types.
+   */
+  { order: 25.5, table: 'kyc_documents', label: 'KYC documents',
+    where: (i) => anyOf([['ownerUserId', i.userIds], ['ownerId', [...i.driverIds, ...i.userIds]]]) },
+
   { order: 26, table: 'drivers', label: 'Driver profiles',
     where: (i) => anyOf([['id', i.driverIds]]),
     sampleLabel: `"vehiclePlate"` },
