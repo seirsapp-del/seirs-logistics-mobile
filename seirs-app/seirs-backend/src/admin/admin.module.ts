@@ -1,3 +1,4 @@
+import { KycModule } from '../kyc/kyc.module';
 import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { TypeOrmModule, InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
@@ -37,6 +38,7 @@ import { StoreDropoff } from '../partner-store/store-dropoff.entity';
 
 @Module({
   imports: [
+    KycModule,
     NotificationsModule,
     SupportModule,
     TypeOrmModule.forFeature([

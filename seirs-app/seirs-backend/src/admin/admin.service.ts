@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { In, Not, MoreThan, Repository, DataSource } from 'typeorm';
+import { KycDocumentsService } from '../kyc/kyc-documents.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { User, UserRole, AdminSubRole } from '../users/user.entity';
@@ -85,6 +86,7 @@ export class AdminService {
     private readonly driversService: DriversService,
     private readonly feesService: FeesService,
     @InjectDataSource() private readonly dataSource: DataSource,
+      private readonly kycDocuments: KycDocumentsService,
   ) {}
 
   // ── Spec V8 §3.13. NDPR admin tools (A32 + A33) ──────────────────────────
@@ -415,9 +417,20 @@ export class AdminService {
      * be forgotten.
      */
     try {
-      await this.usersRepo.query(
-        `DELETE FROM "kyc_documents" WHERE "ownerUserId" = $1`, [user.id],
-      );
+      /**
+       * Through KycDocumentsService, not raw SQL.
+       *
+       * I wrote the DELETE inline before the shared service existed. Once it
+       * did, there were two erasure paths: this one, and an eraseForUser()
+       * that nothing called. An unused method that LOOKS like the erasure
+       * path is worse than no method, because the next person maintains the
+       * one that is not running.
+       *
+       * It also puts the table name in one place. When the shape changes
+       * again, and it has twice this week, this call does not need to know.
+       */
+      const { deleted } = await this.kycDocuments.eraseForUser(user.id);
+      if (deleted) this.logger.log(`erased ${deleted} KYC document(s) for ${user.id}`);
     } catch (e: any) {
       // Before the shared table exists this is a missing relation, which is
       // fine. Anything else must be loud: a silent failure here means we

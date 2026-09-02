@@ -113,7 +113,15 @@ export class KycModule implements OnModuleInit {
           FROM "driver_documents" dd
           JOIN "drivers" d ON d.id = dd."driver_id"
         ON CONFLICT ("ownerType", "ownerId", "docId") DO NOTHING
+        RETURNING "id"
       `);
+      /**
+       * RETURNING "id" is what makes this honest. A bare INSERT through
+       * TypeORM's query() hands back nothing countable, so this read 0
+       * whatever happened, including on the run that inserted a partner
+       * document. A number in a health probe that is always 0 is worse than
+       * no number: it invites somebody to conclude the backfill did not run.
+       */
       const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
       if (n) this.logger.log(`driver documents copied into the shared store: ${n}`);
       KYC_HEAL_REPORT.driverCopyIn = { ok: true, rows: n };
@@ -149,7 +157,15 @@ export class KycModule implements OnModuleInit {
           ) AS v(doc_id, url)
          WHERE v.url IS NOT NULL AND v.url <> ''
         ON CONFLICT ("ownerType", "ownerId", "docId") DO NOTHING
+        RETURNING "id"
       `);
+      /**
+       * RETURNING "id" is what makes this honest. A bare INSERT through
+       * TypeORM's query() hands back nothing countable, so this read 0
+       * whatever happened, including on the run that inserted a partner
+       * document. A number in a health probe that is always 0 is worse than
+       * no number: it invites somebody to conclude the backfill did not run.
+       */
       const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
       if (n) this.logger.log(`vehicle documents backfilled into the shared store: ${n}`);
       KYC_HEAL_REPORT.vehicleBackfill = { ok: true, rows: n };
@@ -215,8 +231,16 @@ export class KycModule implements OnModuleInit {
             FROM "partner_stores" ps
            WHERE ps."${column}" IS NOT NULL AND ps."${column}" <> ''
           ON CONFLICT ("ownerType", "ownerId", "docId") DO NOTHING
+          RETURNING "id"
         `, [docId]);
-        const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
+        /**
+       * RETURNING "id" is what makes this honest. A bare INSERT through
+       * TypeORM's query() hands back nothing countable, so this read 0
+       * whatever happened, including on the run that inserted a partner
+       * document. A number in a health probe that is always 0 is worse than
+       * no number: it invites somebody to conclude the backfill did not run.
+       */
+      const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
         partnerRows += n;
         KYC_HEAL_REPORT[`partner_${docId}`] = { ok: true, rows: n };
       } catch (e: any) {
