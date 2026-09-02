@@ -24,6 +24,12 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { MailService } from '../mail/mail.service';
 import { SignInEvent } from '../admin/sign-in-event.entity';
+/**
+ * otplib v13 exports functions, not the v12 `authenticator` singleton.
+ * Verified against the installed build before use: generateSecret() returns
+ * a 32-char base32 string, verifySync() returns { valid, delta }.
+ */
+import { generateSecret, generateURI, verifySync } from 'otplib';
 import { AccountSecurityService } from '../notifications/account-security.service';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -836,6 +842,32 @@ export class AuthService {
     }
 
     await this.usersRepo.update(user.id, { failedLoginAttempts: 0, lockedUntil: null });
+
+    /**
+     * Second factor, if this staff member has one.
+     *
+     * The dashboard has handled `requiresTOTP` and called
+     * /auth/admin-totp-verify since it was built. Neither existed here, so
+     * a correct password alone has always been a full admin session, and
+     * the client-side flow was dead code against a server that said yes.
+     *
+     * The temp token carries a scope claim and five minutes. It is useless
+     * against any other route: JwtAuthGuard sees no id and rejects it.
+     * The sign-in is logged as totp_required rather than success, because
+     * nobody is in yet.
+     */
+    if ((user as any).totpEnabled) {
+      this.recordAdminSignIn({
+        userId: user.id, email, name: user.name,
+        adminRole: (user as any).adminRole, outcome: 'totp_required', ctx,
+      });
+      const tempToken = await this.jwtService.signAsync(
+        { sub: user.id, scope: 'totp_pending' },
+        { expiresIn: '5m' },
+      );
+      return { requiresTOTP: true, tempToken };
+    }
+
     this.noteSignInSuccess(user.id, ctx);
     this.recordAdminSignIn({
       userId: user.id, email, name: user.name,
@@ -926,6 +958,99 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Account not found.');
     if (!user.isActive) throw new UnauthorizedException('Account suspended.');
     return this.buildAuthResponse(user);
+  }
+
+  /**
+   * Finish a sign-in that stopped for a second factor.
+   *
+   * A wrong code is logged as totp_failed, which is the row that shows
+   * somebody with a stolen password failing at the last step.
+   */
+  async adminTotpVerify(tempToken: string, code: string, ctx?: SignInContext) {
+    let payload: any;
+    try {
+      payload = await this.jwtService.verifyAsync(tempToken);
+    } catch {
+      throw new UnauthorizedException('That sign-in expired. Start again.');
+    }
+    if (payload?.scope !== 'totp_pending' || !payload?.sub) {
+      throw new UnauthorizedException('That sign-in expired. Start again.');
+    }
+
+    const user = await this.usersRepo.createQueryBuilder('u')
+      .addSelect('u.totpSecret')
+      .where('u.id = :id', { id: payload.sub })
+      .getOne();
+    if (!user || !(user as any).totpSecret) {
+      throw new UnauthorizedException('Two-factor is not set up on this account.');
+    }
+
+    const ok = verifySync({
+      secret: (user as any).totpSecret,
+      token:  String(code ?? '').trim(),
+    })?.valid === true;
+    if (!ok) {
+      this.recordAdminSignIn({
+        userId: user.id, email: user.email, name: user.name,
+        adminRole: (user as any).adminRole, outcome: 'totp_failed', ctx,
+      });
+      throw new UnauthorizedException('That code is not right. Check the app and try again.');
+    }
+
+    this.noteSignInSuccess(user.id, ctx);
+    this.recordAdminSignIn({
+      userId: user.id, email: user.email, name: user.name,
+      adminRole: (user as any).adminRole, outcome: 'success', ctx,
+    });
+    return this.buildAuthResponse(user);
+  }
+
+  /**
+   * Begin enrolment. Returns a secret and the otpauth:// URI a phone scans.
+   *
+   * NOT enabled by this call. The secret is stored but totpEnabled stays
+   * false until they prove they can produce a code, so nobody can lock
+   * themselves out by scanning a QR badly and closing the tab.
+   */
+  async adminTotpSetup(userId: string) {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user || user.role !== UserRole.ADMIN) throw new UnauthorizedException('Staff only.');
+    const secret = generateSecret();
+    await this.usersRepo.update(userId, { totpSecret: secret, totpEnabled: false } as any);
+    return {
+      secret,
+      otpauth: generateURI({ issuer: 'SEIRS Admin', label: user.email, secret }),
+      message: 'Scan this in your authenticator app, then enter a code to switch it on.',
+    };
+  }
+
+  /** Prove a code works, then switch it on. */
+  async adminTotpEnable(userId: string, code: string) {
+    const user = await this.usersRepo.createQueryBuilder('u')
+      .addSelect('u.totpSecret').where('u.id = :id', { id: userId }).getOne();
+    if (!user || !(user as any).totpSecret) {
+      throw new BadRequestException('Start the setup first.');
+    }
+    if (verifySync({ secret: (user as any).totpSecret, token: String(code ?? '').trim() })?.valid !== true) {
+      throw new BadRequestException('That code is not right. Try the next one your app shows.');
+    }
+    await this.usersRepo.update(userId, { totpEnabled: true } as any);
+    return { enabled: true };
+  }
+
+  /**
+   * Switch it off. Requires a current code, not just a session: a stolen
+   * session must not be able to remove the thing protecting the account.
+   */
+  async adminTotpDisable(userId: string, code: string) {
+    const user = await this.usersRepo.createQueryBuilder('u')
+      .addSelect('u.totpSecret').where('u.id = :id', { id: userId }).getOne();
+    if (!user || !(user as any).totpSecret) return { enabled: false };
+    if (verifySync({ secret: (user as any).totpSecret, token: String(code ?? '').trim() })?.valid !== true) {
+      throw new BadRequestException('Enter a current code to switch two-factor off.');
+    }
+    await this.usersRepo.update(userId, { totpSecret: null, totpEnabled: false } as any);
+    return { enabled: false };
   }
 
   private async buildAuthResponse(user: User) {

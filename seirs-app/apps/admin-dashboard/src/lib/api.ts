@@ -89,6 +89,22 @@ export const adminApi = {
       { method: 'POST', body: JSON.stringify({ email, password }) },
     ),
 
+  /**
+   * Enrolment. setup() stores a secret and returns the otpauth:// URI to
+   * scan; it does NOT switch two-factor on. enable() requires a working
+   * code first, so nobody locks themselves out by scanning badly and
+   * closing the tab. disable() also requires a code: a stolen session must
+   * not be able to remove the thing protecting the account.
+   */
+  totp: {
+    setup:   () => req<{ secret: string; otpauth: string; message: string }>(
+      '/auth/admin-totp-setup', { method: 'POST', body: '{}' }),
+    enable:  (code: string) => req<{ enabled: boolean }>(
+      '/auth/admin-totp-enable', { method: 'POST', body: JSON.stringify({ code }) }),
+    disable: (code: string) => req<{ enabled: boolean }>(
+      '/auth/admin-totp-disable', { method: 'POST', body: JSON.stringify({ code }) }),
+  },
+
   verifyTOTP: (tempToken: string, code: string) =>
     req<{ token: string; user: any }>(
       '/auth/admin-totp-verify',

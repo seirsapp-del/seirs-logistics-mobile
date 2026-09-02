@@ -596,6 +596,8 @@ export class AdminService {
       activeDeliveries,
       deliveriesToday,
       pendingDeliveries,
+      businessAccounts,
+      partnerAccounts,
     ] = await Promise.all([
       /**
        * Real accounts only. 25 customers and 9 drivers were nearly all
@@ -627,6 +629,25 @@ export class AdminService {
         .where('d.createdAt >= :today', { today: new Date(new Date().setHours(0, 0, 0, 0)) })
         .getCount(),
       this.deliveriesRepo.count({ where: { status: DeliveryStatus.PENDING } }),
+      /**
+       * A business sender keeps role 'customer' and carries a
+       * businessAccountId; a partner store keeps it and carries a
+       * partnerStoreId. So "Customers" on the front page has always been
+       * every non-driver account added together, and a trader with a
+       * company and a shop was counted as a private individual buying a
+       * delivery. Founder, 1 September. Counted separately now, and
+       * subtracted from the customer figure rather than double counted.
+       */
+      this.usersRepo.createQueryBuilder('u')
+        .where('u.role = :r', { r: 'customer' })
+        .andWhere('u."isDemo" = false')
+        .andWhere('u."businessAccountId" IS NOT NULL')
+        .getCount(),
+      this.usersRepo.createQueryBuilder('u')
+        .where('u.role = :r', { r: 'customer' })
+        .andWhere('u."isDemo" = false')
+        .andWhere('u."partnerStoreId" IS NOT NULL')
+        .getCount(),
     ]);
 
     /**
@@ -715,7 +736,18 @@ export class AdminService {
     const commission   = +(revenueTotal - driverTotal).toFixed(2);
 
     return {
-      users: { total: totalUsers },
+      users: {
+        // Kept as it was so nothing reading this breaks, but it is every
+        // non-driver account, which is not what "Customers" means.
+        total: totalUsers,
+        // Private individuals only: businesses and partner stores removed.
+        // A partner is also a business, so the two overlap; subtracting
+        // both would undercount, and businessAccounts already includes
+        // every partner.
+        customers: Math.max(0, totalUsers - businessAccounts),
+        businesses: businessAccounts,
+        partners:   partnerAccounts,
+      },
       drivers: {
         total:      totalDrivers,
         pendingKyc,

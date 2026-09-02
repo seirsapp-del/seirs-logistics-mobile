@@ -108,6 +108,19 @@ export class AdminModule implements OnModuleInit {
       console.error(`admin_sign_in_events ensure failed: ${e?.message ?? e}`);
     }
 
+    // Staff second factor (2026-09-02). The dashboard has called
+    // /auth/admin-totp-verify since it was built, against a route that did
+    // not exist.
+    try {
+      await this.usersRepo.query(`
+        ALTER TABLE "users"
+          ADD COLUMN IF NOT EXISTS "totpSecret"  varchar(64) NULL,
+          ADD COLUMN IF NOT EXISTS "totpEnabled" boolean NOT NULL DEFAULT false
+      `);
+    } catch (e: any) {
+      console.error(`totp columns self-heal failed: ${e?.message ?? e}`);
+    }
+
     /**
      * Hand AdminService the security notifier after construction.
      *

@@ -28,7 +28,10 @@ interface QueueRow {
 }
 
 interface Stats {
-  users:      { total: number };
+  // total is every non-driver account. customers is private individuals
+  // only; businesses and partners are counted out of it. All three are
+  // optional so an older server still renders.
+  users:      { total: number; customers?: number; businesses?: number; partners?: number };
   drivers:    { total: number; pendingKyc: number };
   deliveries: { total: number; active: number; today: number; pending: number };
   revenue: {
@@ -169,8 +172,21 @@ export default function DashboardPage() {
     href?: string;
   }[] = stats ? [
     {
-      label: 'Total Customers', value: stats.users.total.toLocaleString(),
-      sub: 'demo accounts excluded',
+      /*
+       * Private individuals only. This tile said "Total Customers" and
+       * counted every non-driver account, so a trader with a registered
+       * company and a partner shop was filed as somebody buying a delivery
+       * for themselves (founder, 1 September). A business sender keeps
+       * role 'customer' and carries a businessAccountId, which is why the
+       * old count could not tell them apart.
+       *
+       * Falls back to the old total on an older server that does not send
+       * the split, rather than rendering an empty tile.
+       */
+      label: 'Customers', value: (stats.users.customers ?? stats.users.total).toLocaleString(),
+      sub: stats.users.businesses != null
+        ? `${stats.users.businesses} business${stats.users.businesses === 1 ? '' : 'es'}${stats.users.partners ? `, ${stats.users.partners} partner${stats.users.partners === 1 ? '' : 's'}` : ''} counted separately`
+        : 'demo accounts excluded',
       Icon: Users, color: 'text-[#3A7BD5]', bg: 'bg-[#3A7BD5]/10',
       href: '/users',
     },

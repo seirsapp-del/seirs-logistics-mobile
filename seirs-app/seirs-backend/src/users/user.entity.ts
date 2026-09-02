@@ -214,6 +214,24 @@ export class User {
   @Column({ nullable: true })
   businessRole: string;
 
+  /**
+   * TOTP, for staff only.
+   *
+   * The admin dashboard has asked for a second factor since it was built:
+   * the login screen handles `requiresTOTP` and calls
+   * /auth/admin-totp-verify. That route did not exist and adminLogin never
+   * checked a second factor, so the whole flow was dead client-side code
+   * against a server that always said yes to a password alone.
+   *
+   * select:false so the secret never rides along on an ordinary user read.
+   * It is a bearer credential: anybody holding it can mint valid codes.
+   */
+  @Column({ type: 'varchar', length: 64, nullable: true, select: false })
+  totpSecret: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  totpEnabled: boolean;
+
   @Column({ nullable: true })
   businessAccountId: string;
 

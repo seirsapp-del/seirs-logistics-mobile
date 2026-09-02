@@ -56,6 +56,42 @@ export class AuthController {
     return this.authService.adminLogin(body.email, body.password, { userAgent, ip });
   }
 
+  /**
+   * Finish an admin sign-in that stopped for a second factor.
+   *
+   * The dashboard has called this route since it was built. It did not
+   * exist, so a correct password alone was always a full admin session.
+   */
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @Post('admin-totp-verify')
+  adminTotpVerify(
+    @Body() body: { tempToken: string; code: string },
+    @Headers('user-agent') userAgent?: string,
+    @Ip() ip?: string,
+  ) {
+    return this.authService.adminTotpVerify(body.tempToken, body.code, { userAgent, ip });
+  }
+
+  // Enrolment. Setup returns the QR; enable requires a working code, so
+  // nobody can lock themselves out by scanning badly and closing the tab.
+  @UseGuards(JwtAuthGuard)
+  @Post('admin-totp-setup')
+  adminTotpSetup(@CurrentUser() user: any) {
+    return this.authService.adminTotpSetup(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('admin-totp-enable')
+  adminTotpEnable(@CurrentUser() user: any, @Body() body: { code: string }) {
+    return this.authService.adminTotpEnable(user.id, body?.code);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('admin-totp-disable')
+  adminTotpDisable(@CurrentUser() user: any, @Body() body: { code: string }) {
+    return this.authService.adminTotpDisable(user.id, body?.code);
+  }
+
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('verify-otp')
   verifyOtp(@Body() dto: VerifyOtpDto) {

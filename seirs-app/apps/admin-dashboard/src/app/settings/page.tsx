@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Settings, Lock, AlertTriangle, RefreshCw, Save, Sparkles, Trash2, AlertCircle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { PageIntro } from '@/components/PageIntro';
+import { TotpEnrolment } from '@/components/TotpEnrolment';
 import { EmptyState } from '@/components/EmptyState';
 import { useConfirm, useNotify } from '@/components/ConfirmDialog';
 
@@ -168,6 +169,15 @@ export default function SettingsPage() {
           </button>
         }
       />
+
+      {/*
+        The account reading this page, before the switches that affect
+        everyone else. Two-factor was dead client-side code against a route
+        that did not exist until 2 September 2026.
+      */}
+      <div className="mb-6">
+        <TotpEnrolment />
+      </div>
 
       {error && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
