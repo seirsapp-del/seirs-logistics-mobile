@@ -84,7 +84,7 @@ export default function StatementsPage() {
   const reissue = async (row: any) => {
     const ok = await confirm({
       title:   'Issue a fresh statement?',
-      message: 'Same subject and period, recomputed from today's figures, with its own new reference. Anything settled or refunded since will show. The existing copy is not overwritten and keeps verifying.',
+      message: "Same subject and period, recomputed from today's figures, with its own new reference. Anything settled or refunded since will show. The existing copy is not overwritten and keeps verifying.",
       confirmLabel: 'Reissue',
     });
     if (!ok) return;
