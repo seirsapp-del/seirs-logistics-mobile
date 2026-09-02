@@ -388,6 +388,44 @@ export class AdminService {
       originalCreatedAt: user.createdAt,
       deactivatedAt:     user.deactivatedAt ?? new Date(),
     }));
+    /**
+     * Their KYC documents, explicitly, BEFORE the account row goes.
+     *
+     * This used to happen by itself. driver_documents.driver_id carried
+     * REFERENCES drivers(id) ON DELETE CASCADE, and this method ends with a
+     * single usersRepo.delete() that relied on that chain entirely. When the
+     * document table went polymorphic on 2 September 2026 to serve drivers,
+     * partner stores, businesses and customers, the foreign key could not
+     * survive, and with it went the only thing deleting these rows.
+     *
+     * So this is not defensive tidying. Without it, an NDPR erasure leaves
+     * the erased person's ID photographs, licence and certificates sitting
+     * in the table, which is the worst possible thing still to be holding.
+     *
+     * ownerUserId is denormalised onto every row for exactly this: one
+     * statement covers all four owner types without knowing which they were.
+     *
+     * FOUNDER'S DECISION, 2 September: erase the person, keep the decision.
+     * The images and rows go; the audit trail below stays, because
+     * audit_logs.target is a plain string with no foreign key and outlives
+     * the account by design. That answers "did we check this licence, and
+     * who approved it" without keeping a photograph of somebody who asked to
+     * be forgotten.
+     */
+    try {
+      await this.usersRepo.query(
+        `DELETE FROM "kyc_documents" WHERE "ownerUserId" = $1`, [user.id],
+      );
+    } catch (e: any) {
+      // Before the shared table exists this is a missing relation, which is
+      // fine. Anything else must be loud: a silent failure here means we
+      // kept documents we told somebody we had erased.
+      if (!/relation .* does not exist/i.test(String(e?.message))) {
+        this.logger.error(`kyc document purge failed for ${user.id}: ${e?.message ?? e}`);
+        throw e;
+      }
+    }
+
     await this.usersRepo.delete(user.id);
     const adminId = admin?.id ?? admin?.sub;
     this.logger.warn(`ADMIN_HARD_DELETE userId=${targetUserId} admin=${adminId} reason="${reason}"`);
