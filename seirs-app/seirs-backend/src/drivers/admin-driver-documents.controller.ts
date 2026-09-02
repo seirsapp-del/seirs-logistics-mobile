@@ -93,6 +93,20 @@ export class AdminDriverDocumentsController {
     return this.drivers.reviewDriverDocument(id, user.id, 'approved', undefined, body?.expiresAt ?? null);
   }
 
+  // POST /api/v1/admin/driver-documents/:id/needs-replacing  { reason? }
+  // For a document that was fine and has run out. Distinct from reject,
+  // which tells the rider they did something wrong: an expired licence is
+  // not a fault, and treating it as one is how you lose riders who have
+  // done nothing but let time pass.
+  @Post(':id/needs-replacing')
+  needsReplacing(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body?: { reason?: string },
+  ) {
+    return this.drivers.reviewDriverDocument(id, user.id, 'needs_replacing', body?.reason);
+  }
+
   // POST /api/v1/admin/driver-documents/:id/reject  { reason }
   @Post(':id/reject')
   reject(

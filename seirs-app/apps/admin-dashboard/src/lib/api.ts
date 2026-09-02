@@ -648,6 +648,15 @@ export const adminApi = {
      * from approve(), which would fire a fresh "approved" notice at the
      * rider for a decision made days ago. Null clears it.
      */
+    /**
+     * For a document that was fine and has run out. Not the same as reject,
+     * which tells the rider they did something wrong.
+     */
+    needsReplacing: (id: string, reason?: string) =>
+      req<any>(`/admin/driver-documents/${id}/needs-replacing`, {
+        method: 'POST', body: JSON.stringify({ reason }),
+      }),
+
     setExpiry: (id: string, expiresAt: string | null) =>
       req<any>(`/admin/driver-documents/${id}/expiry`, {
         method: 'PATCH', body: JSON.stringify({ expiresAt }),

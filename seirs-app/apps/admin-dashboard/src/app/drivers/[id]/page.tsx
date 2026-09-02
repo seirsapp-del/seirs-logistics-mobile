@@ -82,6 +82,34 @@ export default function DriverDetailPage() {
    * no route that could write an expiry except approve, and re-approving
    * would have fired a fresh "approved" notice for a days-old decision.
    */
+  /**
+   * Ask for a fresh copy of a document that has simply run out.
+   *
+   * Before this the only way to reopen an approved document was to reject
+   * it, which tells the rider they did something wrong. An expired licence
+   * is not a fault. The rider gets a message saying nothing is wrong with
+   * what they sent, it has run out, and to upload the current one.
+   */
+  const askForReplacement = async (d: any) => {
+    const answer = await promptFor({
+      title:   'Ask for a new copy?',
+      message: `${data?.driver?.user?.name ?? 'They'} will be told this one is no longer current and asked to upload a replacement. It is worded as an instruction, not a complaint: nothing suggests they did anything wrong.`,
+      label:   'Anything to add? (optional)',
+      placeholder: 'It expired on 1 September',
+      helper:  'They read this word for word in their app.',
+      multiline: true,
+      confirmLabel: 'Ask for a new one',
+    });
+    if (answer === null) return;
+    setDocBusy(d.id);
+    try {
+      await adminApi.driverDocuments.needsReplacing(d.id, String(answer).trim() || undefined);
+      await loadDocs();
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not send that request.');
+    } finally { setDocBusy(null); }
+  };
+
   const editExpiry = async (d: any) => {
     const answer = await promptFor({
       title:   d.expiresAt ? 'Change the expiry date' : 'When does this expire?',
@@ -176,6 +204,8 @@ export default function DriverDetailPage() {
     id_document:       'Identity document',
   };
   const DOC_STATUS_STYLE: Record<string, string> = {
+    // Amber, not red. It is an instruction, not a fault.
+    needs_replacing: 'bg-amber-50 text-amber-800 border-amber-300',
     submitted: 'bg-amber-50 text-amber-700 border-amber-200',
     approved:  'bg-green-50 text-green-700 border-green-200',
     rejected:  'bg-red-50 text-red-700 border-red-200',
@@ -549,7 +579,9 @@ export default function DriverDetailPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-gray-800">{DOC_LABEL[d.docId] ?? d.docId}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full border ${DOC_STATUS_STYLE[d.status] ?? ''}`}>
-                          {d.status === 'submitted' ? 'waiting' : d.status}
+                          {d.status === 'submitted' ? 'waiting'
+                           : d.status === 'needs_replacing' ? 'needs replacing'
+                           : d.status}
                         </span>
                         {d.version > 1 && (
                           <span className="text-xs text-gray-400">re-uploaded &times;{d.version - 1}</span>
@@ -578,14 +610,24 @@ export default function DriverDetailPage() {
                       {/* Settable at any time, not only at the moment of
                           approval. EXPIRES is the four that lapse. */}
                       {d.status === 'approved' && EXPIRES.has(String(d.docId)) && (
-                        <button
-                          type="button"
-                          disabled={docBusy === d.id}
-                          onClick={() => void editExpiry(d)}
-                          className="mt-1 text-xs font-semibold text-[#3A7BD5] hover:underline disabled:opacity-50"
-                        >
-                          {d.expiresAt ? 'Change expiry date' : 'Set an expiry date'}
-                        </button>
+                        <span className="mt-1 flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            disabled={docBusy === d.id}
+                            onClick={() => void editExpiry(d)}
+                            className="text-xs font-semibold text-[#3A7BD5] hover:underline disabled:opacity-50"
+                          >
+                            {d.expiresAt ? 'Change expiry date' : 'Set an expiry date'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={docBusy === d.id}
+                            onClick={() => void askForReplacement(d)}
+                            className="text-xs font-semibold text-amber-700 hover:underline disabled:opacity-50"
+                          >
+                            Ask for a new one
+                          </button>
+                        </span>
                       )}
                       {d.expiresAt && (() => {
                         const days = Math.ceil(

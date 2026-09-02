@@ -5,7 +5,20 @@ import {
 import { Driver } from './driver.entity';
 import { User } from '../users/user.entity';
 
-export type DriverDocStatus = 'submitted' | 'approved' | 'rejected';
+/**
+ * needs_replacing is the state between approved and rejected.
+ *
+ * Added 2026-09-02. Only approved and rejected existed, so an expired
+ * licence could be dealt with in exactly two ways: leave it approved and
+ * pretend it is valid, or reject it, which tells the rider they did
+ * something wrong when they did not. A document that was perfectly good and
+ * has simply run out is neither, and calling somebody a liar because their
+ * licence turned five years old is the sort of thing that loses riders.
+ *
+ * It behaves like rejected for access (the rider can re-upload) and like
+ * approved for tone (nobody is accused). A varchar column, so no enum DDL.
+ */
+export type DriverDocStatus = 'submitted' | 'approved' | 'rejected' | 'needs_replacing';
 
 /**
  * One row per KYC document a driver has uploaded, with its own review state.

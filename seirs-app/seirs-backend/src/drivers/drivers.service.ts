@@ -2954,7 +2954,7 @@ export class DriversService {
   async reviewDriverDocument(
     id: string,
     adminUserId: string,
-    decision: 'approved' | 'rejected',
+    decision: 'approved' | 'rejected' | 'needs_replacing',
     reason?: string,
     expiresAt?: string | null,
   ) {
@@ -2971,7 +2971,9 @@ export class DriversService {
 
     await this.docsRepo.update(id, {
       status:          decision,
-      rejectionReason: decision === 'rejected' ? reason!.trim() : null,
+      // needs_replacing carries a reason too, but as an instruction rather
+      // than a fault: "your licence expired on the 1st" is not a complaint.
+      rejectionReason: decision === 'approved' ? null : (reason?.trim() || null),
       reviewedById:    adminUserId,
       reviewedAt:      new Date(),
       // Only an approval carries an expiry: a rejected document has no
@@ -3000,10 +3002,16 @@ export class DriversService {
       const label = DOC_LABELS[doc.docId] ?? 'A document';
       this.notificationsService.create(
         riderUserId,
-        decision === 'approved' ? `${label} approved` : `${label} needs redoing`,
+        decision === 'approved'      ? `${label} approved`
+        : decision === 'needs_replacing' ? `${label} needs replacing`
+        : `${label} needs redoing`,
         decision === 'approved'
           ? `${label} has been checked and accepted. Nothing else is needed for it.`
-          : `${label} was not accepted. ${reason!.trim()} Open KYC Verification to upload it again.`,
+          : decision === 'needs_replacing'
+            ? `${label} is no longer current${reason?.trim() ? `: ${reason.trim()}` : ''}. `
+              + 'Nothing is wrong with what you sent, it has simply run out. '
+              + 'Open KYC Verification and upload the current one.'
+            : `${label} was not accepted. ${reason!.trim()} Open KYC Verification to upload it again.`,
         'account_update' as any,
       ).catch((e: any) => this.logger?.warn?.(`doc decision notice failed: ${e?.message ?? e}`));
     }

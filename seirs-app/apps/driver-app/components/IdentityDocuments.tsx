@@ -28,7 +28,7 @@ import { canAttachFiles, pickDocument } from '@/utils/documentPicker';
 import { alertDialog } from '@/components/SeirsDialog';
 import type { SeirsSheetSpec } from '@/components/SeirsSheet';
 
-type DocStatus = 'not_uploaded' | 'uploaded' | 'verified' | 'rejected' | 'expired';
+type DocStatus = 'not_uploaded' | 'uploaded' | 'verified' | 'rejected' | 'expired' | 'needs_replacing';
 
 interface DocItem {
   id: string;
@@ -56,6 +56,14 @@ const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; Icon: any
    * at a green tick has no reason to replace anything.
    */
   expired:      { label: 'Expired',      color: '#EF4444', Icon: XCircle     },
+  /**
+   * Amber and worded as an instruction, deliberately.
+   *
+   * Ops asking for a fresh copy of a document that has run out is not the
+   * same event as a document being turned down, and showing it in the same
+   * red as "Rejected" tells a rider who did nothing wrong that they failed.
+   */
+  needs_replacing: { label: 'Needs replacing', color: '#D97706', Icon: UploadCloud },
 };
 
 /**
@@ -106,7 +114,8 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
         const lapsed = rec?.status === 'approved' && rec?.expiresAt
           && String(rec.expiresAt).slice(0, 10) < new Date().toISOString().slice(0, 10);
         const status: DocStatus =
-          lapsed ? 'expired'
+          rec?.status === 'needs_replacing' ? 'needs_replacing'
+          : lapsed ? 'expired'
           : rec?.status === 'approved' ? 'verified'
           : rec?.status === 'rejected' ? 'rejected'
           : 'uploaded';
@@ -224,6 +233,13 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
         {/* A rejection is only useful if it says what to change. */}
         {doc.status === 'rejected' && !!doc.rejectionReason && (
           <Text style={[styles.rejectNote, { color: theme.error }]}>{doc.rejectionReason}</Text>
+        )}
+        {doc.status === 'needs_replacing' && (
+          <Text style={[styles.rejectNote, { color: theme.warning }]}>
+            {doc.rejectionReason
+              ? `${doc.rejectionReason} Nothing is wrong with what you sent. Tap to upload the current one.`
+              : 'This is no longer current. Nothing is wrong with what you sent: tap to upload the current one.'}
+          </Text>
         )}
         {doc.status === 'expired' && (
           <Text style={[styles.rejectNote, { color: theme.error }]}>
