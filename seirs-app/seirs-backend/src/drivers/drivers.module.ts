@@ -132,7 +132,10 @@ export class DriversModule implements OnModuleInit {
              maxTripKm is the rider's OWN ceiling, distinct from the
              vehicle's maxRouteKm on the rate card. */
           ADD COLUMN IF NOT EXISTS "acceptsInterstate" boolean NOT NULL DEFAULT true,
-          ADD COLUMN IF NOT EXISTS "maxTripKm" integer NULL
+          ADD COLUMN IF NOT EXISTS "maxTripKm" integer NULL,
+          /* When they say they work (2026-09-02). Null means never set,
+             which must keep every job they already had. */
+          ADD COLUMN IF NOT EXISTS "workingHours" jsonb NULL
       `);
       await this.ds.query(`
         ALTER TABLE "driver_trips"

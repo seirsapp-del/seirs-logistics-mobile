@@ -60,6 +60,24 @@ export class Driver {
   @Column({ type: 'numeric', precision: 10, scale: 7, nullable: true })
   corridorDestLng: number | null;
 
+  /**
+   * When this rider says they work, as seven day rows.
+   *
+   * WHY it is new. The driver app has had a "My Working Hours" screen for
+   * months and it wrote to AsyncStorage on that one phone and nowhere else.
+   * No backend field existed, dispatch never read it, admin could not see
+   * it, and it was lost on reinstall. A rider who set Mon to Fri, 6am to
+   * 6pm, was still offered a job at 2am on Sunday. The screen said as much
+   * in its own comment, which made it an honest placeholder rather than a
+   * feature, but the founder reasonably believed he had the feature.
+   *
+   * Shape: { mon: { enabled, start, end }, ... } with 24h "HH:MM" strings.
+   * Null means never set, which is NOT the same as "works no hours": a
+   * rider who has never opened that screen must keep every job they had.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  workingHours: Record<string, { enabled: boolean; start: string; end: string }> | null;
+
   @Column({ type: 'varchar', length: 120, nullable: true })
   corridorLabel: string | null;
 

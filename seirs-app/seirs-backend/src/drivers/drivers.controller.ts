@@ -216,6 +216,21 @@ export class DriversController {
     return this.driversService.getDemandZones(user.id);
   }
 
+  /**
+   * The rider's own working hours. Stored on the server since 2026-09-02;
+   * before that the app kept them in AsyncStorage on one phone and nothing
+   * read them.
+   */
+  @Get('me/working-hours')
+  getWorkingHours(@CurrentUser() user: User) {
+    return this.driversService.getWorkingHours(user.id);
+  }
+
+  @Patch('me/working-hours')
+  setWorkingHours(@CurrentUser() user: User, @Body() body: { workingHours: any }) {
+    return this.driversService.setWorkingHours(user.id, body?.workingHours);
+  }
+
   // GET /api/v1/drivers/me/deletion-readiness
   // Spec V8 - pre-flight blockers for self-delete (active deliveries +
   // wallet balance must clear first). Used by the driver app's delete-

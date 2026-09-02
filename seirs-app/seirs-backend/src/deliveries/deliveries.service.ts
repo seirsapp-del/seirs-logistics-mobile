@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { withinWorkingHours } from '../drivers/working-hours';
 import { aVehicle } from '../common/vehicle-labels';
 import { Payment, PaymentStatus } from '../payments/payment.entity';
 import { TicketTopic } from '../support/support-ticket.entity';
@@ -1667,6 +1668,27 @@ export class DeliveriesService {
         driverVehicle = me?.vehicleType ?? null;
       } catch { me = null; driverVehicle = null; }
     }
+    /**
+     * Their own declared working hours.
+     *
+     * The driver app has offered a "My Working Hours" screen for months and
+     * nothing read it: the hours lived in AsyncStorage on one phone, so a
+     * rider who set Mon to Fri, 6am to 6pm, was still shown jobs at 2am on
+     * Sunday. This is the read that makes that screen mean something.
+     *
+     * Only the LIST is filtered. A job already assigned always finishes,
+     * and claiming is not blocked: a rider who wants a job outside their
+     * own hours can still take one, because these are their hours to set
+     * and not a rule imposed on them.
+     *
+     * withinWorkingHours fails open on null, malformed or unreadable rows,
+     * so a rider who never opened that screen sees exactly what they saw
+     * before.
+     */
+    if (me && !withinWorkingHours((me as any).workingHours)) {
+      return [];
+    }
+
     if (driverVehicle) {
       q.andWhere(`(d."kind" <> 'ride' OR d."vehicleType" = :driverVehicle)`, { driverVehicle });
     }

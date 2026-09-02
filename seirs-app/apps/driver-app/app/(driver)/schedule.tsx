@@ -11,8 +11,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { naira } from '@/utils/money';
+import { driversApi } from '@/services/api';
 
 const SCHEDULE_STORAGE_KEY = 'seirs_driver_working_hours';
+
+/**
+ * This screen keys days as 'Mon', the server as 'mon'. Converted at the edge
+ * rather than renaming either, so the stored device copy from before today
+ * still loads for riders who already set hours.
+ */
+const API_KEY: Record<DayId, string> = {
+  Mon: 'mon', Tue: 'tue', Wed: 'wed', Thu: 'thu', Fri: 'fri', Sat: 'sat', Sun: 'sun',
+};
+const toApi = (s: Record<DayId, DaySchedule>) =>
+  Object.fromEntries(Object.entries(API_KEY).map(([ui, api]) => [api, s[ui as DayId]]));
+const fromApi = (a: Record<string, any>) =>
+  Object.fromEntries(Object.entries(API_KEY).map(([ui, api]) => [
+    ui,
+    a?.[api] ?? { enabled: false, start: '08:00', end: '18:00' },
+  ])) as Record<DayId, DaySchedule>;
 
 type DayId = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
@@ -68,12 +85,47 @@ export default function ScheduleScreen() {
   const [pickerOpen,  setPickerOpen]  = useState<{ day: DayId; field: 'start' | 'end' } | null>(null);
   const [showSched,   setShowSched]   = useState(true);
 
-  // Working hours persist on the device (audit 2026-08-10: Save used to
-  // be a fake timeout that stored nothing).
+  /**
+   * Working hours live on the SERVER now (2026-09-02).
+   *
+   * They used to live in AsyncStorage on this phone and nowhere else, so
+   * dispatch never read them: a rider who set Monday to Friday, 6am to 6pm,
+   * was still offered a job at 2am on Sunday, and the whole schedule was
+   * lost on reinstall. The job list honours them from today.
+   *
+   * The device copy is still read FIRST so the screen paints instantly and
+   * still works offline, then the server answer replaces it. Anyone who set
+   * hours before today keeps them: the local copy is pushed up the first
+   * time the server has none.
+   */
+  const [serverSynced, setServerSynced] = useState(false);
+
   useEffect(() => {
-    AsyncStorage.getItem(SCHEDULE_STORAGE_KEY)
-      .then(v => { if (v) { const parsed = JSON.parse(v); if (parsed?.Mon) setSchedule(parsed); } })
-      .catch(() => {});
+    let alive = true;
+    (async () => {
+      let local: any = null;
+      try {
+        const v = await AsyncStorage.getItem(SCHEDULE_STORAGE_KEY);
+        if (v) { const parsed = JSON.parse(v); if (parsed?.Mon) { local = parsed; if (alive) setSchedule(parsed); } }
+      } catch {}
+
+      try {
+        const r = await driversApi.getWorkingHours();
+        if (!alive) return;
+        if (r?.workingHours) {
+          setSchedule(fromApi(r.workingHours));
+        } else if (local) {
+          // Never set on the server. Carry their existing phone copy up so
+          // hours set before today are not silently discarded.
+          await driversApi.setWorkingHours(toApi(local)).catch(() => {});
+        }
+        setServerSynced(true);
+      } catch {
+        // Offline: the device copy above is what they see, and saving will
+        // retry. Never block the screen on this.
+      }
+    })();
+    return () => { alive = false; };
   }, []);
 
   const toggle = (day: DayId) =>
@@ -86,7 +138,15 @@ export default function ScheduleScreen() {
 
   const handleSave = async () => {
     setSaving(true);
+    // Device first so the screen is right even with no signal, then the
+    // server, which is the copy dispatch actually reads.
     try { await AsyncStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(schedule)); } catch {}
+    try {
+      await driversApi.setWorkingHours(toApi(schedule));
+      setServerSynced(true);
+    } catch {
+      setServerSynced(false);
+    }
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -160,10 +220,12 @@ export default function ScheduleScreen() {
             exists. Removed rather than left as a switch that does nothing. */}
 
         {/* Availability schedule */}
-        {/* D-1.9: these hours are stored in AsyncStorage on THIS phone and
-            nowhere else. Dispatch does not read them, so the screen must not
-            imply they change which jobs you are offered. Labelled honestly
-            rather than wired to a backend that does not exist. */}
+        {/* These hours are now on the server and dispatch READS them
+            (2026-09-02). The old note here said the opposite, correctly at
+            the time: they lived in AsyncStorage on one phone and changed
+            nothing. Outside them the job list is empty; a job already
+            running always finishes, and claiming is never blocked, because
+            these are the rider's own hours and not a rule imposed on them. */}
         <Pressable style={styles.sectionRow} onPress={() => setShowSched(v => !v)}>
           <View style={styles.sectionLeft}>
             <Clock size={18} color={theme.primary} strokeWidth={1.75} />

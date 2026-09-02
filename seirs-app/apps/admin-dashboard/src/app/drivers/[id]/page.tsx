@@ -591,6 +591,53 @@ export default function DriverDetailPage() {
             the rider's own reason unreachable.
           */}
           <VehicleAndHistory driver={driver} driverId={String(id)} />
+
+          {/*
+            When they say they work. Server-side since 2026-09-02: these
+            hours lived in AsyncStorage on the rider's own phone, so nothing
+            here could see them and dispatch ignored them entirely.
+          */}
+          <Section
+            title="Working hours"
+            storageKey="driver-hours"
+            bare
+            defaultOpen={false}
+            summary={driver.workingHours
+              ? `${Object.values(driver.workingHours as any).filter((d: any) => d?.enabled).length} days a week`
+              : 'never set'}
+          >
+            {!driver.workingHours ? (
+              <p className="text-sm text-[#5C6E82]">
+                They have never set any. That is not the same as working no hours: dispatch
+                offers them everything, which is the correct behaviour for somebody who has
+                not answered the question.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+                  {['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => {
+                    const row: any = (driver.workingHours as any)?.[d];
+                    const on = row?.enabled;
+                    return (
+                      <div key={d} className={`rounded-lg border p-2 text-center ${
+                        on ? 'border-emerald-200 bg-emerald-50' : 'border-[#E5E7EB] bg-[#F5F5F0]'
+                      }`}>
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#0F2B4C]/50">{d}</p>
+                        <p className={`mt-0.5 text-xs tabular-nums ${on ? 'text-emerald-800' : 'text-[#0F2B4C]/30'}`}>
+                          {on ? `${row.start}–${row.end}` : 'off'}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-xs text-[#5C6E82]">
+                  Outside these hours they are shown no new jobs. A job already running always
+                  finishes, and they can still claim one if they choose: these are their hours,
+                  not a restriction placed on them.
+                </p>
+              </>
+            )}
+          </Section>
         </div>
 
         {/* Work record.

@@ -812,6 +812,23 @@ export const driversApi = {
   /** Live vehicle + ownership declaration + the pending change, if any. */
   getVehicle: () => request<VehicleRecordDTO>('GET', '/drivers/me/vehicle'),
 
+  /**
+   * The rider's own working hours, on the server at last.
+   *
+   * The schedule screen has kept these in AsyncStorage on one phone since
+   * it was built, so nothing read them: dispatch offered jobs at 2am to
+   * somebody who had set Monday to Friday, and the hours were lost on
+   * reinstall. Server-side from 2026-09-02, and the job list honours them.
+   */
+  getWorkingHours: () => request<{
+    workingHours: Record<string, { enabled: boolean; start: string; end: string }> | null;
+    withinHoursNow: boolean;
+    note: string;
+  }>('GET', '/drivers/me/working-hours'),
+
+  setWorkingHours: (workingHours: Record<string, { enabled: boolean; start: string; end: string }>) =>
+    request<{ workingHours: any }>('PATCH', '/drivers/me/working-hours', { workingHours }),
+
   /** Submit a new vehicle for review. Live vehicle is untouched. */
   submitVehicleChange: (body: VehicleChangeRequest) =>
     request<{ pending: boolean; message: string; change: VehicleChangeDTO }>(

@@ -19,6 +19,7 @@ import { DriverEarning } from '../earnings/driver-earning.entity';
 import { vehicleIdentityForPassenger } from '../common/redact-driver';
 import { DriverDocument, DriverDocStatus } from './driver-document.entity';
 import { buildKycQueue } from './kyc-queue';
+import { withinWorkingHours } from './working-hours';
 
 /**
  * The five documents a vehicle change carries, keyed exactly as the driver
@@ -2573,6 +2574,46 @@ export class DriversService {
    * asked exactly the right question about it: what happens to the rest of
    * their information after approval.
    */
+  /**
+   * Is this rider inside their own declared working hours right now?
+   *
+   * FAILS OPEN, and that is the important part. Null hours, a malformed
+   * row, or any error at all means yes. A rider who has never opened that
+   * screen must keep every job they had, and a bug in this function must
+   * never be able to take somebody's income away silently.
+   */
+  /** The rider's own hours, for their app. */
+  async getWorkingHours(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+    return {
+      workingHours: driver.workingHours ?? null,
+      withinHoursNow: withinWorkingHours(driver.workingHours),
+      note: 'These hours are yours to set. Outside them you are not offered new jobs, and a job already running always finishes.',
+    };
+  }
+
+  async setWorkingHours(userId: string, hours: any) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+    const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    const clean: Record<string, { enabled: boolean; start: string; end: string }> = {};
+    for (const d of DAYS) {
+      const row = hours?.[d];
+      if (!row) continue;
+      const t = (v: any) => (/^\d{2}:\d{2}$/.test(String(v)) ? String(v) : null);
+      const start = t(row.start), end = t(row.end);
+      if (!start || !end) continue;
+      clean[d] = { enabled: row.enabled !== false, start, end };
+    }
+    // An empty object would read as "works no hours ever", which is a way to
+    // lock somebody out of earning by sending a malformed body. Null it.
+    await this.repo.update(driver.id, {
+      workingHours: Object.keys(clean).length ? clean : null,
+    } as any);
+    return { workingHours: Object.keys(clean).length ? clean : null };
+  }
+
   async vehicleHistory(driverId: string) {
     const rows = await this.vehicleChangesRepo.find({
       where: { driverId },
