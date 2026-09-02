@@ -13,6 +13,27 @@ import { SendDocumentModal } from '@/components/SendDocumentModal';
 import { EmptyState } from '@/components/EmptyState';
 import { useConfirm, usePrompt, useNotify } from '@/components/ConfirmDialog';
 
+/**
+ * Amber for needs_replacing, never red.
+ *
+ * A document that was good and has run out is not a rejection, and the
+ * colour is half of how that reads. Rejection means they did something
+ * wrong; an expired certificate means time passed.
+ */
+const DOC_STATUS_STYLES: Record<string, string> = {
+  approved:        'bg-emerald-100 text-emerald-700',
+  submitted:       'bg-blue-100 text-blue-700',
+  needs_replacing: 'bg-amber-100 text-amber-800',
+  rejected:        'bg-red-100 text-red-700',
+};
+
+const DOC_STATUS_LABEL: Record<string, string> = {
+  approved:        'Approved',
+  submitted:       'Waiting',
+  needs_replacing: 'Needs replacing',
+  rejected:        'Rejected',
+};
+
 const STATUS_STYLES: Record<string, string> = {
   approved:       'bg-emerald-100 text-emerald-700',
   pending_review: 'bg-amber-100 text-amber-700',
@@ -49,9 +70,28 @@ export default function PartnerDetailPage() {
   const confirm = useConfirm();
   const prompt  = usePrompt();
   const notify  = useNotify();
+  const [docs, setDocs] = useState<any[] | null>(null);
+  const [busyDoc, setBusyDoc] = useState<string | null>(null);
 
-  const reload = () =>
-    adminApi.partnerStores.get(id).then(setData).catch((e: any) => setErr(e?.message ?? 'Load failed'));
+  const reload = () => {
+    // Returned, because the caller does reload().finally(() => setLoading(false)).
+    // The documents load is fired alongside it and deliberately not awaited:
+    // the page should stop spinning when the SHOP has arrived.
+    const storeLoad = adminApi.partnerStores.get(id)
+      .then(setData)
+      .catch((e: any) => setErr(e?.message ?? 'Load failed'));
+    /**
+     * Reviewable documents, separate from the URL columns on the store.
+     *
+     * Caught rather than allowed to reject: a failure here must not blank
+     * the page. The shop's address, its owner and its packages are still
+     * worth showing if the document store is unreachable, and an empty
+     * array renders the "nothing uploaded" line rather than a spinner
+     * that never resolves.
+     */
+    adminApi.partnerDocuments.forStore(id).then(setDocs).catch(() => setDocs([]));
+    return storeLoad;
+  };
 
   useEffect(() => {
     reload().finally(() => setLoading(false));
@@ -163,11 +203,91 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
     }
   };
 
-  const kycDocs: Array<{ label: string; url: string | null }> = [
-    { label: 'Storefront photo', url: store.storefrontPhotoUrl },
-    { label: 'CAC registration', url: store.cacRegUrl },
-    { label: 'Owner ID',         url: store.ownerIdUrl },
-  ];
+  /**
+   * Per-document review.
+   *
+   * The founder, 2026-09-02: "you created an entire section for something
+   * that could have been wired into the drivers kyc queue, and when I told
+   * you, your best idea was to stack it in the same page by putting it on
+   * top of each other." So these controls replace the read-only list that
+   * was already here rather than adding a section beneath it.
+   */
+  const decide = async (
+    doc: any,
+    kind: 'approve' | 'reject' | 'needs_replacing',
+  ) => {
+    let reason: string | null = null;
+    if (kind === 'reject') {
+      reason = await prompt({
+        title: `Why is ${doc.label.toLowerCase()} not accepted?`,
+        message: 'The partner reads this word for word. Without it they send the same photo again.',
+        placeholder: 'The certificate number is not readable in this photo',
+        confirmLabel: 'Reject document',
+      });
+      if (!reason?.trim()) return;
+    }
+    if (kind === 'needs_replacing') {
+      reason = await prompt({
+        title: `Ask for a new ${doc.label.toLowerCase()}`,
+        message: 'Nobody is being blamed. Say what has run out, and when, if you know.',
+        placeholder: 'The CAC certificate expired on 1 August',
+        confirmLabel: 'Ask for a replacement',
+      });
+      if (reason === null) return;
+    }
+
+    let expiresAt: string | null = null;
+    if (kind === 'approve' && doc.canExpire) {
+      expiresAt = await prompt({
+        title: `When does ${doc.label.toLowerCase()} run out?`,
+        message: 'Read it off the document. Leave it blank if it does not say. '
+               + 'This is what makes the expiry warnings work at all: approved with no date, it never lapses.',
+        placeholder: 'YYYY-MM-DD',
+        confirmLabel: 'Approve',
+      });
+      if (expiresAt === null) return;
+      expiresAt = expiresAt.trim() || null;
+    }
+
+    setBusyDoc(doc.id);
+    try {
+      if (kind === 'approve')              await adminApi.partnerDocuments.approve(doc.id, expiresAt);
+      else if (kind === 'reject')          await adminApi.partnerDocuments.reject(doc.id, reason!.trim());
+      else                                 await adminApi.partnerDocuments.needsReplacing(doc.id, reason?.trim() || undefined);
+      void notify({
+        title: kind === 'approve' ? 'Document approved'
+             : kind === 'reject'  ? 'Document rejected'
+             : 'Replacement asked for',
+        message: `${doc.label} - the partner has been told.`,
+        tone: 'success',
+      });
+      reload();
+    } catch (e: any) {
+      void notify({ title: 'Nothing changed', message: e?.message ?? 'The server refused the request.', tone: 'error' });
+    } finally {
+      setBusyDoc(null);
+    }
+  };
+
+  const editExpiry = async (doc: any) => {
+    const next = await prompt({
+      title: `Expiry for ${doc.label.toLowerCase()}`,
+      message: 'YYYY-MM-DD. Leave it blank to remove the date entirely, which is a real answer if it was mistyped.',
+      placeholder: doc.expiresAt ?? 'YYYY-MM-DD',
+      confirmLabel: 'Save date',
+    });
+    if (next === null) return;
+    setBusyDoc(doc.id);
+    try {
+      await adminApi.partnerDocuments.setExpiry(doc.id, next.trim() || null);
+      void notify({ title: 'Date saved', message: `${doc.label} - no new decision notice was sent.`, tone: 'success' });
+      reload();
+    } catch (e: any) {
+      void notify({ title: 'Nothing changed', message: e?.message ?? 'The server refused the request.', tone: 'error' });
+    } finally {
+      setBusyDoc(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -346,27 +466,102 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
           )}
         </div>
 
-        {/* KYC documents from the application */}
+        {/* KYC documents, each reviewed as itself */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-50">
-            <h2 className="font-semibold text-gray-900">What they sent in when they applied</h2>
+            <h2 className="font-semibold text-gray-900">Documents</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Decide each one on its own. Turning down a blurry photo no longer refuses the whole
+              application, and the partner is told which file to send again.
+            </p>
           </div>
-          <div className="p-5 flex flex-wrap gap-3">
-            {kycDocs.every((d) => !d.url) && (
-              <p className="text-sm text-gray-400">
-                Nothing was uploaded with this application. There is no shopfront photo, no CAC certificate and no ID to check against.
-              </p>
-            )}
-            {kycDocs.map(({ label, url }) => url && (
-              <a key={label} href={url} target="_blank" rel="noreferrer"
-                className="text-xs bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-1.5">
-                <FileText size={13} /> {label} <ExternalLink size={11} className="text-gray-400" />
-              </a>
-            ))}
-          </div>
+
+          {docs === null ? (
+            <div className="p-5 text-sm text-gray-400">Loading documents...</div>
+          ) : docs.length === 0 ? (
+            <div className="p-5 text-sm text-gray-400">
+              Nothing was uploaded with this application. There is no shopfront photo, no CAC
+              certificate and no ID to check against.
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {docs.map((d: any) => {
+                const busy = busyDoc === d.id;
+                const expired = d.expiresAt && new Date(d.expiresAt) < new Date();
+                return (
+                  <div key={d.id} className="px-5 py-4">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-gray-900 text-sm">{d.label}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${DOC_STATUS_STYLES[d.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                            {DOC_STATUS_LABEL[d.status] ?? d.status}
+                          </span>
+                          {d.version > 1 && (
+                            <span className="text-xs text-gray-400" title="How many times this file has been replaced">
+                              v{d.version}
+                            </span>
+                          )}
+                        </div>
+                        {d.rejectionReason && (
+                          <p className="text-xs text-gray-600 mt-1">What they were told: {d.rejectionReason}</p>
+                        )}
+                        {d.reviewedByName && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Signed off by {d.reviewedByName}
+                            {d.reviewedAt ? ` on ${new Date(d.reviewedAt).toLocaleDateString('en-NG')}` : ''}
+                          </p>
+                        )}
+                        {d.canExpire && (
+                          <p className={`text-xs mt-0.5 ${expired ? 'text-amber-700 font-medium' : 'text-gray-400'}`}>
+                            {d.expiresAt
+                              ? `${expired ? 'Ran out' : 'Valid until'} ${new Date(d.expiresAt).toLocaleDateString('en-NG')}`
+                              : 'No expiry recorded, so it will never be flagged'}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        {d.url && (
+                          <a href={d.url} target="_blank" rel="noreferrer"
+                            className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-1.5">
+                            <FileText size={13} /> Open <ExternalLink size={11} className="text-gray-400" />
+                          </a>
+                        )}
+                        <button disabled={busy} onClick={() => decide(d, 'approve')}
+                          className="text-xs px-3 py-1.5 rounded-lg font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40">
+                          Approve
+                        </button>
+                        <button disabled={busy} onClick={() => decide(d, 'needs_replacing')}
+                          className="text-xs px-3 py-1.5 rounded-lg font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-40"
+                          title="It was fine and has run out. Nobody is being blamed.">
+                          Needs replacing
+                        </button>
+                        <button disabled={busy} onClick={() => decide(d, 'reject')}
+                          className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-40">
+                          Reject
+                        </button>
+                        {d.canExpire && (
+                          <button disabled={busy} onClick={() => editExpiry(d)}
+                            className="text-xs px-3 py-1.5 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40"
+                            title="Set or clear the date without sending a fresh approval notice">
+                            {d.expiresAt ? 'Change date' : 'Set date'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {(store.reviewNote || store.reviewedAt) && (
-            <div className="px-5 pb-4 text-xs text-gray-500">
-              {store.reviewNote && <p className="mb-0.5">What the reviewer wrote: {store.reviewNote}</p>}
+            <div className="px-5 py-3 border-t border-gray-50 text-xs text-gray-500">
+              {/* The store-level decision, which answers a different question
+                  from the ones above: should this business be a partner at
+                  all, rather than is this photograph readable. */}
+              {store.reviewNote && <p className="mb-0.5">On the application as a whole: {store.reviewNote}</p>}
               {store.reviewedAt && <p>Looked at on {new Date(store.reviewedAt).toLocaleString('en-NG')}</p>}
             </div>
           )}

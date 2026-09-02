@@ -697,6 +697,62 @@ export const adminApi = {
       req<any>(`/admin/driver-documents/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
   },
 
+  /**
+   * Partner store KYC, one document at a time.
+   *
+   * Deliberately the same shape as driverDocuments above, because they are
+   * the same decisions taken by the same reviewers about the same kinds of
+   * file, and they run through one review flow on the server. A shop's
+   * certificate and a rider's licence should not need two sets of buttons.
+   *
+   * Until 2026-09-02 a store's three files sat behind one status and one
+   * review note, so a blurry CAC certificate refused the whole application
+   * and the shop had to start again.
+   */
+  partnerDocuments: {
+    list: (status?: string, page = 1, storeId?: string) =>
+      req<{ items: any[]; total: number; page: number; take: number }>(
+        `/admin/partner-documents?page=${page}${status ? `&status=${status}` : ''}${storeId ? `&storeId=${storeId}` : ''}`),
+
+    /** Everything one shop has, for its own page. */
+    forStore: (storeId: string) =>
+      req<any[]>(`/admin/partner-documents/store/${storeId}`),
+
+    counts: () =>
+      req<{ waiting: number; expired: number; expiringSoon: number; ownersWaiting: number }>(
+        '/admin/partner-documents/counts'),
+
+    /** The list to work through, not a number. */
+    expiring: (days = 30) => req<{ items: any[] }>(`/admin/partner-documents/expiring?days=${days}`),
+
+    /**
+     * expiresAt (YYYY-MM-DD) is what makes the expiry queries work at all.
+     * The driver equivalent shipped sending no body, so every approval
+     * stored null and the expiry counts could only ever return zero.
+     * A storefront photo takes no date and the server refuses one.
+     */
+    approve: (id: string, expiresAt?: string | null) =>
+      req<any>(`/admin/partner-documents/${id}/approve`, {
+        method: 'POST', body: JSON.stringify({ expiresAt: expiresAt ?? null }),
+      }),
+
+    reject: (id: string, reason: string) =>
+      req<any>(`/admin/partner-documents/${id}/reject`, {
+        method: 'POST', body: JSON.stringify({ reason }),
+      }),
+
+    /** Ran out, rather than done wrong. Amber, not red. */
+    needsReplacing: (id: string, reason?: string) =>
+      req<any>(`/admin/partner-documents/${id}/needs-replacing`, {
+        method: 'POST', body: JSON.stringify({ reason }),
+      }),
+
+    setExpiry: (id: string, expiresAt: string | null) =>
+      req<any>(`/admin/partner-documents/${id}/expiry`, {
+        method: 'PATCH', body: JSON.stringify({ expiresAt }),
+      }),
+  },
+
   contactSubmissions: {
     list:   (status?: string, page = 1) =>
       req<{ items: any[]; total: number; page: number; take: number }>(

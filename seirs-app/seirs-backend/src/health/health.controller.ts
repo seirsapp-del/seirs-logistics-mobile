@@ -235,6 +235,25 @@ export class HealthController {
         `SELECT COUNT(*)::int AS n FROM "driver_documents"`,
       ).catch(() => [{ n: null }]);
 
+      /**
+       * How many partner documents there are to copy at all.
+       *
+       * Without this, a partner_store count of zero is ambiguous: it reads
+       * the same whether the backfill failed or whether no shop has ever
+       * uploaded anything. On the first deploy it was zero and there was
+       * no way to tell which from outside.
+       */
+      const partnerSource = await this.dataSource.query(
+        `SELECT COUNT(*)::int AS stores,
+                COUNT(*) FILTER (WHERE COALESCE("storefrontPhotoUrl", '') <> ''
+                                    OR COALESCE("cacRegUrl", '') <> ''
+                                    OR COALESCE("ownerIdUrl", '') <> '')::int AS "storesWithFiles",
+                (COALESCE(COUNT(*) FILTER (WHERE COALESCE("storefrontPhotoUrl", '') <> ''), 0)
+               + COALESCE(COUNT(*) FILTER (WHERE COALESCE("cacRegUrl", '') <> ''), 0)
+               + COALESCE(COUNT(*) FILTER (WHERE COALESCE("ownerIdUrl", '') <> ''), 0))::int AS "filesOnStores"
+           FROM "partner_stores"`,
+      ).catch(() => [null]);
+
       const counts: Record<string, number> = {};
       for (const r of byOwner as any[]) counts[r.ownerType] = Number(r.n ?? 0);
       const copied = counts.driver ?? 0;
@@ -246,6 +265,10 @@ export class HealthController {
         ok: inLegacy === null ? copied > 0 : copied >= inLegacy,
         documents: counts,
         legacyDriverDocuments: inLegacy,
+        partnerStores: partnerSource?.[0] ?? null,
+        ...(partnerSource?.[0] && partnerSource[0].filesOnStores > (counts.partner_store ?? 0)
+          ? { warnPartner: `${partnerSource[0].filesOnStores} partner files on stores, ${counts.partner_store ?? 0} in the shared store` }
+          : {}),
         ...(inLegacy !== null && copied < inLegacy
           ? { warn: `only ${copied} of ${inLegacy} driver documents copied into the shared store` }
           : {}),
