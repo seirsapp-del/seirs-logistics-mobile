@@ -243,6 +243,18 @@ export default function PartnerSettingsScreen() {
             <Text style={[styles.linkRowText, { color: colors.text }]}>Messages &amp; support</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
+          {/* Documents had no entry point at all before 2026-09-02: a shop
+              could not see what had been decided about its files, and the
+              only answer to a refusal was to submit the whole application
+              again. A screen with no way in is the same bug as no screen. */}
+          <Pressable
+            style={[styles.linkRow, { borderTopColor: colors.border }]}
+            onPress={() => router.push('/(partner)/documents' as any)}
+          >
+            <Icon name="FileText" size={16} color={colors.textSecond} />
+            <Text style={[styles.linkRowText, { color: colors.text }]}>Documents</Text>
+            <Icon name="ChevronRight" size={16} color={colors.textThird} />
+          </Pressable>
           <Pressable
             style={[styles.linkRow, { borderTopColor: colors.border }]}
             onPress={() => router.push('/(partner)/language' as any)}

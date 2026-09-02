@@ -192,7 +192,24 @@ export class KycModule implements OnModuleInit {
       try {
         const r = await this.ds.query(`
           INSERT INTO "kyc_documents" ("ownerType", "ownerId", "ownerUserId", "docId", "url", "status", "reviewedAt")
-          SELECT 'partner_store', ps.id, ps."userId", $1, ps."${column}",
+          SELECT 'partner_store', ps.id,
+                 /*
+                  * Cast, and guard the cast.
+                  *
+                  * partner_stores."userId" is a plain @Column() and so is
+                  * VARCHAR, while drivers reaches its user through a relation
+                  * whose foreign key really is a uuid. Postgres refuses the
+                  * implicit conversion in a column-to-column INSERT, which is
+                  * why this backfill inserted nothing and, being caught, said
+                  * nothing about why.
+                  *
+                  * The regex means one malformed id costs only its own link:
+                  * the document still lands with a null ownerUserId rather
+                  * than taking the other four stores down with it.
+                  */
+                 CASE WHEN ps."userId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                      THEN ps."userId"::uuid ELSE NULL END,
+                 $1, ps."${column}",
                  CASE WHEN ps.status IN ('approved', 'active') THEN 'approved' ELSE 'submitted' END,
                  CASE WHEN ps.status IN ('approved', 'active') THEN ps."reviewedAt" ELSE NULL END
             FROM "partner_stores" ps

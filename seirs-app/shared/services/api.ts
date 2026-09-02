@@ -1610,6 +1610,33 @@ export const partnerApi = {
     const qs = params.toString();
     return request<PartnerStatement>('GET', `/partner/statement${qs ? `?${qs}` : ''}`);
   },
+  /**
+   * The shop's KYC documents, each with its own review state.
+   *
+   * Slots never uploaded come back too, so the screen can say which file
+   * is still wanted rather than leaving a gap somebody has to infer.
+   */
+  myDocuments: () => request<{
+    storeId: string; storeName: string; storeStatus: string;
+    documents: Array<{
+      id: string | null; docId: string; label: string; url: string | null;
+      status: 'submitted' | 'approved' | 'rejected' | 'needs_replacing' | 'missing';
+      rejectionReason: string | null; reviewedAt: string | null;
+      expiresAt: string | null; canExpire: boolean; version: number;
+    }>;
+  }>('GET', '/partner-store/my-documents'),
+
+  /**
+   * Replace ONE document.
+   *
+   * Before 2026-09-02 the only answer to a rejected CAC photo was to
+   * resubmit the whole application, which reset the store to pending
+   * review and discarded the decisions already made on the other two.
+   */
+  uploadDocument: (docId: string, url: string) =>
+    request<{ docId: string; saved: boolean; status: string; version: number; label: string }>(
+      'POST', `/partner-store/my-documents/${docId}`, { url }),
+
   getSettings:    () => request<any>('GET', '/partner/settings'),
   updateSettings: (data: any) => request<any>('PATCH', '/partner/settings', data),
 
