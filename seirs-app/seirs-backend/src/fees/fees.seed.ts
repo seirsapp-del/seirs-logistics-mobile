@@ -476,7 +476,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Flat amount a rider is paid for a trip that could not complete, on top of fuel for the distance actually ridden. The rider made the trip whoever was at fault.',
     category: FeeCategory.DRIVER_FEE,   unit: FeeUnit.FLAT_NGN,   value: 200 },
   { key: 'cancel_processing_pct',       name: 'Cancellation Processing Cost (%)',
-    description: 'Card processing already sunk on a cancelled booking, withheld so a cancellation costs SEIRS nothing. Set to 0 if the processor refunds their fee. A row, not a constant, because processor policy changes.',
+    description: 'Withheld from a refund when a paid booking is cancelled. Set to 0 on 2 September 2026, after the processing fee was actually measured rather than assumed: the CUSTOMER pays the processor at checkout, not SEIRS, so withholding a percentage on cancellation was taking back money SEIRS never spent. At 1.4 it removed about 1.25% from every cancelling customer as profit. The only part SEIRS genuinely absorbs is the VAT on that fee, roughly 0.15%, and the founder chose to absorb it rather than bill it, because "cancelling is free" is a cleaner promise than "free, less 0.15%". Raise this only if the processor starts charging SEIRS on a refund, and measure it first.',
     category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.PERCENT,    value: 1.4 },
 
   // ── Subscriptions ──────────────────────────────────────────────────────
