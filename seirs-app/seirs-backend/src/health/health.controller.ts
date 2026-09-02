@@ -214,6 +214,46 @@ export class HealthController {
       statementsSchema = { ok: false, error: err?.message ?? 'unknown' };
     }
 
+    /**
+     * KYC document store probe (2026-09-02).
+     *
+     * driver_documents was generalised into kyc_documents and the copy-in
+     * runs inside the usual try/catch on boot, so a total failure looks
+     * exactly like success: the service comes up, the queue renders empty,
+     * and nobody finds out until a reviewer asks where the documents went.
+     *
+     * Reports the row count per owner type alongside what is still sitting
+     * in the old table, so "did the migration actually land" is one curl
+     * rather than a database session.
+     */
+    let kycSchema: Record<string, unknown> = { ok: false };
+    try {
+      const byOwner = await this.dataSource.query(
+        `SELECT "ownerType", COUNT(*)::int AS n FROM "kyc_documents" GROUP BY "ownerType"`,
+      );
+      const legacy = await this.dataSource.query(
+        `SELECT COUNT(*)::int AS n FROM "driver_documents"`,
+      ).catch(() => [{ n: null }]);
+
+      const counts: Record<string, number> = {};
+      for (const r of byOwner as any[]) counts[r.ownerType] = Number(r.n ?? 0);
+      const copied = counts.driver ?? 0;
+      const inLegacy = legacy?.[0]?.n ?? null;
+
+      kycSchema = {
+        // Not ok until every legacy row has a counterpart. A partial copy
+        // is the failure worth catching, and it is invisible otherwise.
+        ok: inLegacy === null ? copied > 0 : copied >= inLegacy,
+        documents: counts,
+        legacyDriverDocuments: inLegacy,
+        ...(inLegacy !== null && copied < inLegacy
+          ? { warn: `only ${copied} of ${inLegacy} driver documents copied into the shared store` }
+          : {}),
+      };
+    } catch (err: any) {
+      kycSchema = { ok: false, error: err?.message ?? 'unknown' };
+    }
+
     // ── Pricing system smoke test ──────────────────────────────────
     // Canned input: 5 km motorcycle delivery of small parcel. Should
     // always return a non-zero customer total if the rate card seeded
@@ -263,6 +303,9 @@ export class HealthController {
       // try/catch and failure looks identical to success until the
       // first USSD payment throws on insert.
       paymentsSchema,
+      // Did driver_documents actually reach kyc_documents? A silent
+      // try/catch copy-in fails identically to succeeding.
+      kycSchema,
       // Did the statement_records ALTERs land? Same class of silent
       // failure: issuing looks healthy and every download 404s.
       statementsSchema,

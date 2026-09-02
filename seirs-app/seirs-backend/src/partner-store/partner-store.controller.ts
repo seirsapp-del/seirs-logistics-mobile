@@ -6,13 +6,47 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { PartnerStoreService } from './partner-store.service';
+import { PartnerDocumentsService } from './partner-documents.service';
 import { DropoffMode } from './store-dropoff.entity';
 import { HandoffMethod } from '../identity/handoff-record.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('partner-store')
 export class PartnerStoreController {
-  constructor(private readonly svc: PartnerStoreService) {}
+  constructor(
+    private readonly svc: PartnerStoreService,
+    private readonly docs: PartnerDocumentsService,
+  ) {}
+
+  // ── KYC documents ──────────────────────────────────────────────────────
+
+  /**
+   * GET /api/v1/partner-store/my-documents
+   *
+   * Every document with its own status, including the ones never sent, so
+   * the app can say which is still wanted rather than leaving a gap.
+   */
+  @Get('my-documents')
+  myDocuments(@CurrentUser() user: any) {
+    return this.docs.myDocuments(user.id);
+  }
+
+  /**
+   * POST /api/v1/partner-store/my-documents/:docId  { url }
+   *
+   * Replace ONE document. Before this the only way to answer a rejected
+   * CAC photo was to resubmit the whole application, which reset the store
+   * to pending review and discarded the decisions already made on the
+   * other two files.
+   */
+  @Post('my-documents/:docId')
+  uploadDocument(
+    @CurrentUser() user: any,
+    @Param('docId') docId: string,
+    @Body() body: { url: string },
+  ) {
+    return this.docs.upload(user.id, docId, body?.url);
+  }
 
   // POST /api/v1/partner-store/:storeId/close  { reason? }
   // Owner (or admin) winds a shop down. Refuses to finish while

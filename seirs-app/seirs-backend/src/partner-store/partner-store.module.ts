@@ -3,6 +3,9 @@ import { TypeOrmModule, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { PartnerStoreService } from './partner-store.service';
 import { PartnerStoreController } from './partner-store.controller';
+import { PartnerDocumentsService } from './partner-documents.service';
+import { AdminPartnerDocumentsController } from './admin-partner-documents.controller';
+import { KycDocument } from '../kyc/kyc-document.entity';
 import { StoreDropoff } from './store-dropoff.entity';
 import { PartnerStore } from '../business/partner-store.entity';
 import { PartnerSponsorship } from './partner-sponsorship.entity';
@@ -28,7 +31,9 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery, PartnerPayout]),
+    // KycDocument registered locally as well as globally, so a provider
+    // resolution mistake is a compile error rather than a boot crash.
+    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery, PartnerPayout, KycDocument]),
     FeesModule,
     IdentityModule,
     PricingModule,
@@ -36,8 +41,8 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
     forwardRef(() => PaymentsModule),
     MailModule,
   ],
-  controllers: [PartnerStoreController],
-  providers:   [PartnerStoreService],
+  controllers: [PartnerStoreController, AdminPartnerDocumentsController],
+  providers:   [PartnerStoreService, PartnerDocumentsService],
   exports:     [PartnerStoreService],
 })
 export class PartnerStoreModule implements OnModuleInit {

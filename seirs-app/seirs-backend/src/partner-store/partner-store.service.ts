@@ -19,6 +19,7 @@ import {
   HandoffMethod, HandoffStage, HandoffRole,
 } from '../identity/handoff-record.entity';
 import { MailService } from '../mail/mail.service';
+import { PartnerDocumentsService } from './partner-documents.service';
 import { RouteDistanceService } from '../deliveries/route-distance.service';
 import { secureCode } from '../common/utils/auth-codes';
 
@@ -150,6 +151,12 @@ export class PartnerStoreService {
     private readonly payments:       PaymentsService,
     private readonly identityService: IdentityService,
     private readonly mailService:    MailService,
+    /**
+     * So a new application enters the review queue with per-document rows
+     * from the moment it is submitted, rather than waiting for the boot
+     * backfill to notice it.
+     */
+    private readonly partnerDocs:    PartnerDocumentsService,
     /**
      * Real road distance for counter quotes (2026-08-31). Optional and
      * injected forward-ref, so a wiring problem degrades this file to
@@ -1887,6 +1894,20 @@ export class PartnerStoreService {
       await this.storeRepo.save(store);
       await this.usersRepo.update(userId, { partnerStoreId: store.id });
     }
+
+    /**
+     * Queue the three documents for review as themselves.
+     *
+     * The URL columns above are still written because the admin store page
+     * and the application view both read them. These rows are what carries
+     * a per-document decision, a reason and an expiry, none of which a
+     * column can hold.
+     */
+    await this.partnerDocs.recordApplication(store!, {
+      storefront_photo: body.storefrontPhotoUrl,
+      cac_registration: body.cacRegUrl,
+      owner_id:         body.ownerIdUrl,
+    });
 
     this.logger.log(`Partner store application submitted: userId=${userId} storeId=${store!.id}`);
 
