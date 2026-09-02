@@ -261,7 +261,14 @@ export function PromptDialog({
       <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">
         {label}{minLength > 0 && <span className="text-red-500"> *</span>}
       </label>
-      {multiline && !numeric ? (
+      {/*
+        `date` and `numeric` both force the single-line input. multiline
+        defaults to TRUE, so asking for a date without also passing
+        multiline:false rendered a textarea and the picker never appeared:
+        the founder got "a box I could type anything in". Making the flag
+        win here means no caller can hit that again.
+      */}
+      {multiline && !numeric && !date ? (
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}

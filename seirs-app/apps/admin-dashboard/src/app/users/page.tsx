@@ -24,10 +24,37 @@ function displayType(u: any): string {
   return 'customer';
 }
 
+/**
+ * Each kind of account gets its own honest title.
+ *
+ * The nav item said "Customers" and this page listed admins, partners,
+ * drivers and customers together under the heading "Users" (founder,
+ * 2 September: "shouldnt we have admin, drivers, business, partners and
+ * customer all in different items"). Same page, but arrived at through
+ * separate entries that each land on their own filter and say so.
+ */
+const ROLE_TITLE: Record<string, { title: string; sub: string }> = {
+  '':         { title: 'All accounts', sub: 'Everyone with a SEIRS login, of every kind.' },
+  customer:   { title: 'Customers',    sub: 'Private individuals who book deliveries and rides for themselves.' },
+  business:   { title: 'Businesses',   sub: 'Registered companies that send. A business keeps a customer login and carries a company on top of it.' },
+  partner:    { title: 'Partner stores', sub: 'Shops that hold packages. Every partner is also a business.' },
+  driver:     { title: 'Drivers',      sub: 'Riders. Their documents and vehicles live on the driver record.' },
+  admin:      { title: 'Staff',        sub: 'People with access to this dashboard.' },
+};
+
 export default function UsersPage() {
   const [data,    setData]    = useState<any>(null);
   const [page,    setPage]    = useState(1);
-  const [role,    setRole]    = useState('');
+  /**
+   * Seeded from ?role= so a nav item can land straight on its own kind.
+   * Reading it once on mount rather than binding to the URL keeps the
+   * chips working as they always did.
+   */
+  const [role,    setRole]    = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const r = new URLSearchParams(window.location.search).get('role') ?? '';
+    return ROLE_TITLE[r] ? r : '';
+  });
   /**
    * Find one customer. There was no way to, on the page whose whole
    * job is customers: you scrolled, or you used the global TopBar
@@ -83,7 +110,12 @@ export default function UsersPage() {
       <main className="p-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-[#0F2B4C]">Users</h1>
+            <h1 className="text-2xl font-bold text-[#0F2B4C]">
+              {(ROLE_TITLE[role] ?? ROLE_TITLE['']).title}
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-[#0F2B4C]/50">
+              {(ROLE_TITLE[role] ?? ROLE_TITLE['']).sub}
+            </p>
             {data && (
               <p className="text-sm text-[#0F2B4C]/50 mt-1">{data.total.toLocaleString()} total</p>
             )}

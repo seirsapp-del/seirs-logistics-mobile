@@ -525,7 +525,18 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     items: [
       { href: '/deliveries', label: 'Deliveries',       icon: 'Package' },
       { href: '/drivers',    label: 'Drivers',          icon: 'Truck'   },
-      { href: '/users',      label: 'Customers',        icon: 'Users'   },
+      /*
+       * One entry per kind of account, not one entry called "Customers"
+       * that opens a list of everybody (founder, 2 September). Drivers and
+       * Partner Accounts already had their own; Businesses and Staff did
+       * not, and Customers was lying about what was behind it.
+       *
+       * Same page, filtered, so there is one place a person's row is
+       * edited and no chance of two lists disagreeing.
+       */
+      { href: '/users?role=customer', label: 'Customers',  icon: 'Users'   },
+      { href: '/users?role=business', label: 'Businesses', icon: 'Briefcase' },
+      { href: '/users',               label: 'All accounts', icon: 'List'  },
       /**
        * Zones lives with operations, not with pricing.
        *
@@ -667,6 +678,7 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     title: 'ACCESS CONTROL',
     items: [
       { href: '/admins',    label: 'Staff Management', icon: 'UserCog'     },
+      { href: '/users?role=admin', label: 'Staff Accounts',  icon: 'UserCog' },
       { href: '/roles',     label: 'Role Management',  icon: 'ShieldCheck' },
       { href: '/audit-log', label: 'Audit Log',        icon: 'ScrollText'  },
     ],

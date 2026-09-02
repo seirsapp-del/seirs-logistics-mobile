@@ -8,6 +8,7 @@ import {
 import { adminApi } from '@/lib/api';
 import { PageIntro } from '@/components/PageIntro';
 import { KycQueue } from '@/components/KycQueue';
+import { ExpiringDocuments } from '@/components/ExpiringDocuments';
 import { EmptyState } from '@/components/EmptyState';
 import { useConfirm, useNotify, usePrompt } from '@/components/ConfirmDialog';
 import { driverStatus, humanHint } from '@/lib/labels';
@@ -300,10 +301,19 @@ export default function DriverKycQueuePage() {
             </span>
           )}
           <span className="text-amber-800/80">
-            These riders are still receiving jobs. Open their record to decide.
+            These riders are still receiving jobs. The list is below.
           </span>
         </div>
       )}
+
+      {/*
+        The list behind the banner. It used to be counts and nothing else,
+        which cannot be worked: with a thousand riders nobody opens each
+        profile to find out whose licence lapsed (founder, 2 September).
+      */}
+      <section className="mb-8">
+        <ExpiringDocuments />
+      </section>
 
       {/*
         THE queue. One row per rider, whatever they are waiting on: a new

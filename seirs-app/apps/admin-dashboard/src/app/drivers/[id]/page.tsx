@@ -74,6 +74,36 @@ export default function DriverDetailPage() {
    */
   const EXPIRES = new Set(['drivers_license', 'insurance_cert', 'vehicle_document', 'ownership_proof']);
 
+  /**
+   * Set or change an expiry AFTER approval.
+   *
+   * The founder approved a set of documents, was never asked for a date
+   * because the picker was broken, and then had no way back in. There was
+   * no route that could write an expiry except approve, and re-approving
+   * would have fired a fresh "approved" notice for a days-old decision.
+   */
+  const editExpiry = async (d: any) => {
+    const answer = await promptFor({
+      title:   d.expiresAt ? 'Change the expiry date' : 'When does this expire?',
+      message: 'The rider is emailed 30 days before, and ops is told once it lapses.',
+      label:   'Expiry date',
+      date:    true,
+      multiline: false,
+      initialValue: d.expiresAt ? String(d.expiresAt).slice(0, 10) : '',
+      helper:  'Clear it and save to remove the date entirely.',
+      confirmLabel: 'Save',
+    });
+    if (answer === null) return;
+    const clean = String(answer).trim();
+    setDocBusy(d.id);
+    try {
+      await adminApi.driverDocuments.setExpiry(d.id, clean || null);
+      await loadDocs();
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not save that date.');
+    } finally { setDocBusy(null); }
+  };
+
   const reviewDoc = async (d: any, decision: 'approved' | 'rejected') => {
     const reason = (docReason[d.id] ?? '').trim();
     if (decision === 'rejected' && !reason) {
@@ -101,6 +131,7 @@ export default function DriverDetailPage() {
         message: 'Pick the date printed on the document. The rider is emailed 30 days before with what to re-upload, and ops is warned again once it lapses.',
         label:   'Expiry date',
         date:    true,
+        multiline: false,
         helper:  'Leave it blank if the document carries no expiry date.',
         confirmLabel: 'Approve',
       });
@@ -529,6 +560,18 @@ export default function DriverDetailPage() {
                             day: 'numeric', month: 'short', year: 'numeric',
                           })}
                         </p>
+                      )}
+                      {/* Settable at any time, not only at the moment of
+                          approval. EXPIRES is the four that lapse. */}
+                      {d.status === 'approved' && EXPIRES.has(String(d.docId)) && (
+                        <button
+                          type="button"
+                          disabled={docBusy === d.id}
+                          onClick={() => void editExpiry(d)}
+                          className="mt-1 text-xs font-semibold text-[#3A7BD5] hover:underline disabled:opacity-50"
+                        >
+                          {d.expiresAt ? 'Change expiry date' : 'Set an expiry date'}
+                        </button>
                       )}
                       {d.expiresAt && (() => {
                         const days = Math.ceil(

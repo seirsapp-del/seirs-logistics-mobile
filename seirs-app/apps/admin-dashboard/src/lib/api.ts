@@ -637,6 +637,22 @@ export const adminApi = {
     vehicleHistory: (driverId: string) =>
       req<{ items: any[] }>(`/admin/driver-documents/vehicle-history/${driverId}`),
 
+    /**
+     * The documents lapsing or already lapsed, as a list to work through.
+     * counts() returns numbers, and numbers are not work.
+     */
+    expiring: (days = 30) => req<{ items: any[] }>(`/admin/driver-documents/expiring?days=${days}`),
+
+    /**
+     * Set or change an expiry on an already-approved document. Separate
+     * from approve(), which would fire a fresh "approved" notice at the
+     * rider for a decision made days ago. Null clears it.
+     */
+    setExpiry: (id: string, expiresAt: string | null) =>
+      req<any>(`/admin/driver-documents/${id}/expiry`, {
+        method: 'PATCH', body: JSON.stringify({ expiresAt }),
+      }),
+
     counts: () =>
       req<{ waiting: number; expired: number; expiringSoon: number; driversWaiting: number }>(
         '/admin/driver-documents/counts'),

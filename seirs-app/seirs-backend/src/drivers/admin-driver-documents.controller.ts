@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Param, Query, Body, UseGuards,
+  Controller, Get, Post, Patch, Param, Query, Body, UseGuards,
   DefaultValuePipe, ParseIntPipe,
 } from '@nestjs/common';
 import { DriversService } from './drivers.service';
@@ -52,6 +52,28 @@ export class AdminDriverDocumentsController {
   @Get('vehicle-history/:driverId')
   vehicleHistory(@Param('driverId') driverId: string) {
     return this.drivers.vehicleHistory(driverId);
+  }
+
+  // GET /api/v1/admin/driver-documents/expiring?days=30
+  // The documents lapsing or already lapsed, as a LIST to work through.
+  // counts returns numbers, and numbers are not work: with a thousand
+  // riders nobody can open each profile to find out which ID has expired.
+  @Get('expiring')
+  expiring(@Query('days') days?: string) {
+    return this.drivers.expiringDocuments(Number(days) || 30);
+  }
+
+  // PATCH /api/v1/admin/driver-documents/:id/expiry  { expiresAt }
+  // Set or change the expiry on an ALREADY-approved document. Separate from
+  // approve, which would fire a fresh "approved" notice at the rider for a
+  // decision made days ago. Null clears it.
+  @Patch(':id/expiry')
+  setExpiry(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { expiresAt: string | null },
+  ) {
+    return this.drivers.setDocumentExpiry(id, user.id, body?.expiresAt ?? null);
   }
 
   // GET /api/v1/admin/driver-documents/counts

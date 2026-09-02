@@ -157,6 +157,16 @@ export default function AdminNav() {
   const openFraud   = useOpenFraudCount();
   const router   = useRouter();
   const pathname = usePathname();
+  /**
+   * The ?role= on the current URL.
+   *
+   * Read from window rather than useSearchParams(): that hook forces every
+   * page rendering this nav into a Suspense boundary at prerender time, and
+   * the statically generated /health page fails the build without one. This
+   * nav is already a client component that mounts before it paints, so
+   * reading location directly costs nothing and constrains nobody.
+   */
+  const [roleParam, setRoleParam] = useState<string | null>(null);
   const [user,      setUser]      = useState<any>(null);
   const [role,      setRole]      = useState<AdminRoleType | undefined>(undefined);
   const [collapsed, setCollapsed] = useState(false);
@@ -168,6 +178,7 @@ export default function AdminNav() {
     setRole((u?.adminRole ?? (u as any)?.role) as AdminRoleType | undefined);
     const saved = localStorage.getItem('seirs_nav_collapsed');
     if (saved === 'true') setCollapsed(true);
+    try { setRoleParam(new URLSearchParams(window.location.search).get('role')); } catch {}
   }, []);
 
   const toggleCollapse = () => {
@@ -282,7 +293,22 @@ export default function AdminNav() {
               {collapsed && <div className="my-1 mx-2 border-t border-white/10" />}
               {visibleItems.map((item) => {
                 const Icon = ICON_MAP[item.icon] ?? FALLBACK_ICON;
-                const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+                /*
+                 * Some entries differ only by query string: Customers,
+                 * Businesses, Staff and All accounts are all /users with a
+                 * different ?role=. usePathname() drops the query, so a
+                 * bare pathname comparison highlighted "All accounts" for
+                 * every one of them and the specific item never lit up.
+                 *
+                 * An item WITH a query must match the query exactly. An
+                 * item without one must not swallow its filtered siblings,
+                 * so it only matches when there is no role in the URL.
+                 */
+                const [itemPath, itemQuery] = item.href.split('?');
+                const active = itemQuery
+                  ? pathname === itemPath && roleParam === new URLSearchParams(itemQuery).get('role')
+                  : (pathname === itemPath && !roleParam)
+                    || (itemPath !== '/' && pathname.startsWith(itemPath + '/'));
                 return (
                   <a
                     key={item.href}

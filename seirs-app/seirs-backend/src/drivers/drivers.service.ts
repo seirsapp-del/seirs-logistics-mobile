@@ -2719,7 +2719,112 @@ export class DriversService {
       await this.docsRepo.update(row.id, { expiryWarnedAt: new Date() } as any).catch(() => {});
     }
     if (warned) this.logger?.log?.(`expiry warnings sent: ${warned}`);
+
+    /**
+     * And tell OPS, once a day, in one message.
+     *
+     * The rider being warned is only half of it. The founder's point:
+     * "we get a notification of expired documents and take action". Until
+     * now the only place an expiry surfaced on our side was a banner on one
+     * dashboard page, seen by whoever happened to open it, which is not a
+     * notification and does not scale past a few riders.
+     *
+     * One digest rather than one message per document: a hundred lapsed
+     * licences must not be a hundred notifications nobody reads.
+     */
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const [{ expired }] = await this.docsRepo.query(
+        `SELECT COUNT(*)::int AS expired FROM driver_documents
+          WHERE status = 'approved' AND "expiresAt" IS NOT NULL AND "expiresAt" < $1`,
+        [today],
+      );
+      if (expired > 0 && this.notificationsService) {
+        const admins = await this.repo.manager.query(
+          `SELECT id FROM users WHERE role = 'admin' AND "adminRole" = 'super_admin'`,
+        );
+        for (const a of admins) {
+          await this.notificationsService.create(
+            a.id,
+            `${expired} driver document${expired === 1 ? '' : 's'} expired`,
+            `${expired} approved document${expired === 1 ? ' has' : 's have'} passed its expiry date. `
+            + 'These riders are still receiving jobs: open Driver KYC Queue, Expiring documents, to decide.',
+            'account_update' as any,
+          ).catch(() => {});
+        }
+      }
+    } catch (e: any) {
+      this.logger?.warn?.(`ops expiry digest failed: ${e?.message ?? e}`);
+    }
+
     return { warned };
+  }
+
+  /**
+   * Set or change an expiry on a document that is ALREADY approved.
+   *
+   * WHY separate from reviewDriverDocument. The founder approved a set of
+   * documents, was not asked for a date (the picker was broken), and then
+   * had no way back in: the only route that could write expiresAt was the
+   * approve call, and re-approving an approved document would fire a fresh
+   * "approved" notice at the rider for a decision made days ago.
+   *
+   * Null clears it, which is a real answer: a reviewer who mistyped a date
+   * must be able to take it off, not just overwrite it with another guess.
+   */
+  async setDocumentExpiry(id: string, adminUserId: string, expiresAt: string | null) {
+    const doc = await this.docsRepo.findOne({ where: { id } });
+    if (!doc) throw new NotFoundException('Document not found.');
+    if (expiresAt && !/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) {
+      throw new BadRequestException('Expiry must be a date, as YYYY-MM-DD.');
+    }
+    await this.docsRepo.update(id, {
+      expiresAt:      expiresAt || null,
+      reviewedById:   adminUserId,
+      reviewedAt:     new Date(),
+      // A new date re-arms the 30-day warning, so a corrected expiry warns
+      // again rather than staying silent because the old one already had.
+      expiryWarnedAt: null,
+    } as any);
+    return { id, expiresAt: expiresAt || null };
+  }
+
+  /**
+   * The documents that are lapsing or have lapsed, as a LIST.
+   *
+   * The counts endpoint has always returned numbers, and numbers are not
+   * work: the founder's objection is exact, "if we have 1000 drivers we
+   * will have to manually check all their id again to know which is
+   * expired". This is the list you act on, worst first.
+   */
+  async expiringDocuments(days = 30) {
+    const soon = new Date();
+    soon.setDate(soon.getDate() + days);
+    const rows = await this.docsRepo
+      .createQueryBuilder('d')
+      .leftJoin('drivers', 'dr', 'dr.id = d.driver_id')
+      .leftJoin('users', 'u', 'u.id = dr."userId"')
+      .select([
+        'd.id AS id', 'd."docId" AS "docId"', 'd."expiresAt" AS "expiresAt"',
+        'd.url AS url', 'd."expiryWarnedAt" AS "expiryWarnedAt"',
+        'dr.id AS "driverId"', 'dr.status AS "driverStatus"',
+        'u.name AS "driverName"', 'u.email AS "driverEmail"', 'u.phone AS "driverPhone"',
+        'u."accountId" AS "accountId"',
+      ])
+      .where('d.status = :s', { s: 'approved' })
+      .andWhere('d."expiresAt" IS NOT NULL')
+      .andWhere('d."expiresAt" <= :soon', { soon: soon.toISOString().slice(0, 10) })
+      .orderBy('d."expiresAt"', 'ASC')
+      .limit(500)
+      .getRawMany();
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return {
+      items: rows.map((r: any) => {
+        const daysLeft = Math.ceil((new Date(r.expiresAt).getTime() - today.getTime()) / 86_400_000);
+        return { ...r, daysLeft, expired: daysLeft < 0, warned: !!r.expiryWarnedAt };
+      }),
+    };
   }
 
   async driverDocumentCounts() {
