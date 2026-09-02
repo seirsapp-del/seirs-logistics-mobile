@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { NotificationBell } from './NotificationBell';
 import { Search, User as UserIcon, Truck, Package, X, Loader2, Compass } from 'lucide-react';
 import { NAV_SECTIONS, isNavItemVisible, canAccessFromUser, isSuperAdminFromUser } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
@@ -304,6 +305,15 @@ export default function TopBar() {
           </div>
         )}
       </div>
+
+      {/*
+        Where a notification addressed to THIS admin arrives.
+        The dashboard could send notifications to other people and had no way
+        to read its own, so the expiry digest wrote into a table no screen
+        here displayed. Founder, 2 September: "where do we see the
+        notification, does it show on the dashboard?" It did not.
+      */}
+      <NotificationBell />
     </div>
   );
 }

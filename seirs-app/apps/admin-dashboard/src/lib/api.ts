@@ -145,6 +145,21 @@ export const adminApi = {
     reissue: (code: string) => req<any>(`/admin/statements/${code}/reissue`, { method: 'POST', body: '{}' }),
   },
 
+  /**
+   * The signed-in admin's OWN notifications.
+   *
+   * These endpoints have existed since the backend was written and work for
+   * any signed-in user, an admin included. Nothing on this dashboard called
+   * them: it could SEND notifications to other people and had no way to read
+   * its own, so the expiry digest wrote into a table no screen displayed.
+   */
+  myNotifications: {
+    list:        (page = 1, limit = 20) =>
+      req<any>(`/notifications?page=${page}&limit=${limit}`),
+    unreadCount: () => req<{ count: number }>('/notifications/unread-count'),
+    markAllRead: () => req<any>('/notifications/read-all', { method: 'PATCH', body: '{}' }),
+  },
+
   signIns: {
     list:  (page = 1, outcome?: string, userId?: string) =>
       req<{ items: any[]; total: number; page: number; take: number }>(

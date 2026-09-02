@@ -8,6 +8,10 @@ export {
   deliveriesApi,
   paymentsApi,
   driversApi,
+  // Whitelisted deliberately: a name missing from this barrel resolves to
+  // undefined at runtime and the screen red-screens rather than failing at
+  // compile time.
+  statementsApi,
   notificationsApi,
   identityApi,
   userVerificationApi,

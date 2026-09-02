@@ -425,6 +425,36 @@ export default function VehicleScreen() {
               </View>
             ) : (
               <>
+                {/*
+                  WHERE THEY STAND, before the form.
+                  Founder, 2 September: "if you look at the vehicle field, the
+                  entire section, does he get to show what his current status
+                  is?" He did not. With nothing pending and nothing rejected
+                  the screen just rendered the form again, so an approved
+                  rider could not tell whether they were approved, waiting, or
+                  had never submitted at all. And a form with no framing reads
+                  as free editing: "it seems very accessible any time he feels
+                  like uploading an image or document." It is not. Everything
+                  below is a REQUEST, and this says so before they start.
+                */}
+                {!lastDecision && (
+                  <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.success }, Shadows.sm]}>
+                    <View style={styles.pendingHead}>
+                      <Ionicons name="checkmark-circle-outline" size={20} color={theme.success} />
+                      <Text style={[styles.pendingTitle, { color: theme.success }]}>
+                        {record?.vehiclePlate ? 'Your vehicle is approved' : 'No vehicle on file yet'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.pendingText, { color: theme.textSecond }]}>
+                      {record?.vehiclePlate
+                        ? `You are riding ${liveTitle}${record.vehiclePlate ? ` on ${record.vehiclePlate}` : ''}, and jobs are matched to it. `
+                          + 'Nothing below changes that today: filling it in asks our team to approve a different vehicle, '
+                          + 'and you keep working on this one until they do.'
+                        : 'Fill this in to tell us what you ride. Our team checks it before jobs start matching to it.'}
+                    </Text>
+                  </View>
+                )}
+
                 {/* A rejection is only useful if the rider can read WHY. */}
                 {lastDecision && (
                   <View style={[styles.rejectCard, { backgroundColor: theme.surface, borderColor: theme.error }]}>
@@ -462,6 +492,12 @@ export default function VehicleScreen() {
                     Your ID, licence and selfie stay as they are.
                   </Text>
                 </View>
+
+                {/* Named as a request, not an edit form. Nothing below
+                    applies until an admin approves it. */}
+                <Text style={[styles.requestHeading, { color: theme.textThird }]}>
+                  {record?.vehiclePlate ? 'ASK TO CHANGE YOUR VEHICLE' : 'TELL US WHAT YOU RIDE'}
+                </Text>
 
                 {/* Vehicle type */}
                 <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
@@ -655,6 +691,11 @@ const styles = StyleSheet.create({
   noteText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
 
   card:      { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
+  // Labels the form below as a request rather than an edit.
+  requestHeading: {
+    fontSize: FontSize.xs, fontWeight: FontWeight.bold as any,
+    letterSpacing: 0.8, marginTop: Spacing.sm, marginBottom: -Spacing.xs,
+  },
   cardTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
   cardHint:  { fontSize: FontSize.xs, lineHeight: 17 },
 

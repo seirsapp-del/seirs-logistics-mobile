@@ -11,7 +11,7 @@ import {
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { driversApi, documentsApi, type UserDocumentDTO } from '@/services/api';
+import { driversApi, documentsApi, statementsApi, type UserDocumentDTO } from '@/services/api';
 import { naira } from '@/utils/money';
 
 // Icon per document category (admin-sent official docs).
@@ -122,6 +122,30 @@ export default function TaxDocsScreen() {
     const y = summaries.find(s => s.year === year);
     if (!y) return;
     const generated = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    /**
+     * The SERVER document first, because it is the one that can be checked.
+     *
+     * A statement printed on this phone is a page of figures and nothing
+     * else: a bank has no way to tell it from one somebody typed. The
+     * server issues a document with a reference that anybody can verify at
+     * /verify/<code> without a SEIRS account, which is the whole reason it
+     * is worth having.
+     *
+     * The local print below stays as the fallback, unchanged, so an older
+     * build or an unreachable server still produces something rather than
+     * dead-ending. Same shape the business app uses.
+     */
+    try {
+      const r: any = await statementsApi.driverLink(`${year}-01-01`, `${year}-12-31`);
+      if (r?.url) {
+        await Linking.openURL(r.url);
+        return;
+      }
+    } catch {
+      // Offline, an older server, or nothing to state. Fall through to the
+      // on-device version rather than telling them it failed.
+    }
 
     if (Print && Sharing) {
       try {
