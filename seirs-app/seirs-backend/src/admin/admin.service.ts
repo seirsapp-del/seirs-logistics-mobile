@@ -158,6 +158,8 @@ export class AdminService {
   // Admin lists all users with a pending deletion (self- or admin-scheduled).
   // Sorted soonest-purge-first so the recycle-bin page has action items on top.
   async listPendingDeletions(page = 1, limit = 50) {
+    // Same cap as getUsers: an admin list must not be a bulk export.
+    ({ page, limit } = this.clampPage(page, limit));
     return this.usersService.listPendingDeletions(page, limit);
   }
 
@@ -531,6 +533,8 @@ export class AdminService {
    * farming sign-up bonuses across accounts.
    */
   async listDuplicates(status?: DuplicateStatus, page = 1, limit = 50) {
+    // Same cap as getUsers: an admin list must not be a bulk export.
+    ({ page, limit } = this.clampPage(page, limit));
     const where = status ? { status } : {};
     const take = Math.min(Math.max(Number(limit) || 50, 1), 200);
     const skip = (Math.max(Number(page) || 1, 1) - 1) * take;
@@ -1594,7 +1598,48 @@ export class AdminService {
    * select:false on the entity, which is the pattern this list should
    * have followed and did not.
    */
+  /**
+   * Clamp a caller-supplied page size.
+   *
+   * Founder, 2 September: "is the all account safe, what if someone greps
+   * all account?" It was not. Every admin list took `limit` straight off the
+   * query string into .take(), so ?limit=999999 returned the entire table in
+   * one request. Proved against production: one call, all 36 accounts, each
+   * with a name, an email, a phone number and a SEIRS ID. At 36 that is
+   * nothing. At 36,000 it is the customer base in a single request, from any
+   * admin session including the lowest-trust one.
+   *
+   * Anyone with a legitimate reason to hold a whole table uses Data Exports,
+   * which is separately permissioned and audit-logged. That difference is
+   * the point: bulk extraction should leave a trail a paginated screen does
+   * not need to.
+   */
+  private static readonly MAX_PAGE_SIZE = 100;
+  private clampPage(page: any, limit: any, fallback = 20) {
+    return {
+      page:  Math.max(Number(page) || 1, 1),
+      limit: Math.min(Math.max(Number(limit) || fallback, 1), AdminService.MAX_PAGE_SIZE),
+    };
+  }
+
   async getUsers(page: number, limit: number, role?: string, search?: string, caller?: any) {
+    /**
+     * A page is a page. The founder's question, 2 September: "is the all
+     * account safe, what if someone greps all account?"
+     *
+     * It was not. `limit` came straight off the query string into .take(),
+     * so ?limit=999999 returned every account on the platform in one
+     * request, each row carrying a name, an email, a phone number, a SEIRS
+     * ID and a photo. One call, the whole customer list, from any admin
+     * session including the lowest-trust one.
+     *
+     * Capped at 100. Anyone with a legitimate reason to hold the whole list
+     * uses Data Exports, which is separately permissioned and audit-logged,
+     * and that difference is the point: bulk extraction should leave a trail
+     * that a paginated screen does not need to.
+     */
+    ({ page, limit } = this.clampPage(page, limit));
+
     /**
      * STAFF ARE NOT IN THE ACCOUNT LIST unless a super admin is asking.
      *
@@ -2228,6 +2273,8 @@ export class AdminService {
    * should mean opening their file, not listing a page.
    */
   async getDrivers(page: number, limit: number, status?: string, search?: string) {
+    // Same cap as getUsers: an admin list must not be a bulk export.
+    ({ page, limit } = this.clampPage(page, limit));
     /**
      * Alias is `du`, not `user`.
      *
@@ -2646,6 +2693,8 @@ export class AdminService {
    * thing a receiver actually has.
    */
   async getDeliveries(page: number, limit: number, status?: string, search?: string, kind?: string) {
+    // Same cap as getUsers: an admin list must not be a bulk export.
+    ({ page, limit } = this.clampPage(page, limit));
     /**
      * NARROW SELECTS, and the reason is not tidiness (2026-08-28).
      *
@@ -3266,6 +3315,8 @@ export class AdminService {
   // ── Fraud ─────────────────────────────────────────────────────────────────
 
   getFraudFlags(page: number, limit: number, status?: string) {
+    // Same cap as getUsers: an admin list must not be a bulk export.
+    ({ page, limit } = this.clampPage(page, limit));
     return this.fraudService.getFlags(page, limit, status);
   }
 

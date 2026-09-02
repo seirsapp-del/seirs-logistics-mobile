@@ -546,6 +546,26 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
       { href: '/users?role=customer', label: 'Customers',  icon: 'Users'   },
       { href: '/users?role=business', label: 'Businesses', icon: 'Briefcase' },
       { href: '/users',               label: 'All accounts', icon: 'List'  },
+      /*
+       * Staff, beside the other account kinds rather than only down in
+       * ACCESS CONTROL. The founder went looking for admins alongside
+       * Customers, Businesses and Drivers and did not find them, because
+       * the page is called "Staff Management" and lives two sections lower
+       * with Role Management. It is the same page, linked from where
+       * somebody actually looks for it.
+       *
+       * super_admin_only, same as the entry it mirrors: a list of staff and
+       * their roles is a target list, which is the whole reason getUsers now
+       * hides admin rows from everyone else.
+       */
+      { href: '/admins',              label: 'Staff',        icon: 'UserCog' },
+      /* Moved here from ACCESS CONTROL, not duplicated. It was called
+         "Staff Management" and sat two sections lower beside Role
+         Management, so the founder went looking for admins alongside
+         Customers, Businesses and Drivers and did not find them. Two
+         entries to one page is the lie this week has been spent removing,
+         so there is exactly one, where somebody looks. Role Management is
+         still in ACCESS CONTROL, which is where permissions belong. */
       /**
        * Zones lives with operations, not with pricing.
        *
@@ -686,7 +706,6 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
      */
     title: 'ACCESS CONTROL',
     items: [
-      { href: '/admins',    label: 'Staff Management', icon: 'UserCog'     },
       { href: '/roles',     label: 'Role Management',  icon: 'ShieldCheck' },
       { href: '/audit-log', label: 'Audit Log',        icon: 'ScrollText'  },
     ],
