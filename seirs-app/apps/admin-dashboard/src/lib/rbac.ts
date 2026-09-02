@@ -221,6 +221,15 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/deliveries':              'deliveries',
   '/drivers':                 'drivers',
   '/users':                   'users',
+  /*
+   * The filtered entry points. NAV_SECTIONS looks a permission up BY HREF,
+   * and an href carrying a query string matches nothing, so these resolved
+   * to UNREGISTERED_ROUTE and were visible only to super_admin through its
+   * '*' wildcard. An ops_manager would have lost the Customers link
+   * entirely while still holding the permission for it.
+   */
+  '/users?role=customer':     'users',
+  '/users?role=business':     'users',
   '/partners':                'partners',
   '/partner-applications':    'partners',
   '/partner-redirects':       'partner-redirects',
@@ -678,7 +687,6 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
     title: 'ACCESS CONTROL',
     items: [
       { href: '/admins',    label: 'Staff Management', icon: 'UserCog'     },
-      { href: '/users?role=admin', label: 'Staff Accounts',  icon: 'UserCog' },
       { href: '/roles',     label: 'Role Management',  icon: 'ShieldCheck' },
       { href: '/audit-log', label: 'Audit Log',        icon: 'ScrollText'  },
     ],

@@ -195,8 +195,16 @@ export default function UserDetailPage() {
 
         {/* Profile card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 flex items-start gap-6">
-          <div className="w-16 h-16 rounded-full bg-[#3A7BD5] flex items-center justify-center text-white text-2xl font-black shrink-0">
-            {user.name?.[0]?.toUpperCase()}
+          {/* Their photo if they have set one, initial otherwise. */}
+          <div className="w-16 h-16 rounded-full bg-[#3A7BD5] flex items-center justify-center text-white text-2xl font-black shrink-0 overflow-hidden">
+            {user.profilePhoto ? (
+              <a href={user.profilePhoto} target="_blank" rel="noreferrer" className="block h-full w-full">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={user.profilePhoto} alt={user.name ?? 'User'} className="h-full w-full object-cover" />
+              </a>
+            ) : (
+              user.name?.[0]?.toUpperCase()
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-1">

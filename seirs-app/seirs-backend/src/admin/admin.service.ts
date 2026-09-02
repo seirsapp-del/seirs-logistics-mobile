@@ -1556,7 +1556,29 @@ export class AdminService {
    * select:false on the entity, which is the pattern this list should
    * have followed and did not.
    */
-  async getUsers(page: number, limit: number, role?: string, search?: string) {
+  async getUsers(page: number, limit: number, role?: string, search?: string, caller?: any) {
+    /**
+     * STAFF ARE NOT IN THE ACCOUNT LIST unless a super admin is asking.
+     *
+     * Founder, 2 September 2026: "when an attacker wants to hack a web what
+     * they do is try to get all the accounts. If they pull all accounts now,
+     * the admin account is also in all accounts, which means they will be
+     * able to get admin data as well, know who has which roles."
+     *
+     * He is right, and the exposure was worse than a list of names. This
+     * query selects adminRole and roleId, and the `users` permission is held
+     * by ops_manager, support_agent and driver_compliance. So the lowest
+     * trust staff account on the platform, the one most likely to be phished
+     * or shared, could enumerate every colleague AND read which of them is
+     * the super admin. That is a target list with the highest-value target
+     * marked.
+     *
+     * Super admins still see everyone, because somebody has to be able to
+     * manage staff, and they already have Staff Accounts and Role Management
+     * for exactly that.
+     */
+    const isSuper = caller?.adminRole === 'super_admin'
+      || (caller?.role === 'admin' && !caller?.adminRole);   // legacy admins
     const qb = this.usersRepo.createQueryBuilder('u')
       .select([
         'u.id', 'u.name', 'u.firstName', 'u.middleName', 'u.lastName',
@@ -1583,6 +1605,17 @@ export class AdminService {
       qb.where(`u.role = 'customer' AND u."businessRole" IS NULL AND u."accountId" NOT LIKE 'BIZ-%'`);
     } else if (role) {
       qb.where('u.role = :role', { role });
+    }
+
+    /**
+     * AFTER the role branches, not before. Every branch above calls .where(),
+     * which REPLACES the whole clause in TypeORM rather than adding to it, so
+     * a guard placed before them is silently discarded the moment somebody
+     * passes ?role=business. Applied here it cannot be undone, and
+     * ?role=admin returns nothing to a non-super-admin instead of everything.
+     */
+    if (!isSuper) {
+      qb.andWhere(`u.role <> 'admin'`);
     }
 
     /**

@@ -387,8 +387,22 @@ export default function DriverDetailPage() {
         {/* Profile card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-start gap-6 mb-4">
-            <div className="w-16 h-16 rounded-full bg-[#0F2B4C] flex items-center justify-center shrink-0">
-              {(() => {
+            {/*
+              Their actual face, when they have set one.
+              The rider's own app shows it and so does the customer tracking
+              a delivery, and this page, where somebody decides whether the
+              face matches the ID, showed a vehicle icon. The founder changed
+              Emeka's photo, came here to look at it, and saw the same car.
+              Falls back to the vehicle icon when there is no photo.
+            */}
+            <div className="w-16 h-16 rounded-full bg-[#0F2B4C] flex items-center justify-center shrink-0 overflow-hidden">
+              {driver.user?.profilePhoto ? (
+                <a href={driver.user.profilePhoto} target="_blank" rel="noreferrer" className="block h-full w-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={driver.user.profilePhoto} alt={driver.user?.name ?? 'Rider'}
+                       className="h-full w-full object-cover" />
+                </a>
+              ) : (() => {
                 const Icon = VEHICLE_LUCIDE[driver.vehicleType] ?? Car;
                 return <Icon size={28} color="#fff" strokeWidth={1.75} />;
               })()}

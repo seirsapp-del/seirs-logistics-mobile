@@ -2689,7 +2689,14 @@ export class DriversService {
                  'dr."userId" AS "userId"'])
         .where('d.status = :s', { s: 'approved' })
         .andWhere('d."expiresAt" IS NOT NULL')
-        .andWhere('d."expiresAt" >= :today AND d."expiresAt" <= :soon', { today: todayStr, soon: soonStr })
+        /*
+         * No lower bound on purpose. The first version used
+         * `expiresAt >= today`, which EXCLUDED anything already lapsed, so
+         * a rider whose licence expired yesterday was told less than one
+         * whose expires next month. Backwards: an expired document is the
+         * urgent case. The message below says which it is.
+         */
+        .andWhere('d."expiresAt" <= :soon', { soon: soonStr })
         .andWhere('d."expiryWarnedAt" IS NULL')
         .getRawMany();
     } catch (e: any) {
@@ -2701,9 +2708,9 @@ export class DriversService {
 
     let warned = 0;
     for (const row of due) {
-      const days  = Math.max(0, Math.ceil(
-        (new Date(row.expiresAt).getTime() - Date.now()) / 86_400_000));
+      const days  = Math.ceil((new Date(row.expiresAt).getTime() - Date.now()) / 86_400_000);
       const label = DOC_LABELS[row.docId] ?? 'One of your documents';
+      const gone  = days < 0;
       if (row.userId && this.notificationsService) {
         try {
           await this.notificationsService.create(
