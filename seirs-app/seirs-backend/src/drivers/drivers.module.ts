@@ -115,6 +115,40 @@ export class DriversModule implements OnModuleInit {
       console.error(`drivers status-reason self-heal failed: ${e?.message ?? e}`);
     }
 
+    /**
+     * Backfill the vehicle documents of riders approved BEFORE the sync
+     * existed (2026-09-02).
+     *
+     * Approving a vehicle change used to write the insurance certificate
+     * and ownership papers only to the driver record, which holds a URL and
+     * nothing else. So those documents could never carry an expiry, and the
+     * founder found exactly that: he could date Emeka's licence and had
+     * nowhere to click for his insurance.
+     *
+     * Insert-only, keyed on the unique (driver_id, docId) index, so it
+     * cannot disturb a document somebody has already reviewed or dated.
+     * Approved because the URL is on the driver record, which means an
+     * admin already approved it once.
+     */
+    try {
+      const r = await this.ds.query(`
+        INSERT INTO "driver_documents" ("driver_id", "docId", "url", "status", "reviewedAt")
+        SELECT d.id, v.doc_id, v.url, 'approved', now()
+          FROM "drivers" d
+          CROSS JOIN LATERAL (VALUES
+            ('insurance_cert',  d."insuranceCertUrl"),
+            ('ownership_proof', d."ownershipProofUrl"),
+            ('vehicle_photo',   d."vehiclePhotoUrl")
+          ) AS v(doc_id, url)
+         WHERE v.url IS NOT NULL AND v.url <> ''
+        ON CONFLICT ("driver_id", "docId") DO NOTHING
+      `);
+      const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
+      if (n) console.log(`vehicle documents backfilled into the review store: ${n}`);
+    } catch (e: any) {
+      console.error(`vehicle document backfill failed: ${e?.message ?? e}`);
+    }
+
     this.driversService.notificationsService = this.notificationsService;
 
     // Value levels (2026-08-22): additive migrations, safe to re-run.

@@ -2331,6 +2331,34 @@ export class DriversService {
         if (pending.ownershipProofUrl) patch.ownershipProofUrl = pending.ownershipProofUrl;
         if (pending.insuranceCertUrl)  patch.insuranceCertUrl  = pending.insuranceCertUrl;
 
+        /**
+         * And into the REVIEWABLE store, which is the half that was missing.
+         *
+         * There were two parallel places a driver document could live. Only
+         * one of them can hold an expiry:
+         *
+         *   driver_documents        per-document status, expiry, review trail
+         *   driver record columns   a URL and nothing else
+         *
+         * Approving a vehicle change wrote only the second, so the insurance
+         * certificate, the single document that most needs a date on it,
+         * ended up in the store that cannot have one. The founder set an
+         * expiry on Emeka's licence, went to do the same for his insurance,
+         * and there was nothing to click.
+         *
+         * Approved on arrival, deliberately: an admin has just looked at
+         * these photos and pressed Approve on this very screen. Asking them
+         * to approve the same image twice, in two places, would be the
+         * duplicate-review problem this week has been about. The expiry is
+         * then set from the rider's profile whenever somebody reads the
+         * date off the document.
+         */
+        await this.syncVehicleDocsToStore(driver.id, opts?.adminId ?? null, {
+          vehicle_photo:   pending.photoExteriorUrl,
+          ownership_proof: pending.ownershipProofUrl,
+          insurance_cert:  pending.insuranceCertUrl,
+        });
+
         patch.vehicleOwnership          = pending.ownership as any;
         patch.vehicleOwnerName          = pending.ownerName;
         patch.vehicleOwnerPhone         = pending.ownerPhone;
@@ -2779,6 +2807,61 @@ export class DriversService {
    * Null clears it, which is a real answer: a reviewer who mistyped a date
    * must be able to take it off, not just overwrite it with another guess.
    */
+  /**
+   * Mirror the vehicle documents into driver_documents so they can carry a
+   * status, an expiry and a review trail like every other document.
+   *
+   * Upsert by (driver, docId), which is what the unique index on that table
+   * already enforces. A NEW url means a new document: the expiry and the
+   * warn-once stamp are cleared, because last year's date does not describe
+   * this year's certificate. An unchanged url leaves the row alone, so
+   * re-approving does not wipe an expiry somebody has already set.
+   */
+  private async syncVehicleDocsToStore(
+    driverId: string,
+    adminUserId: string | null,
+    docs: Record<string, string | null | undefined>,
+  ) {
+    for (const [docId, url] of Object.entries(docs)) {
+      if (!url) continue;
+      try {
+        const existing = await this.docsRepo.findOne({ where: { driverId, docId } as any });
+        if (existing && existing.url === url) {
+          // Same file, already on record. Leave its expiry alone.
+          if (existing.status !== 'approved') {
+            await this.docsRepo.update(existing.id, {
+              status: 'approved', reviewedById: adminUserId, reviewedAt: new Date(),
+            } as any);
+          }
+          continue;
+        }
+        if (existing) {
+          await this.docsRepo.update(existing.id, {
+            url,
+            status:         'approved',
+            rejectionReason: null,
+            reviewedById:   adminUserId,
+            reviewedAt:     new Date(),
+            expiresAt:      null,
+            expiryWarnedAt: null,
+            version:        (existing.version ?? 1) + 1,
+          } as any);
+        } else {
+          await this.docsRepo.save(this.docsRepo.create({
+            driverId, docId, url,
+            status:       'approved',
+            reviewedById: adminUserId,
+            reviewedAt:   new Date(),
+          } as any));
+        }
+      } catch (e: any) {
+        // One document failing must not roll back an approval an admin has
+        // already made. The URL is on the driver record either way.
+        this.logger?.warn?.(`vehicle doc sync failed for ${docId}: ${e?.message ?? e}`);
+      }
+    }
+  }
+
   async setDocumentExpiry(id: string, adminUserId: string, expiresAt: string | null) {
     const doc = await this.docsRepo.findOne({ where: { id } });
     if (!doc) throw new NotFoundException('Document not found.');
