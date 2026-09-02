@@ -28,7 +28,7 @@ import { canAttachFiles, pickDocument } from '@/utils/documentPicker';
 import { alertDialog } from '@/components/SeirsDialog';
 import type { SeirsSheetSpec } from '@/components/SeirsSheet';
 
-type DocStatus = 'not_uploaded' | 'uploaded' | 'verified' | 'rejected';
+type DocStatus = 'not_uploaded' | 'uploaded' | 'verified' | 'rejected' | 'expired';
 
 interface DocItem {
   id: string;
@@ -39,6 +39,7 @@ interface DocItem {
   status: DocStatus;
   url?: string;
   rejectionReason?: string | null;
+  expiresAt?: string | null;
 }
 
 const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; Icon: any }> = {
@@ -46,6 +47,15 @@ const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; Icon: any
   uploaded:     { label: 'Under review', color: '#D97706', Icon: Clock       },
   verified:     { label: 'Verified',     color: '#16A34A', Icon: CheckCircle },
   rejected:     { label: 'Rejected',     color: '#EF4444', Icon: XCircle     },
+  /**
+   * Approved, and no longer valid.
+   *
+   * The chip read "Verified" on a licence that expired yesterday, because
+   * the screen mapped status 'approved' straight to verified and never
+   * looked at expiresAt, which the server has always sent. A rider looking
+   * at a green tick has no reason to replace anything.
+   */
+  expired:      { label: 'Expired',      color: '#EF4444', Icon: XCircle     },
 };
 
 /**
@@ -91,11 +101,20 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
         const rec = byId[d.id];
         const url = rec?.url ?? me[DOC_URL_FIELD[d.id]];
         if (!url) return d;
+        // An approved document whose date has passed is EXPIRED, not
+        // verified. Compared date-only so "expires today" is still valid.
+        const lapsed = rec?.status === 'approved' && rec?.expiresAt
+          && String(rec.expiresAt).slice(0, 10) < new Date().toISOString().slice(0, 10);
         const status: DocStatus =
-          rec?.status === 'approved' ? 'verified'
+          lapsed ? 'expired'
+          : rec?.status === 'approved' ? 'verified'
           : rec?.status === 'rejected' ? 'rejected'
           : 'uploaded';
-        return { ...d, url, status, rejectionReason: rec?.rejectionReason ?? null };
+        return {
+          ...d, url, status,
+          rejectionReason: rec?.rejectionReason ?? null,
+          expiresAt: rec?.expiresAt ?? null,
+        };
       }));
     } catch {
       // Offline, or no profile yet. Leave the defaults: the rider can still
@@ -184,6 +203,7 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
           style={[styles.docCard, { backgroundColor: theme.background, borderColor: theme.border }, Shadows.xs]}
           onPress={() => doc.status !== 'verified' && choose(doc)}
           disabled={busy || doc.status === 'verified'}
+          accessibilityLabel={doc.status === 'expired' ? `${doc.label}, expired, tap to replace` : doc.label}
         >
           <View style={[styles.docIconWrap, { backgroundColor: theme.primary + '15' }]}>
             <doc.Icon size={22} color={theme.primary} strokeWidth={1.5} />
@@ -204,6 +224,11 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
         {/* A rejection is only useful if it says what to change. */}
         {doc.status === 'rejected' && !!doc.rejectionReason && (
           <Text style={[styles.rejectNote, { color: theme.error }]}>{doc.rejectionReason}</Text>
+        )}
+        {doc.status === 'expired' && (
+          <Text style={[styles.rejectNote, { color: theme.error }]}>
+            This expired on {String((doc as any).expiresAt).slice(0, 10)}. Tap it and upload the current one.
+          </Text>
         )}
       </View>
     );

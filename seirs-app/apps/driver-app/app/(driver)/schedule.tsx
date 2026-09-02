@@ -285,7 +285,10 @@ export default function ScheduleScreen() {
                 <Text style={[styles.pickerTitle, { color: theme.text }]}>
                   {DAY_LABELS[pickerOpen.day]}: {pickerOpen.field === 'start' ? 'Start' : 'End'} time
                 </Text>
-                <ScrollView style={{ maxHeight: 200 }}>
+                {/* nestedScrollEnabled: this list sits inside the screen's
+                    own ScrollView, and on Android the outer one takes the
+                    gesture, so the hours could not be scrolled at all. */}
+                <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
                   {HOURS.map(h => (
                     <Pressable
                       key={h.value}
@@ -306,7 +309,7 @@ export default function ScheduleScreen() {
               onPress={handleSave}
               disabled={saving}
             >
-              <Text style={styles.saveBtnText}>{saving ? 'Saving…' : saved ? 'Saved on this phone' : 'Save on this phone'}</Text>
+              <Text style={styles.saveBtnText}>{saving ? 'Saving…' : saved ? 'Saved' : 'Save my hours'}</Text>
             </Pressable>
           </View>
         )}
