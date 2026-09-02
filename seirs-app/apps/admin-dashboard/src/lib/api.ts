@@ -133,6 +133,18 @@ export const adminApi = {
    * she signed in or not as a super admin, thats not good." Nothing existed;
    * adminLogin recorded absolutely nothing.
    */
+  /**
+   * Statements SEIRS has issued. Routes existed with no page: two documents
+   * were in production with no way to enumerate them.
+   */
+  statements: {
+    list: (page = 1, subjectType?: string, q?: string) =>
+      req<{ items: any[]; total?: number }>(
+        `/admin/statements?page=${page}${subjectType ? `&subjectType=${subjectType}` : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}`),
+    revoke:  (code: string) => req<any>(`/admin/statements/${code}/revoke`,  { method: 'POST', body: '{}' }),
+    reissue: (code: string) => req<any>(`/admin/statements/${code}/reissue`, { method: 'POST', body: '{}' }),
+  },
+
   signIns: {
     list:  (page = 1, outcome?: string, userId?: string) =>
       req<{ items: any[]; total: number; page: number; take: number }>(

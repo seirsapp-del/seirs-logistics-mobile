@@ -588,6 +588,7 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
       { href: '/duplicates',            label: 'Duplicate Accounts',    icon: 'Copy'           },
       { href: '/kyc',                   label: 'Driver KYC Queue',      icon: 'ClipboardCheck', badge: 'kyc' },
       { href: '/sign-ins',              label: 'Staff Sign-ins',        icon: 'Clock' },
+      { href: '/statements',            label: 'Statements Issued',     icon: 'FileText' },
       { href: '/identity',              label: 'Customer ID Queue',     icon: 'ShieldCheck'    },
       { href: '/disputes',              label: 'Liability Disputes',    icon: 'ShieldCheck'    },
       { href: '/agreement-breaches',    label: 'Broken Agreements',     icon: 'Handshake'      },
