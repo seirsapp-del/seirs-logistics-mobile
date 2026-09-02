@@ -17,7 +17,8 @@ import { FeesService } from '../fees/fees.service';
 import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
 import { DriverEarning } from '../earnings/driver-earning.entity';
 import { vehicleIdentityForPassenger } from '../common/redact-driver';
-import { DriverDocument, DriverDocStatus } from './driver-document.entity';
+import { KycDocument, KycDocStatus } from '../kyc/kyc-document.entity';
+import { KycDocumentsService } from '../kyc/kyc-documents.service';
 import { buildKycQueue } from './kyc-queue';
 import { withinWorkingHours } from './working-hours';
 
@@ -124,7 +125,14 @@ export class DriversService {
     @InjectRepository(DriverLevelChange)      private levelChangesRepo: Repository<DriverLevelChange>,
     @InjectRepository(DriverVehicleChange)    private vehicleChangesRepo: Repository<DriverVehicleChange>,
     @InjectRepository(DriverEarning)          private earningsRepo:   Repository<DriverEarning>,
-    @InjectRepository(DriverDocument)         private docsRepo:       Repository<DriverDocument>,
+    /**
+     * The shared KYC store, scoped to ownerType 'driver' at every call
+     * site below. driver_documents was generalised into kyc_documents on
+     * 2026-09-02 so partner stores, businesses and customers get the same
+     * review flow rather than three more copies of it.
+     */
+    @InjectRepository(KycDocument)            private docsRepo:       Repository<KycDocument>,
+    private readonly kyc: KycDocumentsService,
     private fraudService:    FraudService,
     private trackingGateway: TrackingGateway,
     private feesService:     FeesService,
@@ -2337,7 +2345,7 @@ export class DriversService {
          * There were two parallel places a driver document could live. Only
          * one of them can hold an expiry:
          *
-         *   driver_documents        per-document status, expiry, review trail
+         *   kyc_documents           per-document status, expiry, review trail
          *   driver record columns   a URL and nothing else
          *
          * Approving a vehicle change wrote only the second, so the insurance
@@ -2475,19 +2483,20 @@ export class DriversService {
      * 'submitted' and bumps the version, so an approved driver swapping in
      * a new licence does not inherit the old approval.
      */
-    const existing = await this.docsRepo.findOne({ where: { driverId: driver.id, docId } });
-    if (existing) {
-      await this.docsRepo.update(existing.id, {
-        url,
-        status:          'submitted',
-        rejectionReason: null,
-        reviewedById:    null,
-        reviewedAt:      null,
-        version:         existing.version + 1,
-      });
-    } else {
-      await this.docsRepo.save(this.docsRepo.create({ driverId: driver.id, docId, url }));
-    }
+    // Through the shared upsert, which also clears the expiry and the
+    // warn-once stamp. This path did not do that before today: a rider
+    // replacing a lapsed licence kept last year's date on the new file.
+    await this.kyc.upsert({
+      ownerType:   'driver',
+      ownerId:     driver.id,
+      // driver.user.id, not driver.userId: the Driver entity declares the
+      // relation and never the foreign key column, so the bare property
+      // does not exist on the object. Every other call site in this file
+      // reads it through the relation.
+      ownerUserId: driver.user?.id ?? null,
+      docId,
+      url,
+    });
 
     return { docId, saved: true, status: 'submitted' };
   }
@@ -2496,40 +2505,47 @@ export class DriversService {
   async myKycDocuments(userId: string) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
-    const docs = await this.docsRepo.find({
-      where: { driverId: driver.id },
-      order: { updatedAt: 'DESC' },
-    });
-    return {
-      documents: docs.map(d => ({
-        docId:           d.docId,
-        url:             d.url,
-        status:          d.status,
-        rejectionReason: d.rejectionReason,
-        reviewedAt:      d.reviewedAt,
-        expiresAt:       d.expiresAt,
-        version:         d.version,
-      })),
-    };
+    return { documents: await this.kyc.listFor('driver', driver.id) };
   }
 
   // ── Admin review queue ──────────────────────────────────────────────────
 
-  async listDriverDocuments(status?: DriverDocStatus, page = 1, driverId?: string) {
+  async listDriverDocuments(status?: KycDocStatus, page = 1, driverId?: string) {
     const take = 50;
     // driverId lets the driver's own profile page show every document in
     // one place. The founder's rule: everything about a driver lives on
     // their profile, nobody should have to hunt across three pages.
-    const where: any = {};
-    if (status)   where.status   = status;
-    if (driverId) where.driverId = driverId;
+    const where: any = { ownerType: 'driver' };
+    if (status)   where.status  = status;
+    if (driverId) where.ownerId = driverId;
+    /**
+     * No relation load.
+     *
+     * This was `relations: ['driver', 'driver.user']`, which pulls the
+     * whole User entity into memory, password hash and bank columns
+     * included, to render a name and an email. The reviewer lookup below
+     * already avoided that deliberately and said so in its own comment;
+     * the driver side did it anyway. Named columns, one narrow query.
+     */
     const [rows, total] = await this.docsRepo.findAndCount({
       where,
-      relations: ['driver', 'driver.user'],
       order: { createdAt: 'ASC' },   // oldest waiting first
       take,
       skip: (page - 1) * take,
     });
+
+    const ownerIds = [...new Set(rows.map(d => d.ownerId))];
+    const owners = new Map<string, { name: string | null; email: string | null; status: string | null }>();
+    if (ownerIds.length) {
+      const found = await this.repo.manager
+        .createQueryBuilder()
+        .select(['dr.id AS id', 'u.name AS name', 'u.email AS email', 'dr.status AS status'])
+        .from('drivers', 'dr')
+        .leftJoin('users', 'u', 'u.id = dr."userId"')
+        .where('dr.id IN (:...ids)', { ids: ownerIds })
+        .getRawMany<{ id: string; name: string; email: string; status: string }>();
+      found.forEach(o => owners.set(o.id, { name: o.name, email: o.email, status: o.status }));
+    }
     /**
      * Who signed each one off, by name.
      *
@@ -2568,10 +2584,10 @@ export class DriversService {
         reviewedById:    d.reviewedById,
         reviewedByName:  d.reviewedById ? reviewerNames.get(d.reviewedById) ?? null : null,
         expiresAt:       d.expiresAt,
-        driverId:        d.driverId,
-        driverName:      d.driver?.user?.name ?? null,
-        driverEmail:     d.driver?.user?.email ?? null,
-        driverStatus:    d.driver?.status ?? null,
+        driverId:        d.ownerId,
+        driverName:      owners.get(d.ownerId)?.name ?? null,
+        driverEmail:     owners.get(d.ownerId)?.email ?? null,
+        driverStatus:    owners.get(d.ownerId)?.status ?? null,
       })),
       total, page, take,
     };
@@ -2703,87 +2719,56 @@ export class DriversService {
    */
   @Cron(CronExpression.EVERY_DAY_AT_8AM)
   async warnExpiringDocuments() {
-    const soon = new Date();
-    soon.setDate(soon.getDate() + 30);
-    const soonStr  = soon.toISOString().slice(0, 10);
-    const todayStr = new Date().toISOString().slice(0, 10);
-
-    let due: any[] = [];
-    try {
-      due = await this.docsRepo
-        .createQueryBuilder('d')
-        .leftJoin('drivers', 'dr', 'dr.id = d.driver_id')
-        .select(['d.id AS id', 'd."docId" AS "docId"', 'd."expiresAt" AS "expiresAt"',
-                 'dr."userId" AS "userId"'])
-        .where('d.status = :s', { s: 'approved' })
-        .andWhere('d."expiresAt" IS NOT NULL')
-        /*
-         * No lower bound on purpose. The first version used
-         * `expiresAt >= today`, which EXCLUDED anything already lapsed, so
-         * a rider whose licence expired yesterday was told less than one
-         * whose expires next month. Backwards: an expired document is the
-         * urgent case. The message below says which it is.
-         */
-        .andWhere('d."expiresAt" <= :soon', { soon: soonStr })
-        .andWhere('d."expiryWarnedAt" IS NULL')
-        .getRawMany();
-    } catch (e: any) {
-      // The column is self-healed on boot; if that has not run yet, say so
-      // once rather than throwing inside a scheduled job.
-      this.logger?.warn?.(`expiry warning skipped: ${e?.message ?? e}`);
-      return { warned: 0 };
-    }
-
-    let warned = 0;
-    for (const row of due) {
-      const days  = Math.ceil((new Date(row.expiresAt).getTime() - Date.now()) / 86_400_000);
-      const label = DOC_LABELS[row.docId] ?? 'One of your documents';
-      const gone  = days < 0;
-      if (row.userId && this.notificationsService) {
-        try {
-          await this.notificationsService.create(
-            row.userId,
-            `${label} expires in ${days} day${days === 1 ? '' : 's'}`,
-            `${label} is valid until ${row.expiresAt}. Open KYC Verification in the app, tap it, and upload the new one. ` +
-            'You can keep working while you do this: nothing stops on that date, but ops will be told it has lapsed.',
-            'account_update' as any,
-          );
-          warned++;
-        } catch { /* one rider failing must not stop the rest */ }
-      }
-      await this.docsRepo.update(row.id, { expiryWarnedAt: new Date() } as any).catch(() => {});
-    }
-    if (warned) this.logger?.log?.(`expiry warnings sent: ${warned}`);
+    /**
+     * One sweep for everybody (2026-09-02).
+     *
+     * The warning half now lives in the shared KYC service and covers
+     * every owner type, so a partner store whose CAC certificate lapses is
+     * told on the same schedule and in the same words as a rider whose
+     * licence does. Running a second cron for shops is how the two would
+     * have drifted into saying different things.
+     */
+    const { warned } = await this.kyc.warnExpiring();
 
     /**
      * And tell OPS, once a day, in one message.
      *
-     * The rider being warned is only half of it. The founder's point:
-     * "we get a notification of expired documents and take action". Until
-     * now the only place an expiry surfaced on our side was a banner on one
-     * dashboard page, seen by whoever happened to open it, which is not a
-     * notification and does not scale past a few riders.
+     * The owner being warned is only half of it. The founder's point: "we
+     * get a notification of expired documents and take action". Until this
+     * existed the only place an expiry surfaced on our side was a banner on
+     * one dashboard page, seen by whoever happened to open it, which is not
+     * a notification and does not scale past a few riders.
      *
      * One digest rather than one message per document: a hundred lapsed
-     * licences must not be a hundred notifications nobody reads.
+     * licences must not be a hundred notifications nobody reads. Broken
+     * down by owner type, because "12 documents expired" does not tell a
+     * reviewer which queue to open.
      */
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const [{ expired }] = await this.docsRepo.query(
-        `SELECT COUNT(*)::int AS expired FROM driver_documents
-          WHERE status = 'approved' AND "expiresAt" IS NOT NULL AND "expiresAt" < $1`,
+      const rows = await this.docsRepo.query(
+        `SELECT "ownerType", COUNT(*)::int AS n FROM kyc_documents
+          WHERE status = 'approved' AND "expiresAt" IS NOT NULL AND "expiresAt" < $1
+          GROUP BY "ownerType"`,
         [today],
       );
-      if (expired > 0 && this.notificationsService) {
+      const total = (rows as any[]).reduce((a, r) => a + Number(r.n ?? 0), 0);
+      if (total > 0 && this.notificationsService) {
+        const LABEL: Record<string, string> = {
+          driver: 'rider', partner_store: 'partner store', business: 'business', customer: 'customer',
+        };
+        const breakdown = (rows as any[])
+          .map(r => `${r.n} ${LABEL[r.ownerType] ?? r.ownerType}`)
+          .join(', ');
         const admins = await this.repo.manager.query(
           `SELECT id FROM users WHERE role = 'admin' AND "adminRole" = 'super_admin'`,
         );
         for (const a of admins) {
           await this.notificationsService.create(
             a.id,
-            `${expired} driver document${expired === 1 ? '' : 's'} expired`,
-            `${expired} approved document${expired === 1 ? ' has' : 's have'} passed its expiry date. `
-            + 'These riders are still receiving jobs: open Driver KYC Queue, Expiring documents, to decide.',
+            `${total} document${total === 1 ? '' : 's'} expired`,
+            `${total} approved document${total === 1 ? ' has' : 's have'} passed its expiry date (${breakdown}). `
+            + 'Nothing has been suspended. Open the KYC queue, Expiring documents, to decide.',
             'account_update' as any,
           ).catch(() => {});
         }
@@ -2796,23 +2781,11 @@ export class DriversService {
   }
 
   /**
-   * Set or change an expiry on a document that is ALREADY approved.
+   * Mirror the vehicle documents into the shared KYC store so they can
+   * carry a status, an expiry and a review trail like every other document.
    *
-   * WHY separate from reviewDriverDocument. The founder approved a set of
-   * documents, was not asked for a date (the picker was broken), and then
-   * had no way back in: the only route that could write expiresAt was the
-   * approve call, and re-approving an approved document would fire a fresh
-   * "approved" notice at the rider for a decision made days ago.
-   *
-   * Null clears it, which is a real answer: a reviewer who mistyped a date
-   * must be able to take it off, not just overwrite it with another guess.
-   */
-  /**
-   * Mirror the vehicle documents into driver_documents so they can carry a
-   * status, an expiry and a review trail like every other document.
-   *
-   * Upsert by (driver, docId), which is what the unique index on that table
-   * already enforces. A NEW url means a new document: the expiry and the
+   * Upsert by (ownerType, ownerId, docId), which is what the unique index
+   * on that table already enforces. A NEW url means a new document: the expiry and the
    * warn-once stamp are cleared, because last year's date does not describe
    * this year's certificate. An unchanged url leaves the row alone, so
    * re-approving does not wipe an expiry somebody has already set.
@@ -2822,10 +2795,17 @@ export class DriversService {
     adminUserId: string | null,
     docs: Record<string, string | null | undefined>,
   ) {
+    // The shared store keys notifications and the erase-on-deletion sweep
+    // off the owner's user id, so it is resolved once here rather than
+    // left null on rows written through this path.
+    const [owner] = await this.repo.manager.query(
+      `SELECT "userId" FROM drivers WHERE id = $1 LIMIT 1`, [driverId],
+    ).catch(() => [] as any[]);
+    const driverUserId: string | null = owner?.userId ?? null;
     for (const [docId, url] of Object.entries(docs)) {
       if (!url) continue;
       try {
-        const existing = await this.docsRepo.findOne({ where: { driverId, docId } as any });
+        const existing = await this.docsRepo.findOne({ where: { ownerType: 'driver', ownerId: driverId, docId } as any });
         if (existing && existing.url === url) {
           // Same file, already on record. Leave its expiry alone.
           if (existing.status !== 'approved') {
@@ -2848,7 +2828,7 @@ export class DriversService {
           } as any);
         } else {
           await this.docsRepo.save(this.docsRepo.create({
-            driverId, docId, url,
+            ownerType: 'driver', ownerId: driverId, ownerUserId: driverUserId, docId, url,
             status:       'approved',
             reviewedById: adminUserId,
             reviewedAt:   new Date(),
@@ -2862,21 +2842,24 @@ export class DriversService {
     }
   }
 
+  /**
+   * Set or change an expiry on a document that is ALREADY approved.
+   *
+   * WHY separate from reviewDriverDocument. The founder approved a set of
+   * documents, was not asked for a date (the picker was broken), and then
+   * had no way back in: the only route that could write expiresAt was the
+   * approve call, and re-approving an approved document would fire a fresh
+   * "approved" notice at the rider for a decision made days ago.
+   *
+   * Null clears it, which is a real answer: a reviewer who mistyped a date
+   * must be able to take it off, not just overwrite it with another guess.
+   *
+   * Delegated since 2026-09-02: one review flow for every owner type, and
+   * the audit line the erase-the-person-keep-the-decision policy depends on
+   * is written there rather than in four places.
+   */
   async setDocumentExpiry(id: string, adminUserId: string, expiresAt: string | null) {
-    const doc = await this.docsRepo.findOne({ where: { id } });
-    if (!doc) throw new NotFoundException('Document not found.');
-    if (expiresAt && !/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) {
-      throw new BadRequestException('Expiry must be a date, as YYYY-MM-DD.');
-    }
-    await this.docsRepo.update(id, {
-      expiresAt:      expiresAt || null,
-      reviewedById:   adminUserId,
-      reviewedAt:     new Date(),
-      // A new date re-arms the 30-day warning, so a corrected expiry warns
-      // again rather than staying silent because the old one already had.
-      expiryWarnedAt: null,
-    } as any);
-    return { id, expiresAt: expiresAt || null };
+    return this.kyc.setExpiry(id, adminUserId, expiresAt);
   }
 
   /**
@@ -2888,69 +2871,34 @@ export class DriversService {
    * expired". This is the list you act on, worst first.
    */
   async expiringDocuments(days = 30) {
-    const soon = new Date();
-    soon.setDate(soon.getDate() + days);
-    const rows = await this.docsRepo
-      .createQueryBuilder('d')
-      .leftJoin('drivers', 'dr', 'dr.id = d.driver_id')
-      .leftJoin('users', 'u', 'u.id = dr."userId"')
-      .select([
-        'd.id AS id', 'd."docId" AS "docId"', 'd."expiresAt" AS "expiresAt"',
-        'd.url AS url', 'd."expiryWarnedAt" AS "expiryWarnedAt"',
-        'dr.id AS "driverId"', 'dr.status AS "driverStatus"',
-        'u.name AS "driverName"', 'u.email AS "driverEmail"', 'u.phone AS "driverPhone"',
-        'u."accountId" AS "accountId"',
-      ])
-      .where('d.status = :s', { s: 'approved' })
-      .andWhere('d."expiresAt" IS NOT NULL')
-      .andWhere('d."expiresAt" <= :soon', { soon: soon.toISOString().slice(0, 10) })
-      .orderBy('d."expiresAt"', 'ASC')
-      .limit(500)
-      .getRawMany();
-
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    return {
-      items: rows.map((r: any) => {
-        const daysLeft = Math.ceil((new Date(r.expiresAt).getTime() - today.getTime()) / 86_400_000);
-        return { ...r, daysLeft, expired: daysLeft < 0, warned: !!r.expiryWarnedAt };
-      }),
-    };
+    return this.kyc.expiring(days, 'driver');
   }
 
   async driverDocumentCounts() {
-    const soon = new Date();
-    soon.setDate(soon.getDate() + 30);
-    const today = new Date().toISOString().slice(0, 10);
-    const soonStr = soon.toISOString().slice(0, 10);
-
-    const [waiting, expired, expiringSoon, driversWaiting] = await Promise.all([
-      this.docsRepo.count({ where: { status: 'submitted' } }),
-      this.docsRepo
-        .createQueryBuilder('d')
-        .where('d.status = :s', { s: 'approved' })
-        .andWhere('d."expiresAt" IS NOT NULL AND d."expiresAt" < :today', { today })
-        .getCount(),
-      this.docsRepo
-        .createQueryBuilder('d')
-        .where('d.status = :s', { s: 'approved' })
-        .andWhere('d."expiresAt" IS NOT NULL')
-        .andWhere('d."expiresAt" >= :today AND d."expiresAt" <= :soon', { today, soon: soonStr })
-        .getCount(),
-      this.docsRepo
-        .createQueryBuilder('d')
-        .select('COUNT(DISTINCT d.driver_id)', 'c')
-        .where('d.status = :s', { s: 'submitted' })
-        .getRawOne<{ c: string }>(),
-    ]);
-
+    const c = await this.kyc.counts('driver');
+    // driversWaiting is what the admin dashboard reads; the shared service
+    // calls the same number ownersWaiting because it counts shops too.
     return {
-      waiting,
-      expired,
-      expiringSoon,
-      driversWaiting: Number(driversWaiting?.c ?? 0),
+      waiting:      c.waiting,
+      expired:      c.expired,
+      expiringSoon: c.expiringSoon,
+      driversWaiting: c.ownersWaiting,
     };
   }
 
+  /**
+   * Delegated to the shared review flow (2026-09-02).
+   *
+   * The body that used to live here loaded the entire driver relation for
+   * one reason: to reach driver.userId so the rider could be told. The
+   * shared table carries ownerUserId, so that join is gone and the notice
+   * is sent from one place for every owner type.
+   *
+   * It also now writes an audit line. Until today this wrote nothing to
+   * audit_logs at all, which mattered the moment the founder decided that
+   * on hard delete the documents are erased and the DECISIONS are kept:
+   * there were no decisions recorded to keep.
+   */
   async reviewDriverDocument(
     id: string,
     adminUserId: string,
@@ -2958,65 +2906,7 @@ export class DriversService {
     reason?: string,
     expiresAt?: string | null,
   ) {
-    /**
-     * The driver relation is loaded so the rider can be TOLD what was
-     * decided. Fetched before the update, so a failure to read the row
-     * stops the decision rather than deciding it and telling nobody.
-     */
-    const doc = await this.docsRepo.findOne({ where: { id }, relations: ['driver'] });
-    if (!doc) throw new NotFoundException('Document not found.');
-    if (decision === 'rejected' && !reason?.trim()) {
-      throw new BadRequestException('Tell the driver why, or they will upload the same photo again.');
-    }
-
-    await this.docsRepo.update(id, {
-      status:          decision,
-      // needs_replacing carries a reason too, but as an instruction rather
-      // than a fault: "your licence expired on the 1st" is not a complaint.
-      rejectionReason: decision === 'approved' ? null : (reason?.trim() || null),
-      reviewedById:    adminUserId,
-      reviewedAt:      new Date(),
-      // Only an approval carries an expiry: a rejected document has no
-      // validity to run out. Blank clears any date already there.
-      ...(decision === 'approved' ? { expiresAt: expiresAt || null } : {}),
-      // A new decision restarts the expiry warning clock.
-      expiryWarnedAt: null,
-    } as any);
-
-    /**
-     * TELL THEM. This sent nothing at all until 2 September 2026.
-     *
-     * A rider whose licence was rejected had no way to learn it except by
-     * reopening the screen and noticing a chip had changed colour. They
-     * were, from their side, still waiting for a decision that had already
-     * been made, sometimes for weeks. The reason was already required from
-     * the reviewer and was being written for nobody to read.
-     *
-     * ACCOUNT_UPDATE rather than GENERAL: this is an admin changing their
-     * standing, and that class is not suppressible by notification
-     * preferences. Unawaited, because a push failure must not roll back a
-     * decision an admin has already made.
-     */
-    const riderUserId = (doc.driver as any)?.userId;
-    if (riderUserId && this.notificationsService) {
-      const label = DOC_LABELS[doc.docId] ?? 'A document';
-      this.notificationsService.create(
-        riderUserId,
-        decision === 'approved'      ? `${label} approved`
-        : decision === 'needs_replacing' ? `${label} needs replacing`
-        : `${label} needs redoing`,
-        decision === 'approved'
-          ? `${label} has been checked and accepted. Nothing else is needed for it.`
-          : decision === 'needs_replacing'
-            ? `${label} is no longer current${reason?.trim() ? `: ${reason.trim()}` : ''}. `
-              + 'Nothing is wrong with what you sent, it has simply run out. '
-              + 'Open KYC Verification and upload the current one.'
-            : `${label} was not accepted. ${reason!.trim()} Open KYC Verification to upload it again.`,
-        'account_update' as any,
-      ).catch((e: any) => this.logger?.warn?.(`doc decision notice failed: ${e?.message ?? e}`));
-    }
-
-    return { id, status: decision };
+    return this.kyc.review(id, adminUserId, decision, reason, expiresAt);
   }
 
   // Spec V8 §2.10 / §2.18 - derive demand zones from recent pickup density

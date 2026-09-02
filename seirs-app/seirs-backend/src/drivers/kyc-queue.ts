@@ -10,7 +10,7 @@
  * about the same rider, in three places:
  *
  *   an account waiting to be approved      the driver roster, status pending
- *   documents waiting to be read           driver_documents, status submitted
+ *   documents waiting to be read           kyc_documents, status submitted
  *   a vehicle waiting to be approved       driver_vehicle_changes, pending
  *
  * A rider can be in all three at once and appeared as three unrelated
@@ -74,12 +74,17 @@ export async function buildKycQueue(ds: DataSource): Promise<{ count: number; it
    */
   const rows = await ds.query(`
     WITH doc_counts AS (
-      SELECT driver_id,
+      /* kyc_documents since 2026-09-02, scoped to riders. The table is
+         shared with partner stores, businesses and customers, so this
+         queue must say whose documents it is counting or a shop's CAC
+         certificate would appear against a rider's row. */
+      SELECT "ownerId" AS driver_id,
              COUNT(*) FILTER (WHERE status = 'submitted') AS submitted,
              COUNT(*) FILTER (WHERE status = 'rejected')  AS rejected,
              MIN("createdAt") FILTER (WHERE status = 'submitted') AS oldest_submitted
-        FROM driver_documents
-       GROUP BY driver_id
+        FROM kyc_documents
+       WHERE "ownerType" = 'driver'
+       GROUP BY "ownerId"
     ),
     pending_change AS (
       SELECT DISTINCT ON ("driverId") *

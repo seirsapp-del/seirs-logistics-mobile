@@ -7,6 +7,7 @@ import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { KycModule } from './kyc/kyc.module';
 import { DriversModule } from './drivers/drivers.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { TrackingModule } from './tracking/tracking.module';
@@ -96,6 +97,9 @@ import { LaunchModule } from './launch/launch.module';
     // Phase 1–4
     AuthModule,
     UsersModule,
+    // Shared KYC document store: one review flow for drivers, partner
+    // stores, businesses and customers rather than one per owner type.
+    KycModule,
     DriversModule,
     DeliveriesModule,
     TrackingModule,

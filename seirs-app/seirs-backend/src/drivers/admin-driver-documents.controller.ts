@@ -7,7 +7,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
-import { DriverDocStatus } from './driver-document.entity';
+import { KycDocStatus } from '../kyc/kyc-document.entity';
 
 /**
  * Driver KYC review queue.
@@ -28,7 +28,7 @@ export class AdminDriverDocumentsController {
   // GET /api/v1/admin/driver-documents?status=submitted&page=1
   @Get()
   list(
-    @Query('status') status?: DriverDocStatus,
+    @Query('status') status?: KycDocStatus,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
     @Query('driverId') driverId?: string,
   ) {

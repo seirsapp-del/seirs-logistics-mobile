@@ -19,12 +19,17 @@ import { FraudModule } from '../fraud/fraud.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationsService } from '../notifications/notifications.service';
 import { FeesModule } from '../fees/fees.module';
-import { DriverDocument } from './driver-document.entity';
 import { AdminDriverDocumentsController } from './admin-driver-documents.controller';
+import { KycDocument } from '../kyc/kyc-document.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Driver, DriverTrip, TripStop, DriverStatusBroadcast, DriverSubscription, DriverLevelChange, DriverVehicleChange, Delivery, Wallet, DriverEarning, DriverDocument]),
+    // KycDocument is registered here as well as in the global KycModule.
+    // DriversService injects its repository directly for the driver-only
+    // queries (the queue list, the vehicle sync), and relying on a global
+    // re-export for that would turn a provider-resolution mistake into a
+    // boot crash rather than a compile error.
+    TypeOrmModule.forFeature([Driver, DriverTrip, TripStop, DriverStatusBroadcast, DriverSubscription, DriverLevelChange, DriverVehicleChange, Delivery, Wallet, DriverEarning, KycDocument]),
     TrackingModule,
     FraudModule,
     NotificationsModule,
@@ -115,39 +120,12 @@ export class DriversModule implements OnModuleInit {
       console.error(`drivers status-reason self-heal failed: ${e?.message ?? e}`);
     }
 
-    /**
-     * Backfill the vehicle documents of riders approved BEFORE the sync
-     * existed (2026-09-02).
-     *
-     * Approving a vehicle change used to write the insurance certificate
-     * and ownership papers only to the driver record, which holds a URL and
-     * nothing else. So those documents could never carry an expiry, and the
-     * founder found exactly that: he could date Emeka's licence and had
-     * nowhere to click for his insurance.
-     *
-     * Insert-only, keyed on the unique (driver_id, docId) index, so it
-     * cannot disturb a document somebody has already reviewed or dated.
-     * Approved because the URL is on the driver record, which means an
-     * admin already approved it once.
+    /*
+     * The vehicle-document backfill moved to KycModule on 2026-09-02,
+     * along with the table it wrote into. Keeping a second copy here
+     * would have inserted into driver_documents, which nothing reads
+     * any more.
      */
-    try {
-      const r = await this.ds.query(`
-        INSERT INTO "driver_documents" ("driver_id", "docId", "url", "status", "reviewedAt")
-        SELECT d.id, v.doc_id, v.url, 'approved', now()
-          FROM "drivers" d
-          CROSS JOIN LATERAL (VALUES
-            ('insurance_cert',  d."insuranceCertUrl"),
-            ('ownership_proof', d."ownershipProofUrl"),
-            ('vehicle_photo',   d."vehiclePhotoUrl")
-          ) AS v(doc_id, url)
-         WHERE v.url IS NOT NULL AND v.url <> ''
-        ON CONFLICT ("driver_id", "docId") DO NOTHING
-      `);
-      const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
-      if (n) console.log(`vehicle documents backfilled into the review store: ${n}`);
-    } catch (e: any) {
-      console.error(`vehicle document backfill failed: ${e?.message ?? e}`);
-    }
 
     this.driversService.notificationsService = this.notificationsService;
 
