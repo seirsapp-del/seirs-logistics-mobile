@@ -49,7 +49,7 @@ export function Drawer({ visible, onClose }: Props) {
        nothing and leaves no refund to chase. */
     { icon: 'Package',    label: t('drawer.parcelRequests',{ defaultValue: 'Parcel Requests' }),      onPress: () => navigate('/(driver)/parcel-requests') },
     { icon: 'Moon',       label: t('drawer.lastOrder',     { defaultValue: 'Wind Down (Last Order)' }),onPress: () => navigate('/(driver)/last-order') },
-    { icon: 'FileText',   label: t('drawer.documents',     { defaultValue: 'Documents' }),             onPress: () => navigate('/(driver)/tax-docs') },
+    { icon: 'FileText',   label: t('drawer.documents',     { defaultValue: 'Documents' }),             onPress: () => navigate('/(driver)/documents') },
     { icon: 'Globe',      label: t('drawer.language',      { defaultValue: 'Language' }),              onPress: () => navigate('/(driver)/language') },
     { icon: 'BookOpen',   label: t('drawer.codeOfConduct', { defaultValue: 'Driver Code of Conduct' }), onPress: () => navigate('/(driver)/code-of-conduct') },
     // Straight to a NEW ticket: the founder found the old path (drawer

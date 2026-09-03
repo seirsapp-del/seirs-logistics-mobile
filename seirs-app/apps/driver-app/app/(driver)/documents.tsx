@@ -6,7 +6,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft, FileText, Download, ChevronRight, Calendar, Receipt, AlertCircle, Share2,
+  ArrowLeft, FileText, Download, ChevronRight, Receipt, AlertCircle,
   FileSignature, Mail, ShieldCheck, File,
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -246,86 +246,17 @@ export default function TaxDocsScreen() {
           </View>
         )}
 
-        {months.length > 0 && (
-          <>
-            <Text style={[styles.sectionHead, { color: theme.textSecond }]}>LAST 12 MONTHS</Text>
-            {months.map((m: any) => (
-              <Pressable
-                key={`${m.year}-${m.month}`}
-                onPress={() => handleDownloadMonth(m)}
-                style={[styles.docRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
-              >
-                <View style={[styles.yearIcon, { backgroundColor: theme.primary + '15' }]}>
-                  <Receipt size={18} color={theme.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.yearLabel, { color: theme.text }]}>
-                    {MONTH_NAMES[m.month - 1]} {m.year}
-                  </Text>
-                  <Text style={[styles.yearSub, { color: theme.textSecond }]}>
-                    {m.tripCount} trip{m.tripCount === 1 ? '' : 's'} · net {naira(m.netNgn)}
-                  </Text>
-                </View>
-                <View style={[styles.shareBtn, { backgroundColor: theme.primary }]}>
-                  <Share2 size={14} color="#fff" />
-                  <Text style={styles.shareBtnText}>Share</Text>
-                </View>
-              </Pressable>
-            ))}
-          </>
-        )}
-
-        <Text style={[styles.sectionHead, { color: theme.textSecond }]}>YEARLY (FOR FIRS)</Text>
-
-        {loading ? (
-          <ActivityIndicator color={theme.primary} style={{ marginTop: 32 }} />
-        ) : summaries.length === 0 ? (
-          <View style={styles.empty}>
-            <Receipt size={36} color={theme.textThird} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No earnings yet</Text>
-            <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Once you complete deliveries and receive payouts, statements will be available here organised by year.
-            </Text>
-          </View>
-        ) : (
-          summaries.map(y => (
-            <Pressable
-              key={y.year}
-              onPress={() => handleDownload(y.year)}
-              style={[styles.yearCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            >
-              <View style={styles.yearTop}>
-                <View style={[styles.yearIcon, { backgroundColor: theme.primary + '15' }]}>
-                  <Calendar size={18} color={theme.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.yearLabel, { color: theme.text }]}>{y.year}</Text>
-                  <Text style={[styles.yearSub, { color: theme.textSecond }]}>{y.trips} trip{y.trips === 1 ? '' : 's'}</Text>
-                </View>
-                {/* Explicit labeled button: the bare icon was invisible to
-                    the founder in live testing 2026-08-09 */}
-                <View style={[styles.shareBtn, { backgroundColor: theme.primary }]}>
-                  <Share2 size={14} color="#fff" />
-                  <Text style={styles.shareBtnText}>Share</Text>
-                </View>
-              </View>
-
-              <View style={styles.breakdown}>
-                <Stat label="Gross"      value={naira(y.grossNgn)}      theme={theme} />
-                <View style={[styles.divider, { backgroundColor: theme.border }]} />
-                <Stat label="Commission" value={`-${naira(y.commissionNgn)}`} theme={theme} color="#DC2626" />
-                <View style={[styles.divider, { backgroundColor: theme.border }]} />
-                <Stat label="Net"        value={naira(y.netNgn)}        theme={theme} color="#16A34A" />
-              </View>
-            </Pressable>
-          ))
-        )}
-
+        {/* Earnings statements moved to /(driver)/statement on 3 September.
+            This screen used to carry both: letters SEIRS sends the rider AND
+            the rider's own monthly and yearly earnings. Its Profile row read
+            "Documents - Statements, contracts, letters", which is two
+            different things wearing one label. The customer app has had the
+            split for a while and the driver app never got it. */}
         <View style={styles.footnote}>
           <AlertCircle size={12} color={theme.textThird} />
           <Text style={[styles.footnoteText, { color: theme.textThird }]}>
-            Statements come from your SEIRS earnings ledger and are suitable for FIRS self-assessment filing.
-            Tap a year to share or save as PDF.
+            Contracts, letters and notices SEIRS has sent you. Your own earnings
+            statements live under Statement, on your profile.
           </Text>
         </View>
       </ScrollView>
@@ -398,7 +329,7 @@ const styles = StyleSheet.create({
   shareBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   yearLabel: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
   yearSub:   { fontSize: FontSize.xs, marginTop: 2 },
-  breakdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 10, paddingVertical: 10, marginTop: 4 },
+  breakdown: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingVertical: 10, marginTop: 4 },
   divider:   { width: 1, alignSelf: 'stretch' },
 
   footnote:  { flexDirection: 'row', gap: 6, alignItems: 'flex-start', paddingHorizontal: 4, marginTop: Spacing.sm },

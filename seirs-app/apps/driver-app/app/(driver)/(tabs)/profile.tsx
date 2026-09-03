@@ -106,7 +106,8 @@ export default function DriverProfileScreen() {
         // SEIRS Premium row removed: the program is paused platform-wide
         // (founder decision 2026-08-10).
         { icon: 'calendar-outline',       label: 'My Schedule',   sub: 'Set working hours',           route: '/(driver)/schedule' },
-        { icon: 'document-text-outline',  label: 'Documents',     sub: 'Statements, contracts, letters', route: '/(driver)/tax-docs' },
+        { icon: 'receipt-outline',        label: 'Statement',     sub: 'What you earned, ready to download', route: '/(driver)/statement' },
+        { icon: 'document-text-outline',  label: 'Documents',     sub: 'Letters and documents from SEIRS', route: '/(driver)/documents' },
       ],
     },
     {

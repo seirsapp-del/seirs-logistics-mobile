@@ -177,7 +177,7 @@ export default function DriverNotificationsScreen() {
       return;
     }
     if (n.rawType === 'sos_alert') { router.push('/(driver)/sos' as any); return; }
-    if (n.title.toLowerCase().includes('document')) { router.push('/(driver)/tax-docs' as any); return; }
+    if (n.title.toLowerCase().includes('document')) { router.push('/(driver)/documents' as any); return; }
     switch (n.type) {
       case 'payment': router.push('/(driver)/(tabs)/earnings' as any); break;
       case 'rating':  router.push('/(driver)/ratings' as any); break;
