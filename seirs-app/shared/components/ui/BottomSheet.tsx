@@ -3,6 +3,7 @@ import {
   Animated, Dimensions, ScrollView,
 } from 'react-native';
 import { useEffect, useRef } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { Colors, Radius, FontSize, FontWeight, Spacing, Shadows } from '../../theme/index';
 
@@ -24,6 +25,12 @@ export function BottomSheet({
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const anim   = useRef(new Animated.Value(0)).current;
+  /* Android 15 draws edge to edge, so a sheet pinned to bottom:0 puts its
+     last row underneath the system navigation bar. Every sheet in all three
+     apps comes through here, so the inset belongs here rather than in each
+     caller. Spacing.xl stays as the minimum for gesture-nav phones, whose
+     inset is small or zero. */
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     Animated.spring(anim, {
@@ -75,7 +82,19 @@ export function BottomSheet({
         )}
 
         {/* Content */}
-        <Content style={styles.content} {...(scrollable ? { showsVerticalScrollIndicator: false } : {})}>
+        <Content
+          style={[
+            styles.content,
+            // flex:1 collapses a snapHeight="auto" sheet, which has no height
+            // of its own to divide up.
+            typeof snapHeight === 'number' ? { flex: 1 } : null,
+            // The inset ADDS to the padding rather than replacing it. Taking
+            // max() of the two gives exactly the nav bar height, which puts the
+            // last row flush against its top edge with no visible gap at all.
+            { paddingBottom: Math.max(insets.bottom, Spacing.sm) + Spacing.lg },
+          ]}
+          {...(scrollable ? { showsVerticalScrollIndicator: false } : {})}
+        >
           {children}
         </Content>
       </Animated.View>
@@ -113,8 +132,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   content: {
-    flex: 1,
     paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.xl,
   },
 });
