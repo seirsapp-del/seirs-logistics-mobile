@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
-import { useColors } from '@/context/ThemeContext';
+import { useColors, useTheme } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -41,6 +41,7 @@ export default function PartnerSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const { isDark } = useTheme();
   const { user, logout } = useAuth();
 
   const [settings, setSettings] = useState<StoreSettings>({
@@ -332,7 +333,7 @@ export default function PartnerSettingsScreen() {
             Its own outlined button now: as a card row it carried a top
             divider that only made sense with rows above it. */}
         <Pressable
-          style={[styles.logoutBtn, { backgroundColor: colors.error + '14', borderColor: colors.error + '55' }]}
+          style={[styles.logoutBtn, SIGN_OUT_TINT(isDark, colors.error)]}
           onPress={logout}
         >
           <Icon name="LogOut" size={16} color={colors.error} />
@@ -344,6 +345,30 @@ export default function PartnerSettingsScreen() {
     </View>
   );
 }
+
+/**
+ * The sign-out tint the founder picked, 2026-09-03.
+ *
+ * The light pair is the customer app's, verbatim: #FEF2F2 ground and
+ * #FECACA edge, red-50 and red-200. He looked at both treatments and
+ * chose that one, so the light theme gets exactly it rather than my
+ * approximation of it.
+ *
+ * The dark pair exists because those two are LIGHT-MODE values and
+ * nothing else. Used bare on his dark default they paint a near-white
+ * slab under red text, which is the fault this app has already been
+ * caught for three times in (auth). So dark mode gets the same idea
+ * expressed against a dark ground: the palette error at low alpha,
+ * which sits on ink900 the way #FEF2F2 sits on cloud.
+ *
+ * Both live here rather than in shared/theme because that file belongs
+ * to the other session today. This is the right shape for two tokens,
+ * errorSoft and errorSoftBorder, and it should move there when the
+ * theme is free.
+ */
+const SIGN_OUT_TINT = (isDark: boolean, error: string) => (isDark
+  ? { backgroundColor: error + '1F', borderColor: error + '66' }
+  : { backgroundColor: '#FEF2F2',    borderColor: '#FECACA' });
 
 const styles = StyleSheet.create({
   centered:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
