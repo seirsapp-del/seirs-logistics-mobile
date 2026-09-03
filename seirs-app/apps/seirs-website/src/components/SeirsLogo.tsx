@@ -73,14 +73,25 @@ function SeirsMark({
    * its second navy.
    *
    * Geometry matches the cut assets: the A3 weight, stroke 5.5, solid
-   * wheels r7.0 with r2.4 hubs, torso 6.0, head r4.3. The founder compared
+   * wheels r7.0 with r2.4 hubs, torso 5.5, head r4.3. The founder compared
    * A3 against A4 on a real phone on 2026-08-30 and took the lighter set;
    * A4 was 6.5 / 7.0 / 7.6 / 2.6 / 4.8. Line coordinates are unchanged
    * between the two weights, only the radii and stroke widths move. The
    * viewBox is cropped to the ink, which is why it is no longer 0 0 48 32
    * -- the stretched rider's head sits above y=0.
+   *
+   * Two corrections, founder-approved 2026-09-03. The torso drops from 6.0
+   * to 5.5: at 6.0 its round cap reached y=19.00 while the frame rail's
+   * underside sits at 18.75, so a rounded lobe hung below the frame right
+   * under the rider. And the head moves from (31.13, -1.26) to
+   * (31.82, -1.18): it sits 3.0 from the torso's tip and used to sit
+   * straight UP while the torso arrives at 26.57 degrees off vertical, so
+   * the neck met the skull at a different angle on each side. It is now
+   * offset at 13.3 degrees, half the lean. The ink top moves with it, hence
+   * the viewBox. Cut by scripts/build-mark-assets.js, which is the one
+   * source for all seven assets now.
    */
-  const VB_X = 3.0, VB_Y = -5.56, VB_W = 42.0, VB_H = 36.56;
+  const VB_X = 3.0, VB_Y = -5.48, VB_W = 42.0, VB_H = 36.48;
   const height = size * (VB_H / VB_W);
   const SW = 5.5;
 
@@ -102,8 +113,8 @@ function SeirsMark({
       <circle cx={38} cy={24} r={7.0} fill={color} />
       <circle cx={38} cy={24} r={2.4} fill={hubColor} />
       <line x1={37} y1={12} x2={42} y2={9} stroke={color} strokeWidth={SW} strokeLinecap="round" />
-      <line x1={24} y1={16} x2={31.13} y2={1.74} stroke={color} strokeWidth={6} strokeLinecap="round" />
-      <circle cx={31.13} cy={-1.26} r={4.3} fill={color} />
+      <line x1={24} y1={16} x2={31.13} y2={1.74} stroke={color} strokeWidth={SW} strokeLinecap="round" />
+      <circle cx={31.82} cy={-1.18} r={4.3} fill={color} />
       <line x1={29.35} y1={5.30} x2={37} y2={12} stroke={color} strokeWidth={SW} strokeLinecap="round" />
     </svg>
   );
