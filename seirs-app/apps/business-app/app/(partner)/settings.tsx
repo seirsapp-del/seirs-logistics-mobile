@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TextInput, Pressable, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TextInput, Pressable, ActivityIndicator, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -23,6 +23,18 @@ interface StoreSettings {
   notifyNewPackage: boolean;
   notifyPickup:    boolean;
   notifyPayout:    boolean;
+  /**
+   * Read-only, and already arriving.
+   *
+   * GET /partner/settings returns the whole store row, so both of these
+   * have been in the response all along and were simply never typed or
+   * used. Not in `allowed` on the server's update, so they cannot be
+   * written from here, which is right: a store code is issued, not
+   * chosen, and the storefront photo is a KYC document reviewed on its
+   * own.
+   */
+  storeCode?:          string | null;
+  storefrontPhotoUrl?: string | null;
 }
 
 export default function PartnerSettingsScreen() {
@@ -214,20 +226,45 @@ export default function PartnerSettingsScreen() {
 
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Account</Text>
+          {/**
+            * The SHOP, not the shopkeeper (founder, 2026-09-03).
+            *
+            * This read "Yusuf" over the owner's personal SEIRS ID, which
+            * on a partner account is a CUST- code: the id of the person
+            * who signed up, not of the store this screen configures. A
+            * partner looking for their store code to read down a phone
+            * line found somebody's customer number instead.
+            *
+            * The storefront photo doubles as the picture, which is the
+            * one image every store already has and the one a partner
+            * actually recognises as theirs.
+            */}
           <View style={styles.accountRow}>
-            <Icon name="User" size={16} color={colors.textSecond} />
+            {settings.storefrontPhotoUrl ? (
+              <Image
+                source={{ uri: settings.storefrontPhotoUrl }}
+                style={styles.storeAvatar}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.storeAvatar, styles.storeAvatarEmpty, { backgroundColor: colors.surfaceSecond }]}>
+                <Icon name="Store" size={20} color={colors.textThird} />
+              </View>
+            )}
             <View style={{ flex: 1 }}>
-              {/* First name only for privacy. Full legal name lives in Edit Profile. */}
-              <Text style={[styles.accountLabel, { color: colors.text }]}>
-                {(user as any)?.firstName
-                  ?? (user?.name ? String(user.name).trim().split(/\s+/)[0] : '')}
+              <Text style={[styles.accountLabel, { color: colors.text }]} numberOfLines={1}>
+                {settings.storeName || 'Your store'}
               </Text>
-              <Text style={[styles.accountEmail, { color: colors.textSecond }]}>{user?.email}</Text>
-              {(user as any)?.accountId && (
+              {settings.storeCode ? (
                 <Text style={{ fontSize: 12, color: colors.textThird, marginTop: 2, letterSpacing: 0.5 }}>
-                  SEIRS ID: {(user as any).accountId}
+                  Store ID: {settings.storeCode}
                 </Text>
-              )}
+              ) : null}
+              {/* Kept because it is how they sign in, and subordinate
+                  because this card is about the store now. */}
+              <Text style={[styles.accountEmail, { color: colors.textSecond }]} numberOfLines={1}>
+                {user?.email}
+              </Text>
             </View>
           </View>
           {/* Messages and Language had NO entry point anywhere once they
@@ -241,6 +278,18 @@ export default function PartnerSettingsScreen() {
           >
             <Icon name="MessageSquare" size={16} color={colors.textSecond} />
             <Text style={[styles.linkRowText, { color: colors.text }]}>Messages &amp; support</Text>
+            <Icon name="ChevronRight" size={16} color={colors.textThird} />
+          </Pressable>
+          {/* The statement lives here as well as on Payout History
+              (founder, 2026-09-03). Earnings is where you look when you
+              are checking a number; Account is where you look when you
+              want the document itself. */}
+          <Pressable
+            style={[styles.linkRow, { borderTopColor: colors.border }]}
+            onPress={() => router.push('/(partner)/statement' as any)}
+          >
+            <Icon name="Receipt" size={16} color={colors.textSecond} />
+            <Text style={[styles.linkRowText, { color: colors.text }]}>Statement</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
           {/* Documents had no entry point at all before 2026-09-02: a shop
@@ -263,11 +312,6 @@ export default function PartnerSettingsScreen() {
             <Text style={[styles.linkRowText, { color: colors.text }]}>Language</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
-
-          <Pressable style={[styles.logoutBtn, { borderTopColor: colors.border }]} onPress={logout}>
-            <Icon name="LogOut" size={16} color="#DC2626" />
-            <Text style={styles.logoutText}>Sign Out</Text>
-          </Pressable>
         </View>
 
         <Pressable
@@ -278,6 +322,21 @@ export default function PartnerSettingsScreen() {
           {saving
             ? <ActivityIndicator color="#fff" />
             : <Text style={styles.saveBtnText}>Save Changes</Text>}
+        </Pressable>
+
+        {/* Sign out sits under Save Changes rather than inside the account
+            card (founder, 2026-09-03). It is not a setting, so it does not
+            belong in a list of them, and leaving the store is the last
+            thing on the screen before the one genuinely destructive action.
+
+            Its own outlined button now: as a card row it carried a top
+            divider that only made sense with rows above it. */}
+        <Pressable
+          style={[styles.logoutBtn, { backgroundColor: colors.error + '14', borderColor: colors.error + '55' }]}
+          onPress={logout}
+        >
+          <Icon name="LogOut" size={16} color={colors.error} />
+          <Text style={[styles.logoutText, { color: colors.error }]}>Sign Out</Text>
         </Pressable>
 
         <ClosingSection storeId={user?.partnerStoreId ?? ''} />
@@ -320,8 +379,27 @@ const styles = StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: 16, borderTopWidth: 1,
   },
   linkRowText: { flex: 1, fontSize: 15, fontWeight: '600' },
-  logoutBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, borderTopWidth: 1 },
-  logoutText:    { fontSize: 15, fontWeight: '600', color: '#DC2626' },
+  /**
+   * Tinted, not filled.
+   *
+   * Filled solid #EF4444 made signing out the loudest thing on a screen
+   * whose only irreversible action is Close This Store. This is the same
+   * treatment the customer app uses, and the same one delete-account.tsx
+   * already uses two folders away: error at 8% for the ground, error at
+   * 33% for the edge, error at full strength for the text and icon.
+   *
+   * Derived from colors.error rather than copied from customer's literal
+   * #FEF2F2 and #FECACA, which are in no palette and are light-mode
+   * values: on a dark phone they render as a near-white slab, which is
+   * the exact fault this app keeps being caught for.
+   */
+  logoutBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                   paddingVertical: 16, borderRadius: 14, borderWidth: 1.5, marginTop: 10 },
+  // Colour comes from the theme. This was #DC2626, which is in no palette:
+  // a fixed dark red that the dark theme never gets to lighten.
+  logoutText:    { fontSize: 16, fontWeight: '700' },
+  storeAvatar:      { width: 44, height: 44, borderRadius: 10 },
+  storeAvatarEmpty: { alignItems: 'center', justifyContent: 'center' },
 
   saveBtn:       { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
   saveBtnDisabled: { opacity: 0.5 },
