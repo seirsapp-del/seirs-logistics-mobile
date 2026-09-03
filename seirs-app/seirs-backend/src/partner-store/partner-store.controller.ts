@@ -43,9 +43,18 @@ export class PartnerStoreController {
   uploadDocument(
     @CurrentUser() user: any,
     @Param('docId') docId: string,
-    @Body() body: { url: string },
+    @Body() body: { url: string; lat?: number; lng?: number; accuracyM?: number },
   ) {
-    return this.docs.upload(user.id, docId, body?.url);
+    /**
+     * lat, lng and accuracyM are optional on the wire and only recorded
+     * for the premises photographs. A phone that refused the permission,
+     * or could not get a fix under a zinc roof, still uploads: the
+     * absence is shown to the reviewer rather than used to refuse
+     * somebody their application.
+     */
+    return this.docs.upload(user.id, docId, body?.url, {
+      lat: body?.lat, lng: body?.lng, accuracyM: body?.accuracyM,
+    });
   }
 
   // POST /api/v1/partner-store/:storeId/close  { reason? }

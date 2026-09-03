@@ -6,7 +6,9 @@ import { Repository, DataSource } from 'typeorm';
 import { PartnerStore } from '../business/partner-store.entity';
 import { KycDocument } from '../kyc/kyc-document.entity';
 import { KycDocumentsService } from '../kyc/kyc-documents.service';
-import { PARTNER_DOC_IDS, docLabel } from '../kyc/kyc-labels';
+import {
+  PARTNER_DOC_IDS, PARTNER_DOC_SPEC, docLabel, partnerDocSpec,
+} from '../kyc/kyc-labels';
 
 /**
  * A partner store's KYC documents, reviewed one at a time.
@@ -23,6 +25,23 @@ import { PARTNER_DOC_IDS, docLabel } from '../kyc/kyc-labels';
  * store a user runs, keeping the legacy URL columns in step, and listing
  * documents with the shop's name attached.
  */
+/**
+ * Above this many metres of reported uncertainty, a fix is too vague to
+ * argue from. Founder's figure, 2026-09-03.
+ */
+const ACCURACY_LIMIT_M = 50;
+
+/**
+ * Above this, the photograph was taken somewhere else.
+ *
+ * Deliberately generous. A market stall's pin can sit on the road outside
+ * rather than in the stall, a phone can be a street off, and the address
+ * itself came from an autocomplete that may have chosen the building
+ * next door. 500m is well past all of that and well short of the 40km
+ * case this exists to catch.
+ */
+const FAR_FROM_STORE_M = 500;
+
 @Injectable()
 export class PartnerDocumentsService {
   private readonly logger = new Logger(PartnerDocumentsService.name);
@@ -31,8 +50,31 @@ export class PartnerDocumentsService {
   private static readonly LEGACY_COLUMN: Record<string, string> = {
     storefront_photo: 'storefrontPhotoUrl',
     cac_registration: 'cacRegUrl',
-    owner_id:         'ownerIdUrl',
+    // owner_id_front since 2026-09-03, when the ID became two sides. The
+    // back has no legacy column and needs none: nothing outside the
+    // review store has ever read it.
+    owner_id_front:   'ownerIdUrl',
   };
+
+  /**
+   * How far a photograph was taken from the address it claims, in metres.
+   *
+   * Great-circle rather than road distance, deliberately: the question is
+   * "is this the same place", not "how long is the drive". A storefront
+   * photograph 40km from the stated address is the signal; 300m is a
+   * phone with a poor fix and means nothing.
+   */
+  private static metresBetween(
+    aLat: number, aLng: number, bLat: number, bLng: number,
+  ): number {
+    const R = 6_371_000;
+    const rad = (d: number) => (d * Math.PI) / 180;
+    const dLat = rad(bLat - aLat);
+    const dLng = rad(bLng - aLng);
+    const h = Math.sin(dLat / 2) ** 2
+      + Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2;
+    return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(h))));
+  }
 
   constructor(
     @InjectRepository(PartnerStore) private readonly stores: Repository<PartnerStore>,
@@ -66,24 +108,48 @@ export class PartnerDocumentsService {
     const rows  = await this.kyc.listFor('partner_store', store.id);
     const byId  = new Map(rows.map(r => [r.docId, r]));
 
+    /**
+     * Every slot, present or not, with what policy says about it.
+     *
+     * The app needs the group, the hint and whether it is required in
+     * order to show four sections rather than one flat list, and it
+     * cannot invent any of that: required-ness is a fact about the KIND
+     * of document, and a slot nobody has filled has no row to carry it.
+     */
+    const documents = PARTNER_DOC_SPEC.map(spec => {
+      const row = byId.get(spec.docId);
+      const base = {
+        docId:         spec.docId,
+        label:         spec.label,
+        group:         spec.group,
+        hint:          spec.hint,
+        required:      spec.required,
+        needsLocation: spec.needsLocation,
+        canExpire:     spec.canExpire,
+      };
+      if (!row) {
+        return {
+          ...base,
+          id: null, url: null, status: 'missing' as const,
+          rejectionReason: null, reviewedAt: null, reviewedById: null,
+          expiresAt: null, version: 0, updatedAt: null,
+        };
+      }
+      return { ...row, ...base };
+    });
+
+    const missingRequired = documents
+      .filter(d => d.required && (d.status === 'missing' || d.status === 'rejected'))
+      .map(d => d.docId);
+
     return {
       storeId:     store.id,
       storeName:   store.storeName,
       storeStatus: store.status,
-      documents: PARTNER_DOC_IDS.map(docId => byId.get(docId) ?? {
-        id:              null,
-        docId,
-        label:           docLabel('partner_store', docId),
-        url:             null,
-        status:          'missing' as const,
-        rejectionReason: null,
-        reviewedAt:      null,
-        reviewedById:    null,
-        expiresAt:       null,
-        canExpire:       docId !== 'storefront_photo',
-        version:         0,
-        updatedAt:       null,
-      }),
+      documents,
+      /** What still stands between this shop and a decision. */
+      missingRequired,
+      complete: missingRequired.length === 0,
     };
   }
 
@@ -100,8 +166,14 @@ export class PartnerDocumentsService {
    * the application view and the backfill all still read it. One source of
    * truth would be better and is not today's change.
    */
-  async upload(userId: string, docId: string, url: string) {
-    if (!(PARTNER_DOC_IDS as readonly string[]).includes(docId)) {
+  async upload(
+    userId: string,
+    docId: string,
+    url: string,
+    capture?: { lat?: number; lng?: number; accuracyM?: number },
+  ) {
+    const spec = partnerDocSpec(docId);
+    if (!spec) {
       throw new BadRequestException(
         `Unknown document. Expected one of: ${PARTNER_DOC_IDS.join(', ')}.`,
       );
@@ -111,6 +183,20 @@ export class PartnerDocumentsService {
       throw new BadRequestException('That does not look like an uploaded file.');
     }
 
+    /**
+     * A premises photograph is asked to say where it was taken, and is
+     * still accepted when it cannot.
+     *
+     * The permission is refusable and a fix can fail indoors under a
+     * zinc roof, which describes a great many Nigerian shops. Refusing
+     * the upload would punish somebody for their building. The absence
+     * is recorded and shown to the reviewer instead.
+     */
+    const lat = Number.isFinite(capture?.lat as number) ? Number(capture!.lat) : null;
+    const lng = Number.isFinite(capture?.lng as number) ? Number(capture!.lng) : null;
+    const acc = Number.isFinite(capture?.accuracyM as number)
+      ? Math.round(Number(capture!.accuracyM)) : null;
+
     const store = await this.storeForUser(userId);
     const res = await this.kyc.upsert({
       ownerType:   'partner_store',
@@ -118,6 +204,9 @@ export class PartnerDocumentsService {
       ownerUserId: store.userId,
       docId,
       url: clean,
+      capturedLat:       spec.needsLocation ? lat : null,
+      capturedLng:       spec.needsLocation ? lng : null,
+      capturedAccuracyM: spec.needsLocation ? acc : null,
     });
 
     const column = PartnerDocumentsService.LEGACY_COLUMN[docId];
@@ -209,9 +298,57 @@ export class PartnerDocumentsService {
     };
   }
 
-  counts()                 { return this.kyc.counts('partner_store'); }
-  expiring(days = 30)      { return this.kyc.expiring(days, 'partner_store'); }
-  listForStore(storeId: string) { return this.kyc.listFor('partner_store', storeId); }
+  counts()            { return this.kyc.counts('partner_store'); }
+  expiring(days = 30) { return this.kyc.expiring(days, 'partner_store'); }
+
+  /**
+   * One shop's documents, with the question a reviewer actually has.
+   *
+   * That question is not "what are the coordinates", it is "was this
+   * photographed at the shop it claims to be". So the raw pair is turned
+   * into a distance from the stated address and a plain verdict, because
+   * nobody should be doing great-circle arithmetic in their head at
+   * eleven at night.
+   *
+   * Three separate things can be wrong and they are NOT the same:
+   *   noLocation  the phone never said. Common indoors, means nothing.
+   *   imprecise   it said, badly. A poor fix, not a lie.
+   *   farFromStore it said clearly, and it was somewhere else.
+   * Only the third is a fraud signal. Collapsing them into one flag
+   * would put honest applicants under a cloud for having a zinc roof.
+   */
+  async listForStore(storeId: string) {
+    const rows  = await this.kyc.listFor('partner_store', storeId);
+    const store = await this.stores.findOne({ where: { id: storeId } });
+
+    const sLat = store?.storeLat != null ? Number(store.storeLat) : null;
+    const sLng = store?.storeLng != null ? Number(store.storeLng) : null;
+    const haveStorePin = Number.isFinite(sLat as number) && Number.isFinite(sLng as number);
+
+    return rows.map(d => {
+      const spec = partnerDocSpec(d.docId);
+      const lat  = (d as any).capturedLat;
+      const lng  = (d as any).capturedLng;
+      const acc  = (d as any).capturedAccuracyM as number | null;
+      const located = Number.isFinite(lat) && Number.isFinite(lng);
+
+      const metresFromStore = (located && haveStorePin)
+        ? PartnerDocumentsService.metresBetween(lat, lng, sLat as number, sLng as number)
+        : null;
+
+      return {
+        ...d,
+        group:         spec?.group    ?? null,
+        required:      spec?.required ?? false,
+        needsLocation: spec?.needsLocation ?? false,
+        metresFromStore,
+        // Only meaningful on a document we asked to be located.
+        noLocation:   (spec?.needsLocation ?? false) && !located,
+        imprecise:    located && acc != null && acc > ACCURACY_LIMIT_M,
+        farFromStore: metresFromStore != null && metresFromStore > FAR_FROM_STORE_M,
+      };
+    });
+  }
 
   /**
    * Record the three documents an application arrives with.

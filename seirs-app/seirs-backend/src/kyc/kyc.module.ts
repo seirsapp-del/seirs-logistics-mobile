@@ -81,6 +81,19 @@ export class KycModule implements OnModuleInit {
         `CREATE INDEX IF NOT EXISTS "kyc_documents_owner_user"
            ON "kyc_documents" ("ownerUserId")`,
       );
+      /**
+       * Where a premises photograph was taken (2026-09-03).
+       *
+       * Added after the table shipped, so they arrive as ALTERs. All
+       * nullable: a refused location permission must never stop somebody
+       * sending a document, and every row written before today has none.
+       */
+      await this.ds.query(
+        `ALTER TABLE "kyc_documents"
+           ADD COLUMN IF NOT EXISTS "capturedLat" numeric(10,7) NULL,
+           ADD COLUMN IF NOT EXISTS "capturedLng" numeric(10,7) NULL,
+           ADD COLUMN IF NOT EXISTS "capturedAccuracyM" integer NULL`,
+      );
     } catch (e: any) {
       this.logger.error(`kyc_documents table ensure failed: ${e?.message ?? e}`);
     }
@@ -176,6 +189,44 @@ export class KycModule implements OnModuleInit {
     }
 
     /**
+     * owner_id became owner_id_front (2026-09-03).
+     *
+     * The partner document set now asks for both sides of the ID, the way
+     * drivers always have: the front carries the face and the name, the
+     * back carries the address. A single "owner_id" cannot say which side
+     * it holds, and every existing row is a front, because that is what
+     * the old form asked for.
+     *
+     * Renamed rather than re-uploaded, so a store that has already been
+     * reviewed keeps its decision, its reviewer and its date. Guarded
+     * against the unique index: if a store somehow has both, the existing
+     * owner_id_front wins and the old row is left alone rather than
+     * colliding.
+     */
+    try {
+      const r = await this.ds.query(`
+        UPDATE "kyc_documents" k
+           SET "docId" = 'owner_id_front'
+         WHERE k."ownerType" = 'partner_store'
+           AND k."docId" = 'owner_id'
+           AND NOT EXISTS (
+             SELECT 1 FROM "kyc_documents" x
+              WHERE x."ownerType" = 'partner_store'
+                AND x."ownerId"   = k."ownerId"
+                AND x."docId"     = 'owner_id_front'
+           )
+        RETURNING "id"
+      `);
+      const n = Array.isArray(r) ? r.length : (r?.rowCount ?? 0);
+      if (n) this.logger.log(`partner owner_id renamed to owner_id_front: ${n}`);
+      KYC_HEAL_REPORT.partnerOwnerIdRename = { ok: true, rows: n };
+    } catch (e: any) {
+      const msg = e?.message ?? String(e);
+      this.logger.error(`owner_id rename failed: ${msg}`);
+      KYC_HEAL_REPORT.partnerOwnerIdRename = { ok: false, error: msg };
+    }
+
+    /**
      * Backfill the partner stores that already uploaded.
      *
      * Their three documents live as URL columns on partner_stores with one
@@ -200,7 +251,7 @@ export class KycModule implements OnModuleInit {
     const PARTNER_DOCS: Array<[string, string]> = [
       ['storefront_photo', 'storefrontPhotoUrl'],
       ['cac_registration', 'cacRegUrl'],
-      ['owner_id',         'ownerIdUrl'],
+      ['owner_id_front',   'ownerIdUrl'],
     ];
 
     let partnerRows = 0;

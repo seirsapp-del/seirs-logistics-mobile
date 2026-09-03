@@ -141,6 +141,30 @@ export class KycDocument {
   @Column({ type: 'timestamptz', nullable: true })
   expiryWarnedAt: Date | null;
 
+  /**
+   * Where the photograph was taken, and how sure the phone was.
+   *
+   * Only the premises photographs carry this (see needsLocation in
+   * kyc-labels). A CAC certificate is photographed at a kitchen table and
+   * that location says nothing. A storefront photograph taken 40km from
+   * the address it claims is the cheapest fraud signal available to us,
+   * and it costs three columns.
+   *
+   * Nullable throughout: every document uploaded before 2026-09-03 has
+   * none of this, a phone may refuse the permission, and a refused
+   * permission must never block somebody from sending a document. It is
+   * a signal for a reviewer, not a gate.
+   */
+  @Column({ type: 'numeric', precision: 10, scale: 7, nullable: true })
+  capturedLat: string | null;
+
+  @Column({ type: 'numeric', precision: 10, scale: 7, nullable: true })
+  capturedLng: string | null;
+
+  /** Metres of uncertainty the device reported. Above ~50 is flagged. */
+  @Column({ type: 'int', nullable: true })
+  capturedAccuracyM: number | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

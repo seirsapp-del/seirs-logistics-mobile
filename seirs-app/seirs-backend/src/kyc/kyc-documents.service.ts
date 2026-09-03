@@ -106,8 +106,24 @@ export class KycDocumentsService {
     ownerUserId: string | null;
     docId:       string;
     url:         string;
+    /**
+     * Where the photograph was taken, when the device could say.
+     *
+     * Always overwritten alongside the url, including with nulls: a new
+     * file taken with location refused must not inherit the coordinates
+     * of the one it replaced, or the second upload silently borrows the
+     * first one's alibi.
+     */
+    capturedLat?:       number | null;
+    capturedLng?:       number | null;
+    capturedAccuracyM?: number | null;
   }) {
     const { ownerType, ownerId, ownerUserId, docId, url } = params;
+    const capture = {
+      capturedLat:       params.capturedLat       ?? null,
+      capturedLng:       params.capturedLng       ?? null,
+      capturedAccuracyM: params.capturedAccuracyM ?? null,
+    };
     const existing = await this.docs.findOne({ where: { ownerType, ownerId, docId } });
 
     if (existing) {
@@ -121,11 +137,12 @@ export class KycDocumentsService {
         version:         existing.version + 1,
         expiresAt:       null,
         expiryWarnedAt:  null,
+        ...capture,
       } as any);
       return { docId, saved: true, status: 'submitted' as const, version: existing.version + 1 };
     }
 
-    await this.docs.save(this.docs.create({ ownerType, ownerId, ownerUserId, docId, url }));
+    await this.docs.save(this.docs.create({ ownerType, ownerId, ownerUserId, docId, url, ...capture } as any));
     return { docId, saved: true, status: 'submitted' as const, version: 1 };
   }
 
@@ -148,6 +165,9 @@ export class KycDocumentsService {
       canExpire:       docCanExpire(d.docId),
       version:         d.version,
       updatedAt:       d.updatedAt,
+      capturedLat:       d.capturedLat != null ? Number(d.capturedLat) : null,
+      capturedLng:       d.capturedLng != null ? Number(d.capturedLng) : null,
+      capturedAccuracyM: d.capturedAccuracyM,
     }));
   }
 
