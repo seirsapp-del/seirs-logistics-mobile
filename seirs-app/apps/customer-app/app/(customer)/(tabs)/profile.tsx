@@ -90,11 +90,17 @@ export default function ProfileScreen() {
 
   const handleExportData = async () => {
     try {
-      await usersApi.exportData();
-      alertDialog('Export queued',
-        'Your data export has been requested. You will receive an email with the download link within 24 hours.');
+      // Was: await usersApi.exportData() with the response DISCARDED, then a
+      // promise of an email within 24 hours. No export email exists anywhere
+      // in the backend, so nothing ever arrived. The bundle now lands in
+      // Documents, next to statements and letters, where it can be read and
+      // shared. Rate limited server-side to one per 24 hours: building it
+      // walks every delivery, payment and audit row the person owns.
+      const r: any = await usersApi.requestExportToDocuments();
+      alertDialog(r?.ok ? 'Your data is ready' : 'Already prepared',
+        r?.message ?? 'Open Documents to read or share it.');
     } catch {
-      alertDialog('Export failed', 'Please try again later, or contact support.');
+      alertDialog('Could not prepare it', 'Please try again later, or contact support.');
     }
   };
 
@@ -214,7 +220,7 @@ export default function ProfileScreen() {
          * queues an export. The rest was three legal links to a parked
          * domain, a toggle nothing honoured, and a duplicate of this row.
          */
-        { icon: 'download-outline', label: t('profile.exportData', { defaultValue: 'Download my data' }), sub: t('profile.exportDataSub', { defaultValue: 'We email you a copy within 24 hours' }), onPress: () => handleExportData() },
+        { icon: 'download-outline', label: t('profile.exportData', { defaultValue: 'Download my data' }), sub: t('profile.exportDataSub', { defaultValue: 'Saved to your Documents' }), onPress: () => handleExportData() },
         { icon: 'trash-outline', label: t('profile.deleteAccount', { defaultValue: 'Delete Account' }), sub: t('profile.deleteAccountSub', { defaultValue: 'Close your SEIRS account for good' }), onPress: () => router.push('/(customer)/delete-account' as any), danger: true },
       ],
     },

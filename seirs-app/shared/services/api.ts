@@ -206,6 +206,12 @@ export const usersApi = {
     request<{ message: string }>('POST', '/users/me/cancel-deletion'),
   // NDPR Article 24. right to data portability. Returns a JSON dump.
   exportData: () => request<any>('GET', '/users/me/export'),
+  // Files the export into the user's Documents shelf and returns a result.
+  // exportData above returns the bundle to whoever called it, and every app
+  // discarded it while promising an email that does not exist.
+  requestExportToDocuments: () =>
+    request<{ ok: boolean; reason?: string; hoursRemaining?: number; message: string }>(
+      'POST', '/users/me/export/request'),
   // Notification opt-in toggles. Keys mirror what the apps render.
   getNotificationPrefs: () =>
     request<{ prefs: Record<string, boolean> }>('GET', '/users/me/notification-prefs'),

@@ -70,6 +70,20 @@ export default function BusinessProfileTab() {
     router.replace('/(auth)/onboarding');
   };
 
+  /* The business app had NO data export at all, while customer and driver
+     both had one that fetched the bundle and threw it away. A business owner
+     could not exercise their NDPR Article 24 right even in theory. Same
+     endpoint as the other two: the export is filed into Documents. */
+  const handleExportData = async () => {
+    try {
+      const r: any = await usersApi.requestExportToDocuments();
+      dialog.alert(r?.ok ? 'Your data is ready' : 'Already prepared',
+        r?.message ?? 'Open Documents to read or share it.');
+    } catch {
+      dialog.alert('Could not prepare it', 'Please try again later, or contact support.');
+    }
+  };
+
   const sections: Array<{ title: string; items: Array<{ icon: string; label: string; onPress: () => void; danger?: boolean }> }> = [
     {
       title: t('profile.account', { defaultValue: 'Account' }),
@@ -182,6 +196,7 @@ export default function BusinessProfileTab() {
        */
       title: t('profile.dangerZone', { defaultValue: 'Account actions' }),
       items: [
+        { icon: 'Download', label: t('profile.exportData', { defaultValue: 'Download my data' }), onPress: () => handleExportData() },
         { icon: 'Trash2', label: t('drawer.deleteAccount', { defaultValue: 'Delete Account' }), onPress: () => router.push('/(business)/delete-account' as any), danger: true },
       ],
     },

@@ -6,11 +6,15 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from './user.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { DocumentsService } from '../documents/documents.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly documents:    DocumentsService,
+  ) {}
 
   // GET /api/v1/users/me
   @Get('me')
@@ -63,6 +67,64 @@ export class UsersController {
   @Post('me/cancel-deletion')
   cancelDeletion(@CurrentUser() user: User) {
     return this.usersService.cancelDeletion(user.id);
+  }
+
+  /**
+   * POST /api/v1/users/me/export/request
+   *
+   * The apps used to call GET me/export, THROW THE RESPONSE AWAY, and tell
+   * the person "you will receive an email with the download link within 24
+   * hours". No such email exists: no template, no queue, no cron. Anyone
+   * exercising their NDPR Article 24 right got a reassuring message and
+   * nothing else, permanently.
+   *
+   * So the copy is not the fix. The export is filed into the same Documents
+   * shelf that already carries statements and letters, where it is viewable
+   * and survives the app being closed. No mail transport, no file system,
+   * no native module: the shelf and its viewer already exist.
+   *
+   * Rate limited to one per 24 hours because building the bundle walks
+   * every delivery, payment and audit row the person owns, and a bored
+   * thumb on that row is a free way to load the database.
+   */
+  @Throttle({ default: { limit: 3, ttl: 86_400_000 } })
+  @Post('me/export/request')
+  async requestExportToDocuments(@CurrentUser() user: User) {
+    const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+    const mine = await this.documents.listMine(user.id).catch(() => [] as any[]);
+    const last = (mine ?? []).find((d: any) => d?.category === 'other' && /your seirs data/i.test(d?.title ?? ''));
+    if (last?.createdAt) {
+      const age = Date.now() - new Date(last.createdAt).getTime();
+      if (age < COOLDOWN_MS) {
+        const hours = Math.max(1, Math.ceil((COOLDOWN_MS - age) / (60 * 60 * 1000)));
+        return {
+          ok: false,
+          reason: 'cooldown',
+          hoursRemaining: hours,
+          message: `Your data is already in Documents. You can ask for a fresh copy in ${hours} hour${hours === 1 ? '' : 's'}.`,
+        };
+      }
+    }
+
+    const bundle = await this.usersService.exportUserData(user.id);
+    const html   = buildHtmlExport(bundle);
+    const when   = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const doc = await this.documents.sendToUser(
+      user.id,
+      {
+        title:    `Your SEIRS data, ${when}`,
+        category: 'other',
+        body:     html,
+      },
+      { id: undefined, name: 'SEIRS' },
+    );
+
+    return {
+      ok: true,
+      documentId: (doc as any)?.id ?? null,
+      message: 'Your data is ready. Open Documents to read or share it.',
+    };
   }
 
   // GET /api/v1/users/me/export?format=json|html|csv
