@@ -100,6 +100,14 @@ export default function PartnerLayout() {
       <Tabs.Screen name="language"         options={HIDDEN} />
       <Tabs.Screen name="receive-dropoff"  options={HIDDEN} />
       <Tabs.Screen name="release-pickup"   options={HIDDEN} />
+      {/* Added 2026-09-03 and immediately proved the comment above right.
+          Both were created as route files without being registered here, so
+          they became tabs six and seven: labels truncated to "docume..." and
+          "stateme...", and no icon at all because a tab with no tabBarIcon
+          renders the missing-glyph box. Documents is reached from Store
+          Settings and the statement from Payout History. */}
+      <Tabs.Screen name="documents"        options={HIDDEN} />
+      <Tabs.Screen name="statement"        options={HIDDEN} />
     </Tabs>
   );
 }
