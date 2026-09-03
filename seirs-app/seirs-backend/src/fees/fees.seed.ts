@@ -163,6 +163,15 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Levels at or above this require verified identity (per the identity policy). Auto-raise stops below it for unverified drivers.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 6 },
 
+  // Nothing stopped a rider swapping vehicle weekly, which fills the review
+  // queue with one person and leaves a plate history nobody can follow.
+  // Set to 0 to switch the cooldown off entirely. Support can always let a
+  // rider through early: bikes are genuinely stolen here, sometimes twice,
+  // and a hard lock with no route through it costs us the courier.
+  { key: 'driver_vehicle_change_cooldown_days', name: 'Vehicle change cooldown',
+    description: 'Days a rider must wait after an APPROVED vehicle change before requesting another. Support can override for a theft or write-off. 0 disables it.',
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.DAYS, value: 30 },
+
   // ── Commission ─────────────────────────────────────────────────────────
 
   // ── Customer-side fees ─────────────────────────────────────────────────

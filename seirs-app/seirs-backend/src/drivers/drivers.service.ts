@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { In, LessThan, Repository } from 'typeorm';
+import { In, LessThan, MoreThan, Repository } from 'typeorm';
 import { Driver, DriverStatus, VehicleType } from './driver.entity';
 import { TripStop } from './trip-stop.entity';
 import { DriverTrip, DriverTripStatus } from './driver-trip.entity';
@@ -2082,6 +2082,57 @@ export class DriversService {
         'VEHICLE_CHANGE_PENDING: you already have a vehicle change under review. Withdraw it first if you need to change the details.',
       );
     }
+
+    /* Cooldown after an APPROVED change, with a way through it.
+     *
+     * Nothing stopped a rider swapping vehicle weekly, which is a review
+     * queue filled by one person and a plate history nobody can follow.
+     *
+     * The escape hatch is not optional. Bikes are genuinely stolen in
+     * Lagos, sometimes twice, and a hard lock with no route through it
+     * means a rider with a stolen okada cannot work for a month. They will
+     * not wait: they will go to whoever asks fewer questions. Support can
+     * approve the next one directly, which is rare, deliberate and logged.
+     *
+     * Days come from the Fee Catalogue so the number is yours to move
+     * without a deploy.
+     */
+    const cooldownDays = Number(
+      await this.feesService.getValueOr('driver_vehicle_change_cooldown_days', 30).catch(() => 30),
+    ) || 0;
+
+    if (cooldownDays > 0) {
+      const lastApproved = await this.vehicleChangesRepo.findOne({
+        where:  { driverId: driver.id, status: VehicleChangeStatus.APPROVED },
+        order:  { decidedAt: 'DESC' },
+      });
+      const decidedAt = (lastApproved as any)?.decidedAt ?? (lastApproved as any)?.createdAt ?? null;
+      if (decidedAt) {
+        const elapsedMs = Date.now() - new Date(decidedAt).getTime();
+        const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
+        if (elapsedMs < cooldownMs) {
+          const daysLeft = Math.max(1, Math.ceil((cooldownMs - elapsedMs) / (24 * 60 * 60 * 1000)));
+          throw new BadRequestException(
+            `VEHICLE_CHANGE_COOLDOWN: you changed vehicle recently, so the next change can be requested in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. ` +
+            'If your vehicle was stolen or written off, message support and they will open it for you now.',
+          );
+        }
+      }
+    }
+
+    /* Repeat changes get a person's attention, not a block. A rider with
+     * genuinely bad luck and a rider laundering plates look identical from
+     * here. Swallowed and logged: a detector that has silently stopped
+     * running looks exactly like a platform with no fraud on it. */
+    const CHURN_WINDOW_DAYS = 90;
+    void (async () => {
+      const since = new Date(Date.now() - CHURN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+      const recent = await this.vehicleChangesRepo.count({
+        where: { driverId: driver.id, status: VehicleChangeStatus.APPROVED, decidedAt: MoreThan(since) },
+      });
+      await this.fraudService.checkVehicleChurn(userId, recent + 1, CHURN_WINDOW_DAYS);
+    })().catch((e: any) =>
+      this.logger?.warn?.(`vehicle churn check failed for ${userId}: ${e?.message ?? e}`));
 
     const vehicleType = String(body.vehicleType ?? driver.vehicleType ?? '').trim().slice(0, 24);
     if (!Object.values(VehicleType).includes(vehicleType as VehicleType)) {

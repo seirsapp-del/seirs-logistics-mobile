@@ -128,6 +128,32 @@ export class FraudService {
     }
   }
 
+  // ── Vehicle churn ──────────────────────────────────────────────────
+
+  /**
+   * A rider changing vehicle again and again.
+   *
+   * FLAGS, NEVER BLOCKS, and that is the whole design. A rider whose okada
+   * is stolen twice in a quarter and a rider laundering plates produce the
+   * identical count, and only a person can tell them apart. Blocking the
+   * first one costs us a courier who has already had a terrible month.
+   *
+   * The submit path enforces a cooldown separately; this is the pattern
+   * that survives the cooldown, which is the interesting case.
+   */
+  async checkVehicleChurn(userId: string, changesInWindow: number, windowDays: number) {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) return;
+
+    if (changesInWindow >= 3) {
+      await this.createFlagIfNew(user, FraudFlagType.VEHICLE_CHURN, {
+        changesInWindow,
+        windowDays,
+        note: 'Approved vehicle changes in the window. Not evidence of anything on its own: check whether the plates trace to one owner.',
+      });
+    }
+  }
+
   // ── Admin: list all open flags (paginated) ──────────────────────────────────
 
   async getFlags(page: number, limit: number, status?: string) {

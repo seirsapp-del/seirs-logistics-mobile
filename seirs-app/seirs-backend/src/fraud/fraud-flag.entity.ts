@@ -7,6 +7,7 @@ export enum FraudFlagType {
   GPS_VELOCITY_ANOMALY    = 'gps_velocity_anomaly',
   DUPLICATE_ACCOUNT       = 'duplicate_account',
   SUSPICIOUS_WITHDRAWAL   = 'suspicious_withdrawal',
+  VEHICLE_CHURN           = 'vehicle_churn',
 }
 
 export enum FraudFlagStatus {
