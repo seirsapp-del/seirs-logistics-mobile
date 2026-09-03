@@ -167,7 +167,7 @@ export default function ApplyPartnerScreen() {
           <Text style={[styles.statusTitle, { color: colors.text }]}>Application under review</Text>
           <Text style={[styles.statusBody, { color: colors.textSecond }]}>
             SEIRS is reviewing your KYC documents for <Text style={[styles.bold, { color: colors.text }]}>{existing.storeName}</Text>.
-            Reviews typically complete within 24-48 hours. We&apos;ll send an email when you&apos;re approved.
+            Reviews take up to 3 business days. We&apos;ll send an email when you&apos;re approved.
           </Text>
         </View>
       </View>
@@ -214,7 +214,7 @@ export default function ApplyPartnerScreen() {
         <Text style={[styles.heading, { color: colors.text }]}>Apply to be a Partner Store</Text>
         <Text style={[styles.sub, { color: colors.textSecond }]}>
           Operate a SEIRS collection point. Earn a fee on every package, weekly payouts.
-          We&apos;ll review your KYC docs within 24-48 hours.
+          We&apos;ll review your KYC docs within 3 business days.
         </Text>
 
         {existing?.status === 'rejected' && existing.reviewNote && (

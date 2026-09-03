@@ -6,7 +6,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft, FileText, Download, ChevronRight, Calendar, Receipt, AlertCircle,
+  ArrowLeft, FileText, Download, ChevronRight, Calendar, Receipt, AlertCircle, Share2,
   FileSignature, Mail, ShieldCheck, File,
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -267,7 +267,7 @@ export default function TaxDocsScreen() {
                   </Text>
                 </View>
                 <View style={[styles.shareBtn, { backgroundColor: theme.primary }]}>
-                  <Download size={14} color="#fff" />
+                  <Share2 size={14} color="#fff" />
                   <Text style={styles.shareBtnText}>Share</Text>
                 </View>
               </Pressable>
@@ -305,7 +305,7 @@ export default function TaxDocsScreen() {
                 {/* Explicit labeled button: the bare icon was invisible to
                     the founder in live testing 2026-08-09 */}
                 <View style={[styles.shareBtn, { backgroundColor: theme.primary }]}>
-                  <Download size={14} color="#fff" />
+                  <Share2 size={14} color="#fff" />
                   <Text style={styles.shareBtnText}>Share</Text>
                 </View>
               </View>

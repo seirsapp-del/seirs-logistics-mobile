@@ -564,7 +564,7 @@ export class AccountSecurityService {
       type:  NotificationType.ACCOUNT_UPDATE,
       title: approved ? 'Your identity is verified' : 'We could not verify your ID',
       body:  approved
-        ? `Your ID was approved on ${when}. Your account now carries the verified badge and its higher limits.`
+        ? `Your ID was approved on ${when}. Your account now carries the verified badge.`
         : `The ID you submitted was reviewed on ${when} and could not be approved. Reason: ${why} You can submit again from Profile.`,
       templateKey: approved ? 'identity_verification_approved' : 'identity_verification_rejected',
       vars:  approved ? { when } : { when, reason: why },

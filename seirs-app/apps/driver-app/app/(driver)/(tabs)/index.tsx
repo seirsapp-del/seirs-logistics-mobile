@@ -349,19 +349,37 @@ export default function DriverHomeScreen() {
             </View>
           </View>
 
-          {/* Approval banner: pending drivers can browse the app but
-              cannot go online (server enforces it too). Tapping opens
-              KYC so they can finish their documents. */}
+          {/* Approval banner: a rider who is not approved can browse but not
+              go online (the server enforces it too). Tapping opens KYC, or
+              support for a suspended account.
+
+              Three states, not one. The condition is "not approved", so this
+              banner also fires for REJECTED and SUSPENDED riders, and it used
+              to tell all three of them "Account under review. Complete your
+              KYC documents." A rejected rider is not under review, and a
+              suspended one will not fix anything by uploading a licence. */}
           {driverData?.status && driverData.status !== 'approved' && (
             <Pressable
-              onPress={() => router.push('/(driver)/vehicle' as any)}
+              onPress={() => router.push(
+                (driverData.status === 'suspended'
+                  ? '/(driver)/support/new'
+                  : '/(driver)/vehicle') as any,
+              )}
               style={styles.reviewBanner}
             >
               <Clock size={18} color="#FFBE0B" strokeWidth={2} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.reviewTitle}>Account under review</Text>
+                <Text style={styles.reviewTitle}>
+                  {driverData.status === 'rejected'  ? 'Application not approved'
+                    : driverData.status === 'suspended' ? 'Account suspended'
+                    : 'Account under review'}
+                </Text>
                 <Text style={styles.reviewText}>
-                  Complete your KYC documents to get approved. You can explore the app, but going online unlocks after approval.
+                  {driverData.status === 'rejected'
+                    ? 'Something was wrong with your documents. Open KYC Verification to see what to send again.'
+                    : driverData.status === 'suspended'
+                    ? 'Your account is suspended, so you cannot go online. Message support and we will sort it out.'
+                    : 'Complete your KYC documents to get approved. Reviews take up to 3 business days. You can explore the app, but going online unlocks after approval.'}
                 </Text>
               </View>
               <ChevronRight size={16} color="rgba(255,255,255,0.7)" strokeWidth={2} />

@@ -144,11 +144,11 @@ export default function AddBankScreen() {
   if (done) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl }}>
-        <View style={[styles.successCircle, { backgroundColor: savedAsPending ? '#D9770618' : '#22C55E18' }]}>
+        <View style={[styles.successCircle, { backgroundColor: (savedAsPending ? theme.warning : theme.success) + '18' }]}>
           <Ionicons
             name={savedAsPending ? 'hourglass-outline' : 'checkmark-circle'}
             size={64}
-            color={savedAsPending ? '#D97706' : '#22C55E'}
+            color={savedAsPending ? theme.warning : theme.success}
           />
         </View>
         <Text style={[styles.successTitle, { color: theme.text }]}>
@@ -156,8 +156,8 @@ export default function AddBankScreen() {
         </Text>
         <Text style={[styles.successSub, { color: theme.textSecond }]}>
           {savedAsPending
-            ? `Changing your payout account is a critical change, so our team reviews it first (up to 3 business days). ` +
-              `Payouts continue to your current account until it is approved. We will confirm in your Messages.`
+            ? `We check payout account changes, up to 3 business days. ` +
+              `Payouts pause until then, and nothing is lost.`
             : `${selectedBank?.name} account ending in ${accountNumber.slice(-4)} is now your payout account.`}
         </Text>
         <Pressable style={[styles.doneBtn, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
@@ -203,10 +203,10 @@ export default function AddBankScreen() {
 
           {/* Pending change banner */}
           {current?.pendingBankAccountNumber ? (
-            <View style={[styles.currentCard, { backgroundColor: isDark ? '#D9770622' : '#FFFBEB', borderColor: '#D9770640' }]}>
-              <Ionicons name="hourglass-outline" size={20} color="#D97706" />
+            <View style={[styles.currentCard, { backgroundColor: theme.warning + (isDark ? '22' : '14'), borderColor: theme.warning + '40' }]}>
+              <Ionicons name="hourglass-outline" size={20} color={theme.warning} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.currentLabel, { color: '#D97706' }]}>Change under review</Text>
+                <Text style={[styles.currentLabel, { color: theme.warning }]}>Change under review</Text>
                 <Text style={[styles.currentValue, { color: theme.text }]}>
                   {current.pendingBankName ?? 'New bank'} account ending {String(current.pendingBankAccountNumber).slice(-4)}.
                   Review takes up to 3 business days.

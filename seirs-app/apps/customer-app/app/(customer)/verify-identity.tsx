@@ -16,9 +16,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft, ShieldCheck, IdCard, CheckCircle2, XCircle, Clock,
-  Upload, Camera, RefreshCw, ChevronRight,
+  Upload, Camera, RefreshCw, ChevronRight, FileText, Images,
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { pickDocument, canAttachFiles } from '@/utils/documentPicker';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { userVerificationApi, uploadApi, type IdentityDocType } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
@@ -37,23 +39,28 @@ import { alertDialog } from '@/components/SeirsDialog';
 
 const DOC_OPTIONS: Array<{ value: IdentityDocType; label: string; note: string }> = [
   { value: 'nin',             label: 'NIN slip',                note: 'National Identification Number' },
-  { value: 'drivers_licence', label: 'Driver’s licence',        note: 'Nigerian licence, not expired' },
-  { value: 'passport',        label: 'International passport',  note: 'Bio-data page, not expired' },
+  { value: 'drivers_licence', label: 'Driver’s licence',        note: 'Nigerian licence, still in date' },
+  { value: 'passport',        label: 'International passport',  note: 'Bio-data page, still in date' },
   { value: 'pvc',             label: 'Voter’s card (PVC)',      note: 'Permanent Voter’s Card' },
 ];
 
-const BENEFITS = [
-  { icon: ShieldCheck, label: 'Trust badge on your profile' },
-  { icon: CheckCircle2, label: 'Higher reward and delivery limits' },
-  { icon: CheckCircle2, label: 'Access to insured deliveries' },
-  { icon: CheckCircle2, label: 'Interstate delivery' },
-  { icon: CheckCircle2, label: 'Priority support (front of the line)' },
-];
 
 export default function VerifyIdentityScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
+  const isDark = cs === 'dark';
+
+  /* One tile per slot, tapped to open a sheet, rather than a Camera and a
+     Gallery button side by side. The driver KYC screen already worked this
+     way, so a person moving between the two apps meets one interaction.
+     The PDF row is the reason it matters: a NIN slip is a PDF download from
+     the NIMC portal, and there was no way to send one. */
+  const [sheetSlot, setSheetSlot] = useState<null | {
+    title:  string;
+    setter: (url: string) => void;
+    setBusy:(b: boolean) => void;
+  }>(null);
 
   const [loadingStatus, setLoadingStatus] = useState(true);
   // Kept loosely typed on purpose so this file bundles cleanly on older
@@ -97,24 +104,43 @@ export default function VerifyIdentityScreen() {
   };
   useEffect(() => { loadStatus(); }, []);
 
-  const pickAndUpload = async (setter: (url: string) => void, setBusy: (b: boolean) => void, useCamera: boolean) => {
-    const perm = useCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm.status !== 'granted') {
-      alertDialog('Permission required', 'Please allow access to your camera/photos in Settings.');
-      return;
+  const pickAndUpload = async (
+    setter: (url: string) => void,
+    setBusy: (b: boolean) => void,
+    source: 'camera' | 'library' | 'document',
+  ) => {
+    let uri:  string | null = null;
+    // The upload helper defaults to image/jpeg, which would store a PDF
+    // under a type nothing can open, so the real one travels with it.
+    let mime = 'image/jpeg';
+
+    if (source === 'document') {
+      const picked = await pickDocument(alertDialog);
+      if (!picked) return;
+      uri = picked.uri;
+      if (picked.mimeType) mime = picked.mimeType;
+    } else {
+      const perm = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (perm.status !== 'granted') {
+        alertDialog('Permission required', 'Please allow access to your camera/photos in Settings.');
+        return;
+      }
+      const r = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ quality: 0.85, allowsEditing: false, exif: false })
+        : await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: false });
+      if (r.canceled) return;
+      uri = r.assets[0].uri;
     }
-    const r = useCamera
-      ? await ImagePicker.launchCameraAsync({ quality: 0.85, allowsEditing: false, exif: false })
-      : await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: false });
-    if (r.canceled) return;
+
+    if (!uri) return;
     setBusy(true);
     try {
-      const uploaded = await uploadApi.file(r.assets[0].uri);
+      const uploaded = await uploadApi.file(uri, mime);
       setter(uploaded.url);
     } catch (e: any) {
-      alertDialog('Upload failed', e?.message ?? 'Please try again with a smaller photo.');
+      alertDialog('Upload failed', e?.message ?? 'Please try again with a smaller file.');
     } finally {
       setBusy(false);
     }
@@ -155,7 +181,7 @@ export default function VerifyIdentityScreen() {
       });
       alertDialog(
         'Submitted',
-        'Thanks, your ID is with our review team. You will get a notification within 24 hours to 3 business days.',
+        'Thanks, your ID is with our review team. You will get a notification within 3 business days.',
         [{ text: 'OK', onPress: () => { setStep('pick'); setDocType(null); setDocUrl(''); setDocBackUrl(''); setSelfieUrl(''); setNote(''); setDocExpiryDate(''); setExpiryError(null); loadStatus(); } }],
       );
     } catch (e: any) {
@@ -198,34 +224,36 @@ export default function VerifyIdentityScreen() {
               {/* Benefits card: always show */}
               <View style={[styles.benefitsCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <Text style={[styles.benefitsTitle, { color: theme.text }]}>Why verify?</Text>
+                {/* Was a five-item tick list. Four of the five were not true:
+                    nothing keyed higher limits, insurance or support priority
+                    to identityVerifiedAt, and the interstate gate exists but
+                    ships switched off (interstate_requires_verified_id = 0).
+                    Asking for a NIN in exchange for things that do not exist
+                    is the problem; the tick list was only how it looked. */}
                 <Text style={[styles.benefitsSub, { color: theme.textSecond }]}>
-                  Verification is optional. You can keep using SEIRS with just your email. When you verify, you unlock:
+                  You do not have to. SEIRS works fully on just your email.
                 </Text>
-                <View style={{ marginTop: Spacing.sm, gap: 8 }}>
-                  {BENEFITS.map(({ icon: Icon, label }) => (
-                    <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Icon size={16} color={theme.primary} />
-                      <Text style={{ color: theme.text, fontSize: FontSize.sm }}>{label}</Text>
-                    </View>
-                  ))}
-                </View>
+                <Text style={[styles.benefitsSub, { color: theme.textSecond, marginTop: Spacing.sm }]}>
+                  Verifying puts a Verified badge on your profile, so the people you
+                  send to know who you are. More unlocks are coming.
+                </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm }}>
                   <Clock size={13} color={theme.textThird} />
                   <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
-                    Manual review. Takes 24 hours to 3 business days.
+                    Takes up to 3 business days.
                   </Text>
                 </View>
               </View>
 
               {/* Rejected banner (if last submission was rejected) */}
               {rejected && status?.latest?.rejectionReason && (
-                <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 6 }}>
+                <View style={{ backgroundColor: theme.error + (isDark ? '22' : '14'), borderColor: theme.error + '40', borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 6 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <XCircle size={16} color="#DC2626" />
-                    <Text style={{ color: '#991B1B', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Previous submission rejected</Text>
+                    <XCircle size={16} color={theme.error} />
+                    <Text style={{ color: theme.error, fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Previous submission rejected</Text>
                   </View>
-                  <Text style={{ color: '#991B1B', fontSize: FontSize.xs, lineHeight: 18 }}>{status.latest.rejectionReason}</Text>
-                  <Text style={{ color: '#991B1B', fontSize: FontSize.xs, opacity: 0.7, marginTop: 2 }}>
+                  <Text style={{ color: theme.text, fontSize: FontSize.xs, lineHeight: 18 }}>{status.latest.rejectionReason}</Text>
+                  <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginTop: 2 }}>
                     Fix the issue and re-submit below.
                   </Text>
                 </View>
@@ -233,19 +261,19 @@ export default function VerifyIdentityScreen() {
 
               {/* Revoked banner: admin manually reversed a previously-approved verification. */}
               {revoked && (
-                <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 6 }}>
+                <View style={{ backgroundColor: theme.error + (isDark ? '22' : '14'), borderColor: theme.error + '40', borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 6 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <XCircle size={16} color="#DC2626" />
-                    <Text style={{ color: '#991B1B', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Verification revoked</Text>
+                    <XCircle size={16} color={theme.error} />
+                    <Text style={{ color: theme.error, fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Verification revoked</Text>
                   </View>
                   {status?.latest?.revokedReason ? (
-                    <Text style={{ color: '#991B1B', fontSize: FontSize.xs, lineHeight: 18 }}>{status.latest.revokedReason}</Text>
+                    <Text style={{ color: theme.text, fontSize: FontSize.xs, lineHeight: 18 }}>{status.latest.revokedReason}</Text>
                   ) : (
-                    <Text style={{ color: '#991B1B', fontSize: FontSize.xs, lineHeight: 18 }}>
+                    <Text style={{ color: theme.text, fontSize: FontSize.xs, lineHeight: 18 }}>
                       Your verified status was reversed by our compliance team.
                     </Text>
                   )}
-                  <Text style={{ color: '#991B1B', fontSize: FontSize.xs, opacity: 0.7, marginTop: 2 }}>
+                  <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginTop: 2 }}>
                     You can re-submit below. Contact support if you believe this was in error.
                   </Text>
                 </View>
@@ -297,8 +325,7 @@ export default function VerifyIdentityScreen() {
                     url={docUrl}
                     busy={uploadingDoc}
                     hint="Well-lit, no glare, all four corners visible."
-                    onCamera={() => pickAndUpload(setDocUrl, setUploadingDoc, true)}
-                    onGallery={() => pickAndUpload(setDocUrl, setUploadingDoc, false)}
+                    onPress={() => setSheetSlot({ title: 'Front of your ID', setter: setDocUrl, setBusy: setUploadingDoc })}
                   />
 
                   <Text style={[styles.stepLabel, { color: theme.textSecond }]}>3. Back of your ID</Text>
@@ -307,8 +334,7 @@ export default function VerifyIdentityScreen() {
                     url={docBackUrl}
                     busy={uploadingDocBack}
                     hint={backOfIdHint(docType)}
-                    onCamera={() => pickAndUpload(setDocBackUrl, setUploadingDocBack, true)}
-                    onGallery={() => pickAndUpload(setDocBackUrl, setUploadingDocBack, false)}
+                    onPress={() => setSheetSlot({ title: 'Back of your ID', setter: setDocBackUrl, setBusy: setUploadingDocBack })}
                   />
 
                   <Text style={[styles.stepLabel, { color: theme.textSecond }]}>4. Selfie holding the ID next to your face</Text>
@@ -317,8 +343,7 @@ export default function VerifyIdentityScreen() {
                     url={selfieUrl}
                     busy={uploadingSelfie}
                     hint="Your face + the ID both visible. This proves the ID is yours."
-                    onCamera={() => pickAndUpload(setSelfieUrl, setUploadingSelfie, true)}
-                    onGallery={() => pickAndUpload(setSelfieUrl, setUploadingSelfie, false)}
+                    onPress={() => setSheetSlot({ title: 'Selfie with your ID', setter: setSelfieUrl, setBusy: setUploadingSelfie })}
                   />
 
                   {/* Expiry date: only relevant for docs that actually expire.
@@ -377,6 +402,55 @@ export default function VerifyIdentityScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <BottomSheet
+        visible={!!sheetSlot}
+        onClose={() => setSheetSlot(null)}
+        title={sheetSlot?.title}
+        snapHeight="auto"
+      >
+        <Text style={{ color: theme.textSecond, fontSize: FontSize.sm, marginBottom: Spacing.md }}>
+          How do you want to add it?
+        </Text>
+        {([
+          { label: 'Take a photo',        sub: null,                                    Icon: Camera,   source: 'camera'   as const, primary: true  },
+          { label: 'Choose from gallery', sub: null,                                    Icon: Images,   source: 'library'  as const, primary: false },
+          // Only on a build that carries the native picker, so nobody taps a
+          // row that ends in an apology. A NIN slip is a PDF from the NIMC
+          // portal, which is why this row exists at all.
+          ...(canAttachFiles()
+            ? [{ label: 'Attach a PDF', sub: 'A file you downloaded, like your NIN slip', Icon: FileText, source: 'document' as const, primary: false }]
+            : []),
+        ]).map(({ label, sub, Icon, source, primary }) => (
+          <Pressable
+            key={label}
+            onPress={() => {
+              const slot = sheetSlot;
+              setSheetSlot(null);
+              if (slot) pickAndUpload(slot.setter, slot.setBusy, source);
+            }}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+              paddingVertical: Spacing.md, paddingHorizontal: Spacing.md,
+              borderRadius: Radius.lg, marginBottom: Spacing.sm,
+              backgroundColor: primary ? theme.primary : theme.surface,
+              borderWidth: primary ? 0 : 1, borderColor: theme.border,
+            }}
+          >
+            <Icon size={20} color={primary ? '#fff' : theme.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: primary ? '#fff' : theme.text, fontSize: FontSize.base, fontWeight: FontWeight.semibold }}>
+                {label}
+              </Text>
+              {sub ? (
+                <Text style={{ color: primary ? '#fff' : theme.textSecond, fontSize: FontSize.xs, marginTop: 2, opacity: primary ? 0.85 : 1 }}>
+                  {sub}
+                </Text>
+              ) : null}
+            </View>
+          </Pressable>
+        ))}
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -398,7 +472,7 @@ function VerifiedCard({ theme, verifiedAt, docType }: any) {
         Verified on {new Date(verifiedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })} using your {label}.
       </Text>
       <Text style={{ color: '#14532D', fontSize: FontSize.xs, opacity: 0.7, textAlign: 'center', marginTop: 4 }}>
-        Enjoy higher limits, insured deliveries, interstate access, and priority support.
+        The people you send to can now see that SEIRS has checked who you are.
       </Text>
     </View>
   );
@@ -413,7 +487,7 @@ function PendingCard({ theme, submittedAt }: any) {
       </View>
       <Text style={{ color: '#92400E', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>Under review</Text>
       <Text style={{ color: '#92400E', fontSize: FontSize.sm, textAlign: 'center' }}>
-        Submitted {hoursAgo === 0 ? 'just now' : `${hoursAgo} hour${hoursAgo === 1 ? '' : 's'} ago`}. Reviews take 24 hours to 3 business days.
+        Submitted {hoursAgo === 0 ? 'just now' : `${hoursAgo} hour${hoursAgo === 1 ? '' : 's'} ago`}. Reviews take up to 3 business days.
       </Text>
       <Text style={{ color: '#92400E', fontSize: FontSize.xs, opacity: 0.7, textAlign: 'center', marginTop: 4 }}>
         You’ll get a notification when a decision is made. Meanwhile you can keep using the app normally.
@@ -422,14 +496,29 @@ function PendingCard({ theme, submittedAt }: any) {
   );
 }
 
-function UploadRow({ theme, url, busy, hint, onCamera, onGallery }: any) {
+/* A PDF has no thumbnail. Rendering one through <Image> gives an empty grey
+   box that reads as a failed upload, so the type is sniffed from the stored
+   URL and shown as a file card instead. Same treatment the driver's
+   DocUploadTile uses. */
+const isPdfUrl = (u?: string | null) =>
+  !!u && /\.pdf(\?|#|$)/i.test(String(u).split('?')[0]);
+
+function UploadRow({ theme, url, busy, hint, onPress }: any) {
+  const pdf = isPdfUrl(url);
   return (
     <View style={{ gap: 6 }}>
       {url ? (
         <View style={{ borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: theme.border, position: 'relative' }}>
-          <Image source={{ uri: url }} style={{ width: '100%', height: 220 }} resizeMode="cover" />
+          {pdf ? (
+            <View style={{ width: '100%', height: 220, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.surface }}>
+              <FileText size={38} color={theme.primary} />
+              <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>PDF attached</Text>
+            </View>
+          ) : (
+            <Image source={{ uri: url }} style={{ width: '100%', height: 220 }} resizeMode="cover" />
+          )}
           <Pressable
-            onPress={onGallery}
+            onPress={onPress}
             style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 4 }}
           >
             <RefreshCw size={12} color="#fff" />
@@ -437,24 +526,16 @@ function UploadRow({ theme, url, busy, hint, onCamera, onGallery }: any) {
           </Pressable>
         </View>
       ) : (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable
-            disabled={busy}
-            onPress={onCamera}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: theme.border, borderStyle: 'dashed', borderRadius: Radius.lg, paddingVertical: 22, backgroundColor: theme.surface }}
-          >
-            {busy ? <ActivityIndicator color={theme.primary} /> : <Camera size={18} color={theme.primary} />}
-            <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>Camera</Text>
-          </Pressable>
-          <Pressable
-            disabled={busy}
-            onPress={onGallery}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: theme.border, borderStyle: 'dashed', borderRadius: Radius.lg, paddingVertical: 22, backgroundColor: theme.surface }}
-          >
-            {busy ? <ActivityIndicator color={theme.primary} /> : <Upload size={18} color={theme.primary} />}
-            <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>Gallery</Text>
-          </Pressable>
-        </View>
+        <Pressable
+          disabled={busy}
+          onPress={onPress}
+          style={{ alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: theme.border, borderStyle: 'dashed', borderRadius: Radius.lg, paddingVertical: 34, backgroundColor: theme.surface }}
+        >
+          {busy ? <ActivityIndicator color={theme.primary} /> : <Camera size={22} color={theme.primary} />}
+          <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>
+            {busy ? 'Uploading' : 'Tap to add'}
+          </Text>
+        </Pressable>
       )}
       <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, lineHeight: 16 }}>{hint}</Text>
     </View>
