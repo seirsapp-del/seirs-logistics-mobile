@@ -77,12 +77,24 @@ export default function TravelBuddyOpsPage() {
    */
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
+  /**
+   * Status and a departure range, on the trips tab.
+   *
+   * That query had NO WHERE CLAUSE AT ALL: every trip ever declared, newest
+   * first, so finished ones crowded out the live departures an operator is
+   * actually watching. Empty means the default window, which is recent
+   * history plus everything still active however far ahead it departs.
+   */
+  const [tripStatus, setTripStatus] = useState('');
+  const [from, setFrom] = useState('');
+  const [to,   setTo]   = useState('');
+
   const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
     try {
       const data =
-        tab === 'trips'    ? await adminApi.travelBuddy.trips()
+        tab === 'trips'    ? await adminApi.travelBuddy.trips(50, tripStatus || undefined, from || undefined, to || undefined)
       : tab === 'bookings' ? await adminApi.travelBuddy.bookings()
       : tab === 'noshows'  ? await adminApi.travelBuddy.noShows()
       :                      await adminApi.travelBuddy.pendingPayments();
@@ -93,7 +105,7 @@ export default function TravelBuddyOpsPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab]);
+  }, [tab, tripStatus, from, to]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -131,6 +143,45 @@ export default function TravelBuddyOpsPage() {
           </button>
         ))}
       </div>
+
+      {/* Trips only. The other three tabs have their own shapes and none of
+          them had this problem: it was the trips query that had no filter. */}
+      {tab === 'trips' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={tripStatus}
+            onChange={e => setTripStatus(e.target.value)}
+            className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-sm outline-none focus:border-[#3A7BD5]"
+          >
+            <option value="">All trips</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <span className="ml-2 text-xs font-semibold text-[#0F2B4C]/50">Departing</span>
+          <input
+            type="date"
+            value={from}
+            onChange={e => setFrom(e.target.value)}
+            className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-sm outline-none focus:border-[#3A7BD5]"
+          />
+          <span className="text-xs text-[#0F2B4C]/40">to</span>
+          <input
+            type="date"
+            value={to}
+            onChange={e => setTo(e.target.value)}
+            className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-sm outline-none focus:border-[#3A7BD5]"
+          />
+          {(tripStatus || from || to) && (
+            <button
+              onClick={() => { setTripStatus(''); setFrom(''); setTo(''); }}
+              className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-xs font-semibold text-[#0F2B4C]/60 hover:bg-gray-50"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
 
       {err && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

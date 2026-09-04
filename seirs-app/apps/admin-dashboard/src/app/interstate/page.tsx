@@ -333,18 +333,29 @@ export default function InterstateTripBoard() {
         .some(v => String(v ?? '').toLowerCase().includes(term)));
   }, [trips, q]);
 
+  /**
+   * A departure-date range, for audit.
+   *
+   * Without one the finished tabs keep to recent history, which is what an
+   * operator wants day to day. Answering "what ran through Ibadan last March"
+   * needs the range, and that question is the reason the rows are never
+   * deleted in the first place.
+   */
+  const [from, setFrom] = useState('');
+  const [to,   setTo]   = useState('');
+
   const load = () => {
     setLoading(true);
     setError(null);
     // The filter was pinned to 'active' though the API also serves
     // completed and cancelled, so half the board was unreachable.
-    adminApi.interstateTrips.list(status)
+    adminApi.interstateTrips.list(status, from || undefined, to || undefined)
       .then((data: any) => setTrips(Array.isArray(data) ? data : []))
       .catch((e: any) => setError(e?.message ?? 'Could not load trips'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [status]);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [status, from, to]);
 
   return (
     <div className="p-6 space-y-6">
@@ -390,6 +401,33 @@ export default function InterstateTripBoard() {
             placeholder="Filter by city, driver or plate"
             className="w-full rounded-lg border border-[#E5E7EB] bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-[#3A7BD5]"
           />
+        </div>
+
+        {/* Departure range. Empty means the default window, which is recent
+            history on the finished tabs and everything upcoming on active. */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-[#0F2B4C]/50">Departing</label>
+          <input
+            type="date"
+            value={from}
+            onChange={e => setFrom(e.target.value)}
+            className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-sm outline-none focus:border-[#3A7BD5]"
+          />
+          <span className="text-xs text-[#0F2B4C]/40">to</span>
+          <input
+            type="date"
+            value={to}
+            onChange={e => setTo(e.target.value)}
+            className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-sm outline-none focus:border-[#3A7BD5]"
+          />
+          {(from || to) && (
+            <button
+              onClick={() => { setFrom(''); setTo(''); }}
+              className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-xs font-semibold text-[#0F2B4C]/60 hover:bg-gray-50"
+            >
+              Clear
+            </button>
+          )}
         </div>
         <span className="text-xs text-[#0F2B4C]/50">
           {q.trim()

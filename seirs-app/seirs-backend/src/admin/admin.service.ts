@@ -3387,10 +3387,10 @@ export class AdminService {
 
   // ── Fraud ─────────────────────────────────────────────────────────────────
 
-  getFraudFlags(page: number, limit: number, status?: string) {
+  getFraudFlags(page: number, limit: number, status?: string, from?: string, to?: string) {
     // Same cap as getUsers: an admin list must not be a bulk export.
     ({ page, limit } = this.clampPage(page, limit));
-    return this.fraudService.getFlags(page, limit, status);
+    return this.fraudService.getFlags(page, limit, status, from, to);
   }
 
   resolveFraudFlag(flagId: string, adminId: string, status: FraudFlagStatus) {

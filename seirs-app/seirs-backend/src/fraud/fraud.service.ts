@@ -156,7 +156,25 @@ export class FraudService {
 
   // ── Admin: list all open flags (paginated) ──────────────────────────────────
 
-  async getFlags(page: number, limit: number, status?: string) {
+  /**
+   * from and to are YYYY-MM-DD, and both are optional.
+   *
+   * Keyed on f.createdAt, which is the column this list is ORDERED by. A
+   * window on one column while the list is sorted by another gives paging
+   * that jumps about, because rows arrive in an order the filter has no
+   * relationship to.
+   *
+   * `to` covers the WHOLE of its day. A range ending on the 5th that stops at
+   * midnight silently drops everything raised on the 5th, and the result
+   * still looks like a plausible list, which is exactly why nobody notices.
+   */
+  async getFlags(
+    page: number,
+    limit: number,
+    status?: string,
+    from?: string,
+    to?: string,
+  ) {
     /**
      * Narrow select (2026-08-28). leftJoinAndSelect returned the flagged
      * user's whole record, so the fraud queue was serving bank account
@@ -182,6 +200,22 @@ export class FraudService {
       .take(limit);
 
     if (status) qb.where('f.status = :status', { status });
+
+    // An unparseable date is IGNORED rather than rejected: a filter that 500s
+    // on a typo is worse than one that shows too much.
+    const day = (v?: string) => {
+      if (!v) return null;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    const fromAt = day(from);
+    const toAt   = day(to);
+    if (fromAt) qb.andWhere('f."createdAt" >= :fraudFrom', { fraudFrom: fromAt });
+    if (toAt) {
+      // Whole of the closing day, not up to its midnight.
+      const end = new Date(toAt.getTime() + 24 * 60 * 60 * 1000);
+      qb.andWhere('f."createdAt" < :fraudTo', { fraudTo: end });
+    }
 
     const [flags, total] = await qb.getManyAndCount();
     return { flags, total, page, limit };
