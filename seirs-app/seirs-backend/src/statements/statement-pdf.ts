@@ -8,6 +8,41 @@
 const PDFDocument = require('pdfkit');
 import * as QRCode from 'qrcode';
 
+/**
+ * Who issued this document.
+ *
+ * ONE constant, read by the footer of every statement type. When the
+ * registered address, the CAC number and the real domain arrive, they are
+ * edited here and every future statement is correct: customer, driver,
+ * business and partner at once.
+ *
+ * The Wise statement the founder sent as the reference names its regulator,
+ * its company number and its registered office on EVERY page. That is not
+ * decoration. It is what lets a stranger holding the document decide it is
+ * real, which is the entire job of a statement used as proof of income or
+ * of address. Ours says "Lagos, Nigeria".
+ *
+ * Nulls are printed as nothing rather than as a placeholder. A footer
+ * reading "RC: TBC" is worse than a footer without one.
+ */
+export const ISSUER = {
+  name:      'Seirs Logistics',
+  city:      'Lagos, Nigeria',
+  // NEEDS_DATA. Tracked in the website's LAUNCH_CHECKLIST alongside the
+  // domain and the phone line.
+  address:   null as string | null,   // full registered address
+  rcNumber:  null as string | null,   // CAC registration number
+  helpUrl:   null as string | null,   // "Need help? Visit ..." , Wise ends on one
+  phone:     null as string | null,
+};
+
+/** The footer line, built from whatever ISSUER actually has today. */
+function issuerLine(): string {
+  return [ISSUER.name, ISSUER.address ?? ISSUER.city, ISSUER.rcNumber ? `RC ${ISSUER.rcNumber}` : null]
+    .filter(Boolean)
+    .join(', ');
+}
+
 const NAVY  = '#0F2B4C';
 const BLUE  = '#3A7BD5';
 const INK   = '#111827';
@@ -188,14 +223,28 @@ export async function renderStatementPdf(input: StatementInput): Promise<Buffer>
   y += 52;
 
   // ── Lines ────────────────────────────────────────────────────────────
-  const COL = { date: 44, narrative: 128, status: 372, amount: 440 };
+  /**
+   * A running balance on every row.
+   *
+   * The founder sent a Wise statement as the reference and asked what made it
+   * read as authoritative. This is most of it. A list of amounts is a list; a
+   * column that accumulates down the page is an ACCOUNT, and that difference
+   * is what a landlord or a loan officer is reading for. The figure was
+   * already being computed for the total at the bottom and simply never
+   * shown.
+   *
+   * Five columns inside the same 507pt of usable width, so DETAIL loses room
+   * rather than anything being pushed off the page.
+   */
+  const COL = { date: 44, narrative: 110, status: 288, amount: 344, running: 446 };
   const header = () => {
     doc.rect(44, y - 4, 507, 20).fill('#F3F4F6');
     doc.fillColor(MUTED).fontSize(8).font('Helvetica-Bold');
     doc.text('DATE', COL.date + 4, y + 2);
     doc.text('DETAIL', COL.narrative, y + 2);
     doc.text('STATUS', COL.status, y + 2);
-    doc.text('AMOUNT', COL.amount, y + 2, { width: 107, align: 'right' });
+    doc.text('AMOUNT', COL.amount, y + 2, { width: 92, align: 'right' });
+    doc.text('RUNNING', COL.running, y + 2, { width: 105, align: 'right' });
     y += 22;
   };
   header();
@@ -210,15 +259,22 @@ export async function renderStatementPdf(input: StatementInput): Promise<Buffer>
       header();
       doc.font('Helvetica').fontSize(9);
     }
+    /* Only settled money moves the running balance. An entry still clearing
+       is shown, because the rider earned it, but counting it would put a
+       figure on the page that the bank has not seen. */
     if (line.settled) running += Number(line.amountNgn);
 
-    doc.fillColor(INK).text(dmy(line.date), COL.date + 4, y, { width: 80 });
-    doc.fillColor(INK).text(line.narrative, COL.narrative, y, { width: 238 });
+    doc.fillColor(INK).text(dmy(line.date), COL.date + 4, y, { width: 62 });
+    doc.fillColor(INK).text(line.narrative, COL.narrative, y, { width: 172 });
     doc.fillColor(line.settled ? '#15803D' : '#B45309')
-       .text(line.settled ? 'paid' : line.status, COL.status, y, { width: 64 });
+       .text(line.settled ? 'paid' : line.status, COL.status, y, { width: 52 });
     doc.fillColor(INK).font('Helvetica-Bold')
-       .text(naira(line.amountNgn), COL.amount, y, { width: 107, align: 'right' });
-    doc.font('Helvetica');
+       .text(naira(line.amountNgn), COL.amount, y, { width: 92, align: 'right' });
+    /* Muted, and not bold. It is context for the amount beside it, not a
+       second figure competing with it. */
+    doc.fillColor(MUTED).font('Helvetica')
+       .text(line.settled ? naira(running) : '-', COL.running, y, { width: 105, align: 'right' });
+    doc.fillColor(INK).font('Helvetica');
 
     y += 16;
     doc.moveTo(44, y - 3).lineTo(551, y - 3).lineWidth(0.5).strokeColor('#F3F4F6').stroke();
@@ -261,7 +317,7 @@ export async function renderStatementPdf(input: StatementInput): Promise<Buffer>
     doc.switchToPage(i);
     doc.fillColor(MUTED).fontSize(7.5).font('Helvetica')
        .text(
-         `Statement ${input.code}  ·  Seirs Logistics, Lagos, Nigeria  ·  Page ${i - range.start + 1} of ${range.count}` +
+         `Statement ${input.code}  ·  ${issuerLine()}  ·  Page ${i - range.start + 1} of ${range.count}` +
          (input.issuedNote ? `  ·  ${input.issuedNote}` : ''),
          44, 782, { width: 507, align: 'center', lineBreak: false },
        );
