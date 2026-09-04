@@ -62,6 +62,9 @@ export type {
   PartnerStatementEntry,
   PartnerStatement,
   StatementLink,
+  PartnerDocument,
+  PartnerDocuments,
+  PartnerDocGroup,
 } from '@seirs/shared/services/api';
 
 import { businessAuthApi, authApi as sharedAuthApi } from '@seirs/shared/services/api';

@@ -1548,6 +1548,38 @@ function statementLink(kind: 'business' | 'partner' | 'driver' | 'customer', fro
   return request<StatementLink>('GET', `/statements/${kind}/link${qs ? `?${qs}` : ''}`);
 }
 
+export type PartnerDocGroup = 'owner' | 'business' | 'premises' | 'trust';
+
+export type PartnerDocument = {
+  id:     string | null;
+  docId:  string;
+  label:  string;
+  /** What the document is ABOUT, which is what the screen groups on. */
+  group:  PartnerDocGroup;
+  /** One line in the owner's own terms, shown under the label. */
+  hint:   string;
+  required: boolean;
+  /** Premises photographs only: must be taken at the shop, with the pin. */
+  needsLocation: boolean;
+  canExpire: boolean;
+  url:    string | null;
+  status: 'submitted' | 'approved' | 'rejected' | 'needs_replacing' | 'missing';
+  rejectionReason: string | null;
+  reviewedAt:  string | null;
+  expiresAt:   string | null;
+  version:     number;
+};
+
+export type PartnerDocuments = {
+  storeId:     string;
+  storeName:   string;
+  storeStatus: string;
+  documents:   PartnerDocument[];
+  /** Required documents still missing or refused. Empty means ready. */
+  missingRequired: string[];
+  complete: boolean;
+};
+
 export type PartnerStatementEntry = {
   id:              string;
   date:            string;
@@ -1621,16 +1653,13 @@ export const partnerApi = {
    *
    * Slots never uploaded come back too, so the screen can say which file
    * is still wanted rather than leaving a gap somebody has to infer.
+   *
+   * `group`, `hint`, `required` and `needsLocation` come from the server
+   * because they are facts about the KIND of document, not about any row:
+   * a slot nobody has filled has nothing to carry them, and the app must
+   * not hold a second copy of the policy that would drift from the first.
    */
-  myDocuments: () => request<{
-    storeId: string; storeName: string; storeStatus: string;
-    documents: Array<{
-      id: string | null; docId: string; label: string; url: string | null;
-      status: 'submitted' | 'approved' | 'rejected' | 'needs_replacing' | 'missing';
-      rejectionReason: string | null; reviewedAt: string | null;
-      expiresAt: string | null; canExpire: boolean; version: number;
-    }>;
-  }>('GET', '/partner-store/my-documents'),
+  myDocuments: () => request<PartnerDocuments>('GET', '/partner-store/my-documents'),
 
   /**
    * Replace ONE document.
@@ -1638,10 +1667,21 @@ export const partnerApi = {
    * Before 2026-09-02 the only answer to a rejected CAC photo was to
    * resubmit the whole application, which reset the store to pending
    * review and discarded the decisions already made on the other two.
+   *
+   * `where` is sent only for the premises photographs and only when the
+   * device could say. It is a signal for whoever reviews it, never a gate:
+   * a phone that refused the permission, or could not get a fix under a
+   * zinc roof, still uploads.
    */
-  uploadDocument: (docId: string, url: string) =>
+  uploadDocument: (
+    docId: string,
+    url: string,
+    where?: { lat: number; lng: number; accuracyM: number } | null,
+  ) =>
     request<{ docId: string; saved: boolean; status: string; version: number; label: string }>(
-      'POST', `/partner-store/my-documents/${docId}`, { url }),
+      'POST', `/partner-store/my-documents/${docId}`,
+      where ? { url, lat: where.lat, lng: where.lng, accuracyM: where.accuracyM } : { url },
+    ),
 
   getSettings:    () => request<any>('GET', '/partner/settings'),
   updateSettings: (data: any) => request<any>('PATCH', '/partner/settings', data),
