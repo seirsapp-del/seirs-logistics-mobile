@@ -4673,6 +4673,59 @@ export class DeliveriesService {
             .notifyStatusUpdate(d.customer.id, d.trackingCode, DeliveryStatus.CANCELLED, d.id)
             .catch(() => {});
         }
+
+        /**
+         * And tell a human here, which nothing did (founder 2026-09-04).
+         *
+         * Everything above this handled the CUSTOMER: cancelled, refunded in
+         * full, seat released, points clawed back, notified. Nobody at SEIRS
+         * was told anything. The only trace was a log line, and a log line is
+         * not a queue: nobody confirmed the refund actually reached the card,
+         * nobody asked why there was no rider in that area at that hour, and
+         * a repeating coverage hole could never be seen because it existed
+         * only as scattered lines nobody reads.
+         *
+         * This is the failure most worth watching, because it is the one
+         * where SEIRS took money and delivered nothing. The founder's words:
+         * "they should be able to get a full refund since it wasnt their
+         * fault we dont have a rider in the location".
+         *
+         * raiseSystemTicket dedupes per user and topic, so a sender hit three
+         * times in one morning is one ticket carrying three messages rather
+         * than three tickets, and it never throws: a support outage must not
+         * be able to break the refund sweep that runs above it.
+         */
+        if (d.customer?.id && this.supportService) {
+          const when = new Date(d.createdAt).toLocaleString('en-NG');
+          const body = [
+            `We took payment for this booking and never found a rider for it.`,
+            '',
+            `Tracking:   ${d.trackingCode ?? 'unknown'}`,
+            `Booked:     ${when}`,
+            `Waited:     ${minutes} minutes with no driver`,
+            `Pick up:    ${d.pickupAddress ?? 'not recorded'}`,
+            `Drop off:   ${d.dropoffAddress ?? 'not recorded'}`,
+            `Fare:       NGN ${Number(d.price ?? 0).toLocaleString('en-NG', {
+              minimumFractionDigits: 2, maximumFractionDigits: 2,
+            })}`,
+            '',
+            'It has been cancelled and refunded IN FULL with no cancellation fee,',
+            'because the failure is ours and not theirs, and the customer has been',
+            'told. Two things still need a person:',
+            '',
+            '  1. Confirm the refund actually reached them. A refund is a second',
+            '     transaction and can fail on its own.',
+            '  2. Ask why there was no rider at that place and hour. One of these',
+            '     is bad luck. The same area repeating is a coverage hole.',
+          ].join('\n');
+
+          await this.supportService.raiseSystemTicket(d.customer.id, {
+            topic:      TicketTopic.NO_RIDER,
+            subject:    `No rider found for ${d.trackingCode ?? 'a booking'}, refunded in full`,
+            body,
+            systemType: 'no_rider_refund',
+          });
+        }
       } catch (err: any) {
         this.logger.error(`Auto-expiry failed for ${d.trackingCode}: ${err?.message ?? err}`);
       }

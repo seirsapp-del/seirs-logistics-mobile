@@ -1707,8 +1707,18 @@ export default function SendScreen() {
                 <View style={[styles.tripBanner, { backgroundColor: theme.accent + '18', borderColor: theme.accent }]}>
                   <Store size={14} color={theme.accent} strokeWidth={2} />
                   <Text style={[styles.tripBannerTxt, { color: theme.text }]}>
+                    {/*
+                      * This promised "you are refunded in full if nobody takes
+                      * it", which contradicted the confirmation dialog in THIS
+                      * SAME FILE saying "Nothing has been charged, and nothing
+                      * will be until you both agree". Posting to a rider's trip
+                      * has been a REQUEST since 2026-08-31: no money moves
+                      * until both sides agree, so there is nothing to refund.
+                      * Promising one teaches the sender that money leaves
+                      * first, which is the exact fear the request flow removed.
+                      */}
                     {t('send.postingToTrip', {
-                      defaultValue: 'Offered first to {{trip}}. They can accept or decline, and you are refunded in full if nobody takes it.',
+                      defaultValue: 'Asked first of {{trip}}. Nothing is charged while they decide, and you pay only if you both agree.',
                       trip: postToTripLabel || 'this rider’s trip',
                     })}
                   </Text>

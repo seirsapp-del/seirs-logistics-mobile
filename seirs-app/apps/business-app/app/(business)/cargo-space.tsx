@@ -14,8 +14,14 @@
  * never mentions passengers or seats.
  *
  * Picking a trip hands off to Send a Package with the trip attached, so
- * the parcel is offered to that one rider first. They accept or decline,
- * and an unanswered offer expires and refunds without anyone chasing it.
+ * the parcel is offered to that one rider first. They accept, decline, or
+ * offer a different drop-off at a fresh price, and an unanswered offer simply
+ * expires so the load can be asked of somebody else.
+ *
+ * Nothing is charged until both sides agree. This comment used to end "and
+ * refunds without anyone chasing it", which was true before 2026-08-31 and
+ * has been wrong since; the on-screen copy had drifted the same way and is
+ * corrected too.
  */
 import { useState, useCallback } from 'react';
 import {
@@ -164,10 +170,22 @@ export default function CargoSpaceScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} keyboardShouldPersistTaps="handled">
+        {/*
+          * This said "if they cannot take it you are refunded in full", which
+          * described the flow as it worked BEFORE 2026-08-31 and has been
+          * wrong ever since. Posting to a rider's trip is a REQUEST, not a
+          * booking: nothing is charged while it waits, so there is no refund
+          * to promise and none to chase. The founder's reason, in his words:
+          * "once they pay then its irreversible with deductions, like charges
+          * from bank etc". Promising a refund also quietly teaches a trader
+          * that money leaves first, which is the exact fear the request flow
+          * was built to remove.
+          */}
         <Text style={[styles.intro, { color: theme.textSecond }]}>
           Drivers declare intercity trips in advance and say how much weight
-          they can still take. Send your load on one and it is offered to that
-          driver first. If they cannot take it you are refunded in full.
+          they can still take. Ask one to carry your load and nothing is
+          charged while they decide. You pay only after they accept, so a no
+          costs you nothing.
         </Text>
 
         <View style={{ gap: 8 }}>

@@ -131,6 +131,33 @@ export class FeesService implements OnModuleInit {
     'night_window_end_hour',
   ];
 
+  /**
+   * Deliberate policy changes to numbers that ALREADY EXIST in production.
+   *
+   * The seeder is insert-only, on purpose: "Existing fees are NEVER
+   * overwritten so production values persist", which is right, because a
+   * deploy must not silently undo what an admin tuned. But it means editing
+   * a value in fees.seed.ts changes nothing on a live database, and the code
+   * then says one number while production runs another. That is a silent
+   * no-op, and this codebase has been bitten by enough of those.
+   *
+   * So a change of policy goes here, as from/to, and applies ONLY while the
+   * row still holds the old value. If an admin has already moved it to
+   * anything else, that is a decision and it is left alone.
+   *
+   * Entries can be deleted once they have shipped and run everywhere.
+   */
+  private static readonly REPRICED: Array<{ key: string; from: number; to: number; why: string }> = [
+    {
+      key: 'pending_booking_expiry_minutes',
+      from: 60,
+      to: 10,
+      why: 'Founder 2026-09-04. An hour is far too long to sit with your money '
+         + 'taken and nothing coming. The sweep runs every five minutes, so ten '
+         + 'means a refund is moving within about fifteen at worst.',
+    },
+  ];
+
   async onModuleInit() {
     try {
       const res = await this.feesRepo.delete({ key: In(FeesService.RETIRED_KEYS) } as any);
@@ -139,6 +166,24 @@ export class FeesService implements OnModuleInit {
       }
     } catch (e: any) {
       this.logger?.warn?.(`Could not prune retired fee rows: ${e?.message ?? e}`);
+    }
+
+    // Apply policy changes to rows that already exist. Only where the old
+    // value is still in place, so an admin's own tuning is never clobbered.
+    for (const r of FeesService.REPRICED) {
+      try {
+        const res = await this.feesRepo
+          .createQueryBuilder()
+          .update()
+          .set({ value: r.to } as any)
+          .where('key = :key AND value = :from', { key: r.key, from: r.from })
+          .execute();
+        if (res.affected) {
+          this.logger?.log?.(`Fee ${r.key}: ${r.from} -> ${r.to}. ${r.why}`);
+        }
+      } catch (e: any) {
+        this.logger?.warn?.(`Could not reprice ${r.key}: ${e?.message ?? e}`);
+      }
     }
 
     /**

@@ -67,6 +67,19 @@ export enum TicketTopic {
    * 10 characters against a varchar(16) column.
    */
   MOVE      = 'store_move',
+  /**
+   * We took the money and could not find anybody to do the job.
+   *
+   * The sweep that cancels an unclaimed booking already refunds in full and
+   * tells the customer, and told NOBODY HERE: it wrote a log line and moved
+   * on. So no one confirmed the refund actually landed, no one asked why
+   * there was no rider in that place at that hour, and a pattern like
+   * "Ikorodu, every weekday at 6am" was invisible because it only ever
+   * existed as scattered log lines.
+   *
+   * 8 characters, and the column is varchar(16).
+   */
+  NO_RIDER  = 'no_rider',
   OTHER     = 'other',
 }
 

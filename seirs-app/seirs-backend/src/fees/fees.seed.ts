@@ -488,9 +488,20 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Minutes a staff invitation or admin password-reset link stays valid. Short on purpose: this link opens the dashboard. 60 is the default.',
     category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 60 },
 
+  /**
+   * Ten, not sixty (founder 2026-09-04: "why not 10 minutes, much better").
+   *
+   * An hour is a long time to sit with your money taken and nothing coming,
+   * for a failure that is entirely ours. The sweep runs every five minutes,
+   * so ten means the refund is moving within about fifteen at worst.
+   *
+   * Changing this line alone would have done NOTHING to production: the
+   * seeder is insert-only by design. The live row is moved by the REPRICED
+   * list in fees.service.ts, which only touches it while it still holds 60.
+   */
   { key: 'pending_booking_expiry_minutes', name: 'Pending Booking Expiry (minutes)',
-    description: 'Minutes a paid booking may wait for a driver before it auto-cancels with a full refund.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 60 },
+    description: 'Minutes a paid booking may wait for a driver before it auto-cancels with a full refund. Short on purpose: the customer has paid and nothing is coming, and the fault is ours.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 10 },
 
   { key: 'failed_delivery_redirect_fee', name: 'Failed-Delivery Redirect Fee',
     description: 'Transport fee owed when a failed door delivery is rerouted to a partner store (nobody home, no sender response). Store identity + collection code stay hidden until settled.',
