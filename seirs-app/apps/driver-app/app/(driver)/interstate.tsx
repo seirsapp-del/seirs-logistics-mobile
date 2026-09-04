@@ -240,6 +240,8 @@ export default function InterstateScreen() {
    * the value cannot be fetched, which matches the server's own fallback.
    */
   const [minLeadMins, setMinLeadMins] = useState(180);
+  /** And the far end: how many days ahead a trip may be declared. */
+  const [maxLeadDays, setMaxLeadDays] = useState(30);
   useEffect(() => {
     let alive = true;
     feesApi.get('corridor_min_lead_minutes')
@@ -248,8 +250,18 @@ export default function InterstateScreen() {
         if (alive && Number.isFinite(v) && v >= 0) setMinLeadMins(v);
       })
       .catch(() => {});   // keep the default; never block the screen on config
+    feesApi.get('corridor_max_lead_days')
+      .then(r => {
+        const v = Number(r?.value);
+        if (alive && Number.isFinite(v) && v > 0) setMaxLeadDays(v);
+      })
+      .catch(() => {});
     return () => { alive = false; };
   }, []);
+
+  /** The last day the calendar will let a rider pick. */
+  const maxDateISO = new Date(Date.now() + maxLeadDays * 24 * 60 * 60 * 1000)
+    .toISOString().slice(0, 10);
 
   const origin      = stops[0];
   const destination = stops[stops.length - 1];
@@ -1318,6 +1330,11 @@ export default function InterstateScreen() {
                 <RNCalendar
                   current={departDate || TODAY_ISO}
                   minDate={TODAY_ISO}
+                  // The server refuses a departure past this, so the calendar
+                  // must not offer one, for the same reason the early times
+                  // are greyed: a picker that offers what the server rejects
+                  // teaches the rider that the screen lies.
+                  maxDate={maxDateISO}
                   onDayPress={(day: any) => setDepartDate(day.dateString)}
                   markedDates={departDate ? { [departDate]: { selected: true, selectedColor: theme.primary } } : {}}
                   theme={{

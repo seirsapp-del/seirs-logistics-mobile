@@ -176,6 +176,22 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'corridor_min_lead_minutes', name: 'Trip minimum notice (minutes)',
     description: 'How far ahead a rider must declare an intercity trip. Below this the departure is refused, because a sender cannot find, agree, pay and reach the park in less. 0 turns the gate off.',
     category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 180 },
+  /**
+   * The far end of the same window, and there was none either: a trip
+   * departing in five years was accepted and sat on the board.
+   *
+   * Founder chose one month (2026-09-04): "people can plan a trip ahead".
+   * That works without touching the matcher, because the two are different
+   * paths. interstate_match_bonus only scores a booking against a trip
+   * departing within 24h, which is correct: a parcel booked today must not
+   * be handed to a lorry leaving in three weeks. BROWSING has no window at
+   * all, so a trip declared a month out is findable in Cargo Space and
+   * Travel Buddy from the moment it is declared, which is the whole point of
+   * declaring early. 0 turns the gate off.
+   */
+  { key: 'corridor_max_lead_days', name: 'Trip furthest notice (days)',
+    description: 'How far ahead a rider may declare an intercity trip. One month: far enough to plan a real journey, near enough that the board is not full of trips nobody will take. 0 turns the gate off.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.DAYS, value: 30 },
   { key: 'driver_level_id_gate', name: 'Level ID-verification gate',
     description: 'Levels at or above this require verified identity (per the identity policy). Auto-raise stops below it for unverified drivers.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 6 },

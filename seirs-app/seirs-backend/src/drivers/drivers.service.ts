@@ -570,6 +570,30 @@ export class DriversService {
       }
     }
 
+    /**
+     * And a far end, which there also was not: a trip five years out was
+     * accepted and sat on the board forever, because "in the future" was the
+     * only test at either end.
+     *
+     * One month, by the founder's choice, so somebody can declare a journey
+     * they are genuinely planning without the board filling with departures
+     * nobody will ever take.
+     */
+    const maxLeadDays = Number(
+      await this.feesService.getValueOr('corridor_max_lead_days', 30).catch(() => 30),
+    );
+    if (maxLeadDays > 0) {
+      const latest = Date.now() + maxLeadDays * 24 * 60 * 60 * 1000;
+      if (depart.getTime() > latest) {
+        throw new BadRequestException(
+          `A trip can be declared up to ${maxLeadDays} days ahead. `
+          + `Set a departure on or before ${new Date(latest).toLocaleDateString('en-NG', {
+            day: 'numeric', month: 'long', year: 'numeric',
+          })}.`,
+        );
+      }
+    }
+
     const capacity = Number(body.spareCapacityKg ?? 0);
     if (!Number.isFinite(capacity) || capacity < 0) {
       throw new BadRequestException('Spare capacity must be a non-negative number.');
