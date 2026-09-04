@@ -148,13 +148,34 @@ export class FeesService implements OnModuleInit {
    * Entries can be deleted once they have shipped and run everywhere.
    */
   private static readonly REPRICED: Array<{ key: string; from: number; to: number; why: string }> = [
+    /**
+     * TWO entries for one number, deliberately.
+     *
+     * The founder first cut this from 60 to 10, then thought about Nigeria
+     * rather than about the clock and settled on 30: "people are slow in
+     * Nigeria at least before the refund". Ten minutes was punishing a rider
+     * for being ten minutes away from their phone.
+     *
+     * Both rows are listed because the 10 may or may not have reached
+     * production before the 30 was decided, and a REPRICED entry only fires
+     * while the row still holds its stated old value. Listing both means the
+     * database ends at 30 whichever happened, and an admin who has since
+     * chosen their own number is still left alone.
+     */
     {
       key: 'pending_booking_expiry_minutes',
       from: 60,
-      to: 10,
-      why: 'Founder 2026-09-04. An hour is far too long to sit with your money '
-         + 'taken and nothing coming. The sweep runs every five minutes, so ten '
-         + 'means a refund is moving within about fifteen at worst.',
+      to: 30,
+      why: 'Founder 2026-09-04. An hour is too long to sit with your money taken '
+         + 'and nothing coming; ten was too short for a rider to answer.',
+    },
+    {
+      key: 'pending_booking_expiry_minutes',
+      from: 10,
+      to: 30,
+      why: 'Founder 2026-09-04, revising his own earlier cut to ten: "can we make '
+         + 'the whole process 30 minutes, because people are slow in Nigeria at '
+         + 'least before the refund".',
     },
   ];
 

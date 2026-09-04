@@ -475,6 +475,18 @@ export class Delivery {
   @Column({ type: 'varchar', length: 200, nullable: true })
   cancellationReason: string | null;
 
+  /**
+   * When support was told this booking was sitting with no rider.
+   *
+   * A marker, not a timestamp anybody reads: the warning sweep runs every few
+   * minutes, and without this it would re-raise the same alert every run
+   * until the booking cancelled, which is how a queue becomes noise and then
+   * becomes ignored. Set once, never cleared, because the booking either gets
+   * a rider or gets cancelled.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  dispatchWarnedAt: Date | null;
+
   // Requested pickup time for scheduled bookings; NULL = Send Now.
   // Before 2026-08-11 the client collected a slot but nothing stored
   // it: scheduled bookings dispatched immediately. Now the dispatch

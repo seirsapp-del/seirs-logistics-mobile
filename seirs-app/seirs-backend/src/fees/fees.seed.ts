@@ -537,7 +537,58 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
    * list in fees.service.ts, which only touches it while it still holds 60.
    */
   { key: 'pending_booking_expiry_minutes', name: 'Pending Booking Expiry (minutes)',
-    description: 'Minutes a paid booking may wait for a driver before it auto-cancels with a full refund. Short on purpose: the customer has paid and nothing is coming, and the fault is ours.',
+    description: 'Minutes a paid booking may wait for a driver before it auto-cancels with a full refund. Long enough for a rider to actually answer, short enough that nobody sits wondering.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 30 },
+  /**
+   * Tell somebody BEFORE the money goes back (founder 2026-09-04).
+   *
+   * A refund closes the story; it does not rescue it. The customer still has
+   * nothing delivered and SEIRS still failed to supply a rider. Warning
+   * partway through gives ops a real chance to ring somebody in that area
+   * while the booking is still alive.
+   *
+   * Ten minutes against a thirty minute window leaves twenty to act, which is
+   * the point of the founder's numbers: "people are slow in Nigeria at least
+   * before the refund". Cancelling at ten would have been punishing a rider
+   * for being ten minutes from their phone.
+   *
+   * Counted from when the job became ASSIGNABLE, not from when it was booked,
+   * which is the only definition that means anything for a scheduled pickup.
+   * 0 turns the warning off.
+   */
+  /*
+   * NO trip_offer_expiry_minutes row here, deliberately.
+   *
+   * I nearly added one at 15, believing the trip-offer window was hardcoded
+   * at 5 minutes. It is not. travel_buddy_offer_timeout_min already exists at
+   * 30 and is already what decides: the `interval '5 minutes'` in the SQL is
+   * a coarse pre-filter, and the JS check below it does the real work. A
+   * second row would have been a knob fighting an existing one, with whichever
+   * is smaller silently winning.
+   *
+   * The SQL literal is now derived from that same row rather than fixed, so
+   * the two cannot drift apart or disagree if the number is ever lowered.
+   */
+  /**
+   * How early a scheduled job may be dispatched.
+   *
+   * Was fifteen minutes, hardcoded in three places. It exists for a good
+   * reason: it stops a rider accepting Monday's job on Friday and cancelling
+   * on the day, which was the founder's own worry. But fifteen minutes
+   * before, against a booking that expires thirty minutes after its slot,
+   * gives the platform forty-five minutes to find a rider for a job somebody
+   * booked three days ago. That is thin.
+   *
+   * Thirty on his "increase slightly", and it is tunable now so the number
+   * can move on evidence. I still think this wants to be hours rather than
+   * minutes for scheduled work, and have said so; it is his call because it
+   * changes when riders see tomorrow's jobs.
+   */
+  { key: 'scheduled_dispatch_lead_minutes', name: 'Scheduled job opens (minutes before)',
+    description: 'How long before a scheduled pickup the job becomes visible to riders. Early enough to find somebody, late enough that nobody accepts days ahead and cancels on the day.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 30 },
+  { key: 'dispatch_warn_after_minutes', name: 'Warn ops after (minutes unassigned)',
+    description: 'How long a paid booking may sit assignable with no rider before support is told, so somebody can act while it is still alive rather than after the refund.',
     category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 10 },
 
   { key: 'failed_delivery_redirect_fee', name: 'Failed-Delivery Redirect Fee',

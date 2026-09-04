@@ -902,7 +902,7 @@ export class DeliveriesService {
         .andWhere('d.driver IS NULL')
         .andWhere('d."paymentHeldAt" IS NOT NULL')
         .andWhere(`d.scheduledFor IS NOT NULL`)
-        .andWhere(`d.scheduledFor <= NOW() + interval '15 minutes'`)
+        .andWhere(`d.scheduledFor <= :schedCutoff`, { schedCutoff: await this.scheduledLeadCutoff() })
         .take(50)
         .getMany();
       for (const d of due) {
@@ -936,7 +936,7 @@ export class DeliveriesService {
     if (!delivery) return;
     if (delivery.driver || delivery.status !== DeliveryStatus.PENDING) return;
     if (!delivery.paymentHeldAt) return;               // money first, always
-    if (delivery.scheduledFor && new Date(delivery.scheduledFor).getTime() > Date.now() + 15 * 60_000) {
+    if (delivery.scheduledFor && new Date(delivery.scheduledFor).getTime() > (await this.scheduledLeadCutoff()).getTime()) {
       return;                                          // the scheduled sweep owns it
     }
 
@@ -1460,7 +1460,16 @@ export class DeliveriesService {
         .andWhere('d.driver IS NULL')
         .andWhere('d."tripId" IS NOT NULL')
         .andWhere('d."tripOfferedAt" IS NOT NULL')
-        .andWhere(`d."tripOfferedAt" < NOW() - interval '5 minutes'`)
+        /**
+         * Derived from the same row the JS check below uses, not a fixed
+         * five minutes. As a literal it was a silent trap: it happens to be
+         * smaller than the configured thirty so it never bit, but lowering
+         * travel_buddy_offer_timeout_min under five would have made this
+         * pre-filter quietly exclude the very offers it was meant to catch.
+         */
+        .andWhere(`d."tripOfferedAt" < :offerCutoff`, {
+          offerCutoff: new Date(Date.now() - Number(timeoutMin) * 60_000),
+        })
         .take(50)
         .getMany()
         .catch(() => [] as any[]);
@@ -1651,6 +1660,28 @@ export class DeliveriesService {
    *      commission-based fallback), so the card never shows the gross
    *      fare as if it were the driver's pay.
    */
+  /**
+   * The instant a scheduled job becomes visible to riders.
+   *
+   * Was `interval '15 minutes'` written into three separate queries, so the
+   * rule could be changed in one of them and quietly disagree with the other
+   * two. It is one Fee Catalogue row now, read here, and returned as a Date
+   * so the SQL takes a parameter rather than a literal.
+   *
+   * Falls back to the seeded thirty on any failure: a config problem must not
+   * be able to stop scheduled work being dispatched at all.
+   */
+  private async scheduledLeadCutoff(): Promise<Date> {
+    let mins = 30;
+    if (this.feesServiceRef) {
+      try {
+        const v = Number(await this.feesServiceRef.getValueOr('scheduled_dispatch_lead_minutes', 30));
+        if (Number.isFinite(v) && v >= 0) mins = v;
+      } catch { /* seeded default stands */ }
+    }
+    return new Date(Date.now() + mins * 60_000);
+  }
+
   async findAvailable(lat?: number, lng?: number, radiusKm: number = 25, limit: number = 30, userId?: string) {
     const q = this.repo
       .createQueryBuilder('d')
@@ -1668,9 +1699,9 @@ export class DeliveriesService {
       )
       // Only funded bookings reach drivers (paid-dispatch gate 2026-08-16).
       .andWhere('d."paymentHeldAt" IS NOT NULL')
-      // Scheduled pickups surface 15 minutes before their slot, not
-      // hours early (night-ops build 2026-08-11).
-      .andWhere(`(d.scheduledFor IS NULL OR d.scheduledFor <= NOW() + interval '15 minutes')`);
+      // early. The window is scheduled_dispatch_lead_minutes.
+      // Scheduled pickups surface shortly before their slot, not hours
+      .andWhere(`(d.scheduledFor IS NULL OR d.scheduledFor <= :schedCutoff)`, { schedCutoff: await this.scheduledLeadCutoff() });
 
     /**
      * A ride is only offered to the class the passenger booked
@@ -4786,6 +4817,104 @@ export class DeliveriesService {
       this.logger.log(`Auto-expired ${stale.length} pending booking(s) past ${minutes} min; refunds issued in full`);
     }
     return stale.length;
+  }
+
+  /**
+   * Tell somebody while the booking is still alive (founder 2026-09-04).
+   *
+   * The expiry sweep above refunds and raises a ticket, but by then the
+   * customer has already waited the whole window and lost the job. A refund
+   * closes the story; it does not rescue it. This fires partway through, so
+   * ops can ring a rider in that area while there is still something to save.
+   *
+   * The founder asked for it on BOTH kinds, and set the numbers by thinking
+   * about the country rather than the clock: thirty minutes before a refund
+   * because "people are slow in Nigeria", warned at ten, which leaves twenty
+   * to act.
+   *
+   * COUNTED FROM WHEN IT BECAME ASSIGNABLE, not from when it was booked, and
+   * that distinction is the whole design. A scheduled pickup cannot be given
+   * to anybody until shortly before its slot, so measuring from the booking
+   * would fire a warning about a job three days out that nobody could have
+   * taken yet, every five minutes, until the queue was worthless. For Send
+   * Now the two are the same instant, which is why it is easy to miss.
+   *
+   * dispatchWarnedAt makes it fire once. Same NO_RIDER topic as the
+   * cancellation, deliberately: raiseSystemTicket dedupes per user and topic,
+   * so the warning and, if it comes to it, the refund land in ONE thread that
+   * reads as the story of that booking rather than two disconnected alerts.
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async warnUnassignedBookings(): Promise<number> {
+    try {
+      let warnMins = 10;
+      let leadMins = 30;
+      if (this.feesServiceRef) {
+        try {
+          warnMins = Number(await this.feesServiceRef.getValueOr('dispatch_warn_after_minutes', 10)) || 10;
+          leadMins = Number(await this.feesServiceRef.getValueOr('scheduled_dispatch_lead_minutes', 30)) || 30;
+        } catch { /* seeded defaults stand */ }
+      }
+      if (warnMins <= 0) return 0;   // 0 turns the warning off
+
+      const candidates = await this.repo.find({
+        where: {
+          status: DeliveryStatus.PENDING,
+          driver: IsNull(),
+          dispatchWarnedAt: IsNull(),
+        } as any,
+        relations: ['customer'],
+        take: 100,
+      });
+
+      let warned = 0;
+      for (const d of candidates) {
+        // Unpaid is not our failure yet: nothing has been taken from anybody.
+        if (!d.paymentHeldAt) continue;
+
+        const assignableAt = d.scheduledFor
+          ? new Date(d.scheduledFor).getTime() - leadMins * 60_000
+          : new Date(d.createdAt).getTime();
+        if (Date.now() < assignableAt + warnMins * 60_000) continue;
+
+        try {
+          await this.repo.update(d.id, { dispatchWarnedAt: new Date() } as any);
+          if (d.customer?.id && this.supportService) {
+            const mins = Math.round((Date.now() - assignableAt) / 60_000);
+            await this.supportService.raiseSystemTicket(d.customer.id, {
+              topic:   TicketTopic.NO_RIDER,
+              subject: `No rider yet for ${d.trackingCode ?? 'a booking'}, still time to act`,
+              body: [
+                `This booking is paid and nobody has taken it.`,
+                '',
+                `Tracking:   ${d.trackingCode ?? 'unknown'}`,
+                `Waiting:    ${mins} minutes since it could first be assigned`,
+                `Pick up:    ${d.pickupAddress ?? 'not recorded'}`,
+                `Drop off:   ${d.dropoffAddress ?? 'not recorded'}`,
+                d.scheduledFor
+                  ? `Scheduled:  ${new Date(d.scheduledFor).toLocaleString('en-NG')}`
+                  : `Type:       Send Now`,
+                '',
+                'It has NOT been cancelled. There is still time to find somebody,',
+                'which is the whole reason you are being told now rather than after',
+                'the refund. If nothing takes it, it cancels and refunds in full on',
+                'its own and this ticket will say so.',
+              ].join('\n'),
+              systemType: 'no_rider_warning',
+            });
+          }
+          warned++;
+        } catch (err: any) {
+          // One booking must never stop the rest being warned.
+          this.logger.error(`Dispatch warning failed for ${d.trackingCode}: ${err?.message ?? err}`);
+        }
+      }
+      if (warned) this.logger.warn(`${warned} paid booking(s) sitting with no rider; support told`);
+      return warned;
+    } catch (e: any) {
+      this.logger.error(`warnUnassignedBookings sweep failed: ${e?.message ?? e}`);
+      return 0;
+    }
   }
 
   /**

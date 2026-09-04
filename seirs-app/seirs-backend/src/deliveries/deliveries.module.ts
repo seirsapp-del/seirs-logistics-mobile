@@ -332,6 +332,10 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "kind" varchar(10) NOT NULL DEFAULT 'package',
           ADD COLUMN IF NOT EXISTS "tripId" uuid NULL,
           ADD COLUMN IF NOT EXISTS "tripOfferedAt" timestamptz NULL,
+          /* Set once when support is told a paid booking is sitting with no
+             rider, so the warning does not re-fire every sweep and turn the
+             queue into noise (2026-09-04). */
+          ADD COLUMN IF NOT EXISTS "dispatchWarnedAt" timestamptz NULL,
           /* Which states the run connects, and which zone tier fired
              (2026-08-31). Derived at pricing time since the state-aware
              tier shipped and thrown away every time, so a 15 to 40
