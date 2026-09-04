@@ -49,6 +49,256 @@ const POPULAR = [
   { from: 'Lagos',  to: 'Port Harcourt', km: 620 },
 ];
 
+interface ParcelRequestRow {
+  id: string; status: string;
+  weightKg: number | null; categoryCode: string | null;
+  packageDescription: string | null; declaredValueNgn: number | null;
+  pickupAddress: string | null; dropoffAddress: string | null;
+  senderInstructions: string | null;
+  quotedNgn: number | null; quotedKm: number | null;
+  counterQuotedNgn: number | null; counterQuotedKm: number | null;
+  counterDropAddress: string | null; counterNote: string | null;
+  declineReason: string | null;
+  counteredAt: string | null; answeredAt: string | null;
+  expiresAt: string | null; createdAt: string;
+  deliveryId: string | null;
+  senderUserId: string | null; senderName: string | null;
+  tripId: string | null; fromCity: string | null; toCity: string | null; departAt: string | null;
+  driverUserId: string | null; driverName: string | null;
+  vehicleType: string | null; vehiclePlate: string | null;
+  wasCountered: boolean; priceMovedNgn: number | null; dropMoved: boolean;
+}
+
+const PARCEL_STATUSES = ['countered', 'declined', 'requested', 'accepted', 'withdrawn', 'expired'] as const;
+
+const PARCEL_PILL: Record<string, string> = {
+  requested: 'bg-blue-50 text-blue-700',
+  countered: 'bg-amber-50 text-amber-700',
+  accepted:  'bg-green-50 text-green-700',
+  declined:  'bg-red-50 text-red-700',
+  withdrawn: 'bg-gray-100 text-gray-600',
+  expired:   'bg-gray-100 text-gray-600',
+};
+
+/**
+ * The parcel side of the marketplace.
+ *
+ * Every other admin view of Travel Buddy is passenger-side, so until
+ * 2026-09-04 a dispute about a PARCEL had no screen behind it: the sender's
+ * instructions, the rider's counter-note and decline reason, both prices and
+ * both distances were all recorded and none of it was rendered anywhere. The
+ * founder asked to see the input and the comments of every party, and this is
+ * that. Countered and declined lead the filter because they are the rows
+ * somebody actually has to read.
+ */
+function ParcelNegotiations() {
+  const [rows,    setRows]    = useState<ParcelRequestRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err,     setErr]     = useState<string | null>(null);
+  const [status,  setStatus]  = useState<string>('');
+  const [open,    setOpen]    = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    adminApi.travelBuddy.parcelRequests(100, status || undefined)
+      .then(r => { if (alive) { setRows(Array.isArray(r) ? r : []); setErr(null); } })
+      .catch((e: any) => { if (alive) setErr(e?.message ?? 'Could not load parcel negotiations.'); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [status]);
+
+  const when = (v: string | null) =>
+    v ? new Date(v).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-';
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-4">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0F2B4C]/70">
+          Parcel negotiations
+        </h2>
+        <span className="text-xs text-gray-500">{rows.length} shown</span>
+      </div>
+      <p className="text-xs text-gray-500 mb-3">
+        What each side actually offered and said, before any money moved.
+      </p>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {['', ...PARCEL_STATUSES].map(s => (
+          <button
+            key={s || 'all'}
+            onClick={() => setStatus(s)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+              status === s
+                ? 'bg-[#0F2B4C] text-white border-[#0F2B4C]'
+                : 'bg-white text-gray-600 border-[#E5E7EB] hover:bg-gray-50'
+            }`}
+          >
+            {s === '' ? 'All' : s}
+          </button>
+        ))}
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-gray-500 py-6">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading negotiations
+        </div>
+      )}
+
+      {!loading && err && (
+        <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 rounded-lg p-3">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /> {err}
+        </div>
+      )}
+
+      {!loading && !err && rows.length === 0 && (
+        <p className="text-sm text-gray-500 py-6">
+          No parcel requests{status ? ` with status "${status}"` : ''} yet.
+        </p>
+      )}
+
+      <div className="space-y-2">
+        {rows.map(r => {
+          const isOpen = !!open[r.id];
+          return (
+            <div key={r.id} className="border border-[#E5E7EB] rounded-lg overflow-hidden">
+              <button
+                onClick={() => setOpen(o => ({ ...o, [r.id]: !o[r.id] }))}
+                className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50"
+              >
+                {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                        : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${PARCEL_PILL[r.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                  {r.status}
+                </span>
+                <span className="text-sm font-semibold text-[#0F2B4C] truncate">
+                  {r.senderName ?? 'Sender'}
+                </span>
+                <ArrowRight className="w-3 h-3 text-gray-400 shrink-0" />
+                <span className="text-sm text-gray-700 truncate">
+                  {r.driverName ?? 'Rider'}
+                </span>
+                <span className="text-xs text-gray-500 truncate hidden md:inline">
+                  {r.fromCity} → {r.toCity}
+                </span>
+                <span className="ml-auto text-sm shrink-0">
+                  {r.quotedNgn != null && <span className="text-gray-500">{naira(r.quotedNgn)}</span>}
+                  {r.priceMovedNgn != null && r.priceMovedNgn !== 0 && (
+                    <span className={r.priceMovedNgn > 0 ? 'text-amber-700 font-semibold ml-1' : 'text-green-700 font-semibold ml-1'}>
+                      {r.priceMovedNgn > 0 ? '+' : ''}{naira(r.priceMovedNgn)}
+                    </span>
+                  )}
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="border-t border-[#E5E7EB] bg-gray-50 p-4 space-y-4 text-sm">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">The parcel</p>
+                      <p className="text-[#0F2B4C]">{r.packageDescription || 'No description given'}</p>
+                      <p className="text-gray-600 text-xs mt-1">
+                        {r.weightKg != null ? `${r.weightKg} kg` : 'weight not given'}
+                        {r.categoryCode ? ` · ${r.categoryCode}` : ''}
+                        {r.declaredValueNgn != null ? ` · declared ${naira(r.declaredValueNgn)}` : ''}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">The trip</p>
+                      <p className="text-[#0F2B4C]">{r.fromCity} → {r.toCity}</p>
+                      <p className="text-gray-600 text-xs mt-1">
+                        departs {when(r.departAt)}
+                        {r.vehicleType ? ` · ${r.vehicleType}` : ''}
+                        {r.vehiclePlate ? ` ${r.vehiclePlate}` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">Asked for</p>
+                      <p className="text-gray-700 text-xs">Pick up: {r.pickupAddress || '-'}</p>
+                      <p className="text-gray-700 text-xs">Drop off: {r.dropoffAddress || '-'}</p>
+                      <p className="text-[#0F2B4C] mt-1">
+                        {r.quotedNgn != null ? naira(r.quotedNgn) : 'no quote'}
+                        {r.quotedKm != null ? ` · ${r.quotedKm} km` : ''}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">
+                        Rider offered instead {r.wasCountered ? '' : '(nothing)'}
+                      </p>
+                      {r.wasCountered ? (
+                        <>
+                          {r.counterDropAddress && (
+                            <p className="text-gray-700 text-xs">Drop off: {r.counterDropAddress}</p>
+                          )}
+                          <p className="text-[#0F2B4C] mt-1">
+                            {r.counterQuotedNgn != null ? naira(r.counterQuotedNgn) : 'same price'}
+                            {r.counterQuotedKm != null ? ` · ${r.counterQuotedKm} km` : ''}
+                          </p>
+                          <p className="text-gray-500 text-xs mt-1">countered {when(r.counteredAt)}</p>
+                        </>
+                      ) : (
+                        <p className="text-gray-500 text-xs">The rider did not counter.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* The whole point of the screen: what each party actually said. */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-500">In their own words</p>
+                    {!r.senderInstructions && !r.counterNote && !r.declineReason && (
+                      <p className="text-gray-500 text-xs">Neither side left a note.</p>
+                    )}
+                    {r.senderInstructions && (
+                      <div className="bg-white border border-[#E5E7EB] rounded-lg p-3">
+                        <p className="text-xs font-semibold text-gray-500 mb-1">
+                          {r.senderName ?? 'Sender'} · instructions
+                        </p>
+                        <p className="text-[#0F2B4C] whitespace-pre-wrap">{r.senderInstructions}</p>
+                      </div>
+                    )}
+                    {r.counterNote && (
+                      <div className="bg-white border border-[#E5E7EB] rounded-lg p-3">
+                        <p className="text-xs font-semibold text-gray-500 mb-1">
+                          {r.driverName ?? 'Rider'} · why the different offer
+                        </p>
+                        <p className="text-[#0F2B4C] whitespace-pre-wrap">{r.counterNote}</p>
+                      </div>
+                    )}
+                    {r.declineReason && (
+                      <div className="bg-white border border-red-100 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-red-600 mb-1">
+                          {r.driverName ?? 'Rider'} · why they said no
+                        </p>
+                        <p className="text-[#0F2B4C] whitespace-pre-wrap">{r.declineReason}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-4 text-xs text-gray-500 pt-1">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> asked {when(r.createdAt)}
+                    </span>
+                    <span>answered {when(r.answeredAt)}</span>
+                    <span>expires {when(r.expiresAt)}</span>
+                    {r.deliveryId && (
+                      <Link href={`/deliveries/${r.deliveryId}`} className="text-[#0F2B4C] font-semibold hover:underline">
+                        open the delivery it became
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function InterstateTripBoard() {
   const [trips,   setTrips]   = useState<InterstateTrip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -388,6 +638,9 @@ export default function InterstateTripBoard() {
           })}
         </div>
       )}
+
+      {/* The parcel marketplace, which had no admin view at all until now. */}
+      <ParcelNegotiations />
 
       {/* Common routes reference */}
       <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-4">

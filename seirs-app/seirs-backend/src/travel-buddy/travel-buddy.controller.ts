@@ -206,4 +206,18 @@ export class TravelBuddyController {
   adminPendingPayments(@Query('limit') limit?: string) {
     return this.travelBuddy.adminPendingPayments(Number(limit ?? 50));
   }
+
+  /**
+   * The parcel side of the marketplace, which had no admin route at all.
+   *
+   * Every route above this one is passenger-side, so a dispute about a
+   * parcel had no screen behind it even though the negotiation was fully
+   * recorded. Filterable by status, because the rows worth reading are the
+   * countered and declined ones.
+   */
+  @UseGuards(AdminGuard)
+  @Get('admin/parcel-requests')
+  adminParcelRequests(@Query('status') status?: string, @Query('limit') limit?: string) {
+    return this.travelBuddy.adminParcelRequests(status, Number(limit ?? 100));
+  }
 }

@@ -256,6 +256,24 @@ export const adminApi = {
       req<any[]>(`/admin/partner-stores${status ? `?status=${encodeURIComponent(status)}` : ''}`),
   },
 
+  /**
+   * Shops asking to trade from a different building.
+   *
+   * Approving one is the ONLY thing that moves a live shop's address and
+   * map pin, which is why it is a decision route and not a field edit.
+   */
+  partnerMoves: {
+    queue:    () => req<any[]>('/admin/partner-moves'),
+    forStore: (storeId: string) => req<any>(`/admin/partner-moves/store/${storeId}`),
+    /** Every parcel in the shop, whose it is, and its whole history. */
+    parcels:  (storeId: string) => req<any>(`/admin/partner-moves/store/${storeId}/parcels`),
+    decide:   (storeId: string, approve: boolean, note?: string, rejectedItems?: string[]) =>
+      req<any>(`/admin/partner-moves/store/${storeId}/decide`, {
+        method: 'PATCH',
+        body: JSON.stringify({ approve, note, rejectedItems }),
+      }),
+  },
+
   pendingDeletions: {
     /**
      * These four now return { items, total, page, limit } instead of a bare
@@ -797,6 +815,13 @@ export const adminApi = {
     noShows:         (limit = 50)    => req<any[]>(`/travel-buddy/admin/no-shows?limit=${limit}`),
     pendingPayments: (limit = 50)    => req<any[]>(`/travel-buddy/admin/pending-payments?limit=${limit}`),
     dropReview:      (limit = 50)    => req<any[]>(`/travel-buddy/admin/drop-review?limit=${limit}`),
+    /**
+     * The parcel side, which had no admin route until 2026-09-04. Everything
+     * above this line is passenger-side, so a dispute about a parcel had no
+     * screen behind it even though the whole negotiation was recorded.
+     */
+    parcelRequests: (limit = 100, status?: string) =>
+      req<any[]>(`/travel-buddy/admin/parcel-requests?limit=${limit}${status ? `&status=${status}` : ''}`),
   },
 
   // Spec V8 §3.13. NDPR admin tools (A32 + A33)

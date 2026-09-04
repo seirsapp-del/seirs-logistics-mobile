@@ -1578,6 +1578,77 @@ export class TravelBuddyService {
     }));
   }
 
+  /**
+   * Every parcel negotiation, with what BOTH sides actually said.
+   *
+   * WHY THIS EXISTS. Until 2026-09-04 the five admin routes above were all
+   * passenger-side, so the entire parcel marketplace was invisible to
+   * support. parcel_requests already stored the sender's instructions, the
+   * rider's counter-note, the decline reason, both prices and both distances,
+   * and the alternative drop-off a rider offered. Every field was written and
+   * none of it was ever rendered, so when a trader and a rider disagreed
+   * about what had been offered, there was no record anyone could open. The
+   * founder asked for exactly this: the input detail and the comments of all
+   * parties, in one place.
+   *
+   * Contact details are deliberately NOT selected. Both users come back as id
+   * and name only, and an operator who needs to ring someone opens the user.
+   * Widening a support query into a personal-data query is how the seven
+   * admin endpoints ended up shipping bank details nothing rendered.
+   */
+  async adminParcelRequests(status?: string, limit = 100) {
+    const rows: Array<any> = await this.ds.query(
+      `SELECT pr.id, pr.status, pr."weightKg", pr."categoryCode",
+              pr."packageDescription", pr."declaredValueNgn",
+              pr."pickupAddress", pr."dropoffAddress",
+              pr."senderInstructions",
+              pr."quotedNgn", pr."quotedKm",
+              pr."counterQuotedNgn", pr."counterQuotedKm",
+              pr."counterDropAddress", pr."counterNote",
+              pr."declineReason",
+              pr."counteredAt", pr."answeredAt", pr."expiresAt", pr."createdAt",
+              pr."deliveryId",
+              s.id AS "senderUserId", s.name AS "senderName",
+              t.id AS "tripId", t."fromCity", t."toCity", t."departAt",
+              du.id AS "driverUserId", du.name AS "driverName",
+              d."vehicleType", d."vehiclePlate"
+         FROM "parcel_requests" pr
+         LEFT JOIN "users" s ON s.id = pr."senderUserId"
+         LEFT JOIN "driver_trips" t ON t.id = pr."tripId"
+         LEFT JOIN "drivers" d ON d.id = t."driverId"
+         LEFT JOIN "users" du ON du.id = d."userId"
+        WHERE ($1::text IS NULL OR pr.status = $1::text)
+        ORDER BY pr."createdAt" DESC
+        LIMIT $2`,
+      [status ?? null, limit],
+    ).catch((e: any) => {
+      // NOT a silent []. A swallowed catch here is what hid the driver
+      // statement being broken for weeks: a mistyped column looks exactly
+      // like an empty queue, and an empty queue looks like good news.
+      this.logger.error(`adminParcelRequests query failed: ${e?.message ?? e}`);
+      return [] as any[];
+    });
+
+    const num = (v: any) => (v == null ? null : Number(v));
+    return rows.map((r) => ({
+      ...r,
+      weightKg:         num(r.weightKg),
+      declaredValueNgn: num(r.declaredValueNgn),
+      quotedNgn:        num(r.quotedNgn),
+      quotedKm:         num(r.quotedKm),
+      counterQuotedNgn: num(r.counterQuotedNgn),
+      counterQuotedKm:  num(r.counterQuotedKm),
+      /** Did the rider move the price, the drop, or both? Saves the operator
+       *  comparing two columns on every row to spot the ones in dispute. */
+      wasCountered: Boolean(r.counteredAt),
+      priceMovedNgn:
+        r.counterQuotedNgn == null || r.quotedNgn == null
+          ? null
+          : Number(r.counterQuotedNgn) - Number(r.quotedNgn),
+      dropMoved: Boolean(r.counterDropAddress),
+    }));
+  }
+
   async dropReviewQueue(limit = 50) {
     const graceMin = await this.fee(FEE.NO_SHOW_WAIT_MIN);
     const rows = await this.bookingsRepo
