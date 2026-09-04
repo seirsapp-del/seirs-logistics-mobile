@@ -142,7 +142,7 @@ export default function PayoutAccountScreen() {
 
           {current?.hasAccount && !editing && (
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.cardLabel, { color: colors.textThird }]}>EARNINGS GO TO</Text>
+              <Text style={[styles.cardLabel, { color: colors.textSecond }]}>EARNINGS GO TO</Text>
               <Text style={[styles.accountName, { color: colors.text }]}>{current.accountName}</Text>
               <Text style={[styles.accountLine, { color: colors.textSecond }]}>
                 {current.bankName}
@@ -258,7 +258,12 @@ export default function PayoutAccountScreen() {
             </View>
           )}
 
-          <Text style={[styles.footNote, { color: colors.textThird }]}>
+          {/* textSecond, not textThird. In dark mode textThird is #3D444D
+              against a #161B22 card, which measures 1.76:1 where WCAG asks
+              for 4.5:1, and on the phone it is the least readable thing on
+              the screen. The token itself is a shared/theme problem and not
+              mine to change; this stops repeating it here. */}
+          <Text style={[styles.footNote, { color: colors.textSecond }]}>
             Changing an account is checked by a person before it takes effect, so nobody else can
             redirect your earnings. Your current account keeps paying while we look.
           </Text>
