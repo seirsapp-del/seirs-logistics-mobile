@@ -1208,6 +1208,32 @@ export class DeliveriesService {
         price:          Number(price.customer.total),
         driverEarnings: Number(price.driver.total),
         status: DeliveryStatus.PENDING,
+        /**
+         * When this is actually happening (founder 2026-09-04).
+         *
+         * A seat or load booked onto a declared trip carried a tripId and NO
+         * scheduledFor, so every part of the platform that asks "when is this
+         * due" got null and treated a journey three weeks away as if it were
+         * happening now. Three separate things were wrong because of it:
+         *
+         *   The fifteen-minute dispatch hold never applied, so a rider could
+         *   accept a booking for a trip a month out the moment it appeared.
+         *   The founder's worry exactly: accept now, cancel near the day,
+         *   leaving the passenger with no time to find anyone else.
+         *
+         *   The expiry sweep treated it as Send Now, so an unanswered booking
+         *   on a distant trip was cancelled after the pending window. At the
+         *   sixty minutes it used to be that was survivable; at the ten
+         *   minutes it is now, it would have killed nearly all of them.
+         *
+         *   And chat had nothing to open against, so it opened immediately.
+         *
+         * One field fixes all three, because all three were asking the same
+         * question and getting null. Safe for pricing: the seat price is
+         * computed above and stored, and no pricing path reads scheduledFor.
+         * The night window is owned by the rate card's time surcharges.
+         */
+        scheduledFor: trip.departAt ?? null,
       } as any);
       const saved: any = await this.repo.save(row);
       this.logger.log(`Travel Buddy: ${seats} seat(s) on trip ${tripId} booked as ${saved.trackingCode}; dispatch awaits payment`);
