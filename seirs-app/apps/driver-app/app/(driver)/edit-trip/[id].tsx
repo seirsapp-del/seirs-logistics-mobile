@@ -34,13 +34,27 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 
-/* Same 04:00 to 22:00 half-hour grid the declare form offers. Drivers go
-   online at 4am, an hour before the first scheduled pickup window. */
+/**
+ * Every half hour of the day, matching the declare form.
+ *
+ * This was a SECOND copy of the 04:00 to 22:00 grid. The declare screen was
+ * widened to 24 hours when the founder found he could not declare a 22:30
+ * departure, and this one was missed, so a rider could declare a night trip
+ * and then be unable to EDIT it to another night time. He hit that within
+ * minutes: "look at the edit screen i cant pick 23:00".
+ *
+ * The comment above it said "same grid the declare form offers", which was
+ * true when written and became a lie the moment the other file changed. A
+ * comment claiming two things match is not a mechanism that keeps them
+ * matching. This wants to be one shared constant; leaving it duplicated for
+ * now because the founder is mid-test and a shared module is a wider change
+ * than the moment allows.
+ */
 const DEPART_SLOTS: string[] = (() => {
   const out: string[] = [];
-  for (let h = 4; h <= 22; h++) {
+  for (let h = 0; h < 24; h++) {
     out.push(`${String(h).padStart(2, '0')}:00`);
-    if (h < 22) out.push(`${String(h).padStart(2, '0')}:30`);
+    out.push(`${String(h).padStart(2, '0')}:30`);
   }
   return out;
 })();

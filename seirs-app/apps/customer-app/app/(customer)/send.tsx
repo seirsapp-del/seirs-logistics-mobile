@@ -1957,12 +1957,28 @@ export default function SendScreen() {
               </Text>
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
-                {t('send.instructions', { defaultValue: 'Instructions for driver (optional)' })}
+                {/*
+                  * Ask for the LANDMARK first (founder 2026-09-04, on the
+                  * device: "it will be good if the customer and the business
+                  * app have it because the cities are so big").
+                  *
+                  * This asked for "instructions for driver" and offered "call
+                  * when you reach the gate", which is about what to do on
+                  * ARRIVAL and takes finding the place for granted. In a city
+                  * this size an address often does not find you; a landmark
+                  * does. The driver app already asks this way, and gets
+                  * answers like "First gate oau" and "In front of First bank".
+                  *
+                  * Same field, same column, nothing new stored. Only the
+                  * question changed, because the question is what decides
+                  * whether anybody writes the useful thing.
+                  */}
+                {t('send.instructions', { defaultValue: 'How to find this spot, and anything else the rider should know (optional)' })}
               </Text>
               <TextInput
                 onFocus={handleFieldFocus}
                 style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text, minHeight: 70, textAlignVertical: 'top' }]}
-                placeholder={t('send.instructionsPlaceholder', { defaultValue: 'e.g. Call when you reach the gate. Ask for security.' })}
+                placeholder={t('send.instructionsPlaceholder', { defaultValue: 'e.g. Blue gate opposite Zenith Bank. Call when you reach.' })}
                 placeholderTextColor={theme.textThird}
                 value={instructions}
                 onChangeText={v => updatePkg(pkgIndex, { instructions: v })}

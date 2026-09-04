@@ -1377,13 +1377,13 @@ export default function SendPackageScreen() {
                     High-value packages get ID-verified handoff.
                   </Text>
 
-                  <Text style={[styles.label, { color: colors.textSecond }]}>Instructions for driver (optional)</Text>
+                  <Text style={[styles.label, { color: colors.textSecond }]}>How to find this spot, and anything else the rider should know (optional)</Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={s.note ?? ''}
                     onChangeText={(v) => updateStop(i, { note: v })}
                     onFocus={handleFieldFocus}
-                    placeholder="e.g. Call when you reach the gate. Ask for security."
+                    placeholder="e.g. Blue gate opposite Zenith Bank. Call when you reach."
                     placeholderTextColor={colors.textThird}
                   />
 
