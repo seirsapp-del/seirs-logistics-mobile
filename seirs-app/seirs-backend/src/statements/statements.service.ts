@@ -117,12 +117,21 @@ export class StatementsService {
     if (!driver?.length) throw new NotFoundException('Driver not found.');
 
     const rows = await this.ds.query(
+      /**
+       * driver_earnings maps to SNAKE_CASE columns: the entity declares
+       * @Column({ name: 'delivery_id' }), 'available_at' and a
+       * @CreateDateColumn({ name: 'created_at' }). This query asked for
+       * "deliveryId", "availableAt" and "createdAt", so it threw every time.
+       * Aliased back to the camelCase the mapping below reads.
+       */
       `SELECT e.driver_net::float AS amount, e.status,
-              e."availableAt", e."createdAt", e."deliveryId"
+              e.available_at AS "availableAt",
+              e.created_at   AS "createdAt",
+              e.delivery_id  AS "deliveryId"
          FROM driver_earnings e
         WHERE e.driver_id = $1
-          AND e."createdAt" BETWEEN $2 AND $3
-        ORDER BY e."createdAt" ASC`,
+          AND e.created_at BETWEEN $2 AND $3
+        ORDER BY e.created_at ASC`,
       [driverId, w.from.toISOString(), w.to.toISOString()],
     );
 
