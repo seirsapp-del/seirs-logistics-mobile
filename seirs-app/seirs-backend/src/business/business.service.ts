@@ -542,7 +542,22 @@ export class BusinessService {
       storeCode: (store as any).storeCode ?? null,
       from:      fromDate.toISOString(),
       to:        toDate.toISOString(),
-      openingNote: 'Counter handling fees are your share of the fee charged to the sender.',
+      /**
+       * Says what they earned, and stops.
+       *
+       * This read "your share of the fee charged to the sender", which
+       * names no rate and still gives the game away: it tells a shop a
+       * larger fee exists and that they receive a portion of it, which
+       * invites "what portion?" and the answer is never one they like.
+       *
+       * Founder ruling 2026-09-03: our commission is shown to nobody.
+       * Not drivers, not customers, not partners. It is disclosed once in
+       * the Code of Conduct at sign-up and nowhere else. The same rule
+       * cost four driver screens, where earnings.tsx printed the fare and
+       * the SEIRS cut on the same row and one screenshot gave up the take
+       * rate.
+       */
+      openingNote: 'What you earned for handling each parcel.',
       entries,
       totals: {
         paidNgn:    Math.round(paid * 100) / 100,
