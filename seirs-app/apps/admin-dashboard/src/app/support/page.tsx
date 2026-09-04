@@ -149,6 +149,8 @@ export default function SupportInboxPage() {
    * since this morning is at the bottom of it.
    */
   const [sort, setSort] = useState<'recent' | 'waiting'>('recent');
+  const [page,  setPage]  = useState(1);
+  const [total, setTotal] = useState(0);
 
   const confirm = useConfirm();
   const prompt  = usePrompt();
@@ -159,20 +161,31 @@ export default function SupportInboxPage() {
     setLoading(true);
     setError(null);
     try {
-      const list = await adminApi.support.queue({
+      const res = await adminApi.support.queue({
         status:      (statusFilter || undefined) as any,
         topic:       (topicFilter  || undefined) as any,
         accountType: accountTypeFilter || undefined,
         limit:       QUEUE_LIMIT,
+        sort,
+        page,
       });
-      setTickets(list ?? []);
+      /**
+       * The queue returns { items, total, page } now. Array.isArray is the
+       * same fallback the other paginated boards keep, so a stale deploy of
+       * either side degrades to a list rather than an empty inbox. On a
+       * support queue an empty list reads as "nothing to do", which is the
+       * most expensive way to be wrong.
+       */
+      const list = Array.isArray(res) ? res : (res?.items ?? []);
+      setTickets(list);
+      setTotal(Array.isArray(res) ? list.length : (res?.total ?? list.length));
     } catch (e: any) {
       setError(e?.message ?? 'Failed to load support queue');
       setTickets([]);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, topicFilter, accountTypeFilter]);
+  }, [statusFilter, topicFilter, accountTypeFilter, sort, page]);
 
   useEffect(() => { loadQueue(); }, [loadQueue]);
 
@@ -427,18 +440,29 @@ export default function SupportInboxPage() {
           `${t.subject} ${t.user?.name ?? ''} ${t.user?.email ?? ''} ${t.user?.phone ?? ''} ${t.user?.accountId ?? ''}`
             .toLowerCase().includes(term))
       : tickets.slice();
-    if (sort === 'waiting') {
-      // Longest wait first, and only the ones actually waiting on us can
-      // be "waiting": a thread we already answered is not a backlog item.
-      rows.sort((a, b) => {
-        const aw = WAITING_ON_US.has(a.status) ? 0 : 1;
-        const bw = WAITING_ON_US.has(b.status) ? 0 : 1;
-        if (aw !== bw) return aw - bw;
-        return new Date(a.lastMessageAt).getTime() - new Date(b.lastMessageAt).getTime();
-      });
-    }
+    /**
+     * Sorting moved to the server and is deliberately NOT redone here.
+     *
+     * Re-sorting rows the server already chose and cut is what made
+     * "longest waiting" unable to find the longest-waiting ticket. Doing it
+     * in both places would put the bug back the moment the two rules
+     * disagreed.
+     *
+     * The search box above is still local, so it looks through the rows on
+     * THIS page only. That is a real limit and the box says so, rather than
+     * quietly returning nothing for a ticket sitting on page three.
+     */
     return rows;
-  }, [tickets, find, sort]);
+  }, [tickets, find]);
+
+  /**
+   * Any change to what is being asked for goes back to page one.
+   *
+   * Without this, narrowing the filters while on page four asks for the
+   * fourth page of a much shorter list and shows an empty queue, which on
+   * a support inbox reads as "nothing to do" rather than "wrong page".
+   */
+  useEffect(() => { setPage(1); }, [statusFilter, topicFilter, accountTypeFilter, sort]);
 
   const filtersActive = Boolean(statusFilter || topicFilter || accountTypeFilter);
   const clearFilters  = () => { setStatusFilter(''); setTopicFilter(''); setAccountTypeFilter(''); setFind(''); };
@@ -528,7 +552,7 @@ export default function SupportInboxPage() {
             <input
               value={find}
               onChange={e => setFind(e.target.value)}
-              placeholder="Find a name, email, phone or SEIRS ID"
+              placeholder="Find on this page: name, email, phone, SEIRS ID"
               className="w-72 rounded-lg border border-gray-200 bg-white py-1.5 pl-7 pr-2 font-medium focus:outline-none focus:ring-1 focus:ring-[#3A7BD5]"
             />
           </div>
@@ -557,11 +581,37 @@ export default function SupportInboxPage() {
               {waitingCount} waiting on us
             </span>
           )}
-          {tickets.length >= QUEUE_LIMIT && (
-            <span className="text-amber-700">
-              This is the newest {QUEUE_LIMIT}. Older tickets exist and are not on this screen: narrow with the filters above.
-            </span>
+          {/* Real pages, replacing a footnote that admitted defeat.
+
+              This used to say "this is the newest 100, older tickets exist
+              and are not on this screen", which was honest and useless:
+              there was no page two, so the backlog was simply unreachable
+              and an agent was told to narrow the filters and hope. */}
+          {total > QUEUE_LIMIT && (
+            <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 text-sm">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-[#0F2B4C] disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="tabular-nums text-gray-500">
+                {(page - 1) * QUEUE_LIMIT + 1}
+                {'\u2013'}
+                {Math.min(page * QUEUE_LIMIT, total)} of {total}
+              </span>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page * QUEUE_LIMIT >= total}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-[#0F2B4C] disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
           )}
+
+
           {find.trim() && (
             <span className="text-gray-400">Searches the tickets loaded above, not the whole history.</span>
           )}

@@ -535,8 +535,18 @@ export const adminApi = {
 
   // Spec V8 §3.12. Interstate trip board.
   interstateTrips: {
-    list: (status?: 'active' | 'completed' | 'cancelled') =>
-      req<any[]>(`/admin/interstate-trips${status ? `?status=${status}` : ''}`),
+    /**
+     * from and to are DEPARTURE dates, for audit. Without them the board
+     * keeps the finished tabs to recent history; the active tab is never
+     * windowed, because a live trip must not fall off the end of one.
+     */
+    list: (status?: 'active' | 'completed' | 'cancelled', from?: string, to?: string) => {
+      const q = new URLSearchParams();
+      if (status) q.set('status', status);
+      if (from)   q.set('from', from);
+      if (to)     q.set('to', to);
+      return req<any[]>(`/admin/interstate-trips?${q.toString()}`);
+    },
   },
 
   // Spec V8 §3.13. ops broadcast composer.
@@ -829,7 +839,18 @@ export const adminApi = {
    * argument support cannot see into is an argument SEIRS loses.
    */
   travelBuddy: {
-    trips:           (limit = 50)    => req<any[]>(`/travel-buddy/admin/trips?limit=${limit}`),
+    /**
+     * status, from and to added 2026-09-04. This board had NO WHERE CLAUSE at
+     * all, so every trip ever declared came back newest-first and finished
+     * ones crowded out the live departures an operator is watching.
+     */
+    trips: (limit = 50, status?: string, from?: string, to?: string) => {
+      const q = new URLSearchParams({ limit: String(limit) });
+      if (status) q.set('status', status);
+      if (from)   q.set('from', from);
+      if (to)     q.set('to', to);
+      return req<any[]>(`/travel-buddy/admin/trips?${q.toString()}`);
+    },
     bookings:        (status?: string, limit = 100) =>
       req<any[]>(`/travel-buddy/admin/bookings?limit=${limit}${status ? `&status=${status}` : ''}`),
     noShows:         (limit = 50)    => req<any[]>(`/travel-buddy/admin/no-shows?limit=${limit}`),
@@ -1226,13 +1247,25 @@ export const adminApi = {
       topic?:       'billing' | 'driver' | 'account' | 'delivery' | 'other';
       accountType?: string;
       limit?:       number;
+      /**
+       * Sent to the SERVER, never applied afterwards.
+       *
+       * The screen used to re-sort whatever the server had already chosen
+       * and truncated, which made "longest waiting" incapable of finding
+       * the longest-waiting ticket: that ticket has the oldest activity,
+       * so the server cut it before the screen could sort it.
+       */
+      sort?:        'recent' | 'waiting';
+      page?:        number;
     } = {}) => {
       const qs = new URLSearchParams();
       if (params.status)      qs.set('status',      params.status);
       if (params.topic)       qs.set('topic',       params.topic);
       if (params.accountType) qs.set('accountType', params.accountType);
+      if (params.sort)        qs.set('sort',        params.sort);
+      if (params.page)        qs.set('page',        String(params.page));
       qs.set('limit', String(params.limit ?? 30));
-      return req<any[]>(`/support/queue?${qs.toString()}`);
+      return req<any>(`/support/queue?${qs.toString()}`);
     },
     thread: (ticketId: string) => req<any>(`/support/tickets/${ticketId}`),
     reply:  (ticketId: string, body: string) =>

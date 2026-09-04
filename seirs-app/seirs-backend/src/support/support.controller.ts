@@ -65,8 +65,12 @@ export class SupportController {
     @Query('topic')       topic?:       TicketTopic,
     @Query('accountType') accountType?: string,
     @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit?: number,
+    // Sorting is a server concern: it decides WHICH rows a page contains,
+    // not merely their arrangement, the moment there is more than one page.
+    @Query('sort')  sort?: 'recent' | 'waiting',
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
   ) {
-    return this.svc.listQueue(user, { status, topic, accountType, limit });
+    return this.svc.listQueue(user, { status, topic, accountType, limit, sort, page });
   }
 
   // POST /api/v1/support/tickets/:id/agent-reply

@@ -251,6 +251,13 @@ export class SupportService {
     topic?:      TicketTopic;
     limit?:      number;
     accountType?: string;
+    /**
+     * 'waiting' puts the person who has been ignored longest at the top.
+     * 'recent' is the old behaviour and stays the default so nothing that
+     * calls this without the parameter changes underneath it.
+     */
+    sort?:       'recent' | 'waiting';
+    page?:       number;
   } = {}) {
     if (!(await this.isAgent(requester))) {
       throw new ForbiddenException('Support agent role required');
@@ -266,14 +273,53 @@ export class SupportService {
      * permissions problem.
      */
     const qb = this.tickets.createQueryBuilder('t')
-      .leftJoinAndSelect('t.user', 'u')
-      .orderBy('t.lastMessageAt', 'DESC');
+      .leftJoinAndSelect('t.user', 'u');
+
+    /**
+     * SORTING HAPPENS HERE, BEFORE THE LIST IS CUT.
+     *
+     * It used to happen on the dashboard, after this method had already
+     * ordered by lastMessageAt DESC and truncated to 100. That made the
+     * "Longest waiting" control incapable of doing the one thing it
+     * promised: a ticket ignored for three weeks has, by definition, the
+     * OLDEST lastMessageAt, so it sorted last here and was the first row
+     * dropped by the cut. The single ticket that sort existed to surface
+     * was the one most likely to be missing from the set being sorted.
+     *
+     * Silent below 100 tickets and wrong above it, which means it would
+     * have started lying at exactly the volume where somebody began
+     * trusting it.
+     *
+     * Ordering a page of results is not a presentation concern. It decides
+     * WHICH rows you get, not just their arrangement, the moment there is
+     * more than one page.
+     */
+    if (opts.sort === 'waiting') {
+      // Oldest activity first: whoever has heard nothing for longest.
+      qb.orderBy('t.lastMessageAt', 'ASC');
+    } else {
+      qb.orderBy('t.lastMessageAt', 'DESC');
+    }
 
     if (opts.status)      qb.andWhere('t.status = :s',              { s: opts.status });
     if (opts.topic)       qb.andWhere('t.topic = :tp',              { tp: opts.topic });
     if (opts.accountType) qb.andWhere('t."userAccountType" = :at',  { at: opts.accountType });
 
-    const rows = await qb.take(Math.min(Math.max(opts.limit ?? 30, 1), 100)).getMany();
+    /**
+     * Real pages, and a total.
+     *
+     * There was no page two. The queue asked for 100, got at most 100, and
+     * everything beyond that was unreachable from the screen: not hidden
+     * behind a control, simply absent, with the page left to say so in a
+     * footnote. A support queue that cannot reach its own backlog is a
+     * queue that quietly stops being the record.
+     */
+    const limit = Math.min(Math.max(opts.limit ?? 30, 1), 100);
+    const page  = Math.max(Number(opts.page) || 1, 1);
+    const [rows, total] = await qb
+      .take(limit)
+      .skip((page - 1) * limit)
+      .getManyAndCount();
 
     /**
      * Scope the user down to what support needs to work a ticket.
@@ -311,7 +357,21 @@ export class SupportService {
       found.forEach(r => driverIdByUser.set(r.userId, r.id));
     }
 
-    return rows.map((t) => ({
+    /**
+     * An object with a total, not a bare array.
+     *
+     * The queue could not say how big it was, so the screen could not tell
+     * "these are all the tickets" from "these are the first hundred of
+     * nine hundred". It guessed by whether the array had hit the cap,
+     * which is right up until a backlog of exactly 100.
+     *
+     * Callers that still expect an array are handled on the dashboard with
+     * the same Array.isArray fallback the other paginated boards use, so a
+     * stale deploy of either side degrades to a list rather than an empty
+     * queue. On a support inbox an empty list reads as "nothing to do",
+     * which is the most expensive possible way to be wrong.
+     */
+    const items = rows.map((t) => ({
       ...t,
       user: t.user
         ? {
@@ -329,7 +389,20 @@ export class SupportService {
             driverId:  driverIdByUser.get(t.user.id) ?? null,
           }
         : null,
-    })) as any;
+      /**
+       * How long this ticket has been sitting, in hours.
+       *
+       * Computed here rather than on the screen because it is the number
+       * the queue is ordered by, and a row showing an age derived
+       * differently from the order it appears in is how a list stops
+       * making sense to the person reading it.
+       */
+      waitingHours: t.lastMessageAt
+        ? Math.max(0, Math.round((Date.now() - new Date(t.lastMessageAt).getTime()) / 3_600_000))
+        : null,
+    }));
+
+    return { items, total, page, limit, sort: opts.sort ?? 'recent' } as any;
   }
 
   /**
