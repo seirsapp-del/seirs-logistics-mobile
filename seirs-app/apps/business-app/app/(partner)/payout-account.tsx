@@ -58,9 +58,23 @@ export default function PayoutAccountScreen() {
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
 
+  /**
+   * Nothing until they type.
+   *
+   * This showed banks.slice(0, 8) on an empty box, which is whatever
+   * order the provider happened to return: Enterprise, Titan Trust, Taj,
+   * Globus and Central Bank Of Nigeria, which is not a bank anybody holds
+   * a payout account at. A shopkeeper opening the screen met a list of
+   * banks they had mostly never heard of and one that is nonsense as a
+   * destination.
+   *
+   * A shop owner knows their own bank and can type two letters of it.
+   * Showing an arbitrary slice is worse than showing none, so this shows
+   * none and says so.
+   */
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return banks.slice(0, 8);
+    if (q.length < 2) return [];
     return banks.filter(b => b.name.toLowerCase().includes(q)).slice(0, 8);
   }, [banks, query]);
 
@@ -191,11 +205,19 @@ export default function PayoutAccountScreen() {
                       <Text style={[styles.bankRowText, { color: colors.text }]}>{b.name}</Text>
                     </Pressable>
                   ))}
-                  {banks.length === 0 && (
-                    <Text style={[styles.hint, { color: colors.textThird }]}>
+                  {banks.length === 0 ? (
+                    <Text style={[styles.hint, { color: colors.textSecond }]}>
                       We could not load the bank list. Pull down to try again.
                     </Text>
-                  )}
+                  ) : query.trim().length < 2 ? (
+                    <Text style={[styles.hint, { color: colors.textSecond }]}>
+                      Type two letters of your bank name, like GT or Access.
+                    </Text>
+                  ) : matches.length === 0 ? (
+                    <Text style={[styles.hint, { color: colors.textSecond }]}>
+                      No bank matches that. Check the spelling, or try a shorter word.
+                    </Text>
+                  ) : null}
                 </>
               )}
 
