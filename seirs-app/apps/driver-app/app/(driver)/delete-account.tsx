@@ -143,7 +143,7 @@ export default function DeleteAccountScreen() {
           {/* Spec V8: pre-flight readiness panel. Blocks deletion until
               active deliveries are 0 and wallet balance is withdrawn. */}
           {readiness === null ? (
-            <View style={[styles.readyBanner, { backgroundColor: '#F3F4F6' }]}>
+            <View style={[styles.readyBanner, { backgroundColor: theme.surfaceSecond }]}>
               <ActivityIndicator color={theme.primary} />
               <Text style={[styles.readyTitle, { color: theme.textSecond }]}>Checking your account…</Text>
             </View>
@@ -273,6 +273,17 @@ const styles = StyleSheet.create({
   warnTitle: { color: '#991B1B', fontSize: FontSize.base, fontWeight: FontWeight.bold, marginBottom: 4 },
   warnSub:   { color: '#991B1B', fontSize: FontSize.sm, lineHeight: 19 },
 
+  /**
+   * The CHECKING variant of this banner used a hardcoded #F3F4F6 with
+   * theme.textSecond on top. In dark mode that is #8B949E on light grey:
+   * 2.79:1, and "Checking your account" was invisible on a dark phone. It now
+   * takes theme.surfaceSecond.
+   *
+   * The ready and blocked variants below keep their hardcoded light
+   * backgrounds on purpose, because they pair them with hardcoded DARK text
+   * (#15803D, #166534) and so read correctly in either theme. Mixing a fixed
+   * background with a themed foreground is the bug; a fully fixed pair is not.
+   */
   readyBanner: { flexDirection: 'row', gap: 12, padding: Spacing.md, borderRadius: Radius.lg, alignItems: 'center' },
   readyTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   readySub:    { fontSize: FontSize.xs, marginTop: 2 },
