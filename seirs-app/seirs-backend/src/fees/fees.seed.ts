@@ -189,6 +189,43 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
    * Travel Buddy from the moment it is declared, which is the whole point of
    * declaring early. 0 turns the gate off.
    */
+  /**
+   * When two strangers may start talking (founder 2026-09-04).
+   *
+   * Chat had a CLOSING gate, one hour after delivery, and none at the other
+   * end: it opened the moment a rider was attached. On a trip declared a
+   * month ahead that is a month of unmonitored contact between two people who
+   * have never met, which is a safety exposure and a disintermediation
+   * channel at the same time. The founder: "imaging after accept a user they
+   * both start chatting for a month, that can be dangerous for us".
+   *
+   * Four hours, his number, and his reasoning is the right one: this is not
+   * about having time to chat, it is about having time to get yourself and
+   * your luggage to the park. Like a flight, you arrive early. Four hours is
+   * enough to arrange anything that actually needs arranging.
+   *
+   * Applies only where a departure is known. A Send Now delivery has no
+   * scheduled time and opens on acceptance as before, because the rider is
+   * already on the way. 0 turns the gate off.
+   */
+  /**
+   * And when it closes again (founder 2026-09-04).
+   *
+   * One hour after delivery, which was already the behaviour but hardcoded.
+   * His reason for keeping it rather than closing immediately: a passenger
+   * who has left something behind needs a moment to say so. After that it is
+   * support's job, deliberately, because a thread that never closes is a
+   * thread nobody is watching.
+   *
+   * A WRITE gate only. The history stays readable forever and is never
+   * deleted, so what closes is the ability to add to it, not the record.
+   */
+  { key: 'chat_closes_hours_after', name: 'Chat closes (hours after delivery)',
+    description: 'How long after a delivery the two parties can still message each other. Long enough for "I left my bag", after which it goes to support. Reading old messages is never affected.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.HOURS, value: 1 },
+  { key: 'chat_opens_hours_before', name: 'Chat opens (hours before departure)',
+    description: 'For scheduled and intercity trips, how long before departure the two parties may start messaging. Send Now is unaffected and opens when a rider accepts. 0 turns the gate off.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.HOURS, value: 4 },
   { key: 'corridor_max_lead_days', name: 'Trip furthest notice (days)',
     description: 'How far ahead a rider may declare an intercity trip. One month: far enough to plan a real journey, near enough that the board is not full of trips nobody will take. 0 turns the gate off.',
     category: FeeCategory.CONFIG, unit: FeeUnit.DAYS, value: 30 },

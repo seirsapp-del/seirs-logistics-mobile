@@ -6,6 +6,7 @@ import { ChatService }    from './chat.service';
 import { ChatMessage }    from './chat-message.entity';
 import { Delivery }       from '../deliveries/delivery.entity';
 import { TrackingModule } from '../tracking/tracking.module';
+import { FeesModule }     from '../fees/fees.module';
 
 /**
  * ChatModule owns targeted schema self-healing for the chat_messages
@@ -25,7 +26,8 @@ import { TrackingModule } from '../tracking/tracking.module';
  * drift on the next admin-triggered deploy.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([ChatMessage, Delivery]), TrackingModule],
+  // FeesModule: the chat opening time is a Fee Catalogue row, not a constant.
+  imports: [TypeOrmModule.forFeature([ChatMessage, Delivery]), TrackingModule, FeesModule],
   controllers: [ChatController],
   providers: [ChatService],
   exports: [ChatService],

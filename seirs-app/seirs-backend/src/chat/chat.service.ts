@@ -7,6 +7,7 @@ import { User } from '../users/user.entity';
 import { TrackingGateway } from '../tracking/tracking.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/notification.entity';
+import { FeesService } from '../fees/fees.service';
 
 @Injectable()
 export class ChatService {
@@ -15,6 +16,12 @@ export class ChatService {
     @InjectRepository(Delivery)    private readonly deliveriesRepo: Repository<Delivery>,
     private readonly trackingGateway: TrackingGateway,
     private readonly notifications:   NotificationsService,
+    /**
+     * Optional on purpose. If config is ever unreachable the chat falls back
+     * to the seeded four hours rather than failing to send: a message between
+     * two people trying to meet must not depend on the Fee Catalogue.
+     */
+    private readonly fees?: FeesService,
   ) {}
 
   /**
@@ -22,6 +29,39 @@ export class ChatService {
    * driver for this delivery. Anyone else is rejected: chats are
    * scoped to the two parties.
    */
+  /**
+   * When is this actually departing?
+   *
+   * Two different rows carry it. A scheduled delivery has scheduledFor. A
+   * seat or load booked onto a declared intercity trip does NOT: it carries
+   * a tripId, and the departure lives on driver_trips. That gap is why the
+   * fifteen-minute dispatch hold never applied to trip bookings either.
+   *
+   * Returns null for Send Now, which is the signal to leave chat open.
+   */
+  private async departureFor(delivery: Delivery): Promise<Date | null> {
+    if (delivery.scheduledFor) {
+      const d = new Date(delivery.scheduledFor);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const tripId = (delivery as any).tripId;
+    if (!tripId) return null;
+    try {
+      const rows: Array<{ departAt: Date }> = await this.deliveriesRepo.manager.query(
+        `SELECT t."departAt" FROM "driver_trips" t WHERE t."id" = $1 LIMIT 1`,
+        [tripId],
+      );
+      const raw = rows?.[0]?.departAt;
+      if (!raw) return null;
+      const d = new Date(raw);
+      return Number.isNaN(d.getTime()) ? null : d;
+    } catch {
+      // Unknown departure opens the chat rather than closing it. A lookup
+      // failure must never be able to silence two people trying to meet.
+      return null;
+    }
+  }
+
   private async assertParticipant(deliveryId: string, userId: string): Promise<Delivery> {
     const delivery = await this.deliveriesRepo.findOne({
       where: { id: deliveryId },
@@ -185,6 +225,45 @@ export class ChatService {
 
     const delivery = await this.assertParticipant(deliveryId, sender.id);
 
+    /**
+     * The OTHER end of the gate, which did not exist (founder 2026-09-04).
+     *
+     * Chat closed an hour after delivery and opened the instant a rider was
+     * attached. On a trip declared a month ahead that is a month of
+     * unmonitored contact between two strangers, which is a safety exposure
+     * and a route around SEIRS at the same time. His words: "imaging after
+     * accept a user they both start chatting for a month, that can be
+     * dangerous for us".
+     *
+     * Four hours before departure, his number, and his reasoning is the one
+     * that matters: it is not about time to chat, it is about time to get
+     * yourself and your luggage to the park. Like a flight, you arrive early.
+     *
+     * Only applies where a departure is actually known. A Send Now delivery
+     * has no scheduled time and opens on acceptance exactly as before,
+     * because the rider is already coming. An unreadable or missing time
+     * therefore opens the chat rather than closing it: this must never be
+     * able to silence two people who are trying to meet right now.
+     */
+    const departsAt = await this.departureFor(delivery);
+    if (departsAt) {
+      let hours = 4;
+      if (this.fees) {
+        try { hours = Number(await this.fees.getValueOr('chat_opens_hours_before', 4)); }
+        catch { /* seeded default stands */ }
+      }
+      if (Number.isFinite(hours) && hours > 0) {
+        const opensAt = departsAt.getTime() - hours * 60 * 60 * 1000;
+        if (Date.now() < opensAt) {
+          throw new ForbiddenException(
+            `Messages open ${hours} hour${hours === 1 ? '' : 's'} before departure, `
+            + `which is ${new Date(opensAt).toLocaleString('en-NG')}. `
+            + `Contact SEIRS support if something needs sorting before then.`,
+          );
+        }
+      }
+    }
+
     // TTL policy: delivery chats close for new messages 1 hour after
     // the delivered timestamp. Terminal failures close immediately.
     // The full history stays readable (list() is unaffected) and is
@@ -205,10 +284,26 @@ export class ChatService {
         );
       }
       if (delivery.status === 'delivered' && delivery.deliveredAt) {
-        const closedAt = new Date(delivery.deliveredAt).getTime() + 60 * 60 * 1000; // +1hr
+        /**
+         * The one hour is now a Fee Catalogue row rather than a constant
+         * (founder 2026-09-04, asking for both ends to be tunable).
+         *
+         * Kept at one hour on his reasoning: a passenger who has left
+         * something behind needs a moment to say so, and after that it is
+         * support's job, because a thread nobody closes is a thread nobody
+         * is watching.
+         */
+        let closeHours = 1;
+        if (this.fees) {
+          try { closeHours = Number(await this.fees.getValueOr('chat_closes_hours_after', 1)); }
+          catch { /* seeded default stands */ }
+        }
+        if (!Number.isFinite(closeHours) || closeHours < 0) closeHours = 1;
+        const closedAt = new Date(delivery.deliveredAt).getTime() + closeHours * 60 * 60 * 1000;
         if (now > closedAt) {
           throw new ForbiddenException(
-            'This chat closed 1 hour after delivery. Contact SEIRS support if you need help.',
+            `This chat closed ${closeHours} hour${closeHours === 1 ? '' : 's'} after delivery. `
+            + 'Contact SEIRS support if you need help.',
           );
         }
       }
