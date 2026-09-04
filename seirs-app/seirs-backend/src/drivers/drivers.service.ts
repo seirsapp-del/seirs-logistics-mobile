@@ -396,7 +396,37 @@ export class DriversService {
     ]);
 
     return {
-      ...driver,
+      /**
+       * The rider's OWN identity files are not in this payload.
+       *
+       * ...driver spread the whole row, and the row carries
+       * nationalIdFrontUrl, nationalIdBackUrl, driversLicenseUrl, selfieUrl
+       * and guarantorUrl. So every call to /drivers/me returned five links to
+       * a person's identity documents, on the home screen, on every refresh,
+       * to anyone holding the session.
+       *
+       * The screen only needs to know a file EXISTS, to draw the tile filled
+       * rather than empty. The file itself comes from
+       * /me/kyc-documents/:id/view, one at a time and rate limited, which is
+       * a person asking rather than a page loading.
+       *
+       * Admin review is unaffected: it reads these through its own endpoint,
+       * not this one. Founder's KYC hardening item 3, 2026-09-03.
+       */
+      ...(() => {
+        const {
+          nationalIdFrontUrl, nationalIdBackUrl, driversLicenseUrl,
+          selfieUrl, guarantorUrl, ...safe
+        } = driver as any;
+        return {
+          ...safe,
+          hasNationalIdFront: Boolean(nationalIdFrontUrl),
+          hasNationalIdBack:  Boolean(nationalIdBackUrl),
+          hasDriversLicense:  Boolean(driversLicenseUrl),
+          hasSelfie:          Boolean(selfieUrl),
+          hasGuarantor:       Boolean(guarantorUrl),
+        };
+      })(),
       todayEarnings: Number(todayRow?.sum ?? 0),
       weekEarnings:  Number(weekRow?.sum  ?? 0),
       // balanceKobo is bigint in DB → string at runtime; coerce to number then naira.
@@ -2591,11 +2621,55 @@ export class DriversService {
     return { docId, saved: true, status: 'submitted' };
   }
 
-  /** Every document this driver has uploaded, with its real review state. */
+  /**
+   * Every document this driver has uploaded, with its real review state,
+   * and WITHOUT the file URLs.
+   *
+   * The list used to hand back a URL for all eight documents on every open.
+   * Somebody who reached a rider's session, or simply picked up their
+   * unlocked phone, got the national ID front and back, the selfie, the
+   * licence, the guarantor form and the vehicle papers in one response,
+   * with no further action and nothing recorded.
+   *
+   * Status is what the screen renders: a chip reading Verified, Expired or
+   * Needs replacing. The image behind it is fetched one at a time, through
+   * viewKycDocument below, which is a deliberate act rather than a side
+   * effect of opening a page.
+   *
+   * Founder's KYC hardening, item 3, approved 2026-09-03: an attacker who
+   * signs up and opens this screen should see the shape of our verification
+   * and nothing else, and wanting more should cost them something.
+   */
   async myKycDocuments(userId: string) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
-    return { documents: await this.kyc.listFor('driver', driver.id) };
+    const rows = await this.kyc.listFor('driver', driver.id);
+    return {
+      documents: rows.map(({ url, ...rest }) => ({
+        ...rest,
+        // The tile needs to know a file EXISTS to draw itself as filled. It
+        // does not need the file to do that.
+        hasFile: Boolean(url),
+      })),
+    };
+  }
+
+  /**
+   * One document's file, fetched deliberately.
+   *
+   * Ownership resolves from the signed-in user and is never taken as a
+   * parameter: the token proves who you are and the driver id is looked up
+   * from it, so there is no id a caller could substitute for somebody
+   * else's. A document that is not this driver's is a 404 rather than a
+   * 403, because confirming the row exists is itself an answer.
+   */
+  async viewKycDocument(userId: string, documentId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+    const rows = await this.kyc.listFor('driver', driver.id);
+    const doc = rows.find(d => d.id === documentId);
+    if (!doc || !doc.url) throw new NotFoundException('Document not found.');
+    return { id: doc.id, docId: doc.docId, label: doc.label, url: doc.url };
   }
 
   // ── Admin review queue ──────────────────────────────────────────────────

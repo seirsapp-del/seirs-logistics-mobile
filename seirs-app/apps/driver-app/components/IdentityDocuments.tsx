@@ -37,7 +37,6 @@ interface DocItem {
   Icon: any;
   required: boolean;
   status: DocStatus;
-  url?: string;
   rejectionReason?: string | null;
   expiresAt?: string | null;
 }
@@ -78,13 +77,25 @@ const IDENTITY_DOCS: DocItem[] = [
   { id: 'guarantor',         label: 'Guarantor letter',   desc: 'A letter from a guarantor. Recommended, not required',   Icon: Users,      required: false, status: 'not_uploaded' },
 ];
 
-/** The doc ids map 1:1 onto the *Url columns on the driver record. */
-const DOC_URL_FIELD: Record<string, string> = {
-  national_id_front: 'nationalIdFrontUrl',
-  national_id_back:  'nationalIdBackUrl',
-  drivers_license:   'driversLicenseUrl',
-  selfie:            'selfieUrl',
-  guarantor:         'guarantorUrl',
+/** The doc ids map 1:1 onto the has* flags on the driver record. */
+/**
+ * Presence flags, not links.
+ *
+ * These were 'nationalIdFrontUrl' and friends, read straight off
+ * driversApi.me(). That payload no longer carries the URLs: /drivers/me was
+ * returning five links to a person's identity documents on every refresh of
+ * the home screen, to anyone holding the session.
+ *
+ * The tiles never rendered the images anyway. They draw an icon, a label and
+ * a status chip, and used the URL only to decide whether a document exists.
+ * A boolean does that, and hands nothing over.
+ */
+const DOC_HAS_FIELD: Record<string, string> = {
+  national_id_front: 'hasNationalIdFront',
+  national_id_back:  'hasNationalIdBack',
+  drivers_license:   'hasDriversLicense',
+  selfie:            'hasSelfie',
+  guarantor:         'hasGuarantor',
 };
 
 export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) => void }) {
@@ -107,8 +118,8 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
 
       setDocs(prev => prev.map(d => {
         const rec = byId[d.id];
-        const url = rec?.url ?? me[DOC_URL_FIELD[d.id]];
-        if (!url) return d;
+        const has = Boolean(rec?.hasFile ?? me[DOC_HAS_FIELD[d.id]]);
+        if (!has) return d;
         // An approved document whose date has passed is EXPIRED, not
         // verified. Compared date-only so "expires today" is still valid.
         const lapsed = rec?.status === 'approved' && rec?.expiresAt
@@ -120,7 +131,7 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
           : rec?.status === 'rejected' ? 'rejected'
           : 'uploaded';
         return {
-          ...d, url, status,
+          ...d, status,
           rejectionReason: rec?.rejectionReason ?? null,
           expiresAt: rec?.expiresAt ?? null,
         };
@@ -175,7 +186,7 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
       await driversApi.updateKycDoc(docId, uploaded.url);
       setDocs(prev => prev.map(d =>
         d.id === docId
-          ? { ...d, url: uploaded.url, status: 'uploaded' as DocStatus, rejectionReason: null }
+          ? { ...d, status: 'uploaded' as DocStatus, rejectionReason: null }
           : d,
       ));
     } catch (e: any) {

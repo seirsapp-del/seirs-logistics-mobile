@@ -5,6 +5,7 @@ import { RedisService } from '../tracking/redis.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
+import { Throttle } from '@nestjs/throttler';
 
 /** Shared shape for the two vehicle-change entry points. */
 interface VehicleChangeBody {
@@ -122,6 +123,23 @@ export class DriversController {
   @Get('me/kyc-documents')
   myKycDocuments(@CurrentUser() user: User) {
     return this.driversService.myKycDocuments(user.id);
+  }
+
+  /**
+   * GET /api/v1/drivers/me/kyc-documents/:id/view
+   *
+   * The file behind one document. The list above no longer carries URLs, so
+   * seeing an image is a request a person makes rather than something that
+   * happens because a screen loaded.
+   *
+   * 12 a minute. A rider opening their own licence does it once; somebody
+   * working through all eight, twice, is a different shape, and this is the
+   * request that would show it.
+   */
+  @Throttle({ default: { ttl: 60000, limit: 12 } })
+  @Get('me/kyc-documents/:id/view')
+  viewKycDocument(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.driversService.viewKycDocument(user.id, id);
   }
 
   // ── Driver Premium subscription (Spec V8 §2.13 / D35) ─────────────────────
