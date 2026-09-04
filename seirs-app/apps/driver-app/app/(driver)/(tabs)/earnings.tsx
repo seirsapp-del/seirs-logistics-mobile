@@ -355,7 +355,13 @@ export default function EarningsScreen() {
              * re-audit a rate they already agreed, and it lets anyone holding
              * one screenshot compute our take rate exactly.
              */
-            const sub = date;
+            /* A cancelled trip pays the floor, not the fare, so the smaller
+               number looks like a mistake unless the row says otherwise. */
+            const dStatus = tx.delivery?.status;
+            const wasCancelled = dStatus === 'cancelled' || dStatus === 'failed';
+            const sub = wasCancelled
+              ? date + ' · Cancelled after you set off'
+              : date;
             return (
               <Pressable
                 key={tx.id}

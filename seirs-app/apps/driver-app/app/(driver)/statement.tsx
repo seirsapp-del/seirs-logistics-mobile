@@ -129,6 +129,9 @@ function isCarryForward(e: DriverEarning): boolean {
 /** What a rider will recognise a line by: where it went, else the trip id. */
 function narrativeFor(e: DriverEarning): string {
   if (isCarryForward(e)) return 'Carried forward';
+  /* A trip that did not complete. The rider rode; somebody else ended it. */
+  const st = (e as any).delivery?.status;
+  if (st === 'cancelled' || st === 'failed') return 'Cancelled after you set off';
   const d = (e as any).delivery;
   const to = d?.dropoffAddress ?? d?.deliveryAddress ?? d?.destinationAddress;
   if (to) return String(to).split(',')[0];

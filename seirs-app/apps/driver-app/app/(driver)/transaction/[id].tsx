@@ -79,6 +79,18 @@ export default function DriverTransactionDetailScreen() {
   const statusLabel = STATUS_LABEL[tx.status] ?? tx.status;
   const statusColor = tx.status === 'held' ? '#DC2626' : tx.status === 'pending' ? '#D97706' : '#16A34A';
 
+  /**
+   * A trip somebody else ended.
+   *
+   * The rider rode out and was paid a floor rather than the fare, so the
+   * number on this screen is smaller than the one they accepted the job for.
+   * Unexplained, that reads as being short-changed, and it is where "Seirs
+   * cheated me" starts. The explanation costs one line and is the whole
+   * point of showing this screen at all.
+   */
+  const dStatus = (tx as any).delivery?.status;
+  const wasCancelled = dStatus === 'cancelled' || dStatus === 'failed';
+
   const rows = [
     { label: 'Entry ID',     value: tx.id.slice(0, 8).toUpperCase() },
     { label: 'Date',         value: new Date(tx.createdAt).toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
@@ -86,6 +98,7 @@ export default function DriverTransactionDetailScreen() {
     // is exactly how the arithmetic stopped adding up (founder 2026-08-24).
     { label: 'Your net',     value: naira(net) },
     { label: 'Status',       value: statusLabel },
+    ...(wasCancelled ? [{ label: 'What happened', value: 'The trip was cancelled after you set off' }] : []),
     ...(tx.paidAt ? [{ label: 'Paid to bank', value: new Date(tx.paidAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) }] : []),
   ];
 
@@ -125,6 +138,17 @@ export default function DriverTransactionDetailScreen() {
             </View>
           ))}
         </View>
+
+        {/* The sentence a rider actually needs when the number looks wrong. */}
+        {wasCancelled && (
+          <View style={[styles.detailCard, { backgroundColor: theme.surface, borderColor: theme.border, padding: 14 }, Shadows.sm]}>
+            <Text style={{ color: theme.textSecond, fontSize: FontSize.sm, lineHeight: 20 }}>
+              You were paid {naira(net)} for the distance you rode before it was cancelled.
+              The customer's fare was returned to them. You did nothing wrong and this does
+              not affect your rating.
+            </Text>
+          </View>
+        )}
 
         {/* Trip link */}
         {tx.deliveryId && (
