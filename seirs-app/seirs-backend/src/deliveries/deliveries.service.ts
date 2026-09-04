@@ -1690,6 +1690,32 @@ export class DeliveriesService {
       return [];
     }
 
+    /**
+     * A vehicle change under review pauses NEW work (founder 2026-09-04).
+     *
+     * This is the real tap, and the online toggle is not. toggleOnline only
+     * refuses to let a rider go ON, does nothing to one already online, and
+     * nothing in matching consults isOnline at all: riders PULL from this
+     * list. A gate on the toggle would have looked like a pause and not been
+     * one.
+     *
+     * Same shape as the working-hours rule above, and for the same reason:
+     * only the LIST is filtered. A job already assigned always finishes, and
+     * claiming is not blocked, so pausing intake can never strand a parcel
+     * already in someone's hands. The rider finishes, hands off, and goes
+     * offline normally.
+     *
+     * The app is told WHY through vehicleChangePending on /drivers/me. An
+     * empty list with no explanation is its own silent failure: the rider
+     * decides the app is broken and we never hear about it.
+     */
+    if (me?.id && this.driversService?.hasPendingVehicleChange) {
+      const paused = await this.driversService
+        .hasPendingVehicleChange(me.id)
+        .catch(() => false);
+      if (paused) return [];
+    }
+
     if (driverVehicle) {
       q.andWhere(`(d."kind" <> 'ride' OR d."vehicleType" = :driverVehicle)`, { driverVehicle });
     }

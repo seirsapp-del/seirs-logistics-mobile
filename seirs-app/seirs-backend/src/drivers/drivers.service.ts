@@ -433,6 +433,15 @@ export class DriversService {
           hasGuarantor:       Boolean(guarantorUrl),
         };
       })(),
+      /**
+       * Why the job list is empty, when it is.
+       *
+       * A vehicle change under review pauses new work (findAvailable returns
+       * nothing). Without this flag the rider sees an empty feed, concludes
+       * the app is broken, and we never hear about it. Every silent failure
+       * found today had that same shape, so the pause ships with its reason.
+       */
+      vehicleChangePending: await this.hasPendingVehicleChange(driver.id),
       todayEarnings: Number(todayRow?.sum ?? 0),
       weekEarnings:  Number(weekRow?.sum  ?? 0),
       // balanceKobo is bigint in DB → string at runtime; coerce to number then naira.
@@ -2965,6 +2974,48 @@ export class DriversService {
       // Deliberately swallowed. See the doc comment: a settings save must
       // succeed even when support does not.
       this.logger.warn(`Hours-change alert failed for driver ${driver.id}: ${err?.message ?? 'unknown'}`);
+    }
+  }
+
+  /**
+   * Is this rider waiting on a vehicle change?
+   *
+   * Founder, 2026-09-04, overruling the default both this and the partner
+   * move-request flow shipped with: "if a user put in a request to change
+   * address or vehicle, i would suggest that we pause any other activity till
+   * we confirm their new set up is valid... assign a driver a job he or she
+   * cant complete because they no longer have access to the vehicle thats not
+   * good."
+   *
+   * He is right, and the asymmetry is what settles it. Pausing someone who
+   * could have kept working costs a few days of jobs, which is money we can
+   * count and can give back. Dispatching to someone whose vehicle has already
+   * changed costs a customer their delivery, and that is not recoverable.
+   * Somebody who files a change has already told us their current setup is
+   * about to stop being true; continuing to dispatch on "I still have it for
+   * now" is a bet placed with someone else's parcel.
+   *
+   * currentVehicleUsable is NOT consulted here on purpose. It is
+   * self-declared and about the near future, which is exactly the claim we
+   * have decided not to bet on. It keeps its second life as the field that
+   * tells support whether the old vehicle can still finish work already in
+   * hand, and it still drives the urgency of the ticket.
+   *
+   * Deliberately fails OPEN: an error here returns false and the rider keeps
+   * working, because a bug in this method must not be able to take somebody's
+   * income away silently.
+   */
+  async hasPendingVehicleChange(driverId: string): Promise<boolean> {
+    try {
+      const n = await this.vehicleChangesRepo.count({
+        where: { driverId, status: VehicleChangeStatus.PENDING },
+      });
+      return n > 0;
+    } catch (err: any) {
+      this.logger.warn(
+        `hasPendingVehicleChange failed for driver ${driverId}: ${err?.message ?? 'unknown'}`,
+      );
+      return false;
     }
   }
 

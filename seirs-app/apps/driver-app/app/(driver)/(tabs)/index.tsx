@@ -646,6 +646,26 @@ export default function DriverHomeScreen() {
             </View>
           ) : loading ? (
             <ActivityIndicator color={theme.primary} style={{ marginTop: Spacing.lg }} />
+          ) : driverData?.vehicleChangePending ? (
+            /**
+             * Say WHY the list is empty.
+             *
+             * A vehicle change under review pauses new work server-side, so
+             * this rider would otherwise see "No jobs nearby" all day, decide
+             * the app was broken, and never tell us. The pause is deliberate
+             * and it ships with its reason.
+             */
+            <View style={[styles.emptyBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Truck size={32} color={theme.textThird} strokeWidth={1.5} />
+              <Text style={[styles.emptyText, { color: theme.text, fontSize: FontSize.md, fontWeight: '700' }]}>
+                New jobs are paused
+              </Text>
+              <Text style={[styles.emptyText, { color: theme.textSecond }]}>
+                Your vehicle change is being reviewed, usually within 24 hours to 3 business days.
+                We hold new jobs until it is approved so you are never sent work your vehicle
+                cannot do. Anything already assigned to you is unaffected: finish it as normal.
+              </Text>
+            </View>
           ) : pendingJobs.length === 0 ? (
             <View style={[styles.emptyBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Package size={32} color={theme.textThird} strokeWidth={1.5} />
