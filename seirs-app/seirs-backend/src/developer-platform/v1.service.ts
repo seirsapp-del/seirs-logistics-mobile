@@ -11,6 +11,7 @@ import { PricingService } from '../pricing/pricing.service';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { IdempotencyKey } from './idempotency-key.entity';
 import { AuthedApiKey } from './api-key.guard';
+import { publicSiteUrl } from '../common/utils/public-site';
 
 // Spec V8 Tier 3 - V1 public API service. Wraps the internal services
 // with sandbox routing + the publicly-stable request/response shape.
@@ -75,7 +76,7 @@ export interface V1OrderResponse {
  * Partners embed this URL in their own customers' emails, so it was the
  * one broken link that left the platform entirely.
  */
-const PUBLIC_SITE = process.env.PUBLIC_SITE_URL ?? 'https://seirs.app';
+const PUBLIC_SITE = publicSiteUrl();
 
 @Injectable()
 export class V1Service {

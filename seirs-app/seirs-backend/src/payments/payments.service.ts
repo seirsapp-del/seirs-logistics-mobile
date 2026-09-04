@@ -18,6 +18,7 @@ import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-tic
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 import { EarningsService } from '../earnings/earnings.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { publicSiteUrl } from '../common/utils/public-site';
 
 const toKobo  = (naira: number) => Math.round(naira * 100);
 const toNaira = (kobo:  number) => kobo / 100;
@@ -553,7 +554,7 @@ export class PaymentsService {
       // A receiver paying from the tracking page is in a browser,
       // where a seirsmobile:// callback goes nowhere.
       redirectUrl: opts?.web
-        ? `${process.env.PUBLIC_SITE_URL ?? 'https://seirs.app'}/collect/${delivery.trackingCode}?paid=1`
+        ? `${publicSiteUrl()}/collect/${delivery.trackingCode}?paid=1`
         : 'seirsmobile://payment-callback',
       meta: {
         purpose:      'redirect_fee',

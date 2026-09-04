@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { publicSiteUrl } from '../common/utils/public-site';
 import { withinWorkingHours } from '../drivers/working-hours';
 import { aVehicle } from '../common/vehicle-labels';
 import { Payment, PaymentStatus } from '../payments/payment.entity';
@@ -2597,7 +2598,7 @@ export class DeliveriesService {
     // WhatsApp is not configured.
     const receiverPhone = (delivery as any).receiverPhone;
     if (receiverPhone) {
-      const site = process.env.PUBLIC_SITE_URL ?? 'https://seirs.app';
+      const site = publicSiteUrl();
       this.whatsapp
         .notifyPackageAtCounter(
           receiverPhone,
