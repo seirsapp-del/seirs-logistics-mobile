@@ -283,6 +283,45 @@ export class HealthController {
     }
 
     /**
+     * Move-request probe (2026-09-04).
+     *
+     * partner_move_requests is created by self-heal DDL inside a try/catch,
+     * and so is the partial unique index that stops a shop filing two moves
+     * at once. Both are silent when they fail, and the failure mode is not
+     * an error: the app's move screen would simply 500 on every load, or
+     * worse, the index would be missing and two racing requests would both
+     * insert, leaving whichever an admin opens second to silently win.
+     *
+     * pendingIndex is the one to read. The table existing is not enough.
+     */
+    let movesSchema: Record<string, unknown> = { ok: false };
+    try {
+      const [tbl] = await this.dataSource.query(
+        `SELECT to_regclass('public.partner_move_requests') AS t`,
+      );
+      const idx = await this.dataSource.query(
+        `SELECT indexname FROM pg_indexes
+          WHERE tablename = 'partner_move_requests'
+            AND indexname = 'uniq_move_pending_per_store'`,
+      ).catch(() => []);
+      const counts = tbl?.t ? await this.dataSource.query(
+        `SELECT COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE status = 'pending')::int AS pending
+           FROM "partner_move_requests"`,
+      ).catch(() => null) : null;
+      movesSchema = {
+        ok: Boolean(tbl?.t) && (idx as any[]).length > 0,
+        table:        tbl?.t ?? null,
+        pendingIndex: (idx as any[]).length > 0,
+        ...(counts?.[0] ? { requests: counts[0].total, awaitingReview: counts[0].pending } : {}),
+        ...(tbl?.t ? {} : { warn: 'partner_move_requests missing: the partner move screen will fail on every load' }),
+        ...((idx as any[]).length ? {} : { warnIndex: 'no unique pending index: a shop can file two moves at once and one will be silently overwritten' }),
+      };
+    } catch (err: any) {
+      movesSchema = { ok: false, error: err?.message ?? 'unknown' };
+    }
+
+    /**
      * KYC document store probe (2026-09-02).
      *
      * driver_documents was generalised into kyc_documents and the copy-in
@@ -415,6 +454,7 @@ export class HealthController {
       // try/catch copy-in fails identically to succeeding.
       kycSchema,
       hoursSchema,
+      movesSchema,
       // Did the statement_records ALTERs land? Same class of silent
       // failure: issuing looks healthy and every download 404s.
       statementsSchema,

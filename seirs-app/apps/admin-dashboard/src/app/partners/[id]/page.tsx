@@ -112,6 +112,11 @@ export default function PartnerDetailPage() {
    * that are easy to get wrong: no hours at all means OPEN, and a window
    * whose end is before its start runs past midnight.
    */
+  const [move, setMove] = useState<any>(null);
+  const [audit, setAudit] = useState<any>(null);
+  const [openParcel, setOpenParcel] = useState<string | null>(null);
+  const [movingBusy, setMovingBusy] = useState(false);
+
   const [nowTick, setNowTick] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNowTick(Date.now()), 60_000);
@@ -132,6 +137,14 @@ export default function PartnerDetailPage() {
     // Returned, because the caller does reload().finally(() => setLoading(false)).
     // The documents load is fired alongside it and deliberately not awaited:
     // the page should stop spinning when the SHOP has arrived.
+    // A pending move, if there is one. Failure is silent and leaves the
+    // panel hidden: a shop profile must still render when this route is
+    // unavailable, because everything else on the page still matters.
+    adminApi.partnerMoves.forStore(id).then(setMove).catch(() => setMove(null));
+    // The shelf. Loaded always, not only during a move: a bare count is
+    // what made "check the parcels first" impossible to follow.
+    adminApi.partnerMoves.parcels(id).then(setAudit).catch(() => setAudit(null));
+
     const storeLoad = adminApi.partnerStores.get(id)
       .then(setData)
       .catch((e: any) => setErr(e?.message ?? 'Load failed'));
@@ -789,6 +802,330 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
             </div>
           )}
         </div>
+
+        {/* A shop asking to trade from a different building.
+
+            Founder, 2026-09-04: a partner moving "have to put in a request
+            and they have to go through the whole process so we can update
+            their data", modelled on the rider vehicle change.
+
+            Placed above everything else when it exists, because it is the
+            only panel here with a shop waiting on the other end of it, and
+            because approving it is the one action on this screen that
+            changes where real people walk. */}
+        {move && (
+          <div className="bg-white rounded-xl border-2 border-[#3A7BD5] shadow-sm mb-6 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="font-semibold text-[#0F2B4C]">This shop wants to move</h2>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                Waiting on you
+              </span>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {(move.parcelsHeldNow > 0 || move.parcelsHeldAtRequest > 0) && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-sm font-semibold text-amber-900">
+                    Holding {move.parcelsHeldNow} {move.parcelsHeldNow === 1 ? "parcel" : "parcels"} right now
+                    {move.parcelsHeldAtRequest !== move.parcelsHeldNow && (
+                      <span className="font-normal"> ({move.parcelsHeldAtRequest} when they asked)</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-amber-800 mt-0.5">
+                    Those parcels are at the OLD address, and their customers were told to collect
+                    them there. Sort the parcels before the address.
+                  </p>
+                </div>
+              )}
+
+              {!move.stillTradingAtOld && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                  <p className="text-sm font-semibold text-red-800">The old shop is already shut</p>
+                  <p className="text-xs text-red-700 mt-0.5">
+                    They told us they can no longer receive there, so new drop-offs were stopped
+                    automatically when they filed this.
+                  </p>
+                </div>
+              )}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-gray-200 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Leaving</p>
+                  <p className="text-sm text-[#16232F] mt-1">{move.oldStoreAddress ?? "not on file"}</p>
+                </div>
+                <div className="rounded-lg border border-[#3A7BD5]/40 bg-[#3A7BD5]/5 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#3A7BD5]">Going to</p>
+                  <p className="text-sm text-[#16232F] mt-1">{move.newStoreAddress}</p>
+                </div>
+              </div>
+
+              {move.reason && (
+                <p className="text-sm text-[#5C6E82]">
+                  <span className="font-medium text-[#16232F]">Their reason:</span> {move.reason}
+                </p>
+              )}
+
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                  Photos of the new premises
+                </p>
+                {(!move.documents || move.documents.length === 0) ? (
+                  <p className="text-sm text-gray-400">
+                    They have not sent any yet. Approving is blocked until the required ones arrive.
+                  </p>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {move.documents.map((d: any) => (
+                      <a
+                        key={d.id}
+                        href={d.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex gap-3 rounded-lg border border-gray-200 p-2 hover:border-[#3A7BD5] transition-colors"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={d.url} alt={d.label} className="w-14 h-14 rounded object-cover shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-[#16232F] truncate">{d.label}</p>
+                          {d.farFromNewStore ? (
+                            <p className="text-xs text-red-700">
+                              Taken {(d.metresFromNewStore / 1000).toFixed(1)} km from the new address
+                            </p>
+                          ) : d.noLocation ? (
+                            <p className="text-xs text-amber-700">No location recorded</p>
+                          ) : d.imprecise ? (
+                            <p className="text-xs text-amber-700">Weak fix, about {d.capturedAccuracyM} m</p>
+                          ) : (
+                            <p className="text-xs text-emerald-700">
+                              At the new address{d.metresFromNewStore != null ? ", " + Math.round(d.metresFromNewStore) + " m" : ""}
+                            </p>
+                          )}
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 flex-wrap pt-1">
+                <button
+                  disabled={movingBusy}
+                  onClick={async () => {
+                    const note = await prompt({
+                      title: "Approve this move?",
+                      message: "The shop starts trading from the new address immediately. Customers and riders "
+                             + "are directed there, and the new photos replace the old premises photos.",
+                      label: "Note for the shop (optional)",
+                      helper: "They see this on their move screen.",
+                      multiline: true,
+                      confirmLabel: "Approve the move",
+                    });
+                    if (note === null) return;
+                    setMovingBusy(true);
+                    try {
+                      const r = await adminApi.partnerMoves.decide(id, true, String(note ?? ""));
+                      void notify({ title: "Move approved", message: r.message, tone: "success" });
+                      setMove(null);
+                      adminApi.partnerStores.get(id).then((d: any) => setData(d)).catch(() => {});
+                    } catch (e: any) {
+                      void notify({ title: "Not approved", message: e?.message ?? "Try again.", tone: "error" });
+                    } finally { setMovingBusy(false); }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-[#0F2B4C] text-white text-sm font-medium disabled:opacity-50"
+                >
+                  Approve the move
+                </button>
+                <button
+                  disabled={movingBusy}
+                  onClick={async () => {
+                    const note = await prompt({
+                      title: "Refuse this move?",
+                      message: "The shop keeps its current address. Tell them what was wrong, and which "
+                             + "photos to redo, so they are not left rephotographing everything.",
+                      label: "What they need to fix",
+                      multiline: true,
+                      confirmLabel: "Refuse the move",
+                    });
+                    if (note === null) return;
+                    if (!String(note).trim()) {
+                      void notify({ title: "A reason is required", message: "A refusal with no reason cannot be acted on.", tone: "error" });
+                      return;
+                    }
+                    setMovingBusy(true);
+                    try {
+                      const r = await adminApi.partnerMoves.decide(id, false, String(note));
+                      void notify({ title: "Move refused", message: r.message, tone: "success" });
+                      setMove(null);
+                    } catch (e: any) {
+                      void notify({ title: "Not saved", message: e?.message ?? "Try again.", tone: "error" });
+                    } finally { setMovingBusy(false); }
+                  }}
+                  className="px-4 py-2 rounded-lg border border-red-300 text-red-700 text-sm font-medium disabled:opacity-50"
+                >
+                  Refuse
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* What is actually on the shelf.
+
+            Founder, 2026-09-04: "can they view each package in detail and
+            all its life cycle, timestamps and chain of custody, every
+            little detail."
+
+            They could not. This page showed the number 6 in a tile and
+            offered no way to learn anything about those six. Every field
+            below already existed in the database; nothing returned it. So
+            "audit the parcels before approving a move" was an instruction
+            with no screen behind it. */}
+        {audit && audit.parcels?.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="font-semibold text-[#0F2B4C]">
+                On the shelf right now ({audit.total})
+              </h2>
+              {audit.oldestHours >= 48 && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  Oldest has been here {Math.floor(audit.oldestHours / 24)} days
+                </span>
+              )}
+            </div>
+
+            <div className="divide-y divide-gray-100">
+              {audit.parcels.map((p: any) => {
+                const open = openParcel === p.id;
+                return (
+                  <div key={p.id}>
+                    <button
+                      onClick={() => setOpenParcel(open ? null : p.id)}
+                      className="w-full text-left px-5 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-sm font-semibold text-[#0F2B4C]">{p.dropCode}</span>
+                          <span className="text-xs text-gray-500">{p.heldAs}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-0.5 truncate">
+                          {p.sender?.name ?? "Sender not on file"}
+                          {p.sender?.seirsId ? ` (${p.sender.seirsId})` : ""}
+                          {" \u2192 "}
+                          {p.recipient?.name ?? "no recipient named"}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={`text-sm font-semibold tabular-nums ${
+                          (p.daysHeld ?? 0) >= 3 ? "text-amber-700" : "text-gray-700"
+                        }`}>
+                          {p.daysHeld != null ? `${p.daysHeld}d` : "-"}
+                        </p>
+                        {p.storageOwedNgn > 0 && (
+                          <p className="text-xs text-gray-500 tabular-nums">
+                            &#8358;{p.storageOwedNgn.toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-gray-400 text-xs">{open ? "Hide" : "Open"}</span>
+                    </button>
+
+                    {open && (
+                      <div className="px-5 pb-5 bg-[#FBFAF7] border-t border-gray-100">
+                        <div className="grid gap-4 sm:grid-cols-2 pt-4">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Who it belongs to</p>
+                            <p className="text-sm text-[#16232F]">{p.sender?.name ?? "-"}</p>
+                            <p className="text-xs text-gray-600">{p.sender?.phone ?? "no phone on file"}</p>
+                            <p className="text-xs text-gray-500 font-mono">{p.sender?.seirsId ?? ""}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Who should collect it</p>
+                            <p className="text-sm text-[#16232F]">{p.recipient?.name ?? "-"}</p>
+                            <p className="text-xs text-gray-600">{p.recipient?.phone ?? "no phone on file"}</p>
+                            <p className="text-xs text-gray-500">{p.recipient?.address ?? ""}</p>
+                          </div>
+                        </div>
+
+                        {p.photos?.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                              The parcel itself
+                            </p>
+                            <div className="flex gap-3 flex-wrap">
+                              {p.photos.map((ph: any) => (
+                                <a key={ph.url} href={ph.url} target="_blank" rel="noreferrer" className="block">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={ph.url} alt={ph.label}
+                                       className="w-28 h-28 rounded-lg object-cover border border-gray-200" />
+                                  <p className="text-xs text-gray-500 mt-1">{ph.label}</p>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">What has happened to it</p>
+                          <ol className="space-y-1.5">
+                            {p.timeline.map((t: any) => (
+                              <li key={t.key} className="flex gap-3 text-sm">
+                                <span className="text-gray-500 tabular-nums shrink-0 w-40">
+                                  {new Date(t.at).toLocaleString("en-NG")}
+                                </span>
+                                <span className="text-[#16232F]">{t.label}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+
+                        <div className="mt-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                            Who physically handled it
+                          </p>
+                          {p.chainOfCustody?.length ? (
+                            <ol className="space-y-1.5">
+                              {p.chainOfCustody.map((h: any, i: number) => (
+                                <li key={i} className="flex gap-3 text-sm flex-wrap">
+                                  <span className="text-gray-500 tabular-nums shrink-0 w-40">
+                                    {new Date(h.createdAt).toLocaleString("en-NG")}
+                                  </span>
+                                  <span className="text-[#16232F]">
+                                    {h.stage}
+                                    {h.signatureName || h.releasedByName
+                                      ? ` \u2014 signed by ${h.releasedByName ?? h.signatureName}`
+                                      : ""}
+                                    {h.idType ? ` (${h.idType} ending ${h.idLast4})` : ""}
+                                  </span>
+                                  {h.proofPhotoUrl && (
+                                    <a href={h.proofPhotoUrl} target="_blank" rel="noreferrer"
+                                       className="text-xs text-[#3A7BD5] underline">photo</a>
+                                  )}
+                                </li>
+                              ))}
+                            </ol>
+                          ) : (
+                            <p className="text-sm text-gray-400">
+                              Nobody has signed for this parcel yet. That is normal before it is taken
+                              in, and a problem afterwards: it means we have no named person who
+                              admits holding it.
+                            </p>
+                          )}
+                        </div>
+
+                        {p.deliveryId && (
+                          <Link href={`/deliveries/${p.deliveryId}`}
+                                className="inline-block mt-4 text-sm text-[#3A7BD5] hover:underline">
+                            Open the full delivery
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* When this shop is open.
             Founder, 2026-09-03: partners "should be able to set up their

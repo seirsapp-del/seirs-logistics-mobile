@@ -29,7 +29,7 @@ import {
  * Above this many metres of reported uncertainty, a fix is too vague to
  * argue from. Founder's figure, 2026-09-03.
  */
-const ACCURACY_LIMIT_M = 50;
+export const ACCURACY_LIMIT_M = 50;
 
 /**
  * Above this, the photograph was taken somewhere else.
@@ -40,7 +40,7 @@ const ACCURACY_LIMIT_M = 50;
  * next door. 500m is well past all of that and well short of the 40km
  * case this exists to catch.
  */
-const FAR_FROM_STORE_M = 500;
+export const FAR_FROM_STORE_M = 500;
 
 @Injectable()
 export class PartnerDocumentsService {
@@ -64,7 +64,10 @@ export class PartnerDocumentsService {
    * photograph 40km from the stated address is the signal; 300m is a
    * phone with a poor fix and means nothing.
    */
-  private static metresBetween(
+  // Public so the move review can measure a photo against the PROPOSED
+  // pin with the same maths, rather than growing a second haversine
+  // that drifts from this one.
+  static metresBetween(
     aLat: number, aLng: number, bLat: number, bLng: number,
   ): number {
     const R = 6_371_000;

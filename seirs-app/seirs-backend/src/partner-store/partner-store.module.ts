@@ -13,6 +13,10 @@ import { PartnerStore } from '../business/partner-store.entity';
 import { PartnerSponsorship } from './partner-sponsorship.entity';
 import { User } from '../users/user.entity';
 import { Delivery } from '../deliveries/delivery.entity';
+import { PartnerMoveRequest } from './partner-move-request.entity';
+import { PartnerMoveService } from './partner-move.service';
+import { PartnerMoveController, AdminPartnerMovesController } from './partner-move.controller';
+import { SupportModule } from '../support/support.module';
 import { FeesModule } from '../fees/fees.module';
 import { IdentityModule } from '../identity/identity.module';
 import { PricingModule } from '../pricing/pricing.module';
@@ -35,17 +39,20 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
   imports: [
     // KycDocument registered locally as well as globally, so a provider
     // resolution mistake is a compile error rather than a boot crash.
-    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery, PartnerPayout, KycDocument]),
+    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery, PartnerPayout, KycDocument, PartnerMoveRequest]),
     FeesModule,
     IdentityModule,
     PricingModule,
     forwardRef(() => DeliveriesModule),
     forwardRef(() => PaymentsModule),
     MailModule,
+    // A move raises a support ticket the shop reads the outcome in.
+    SupportModule,
   ],
-  controllers: [PartnerStoreController, AdminPartnerDocumentsController, AdminPartnerPayoutsController],
-  providers:   [PartnerStoreService, PartnerDocumentsService, PartnerPayoutsService],
-  exports:     [PartnerStoreService],
+  controllers: [PartnerStoreController, AdminPartnerDocumentsController, AdminPartnerPayoutsController,
+                PartnerMoveController, AdminPartnerMovesController],
+  providers:   [PartnerStoreService, PartnerDocumentsService, PartnerPayoutsService, PartnerMoveService],
+  exports:     [PartnerStoreService, PartnerMoveService],
 })
 export class PartnerStoreModule implements OnModuleInit {
   private readonly logger = new Logger(PartnerStoreModule.name);
@@ -98,6 +105,51 @@ export class PartnerStoreModule implements OnModuleInit {
       await this.ds.query(
         `ALTER TABLE "partner_stores" ADD COLUMN IF NOT EXISTS "workingHours" jsonb NULL`,
       );
+
+      /**
+       * The move-request table, created here rather than by synchronize,
+       * which is off in production. Every column is spelled out so a
+       * partially-created table from an interrupted boot heals rather than
+       * silently staying wrong.
+       */
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "partner_move_requests" (
+          "id"                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "partnerStoreId"       uuid NOT NULL,
+          "status"               varchar(12) NOT NULL DEFAULT 'pending',
+          "newStoreAddress"      text NOT NULL,
+          "newStoreLat"          numeric(10,7) NULL,
+          "newStoreLng"          numeric(10,7) NULL,
+          "reason"               text NULL,
+          "movingOn"             date NULL,
+          "stillTradingAtOld"    boolean NOT NULL DEFAULT true,
+          "parcelsHeldAtRequest" int NOT NULL DEFAULT 0,
+          "oldStoreAddress"      text NULL,
+          "oldStoreLat"          numeric(10,7) NULL,
+          "oldStoreLng"          numeric(10,7) NULL,
+          "ticketId"             uuid NULL,
+          "decidedByAdminId"     uuid NULL,
+          "decidedAt"            timestamptz NULL,
+          "decisionNote"         text NULL,
+          "rejectedItems"        text NULL,
+          "createdAt"            timestamptz NOT NULL DEFAULT now()
+        )`);
+      await this.ds.query(
+        `CREATE INDEX IF NOT EXISTS "idx_move_store_status"
+           ON "partner_move_requests" ("partnerStoreId", "status")`);
+      /**
+       * One pending move per shop, enforced by the DATABASE.
+       *
+       * The service checks for an existing pending row first, but a check
+       * followed by an insert is not atomic: two taps a moment apart both
+       * read "none pending" and both write. Same lesson the payout
+       * idempotency index records, which is that an application-level
+       * check does not survive a race.
+       */
+      await this.ds.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS "uniq_move_pending_per_store"
+           ON "partner_move_requests" ("partnerStoreId")
+         WHERE "status" = 'pending'`);
       await this.ds.query(`
         ALTER TABLE "partner_payouts"
           ADD COLUMN IF NOT EXISTS "paidToBankName"      character varying NULL,

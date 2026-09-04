@@ -88,6 +88,7 @@ const TOPIC_LABEL: Record<string, string> = {
   // do about it rather than what happened, because the whole point of
   // the queue is that somebody checks the parcels before they strand.
   hours_change: 'Hours changed',
+  store_move:   'Shop moving',
   other:    'Something else',
 };
 
@@ -499,6 +500,7 @@ export default function SupportInboxPage() {
             <option value="account">Account</option>
             <option value="delivery">Delivery</option>
             <option value="hours_change">Hours changed</option>
+            <option value="store_move">Shop moving</option>
             <option value="other">Something else</option>
           </select>
           <select value={accountTypeFilter} onChange={e => setAccountTypeFilter(e.target.value)}

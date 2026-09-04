@@ -1823,6 +1823,30 @@ export const partnerApi = {
     activate: () => request<any>('POST', '/partner-store/sponsorship/activate'),
     pause:    () => request<any>('POST', '/partner-store/sponsorship/pause'),
   },
+
+  /**
+   * Moving the shop to a different building.
+   *
+   * A request rather than an edit, on the same reasoning as the rider
+   * vehicle change: the live address is what customers and riders are sent
+   * to, so it is written only when a person has approved the new one.
+   */
+  move: {
+    mine:     () => request<any>('GET',  '/partner-store/move'),
+    request:  (body: {
+      newStoreAddress: string;
+      newStoreLat: number;
+      newStoreLng: number;
+      reason?: string;
+      movingOn?: string;
+      stillTradingAtOld?: boolean;
+    }) => request<any>('POST', '/partner-store/move', body),
+    uploadDoc: (
+      docId: string,
+      body: { url: string; lat?: number; lng?: number; accuracyM?: number },
+    ) => request<any>('POST', `/partner-store/move/documents/${docId}`, body),
+    withdraw: () => request<any>('PATCH', '/partner-store/move/withdraw'),
+  },
 };
 
 // ─── Customer-side store drop-off (Spec V8 §3 async flow) ──────────────────

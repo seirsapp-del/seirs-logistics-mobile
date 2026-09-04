@@ -187,16 +187,38 @@ export default function PartnerSettingsScreen() {
             placeholderTextColor={colors.textThird}
           />
 
+          {/* The address is READ-ONLY, and moving is a request.
+
+              It used to be a typing box like the one above it, and that was
+              the most damaging field on the screen. Changing the text did
+              NOT move the map pin: the save does not even accept the pin
+              fields. So a shop that relocated looked correct everywhere
+              while customers and riders kept being sent to the building it
+              had left, and nothing warned anyone.
+
+              An address is not like a shop name. It decides where a person
+              carrying a parcel actually walks, and it is what the premises
+              photos were checked against. So it changes the way the rider
+              vehicle change works: a request, reviewed by a person, with
+              the new photos attached, and the live address untouched until
+              it is approved. */}
           <Text style={[styles.label, { color: colors.textSecond }]}>Store Address</Text>
-          <TextInput
-            style={[styles.input, styles.multiline, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-            value={settings.storeAddress}
-            onChangeText={(v) => set('storeAddress', v)}
-            placeholder="123 Lagos Street, Ikeja"
-            placeholderTextColor={colors.textThird}
-            multiline
-            numberOfLines={2}
-          />
+          <View style={[styles.readonlyBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.readonlyText, { color: colors.text }]}>
+              {settings.storeAddress || 'No address on file'}
+            </Text>
+          </View>
+          <Pressable
+            style={[styles.moveBtn, { borderColor: colors.primary }]}
+            onPress={() => router.push('/(partner)/move' as any)}
+          >
+            <Icon name="MapPin" size={16} color={colors.primary} strokeWidth={1.75} />
+            <Text style={[styles.moveBtnText, { color: colors.primary }]}>Moving to a new shop?</Text>
+          </Pressable>
+          <Text style={[styles.hoursHint, { color: colors.textSecond }]}>
+            Customers and riders are sent here, so a change has to be checked by our team
+            first. You keep trading at this address until the new one is approved.
+          </Text>
 
           <Text style={[styles.label, { color: colors.textSecond }]}>Phone Number</Text>
           <TextInput
@@ -454,16 +476,34 @@ export default function PartnerSettingsScreen() {
             <Text style={[styles.linkRowText, { color: colors.text }]}>Statement</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
-          {/* Documents had no entry point at all before 2026-09-02: a shop
-              could not see what had been decided about its files, and the
-              only answer to a refusal was to submit the whole application
-              again. A screen with no way in is the same bug as no screen. */}
+          {/* Two rows, because these were one row meaning two things.
+
+              "Documents" opened the shop's own ID and CAC uploads, while the
+              same word in the customer, driver and business apps means
+              letters SEIRS sent YOU. The notification an admin's document
+              fires says "is now in your Documents", so it pointed a partner
+              at a screen showing the opposite, and the letter was invisible
+              unless they wandered into the business side of the app.
+
+              Now Documents means one thing in all four places, and the
+              uploads have their own row. Called "Store verification" and not
+              "KYC" deliberately: KYC is banking jargon a shopkeeper should
+              not have to learn, and it does not translate into the six
+              languages we ship. */}
           <Pressable
             style={[styles.linkRow, { borderTopColor: colors.border }]}
             onPress={() => router.push('/(partner)/documents' as any)}
           >
             <Icon name="FileText" size={16} color={colors.textSecond} />
             <Text style={[styles.linkRowText, { color: colors.text }]}>Documents</Text>
+            <Icon name="ChevronRight" size={16} color={colors.textThird} />
+          </Pressable>
+          <Pressable
+            style={[styles.linkRow, { borderTopColor: colors.border }]}
+            onPress={() => router.push('/(partner)/verification' as any)}
+          >
+            <Icon name="ShieldCheck" size={16} color={colors.textSecond} />
+            <Text style={[styles.linkRowText, { color: colors.text }]}>Store verification</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
           <Pressable
@@ -532,6 +572,12 @@ const SIGN_OUT_TINT = (isDark: boolean, error: string) => (isDark
   : { backgroundColor: '#FEF2F2',    borderColor: '#FECACA' });
 
 const styles = StyleSheet.create({
+  readonlyBox:   { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  readonlyText:  { fontSize: 15, fontFamily: 'Inter_400Regular', lineHeight: 21 },
+  moveBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                   borderWidth: 1, borderRadius: 10, paddingVertical: 12, marginTop: 10 },
+  moveBtnText:   { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+
   dayRow:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
   dayLabel:      { fontSize: 15, fontFamily: 'Inter_600SemiBold', width: 44 },
   timePills:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 'auto' },

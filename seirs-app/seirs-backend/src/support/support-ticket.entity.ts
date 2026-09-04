@@ -54,6 +54,19 @@ export enum TicketTopic {
    * called partner anything.
    */
   HOURS     = 'hours_change',
+  /**
+   * A partner shop asked to trade from a different building.
+   *
+   * Its own topic rather than folded into HOURS, because the two need
+   * different people and different urgency. An hours change is read and
+   * usually waved through. A move means parcels are sitting at an address
+   * we published and the shop is leaving it, which is an operation with a
+   * deadline, and burying those behind an "Hours changed" label is how one
+   * gets missed.
+   *
+   * 10 characters against a varchar(16) column.
+   */
+  MOVE      = 'store_move',
   OTHER     = 'other',
 }
 

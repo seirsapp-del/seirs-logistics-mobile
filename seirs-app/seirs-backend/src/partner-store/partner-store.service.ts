@@ -453,6 +453,59 @@ export class PartnerStoreService {
       throw new BadRequestException('STORE_TO_DOOR requires recipientAddress');
     }
 
+    /**
+     * Is this shop actually taking parcels? Asked HERE, where they arrive.
+     *
+     * scheduleDropoff is the only path in the codebase that creates a
+     * store_dropoffs row, and until now it checked capacity and nothing
+     * else. acceptingNew and status were enforced in three places that all
+     * merely FIND a shop: the browse list, the public directory, and the
+     * failed-delivery redirect. None of them is where a parcel arrives.
+     *
+     * So "paused" only ever meant "harder to stumble across". Anyone
+     * holding the store id, from a deep link, a saved shop, a list loaded
+     * before the pause, or a screen already open, could still book. The
+     * flag looked like a gate and behaved like a filter.
+     *
+     * That is not a new bug: suspendStore has set acceptingNew = false
+     * since it was written, under a comment promising "new drop-offs stop
+     * immediately", and a SUSPENDED shop could still be booked. It was
+     * inherited rather than introduced, and it is fixed here because a
+     * move request now relies on the same flag actually holding.
+     *
+     * Status is checked alongside it. A shop that was never approved, or
+     * whose approval was withdrawn, is not a place to leave a stranger's
+     * property either.
+     */
+    const gate: any[] = await this.storeRepo.manager.query(
+      `SELECT id, "storeName", status, "acceptingNew"
+         FROM "partner_stores" WHERE id = ANY($1)`,
+      [[body.pickupStoreId, body.dropoffStoreId].filter(Boolean)],
+    );
+    const byId = new Map(gate.map(g => [g.id, g]));
+
+    const pickup = byId.get(body.pickupStoreId);
+    if (!pickup || !['approved', 'active'].includes(String(pickup.status))) {
+      throw new NotFoundException('That shop is not taking parcels at the moment. Please choose another.');
+    }
+    if (!pickup.acceptingNew) {
+      throw new ForbiddenException(
+        `${pickup.storeName} has paused new parcels. Please choose another shop.`,
+      );
+    }
+
+    if (body.mode === DropoffMode.STORE_TO_STORE && body.dropoffStoreId) {
+      const dest = byId.get(body.dropoffStoreId);
+      if (!dest || !['approved', 'active'].includes(String(dest.status))) {
+        throw new NotFoundException('That collection shop is not available. Please choose another.');
+      }
+      if (!dest.acceptingNew) {
+        throw new ForbiddenException(
+          `${dest.storeName} has paused new parcels, so it cannot be the collection point. Please choose another.`,
+        );
+      }
+    }
+
     // Capacity preflight - refuse the booking up-front rather than letting
     // the customer walk in and get rejected at the counter.
     const cap = await this.getCapacity(body.pickupStoreId);
