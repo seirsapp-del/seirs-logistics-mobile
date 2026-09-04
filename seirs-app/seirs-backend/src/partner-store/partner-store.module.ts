@@ -5,6 +5,8 @@ import { PartnerStoreService } from './partner-store.service';
 import { PartnerStoreController } from './partner-store.controller';
 import { PartnerDocumentsService } from './partner-documents.service';
 import { AdminPartnerDocumentsController } from './admin-partner-documents.controller';
+import { PartnerPayoutsService } from './partner-payouts.service';
+import { AdminPartnerPayoutsController } from './admin-partner-payouts.controller';
 import { KycDocument } from '../kyc/kyc-document.entity';
 import { StoreDropoff } from './store-dropoff.entity';
 import { PartnerStore } from '../business/partner-store.entity';
@@ -41,8 +43,8 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
     forwardRef(() => PaymentsModule),
     MailModule,
   ],
-  controllers: [PartnerStoreController, AdminPartnerDocumentsController],
-  providers:   [PartnerStoreService, PartnerDocumentsService],
+  controllers: [PartnerStoreController, AdminPartnerDocumentsController, AdminPartnerPayoutsController],
+  providers:   [PartnerStoreService, PartnerDocumentsService, PartnerPayoutsService],
   exports:     [PartnerStoreService],
 })
 export class PartnerStoreModule implements OnModuleInit {
@@ -67,6 +69,58 @@ export class PartnerStoreModule implements OnModuleInit {
   }
 
   async onModuleInit() {
+    /**
+     * Somewhere to send a shop's money (2026-09-03).
+     *
+     * partner_payouts has held an amount, a period and a status since it
+     * was built, with no destination and nothing that ever set the status
+     * to 'paid'. A counter accrued handling fees into a ledger that could
+     * not be settled. These columns are the rail.
+     *
+     * All nullable and all additive, so this is safe to re-run and safe
+     * on a table with rows in it. Same self-heal pattern the rest of the
+     * codebase uses, because synchronize is off in production.
+     */
+    try {
+      await this.ds.query(`
+        ALTER TABLE "partner_stores"
+          ADD COLUMN IF NOT EXISTS "bankName"                 character varying NULL,
+          ADD COLUMN IF NOT EXISTS "bankCode"                 character varying NULL,
+          ADD COLUMN IF NOT EXISTS "bankAccountNumber"        character varying NULL,
+          ADD COLUMN IF NOT EXISTS "bankAccountName"          character varying NULL,
+          ADD COLUMN IF NOT EXISTS "bankVerifiedAt"           timestamptz NULL,
+          ADD COLUMN IF NOT EXISTS "pendingBankName"          character varying NULL,
+          ADD COLUMN IF NOT EXISTS "pendingBankCode"          character varying NULL,
+          ADD COLUMN IF NOT EXISTS "pendingBankAccountNumber" character varying NULL,
+          ADD COLUMN IF NOT EXISTS "pendingBankAccountName"   character varying NULL,
+          ADD COLUMN IF NOT EXISTS "pendingBankRequestedAt"   timestamptz NULL
+      `);
+      await this.ds.query(`
+        ALTER TABLE "partner_payouts"
+          ADD COLUMN IF NOT EXISTS "paidToBankName"      character varying NULL,
+          ADD COLUMN IF NOT EXISTS "paidToAccountNumber" character varying NULL,
+          ADD COLUMN IF NOT EXISTS "paidToAccountName"   character varying NULL,
+          ADD COLUMN IF NOT EXISTS "transferReference"   character varying NULL,
+          ADD COLUMN IF NOT EXISTS "providerTransferId"  character varying NULL,
+          ADD COLUMN IF NOT EXISTS "failureReason"       text NULL
+      `);
+      /**
+       * The idempotency index, and it is UNIQUE on purpose.
+       *
+       * The reference is what stops a payout being sent twice. A unique
+       * index means the database refuses a duplicate even if two requests
+       * race past the application check, which is the only guarantee that
+       * survives concurrency.
+       */
+      await this.ds.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS "partner_payouts_transfer_ref"
+           ON "partner_payouts" ("transferReference")
+         WHERE "transferReference" IS NOT NULL`,
+      );
+    } catch (e: any) {
+      this.logger.error(`partner payout rail self-heal failed: ${e?.message ?? e}`);
+    }
+
     try {
     // Repair the missing back-link on any account that owns a store but
     // has no partnerStoreId: without it every partner endpoint 403s.

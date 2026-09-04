@@ -1963,6 +1963,27 @@ export class PartnerStoreService {
       );
     }
 
+    /**
+     * Somewhere to send their money (founder decision 2026-09-03).
+     *
+     * Approval is the moment a shop starts earning handling fees, so
+     * approving one with no bank account on file creates a debt with no
+     * way to settle it. The founder's reasoning is not technical: owe a
+     * woman running a counter NGN 40,000.00 and fail to send it and she
+     * is the person least able to absorb it, and she will tell every
+     * other shop on her street. That is a supply problem in that area we
+     * would not recover from.
+     *
+     * Applications may open and documents may be reviewed without this.
+     * Approval is the line.
+     */
+    if (!store.bankAccountNumber || !store.bankCode) {
+      throw new BadRequestException(
+        'This store has no payout account, so there would be nowhere to send its counter earnings. '
+        + 'Ask the partner to add their bank account in the app, then approve.',
+      );
+    }
+
     // Mint the public store code on first approval and never again: it
     // goes on shelf labels and into customers' hands, so re-approving
     // after a suspension must not change it.

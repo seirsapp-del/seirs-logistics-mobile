@@ -104,6 +104,66 @@ export class PartnerStore {
   @Column({ nullable: true })
   ownerIdUrl: string;
 
+  /**
+   * Where the shop's counter earnings are sent.
+   *
+   * There was nowhere. partner_payouts held an amount, a period and a
+   * status and no destination at all, and nothing in the codebase ever
+   * set that status to 'paid'. A shop accrued handling fees into a ledger
+   * that could not be settled, while the statement screen rendered
+   * "Counter earnings paid" for a state no code could reach.
+   *
+   * Same four columns drivers keep on their wallet, deliberately, so one
+   * transfer path serves both. bankCode is the CBN code the provider
+   * needs; bankAccountName is what the bank returned when we resolved the
+   * number, NOT what the shop typed, because the whole point of resolving
+   * it is that people mistype their own account numbers.
+   *
+   * On the STORE rather than the owner's user, because the money belongs
+   * to the shop. partner_payouts is keyed on partnerStoreId, and a shop
+   * that changes hands should keep its own account rather than follow the
+   * person who used to run it.
+   */
+  @Column({ nullable: true })
+  bankName: string;
+
+  @Column({ nullable: true })
+  bankCode: string;
+
+  @Column({ nullable: true })
+  bankAccountNumber: string;
+
+  /** As the bank returned it, not as the partner typed it. */
+  @Column({ nullable: true })
+  bankAccountName: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  bankVerifiedAt: Date;
+
+  /**
+   * A REPLACEMENT account, waiting for a human.
+   *
+   * Same policy drivers have had since 2026-08-09: the first account
+   * saves instantly, because a shop with no account cannot be paid and
+   * making them wait helps nobody. Replacing one is the step an attacker
+   * wants, so it queues for review and the live account keeps paying
+   * until somebody approves the change.
+   */
+  @Column({ nullable: true })
+  pendingBankName: string;
+
+  @Column({ nullable: true })
+  pendingBankCode: string;
+
+  @Column({ nullable: true })
+  pendingBankAccountNumber: string;
+
+  @Column({ nullable: true })
+  pendingBankAccountName: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  pendingBankRequestedAt: Date;
+
   // Admin's note when approving / rejecting / suspending. Visible to user.
   @Column({ nullable: true })
   reviewNote: string;

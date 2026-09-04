@@ -7,6 +7,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { PartnerStoreService } from './partner-store.service';
 import { PartnerDocumentsService } from './partner-documents.service';
+import { PartnerPayoutsService } from './partner-payouts.service';
 import { DropoffMode } from './store-dropoff.entity';
 import { HandoffMethod } from '../identity/handoff-record.entity';
 
@@ -16,7 +17,32 @@ export class PartnerStoreController {
   constructor(
     private readonly svc: PartnerStoreService,
     private readonly docs: PartnerDocumentsService,
+    private readonly payouts: PartnerPayoutsService,
   ) {}
+
+  // ── Where the shop is paid ─────────────────────────────────────────────
+
+  /** GET /api/v1/partner-store/my-bank. Account number is masked. */
+  @Get('my-bank')
+  myBank(@CurrentUser() user: any) {
+    return this.payouts.myBankDetails(user.id);
+  }
+
+  /**
+   * POST /api/v1/partner-store/my-bank  { bankName, bankCode, accountNumber }
+   *
+   * Resolved with the bank before it is stored, and the NAME stored is
+   * the bank's answer rather than what was typed. The first account
+   * saves instantly; replacing one queues for a human and the live
+   * account keeps paying until then.
+   */
+  @Post('my-bank')
+  setBank(
+    @CurrentUser() user: any,
+    @Body() body: { bankName: string; bankCode: string; accountNumber: string },
+  ) {
+    return this.payouts.setBankDetails(user.id, body);
+  }
 
   // ── KYC documents ──────────────────────────────────────────────────────
 
