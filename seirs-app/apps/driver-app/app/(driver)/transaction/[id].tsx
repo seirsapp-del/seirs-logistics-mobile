@@ -67,8 +67,6 @@ export default function DriverTransactionDetailScreen() {
   }
 
   const net       = Number(tx.driverNet);
-  const gross     = Number(tx.grossAmount);
-  const cut       = Number(tx.seirsCut);
   // isCredit was a `const true` feeding a ternary on the hero card, so
   // the debit branch below it could never render (2026-08-23 sweep,
   // D-4.6). A driver_earning row is always a credit, so the branch is
@@ -86,8 +84,6 @@ export default function DriverTransactionDetailScreen() {
     { label: 'Date',         value: new Date(tx.createdAt).toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
     // Gross − fee = net, to the kobo. Rounding these three independently
     // is exactly how the arithmetic stopped adding up (founder 2026-08-24).
-    { label: 'Gross fare',   value: naira(gross) },
-    { label: 'SEIRS fee',    value: `−${naira(cut)}` },
     { label: 'Your net',     value: naira(net) },
     { label: 'Status',       value: statusLabel },
     ...(tx.paidAt ? [{ label: 'Paid to bank', value: new Date(tx.paidAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) }] : []),

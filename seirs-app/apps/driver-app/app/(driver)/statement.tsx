@@ -14,9 +14,9 @@
  * the same sizes, so a rider and a sender who compare notes see one product.
  *
  * WHAT IS DIFFERENT. A sender's statement counts money going out; a rider's
- * counts money coming in, and the rider needs the deduction shown. So the
- * hero carries net, and gross and commission sit under it: a statement that
- * showed only net would look like we were hiding the cut.
+ * counts money coming in. It shows what the rider earned, and nothing about
+ * our cut: the rate is disclosed once in the Driver Code of Conduct, not
+ * itemised on a document the rider hands to a landlord or a bank.
  *
  * The export fetches the SERVER document. That is the whole point of it: it
  * carries a /verify code anyone can check without a SEIRS account, which is
@@ -174,8 +174,6 @@ export default function DriverStatementScreen() {
 
   const num = (v: any) => Number(v ?? 0) || 0;
   const netNgn        = entries.reduce((s, e) => s + num(e.driverNet), 0);
-  const grossNgn      = entries.reduce((s, e) => s + num(e.grossAmount), 0);
-  const commissionNgn = entries.reduce((s, e) => s + num(e.seirsCut), 0);
 
   const carried    = entries.filter(isCarryForward);
   const tripCount  = entries.length - carried.length;
@@ -213,8 +211,6 @@ Sharing the figures as text instead.`);
         'SEIRS Logistics - driver earnings statement',
         `Period: ${periodLabel(range.from, range.to)}`,
         `Trips: ${entries.length}`,
-        `Gross: ${naira(grossNgn)}`,
-        `SEIRS commission: -${naira(commissionNgn)}`,
         `Net (yours): ${naira(netNgn)}`,
         '',
         ...entries.map(e => `${dayMonth(e.createdAt)}  ${narrativeFor(e)}  ${naira(num(e.driverNet))}`),
@@ -281,20 +277,6 @@ Sharing the figures as text instead.`);
               yours in this period · {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
               {carried.length > 0 ? ` · ${naira(carriedNgn)} carried forward` : ''}
             </Text>
-
-            {/* The deduction, shown. A statement that printed only net would
-                look like the cut was being hidden. */}
-            <View style={[styles.split, { borderTopColor: theme.border }]}>
-              <View style={styles.splitCell}>
-                <Text style={[styles.splitLabel, { color: theme.textThird }]}>GROSS</Text>
-                <Text style={[styles.splitValue, { color: theme.text }]}>{naira(grossNgn)}</Text>
-              </View>
-              <View style={[styles.splitDivider, { backgroundColor: theme.border }]} />
-              <View style={styles.splitCell}>
-                <Text style={[styles.splitLabel, { color: theme.textThird }]}>COMMISSION</Text>
-                <Text style={[styles.splitValue, { color: theme.error }]}>-{naira(commissionNgn)}</Text>
-              </View>
-            </View>
           </View>
 
           {entries.length === 0 ? (
@@ -345,7 +327,7 @@ Sharing the figures as text instead.`);
             with SEIRS. Earnings still clearing are not counted here. The exported
             copy carries a code anyone can check, so it works as proof of income.
             {carried.length > 0
-              ? ' Money carried forward from an earlier payout is already yours and is counted in the total, but it has no fare of its own, which is why gross minus commission is less than the total.'
+              ? ' Money carried forward from an earlier payout is already yours and is counted in the total above.'
               : ''}
           </Text>
         </ScrollView>
@@ -371,11 +353,6 @@ const styles = StyleSheet.create({
   heroValue:     { fontSize: 32, fontWeight: '800', marginTop: 8, letterSpacing: -0.5 },
   heroSub:       { fontSize: 14, marginTop: 4 },
 
-  split:         { flexDirection: 'row', alignItems: 'center', marginTop: 16, paddingTop: 14, borderTopWidth: 1 },
-  splitCell:     { flex: 1, gap: 3 },
-  splitDivider:  { width: 1, alignSelf: 'stretch', marginHorizontal: 12 },
-  splitLabel:    { fontSize: 11, fontWeight: '700', letterSpacing: 0.6 },
-  splitValue:    { fontSize: 16, fontWeight: '700' },
 
   card:          { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
   row:           { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },

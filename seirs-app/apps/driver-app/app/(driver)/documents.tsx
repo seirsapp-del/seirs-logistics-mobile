@@ -11,8 +11,7 @@ import {
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { driversApi, documentsApi, statementsApi, type UserDocumentDTO } from '@/services/api';
-import { naira } from '@/utils/money';
+import { documentsApi, type UserDocumentDTO } from '@/services/api';
 
 // Icon per document category (admin-sent official docs).
 const DOC_ICON: Record<string, any> = {
@@ -37,20 +36,8 @@ try {
   }
 } catch { /* stay on the text-share fallback */ }
 
-// Spec V8 §2: driver yearly earnings statements for FIRS tax filing.
-// Once the backend tax-export endpoint ships, "Download" generates a
-// signed PDF (R2) of the year's earnings + commission breakdown.
-// Until then this surface lists yearly aggregates so drivers know the
-// numbers they need to self-report.
-
-interface YearSummary {
-  year:           number;
-  grossNgn:       number;
-  commissionNgn:  number;
-  netNgn:         number;
-  trips:          number;
-}
-
+// Documents SEIRS has sent this rider: contracts, letters, notices. Their own
+// earnings statements live in /(driver)/statement, split out on 2026-09-04.
 
 export default function TaxDocsScreen() {
   const router = useRouter();
@@ -58,34 +45,22 @@ export default function TaxDocsScreen() {
   const theme  = Colors[cs ?? 'light'];
   const insets = useSafeAreaInsets();
 
-  const [summaries, setSummaries] = useState<YearSummary[]>([]);
-  const [months,    setMonths]    = useState<any[]>([]);
   const [received,  setReceived]  = useState<UserDocumentDTO[]>([]);
   const [viewing,   setViewing]   = useState<UserDocumentDTO | null>(null);
   const [loading,   setLoading]   = useState(true);
 
+  /* taxSummary used to be fetched here and its years and months stored in
+     state nothing rendered, left behind when the statements moved out. A
+     round trip on every open for a result that was thrown away. */
   useEffect(() => {
     (async () => {
       try {
-        const [res, docs] = await Promise.all([
-          driversApi.taxSummary().catch(() => null),
-          documentsApi.mine().catch(() => [] as UserDocumentDTO[]),
-        ]);
-        const items = res?.years ?? [];
-        setSummaries(items.map((y: any) => ({
-          year:          y.year,
-          grossNgn:      y.grossNgn,
-          commissionNgn: y.commissionNgn,
-          netNgn:        y.netNgn,
-          trips:         y.tripCount,
-        })));
-        setMonths(res?.months ?? []);
+        const docs = await documentsApi.mine().catch(() => [] as UserDocumentDTO[]);
         setReceived(docs ?? []);
-      } catch { setSummaries([]); }
+      } catch { setReceived([]); }
       finally { setLoading(false); }
     })();
   }, []);
-
   const openDoc = (d: UserDocumentDTO) => {
     if (d.fileUrl) { Linking.openURL(d.fileUrl); return; }
     setViewing(d);
@@ -93,102 +68,6 @@ export default function TaxDocsScreen() {
 
   // Share a statement: real PDF when the print module is native-present
   // (rebuild #2 APK onward), formatted text otherwise. Both routes open
-  // the system share sheet (email, WhatsApp, save to Drive).
-  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-  // A month shares exactly like a year: same three lines, same math.
-  const handleDownloadMonth = async (m: any) => {
-    const label = `${MONTH_NAMES[m.month - 1]} ${m.year}`;
-    const generated = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
-    const lines = [
-      `SEIRS Logistics - Driver Earnings Statement ${label}`,
-      `Generated: ${generated}`,
-      '',
-      `Trips completed:      ${Number(m.tripCount).toLocaleString()}`,
-      `Gross earnings:       ${naira(m.grossNgn)}`,
-      `SEIRS commission:     ${naira(m.commissionNgn)}`,
-      `Net earnings (yours): ${naira(m.netNgn)}`,
-      '',
-      'Figures are the canonical aggregates from the SEIRS earnings ledger.',
-      'Monthly statements are for your own records; FIRS filing uses the',
-      'yearly statement.',
-    ];
-    try {
-      await Share.share({ title: `SEIRS earnings statement ${label}`, message: lines.join('\n') });
-    } catch { /* dismissed */ }
-  };
-
-  const handleDownload = async (year: number) => {
-    const y = summaries.find(s => s.year === year);
-    if (!y) return;
-    const generated = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    /**
-     * The SERVER document first, because it is the one that can be checked.
-     *
-     * A statement printed on this phone is a page of figures and nothing
-     * else: a bank has no way to tell it from one somebody typed. The
-     * server issues a document with a reference that anybody can verify at
-     * /verify/<code> without a SEIRS account, which is the whole reason it
-     * is worth having.
-     *
-     * The local print below stays as the fallback, unchanged, so an older
-     * build or an unreachable server still produces something rather than
-     * dead-ending. Same shape the business app uses.
-     */
-    try {
-      const r: any = await statementsApi.driverLink(`${year}-01-01`, `${year}-12-31`);
-      if (r?.url) {
-        await Linking.openURL(r.url);
-        return;
-      }
-    } catch {
-      // Offline, an older server, or nothing to state. Fall through to the
-      // on-device version rather than telling them it failed.
-    }
-
-    if (Print && Sharing) {
-      try {
-        const html = `
-          <html><body style="font-family: -apple-system, Roboto, sans-serif; padding: 32px; color: #0E2540;">
-            <h1 style="margin: 0; font-size: 22px; letter-spacing: 2px;">SEIRS</h1>
-            <p style="margin: 2px 0 24px; font-size: 11px; color: #667;">SEIRS Logistics · Driver Earnings Statement</p>
-            <h2 style="font-size: 16px; margin: 0 0 4px;">Statement for ${year}</h2>
-            <p style="font-size: 11px; color: #667; margin: 0 0 20px;">Generated ${generated}</p>
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-              <tr><td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">Trips completed</td><td style="text-align: right; border-bottom: 1px solid #e5e7eb;">${y.trips.toLocaleString()}</td></tr>
-              <tr><td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">Gross earnings</td><td style="text-align: right; border-bottom: 1px solid #e5e7eb;">${naira(y.grossNgn)}</td></tr>
-              <tr><td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">SEIRS commission</td><td style="text-align: right; border-bottom: 1px solid #e5e7eb;">-${naira(y.commissionNgn)}</td></tr>
-              <tr><td style="padding: 8px 0; font-weight: 700;">Net earnings</td><td style="text-align: right; font-weight: 700;">${naira(y.netNgn)}</td></tr>
-            </table>
-            <p style="font-size: 10px; color: #889; margin-top: 28px; line-height: 1.5;">
-              Figures are the canonical aggregates from the SEIRS earnings ledger, suitable for FIRS
-              self-assessment filing. Questions? Contact support in the SEIRS Driver app.
-            </p>
-          </body></html>`;
-        const { uri } = await Print.printToFileAsync({ html });
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `SEIRS earnings statement ${year}` });
-        return;
-      } catch { /* fall through to text share */ }
-    }
-
-    const lines = [
-      `SEIRS Logistics - Driver Earnings Statement ${year}`,
-      `Generated: ${generated}`,
-      '',
-      `Trips completed:      ${y.trips.toLocaleString()}`,
-      `Gross earnings:       ${naira(y.grossNgn)}`,
-      `SEIRS commission:     ${naira(y.commissionNgn)}`,
-      `Net earnings (yours): ${naira(y.netNgn)}`,
-      '',
-      'Figures are the canonical aggregates from the SEIRS earnings ledger,',
-      'suitable for FIRS self-assessment filing. Questions? Contact support',
-      'in the SEIRS Driver app.',
-    ];
-    try {
-      await Share.share({ title: `SEIRS earnings statement ${year}`, message: lines.join('\n') });
-    } catch { /* user dismissed the share sheet */ }
-  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>

@@ -339,19 +339,23 @@ export default function EarningsScreen() {
             </View>
           ) : recentEarnings.map((tx: any) => {
             const amount   = Number(tx.driverNet ?? tx.driverEarnings ?? tx.amount ?? 0);
-            const gross    = Number(tx.grossAmount ?? 0);
-            const cut      = Number(tx.seirsCut ?? 0);
             const isCredit = tx.type !== 'debit' && tx.type !== 'payout' && tx.type !== 'withdrawal';
             const amtColor = isCredit ? '#16A34A' : '#EF4444';
             const label    = tx.label ?? (isCredit ? `Trip ${tx.trackingCode ?? ''}`.trim() : 'Withdrawal');
             const date     = new Date(tx.createdAt ?? tx.earnedAt ?? tx.deliveredAt ?? Date.now())
               .toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
-            // Commission transparency (founder ask 2026-08-09): show the
-            // gross fare + SEIRS cut per trip so drivers see exactly how
-            // their net was computed. The cut never enters their balance.
-            const sub = gross > 0
-              ? `${date} · Fare ${naira(gross)} − SEIRS ${naira(cut)}`
-              : date;
+            /**
+             * The date, and nothing else.
+             *
+             * This row used to read Fare X - SEIRS Y, added as commission
+             * transparency on 2026-08-09 and reversed by the founder on
+             * 2026-09-04. The rate is disclosed once, in the Driver Code of
+             * Conduct a rider accepts at sign-up. Printing it on every line of
+             * every ledger does something different: it invites the rider to
+             * re-audit a rate they already agreed, and it lets anyone holding
+             * one screenshot compute our take rate exactly.
+             */
+            const sub = date;
             return (
               <Pressable
                 key={tx.id}
