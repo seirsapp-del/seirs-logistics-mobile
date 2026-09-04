@@ -1,9 +1,9 @@
-﻿/**
+/**
  * Driver earnings statement.
  *
  * WHY THIS EXISTS SEPARATELY. The driver app had one screen, tax-docs, doing
  * two unrelated jobs: letters SEIRS sends the rider, and the rider's own
- * earnings statements. Its Profile row said "Documents Â· Statements,
+ * earnings statements. Its Profile row said "Documents · Statements,
  * contracts, letters", which is two different things wearing one label. The
  * customer app has had the split for a while (documents.tsx and
  * statement.tsx, two Profile rows); the driver app never got it.
@@ -128,7 +128,7 @@ function isCarryForward(e: DriverEarning): boolean {
 
 /** What a rider will recognise a line by: where it went, else the trip id. */
 function narrativeFor(e: DriverEarning): string {
-  if (isCarryForward(e)) return 'Carried forward from an earlier payout';
+  if (isCarryForward(e)) return 'Carried forward';
   const d = (e as any).delivery;
   const to = d?.dropoffAddress ?? d?.deliveryAddress ?? d?.destinationAddress;
   if (to) return String(to).split(',')[0];
@@ -196,6 +196,7 @@ export default function DriverStatementScreen() {
         link = await statementsApi.driverLink(range.from, range.to);
       } catch (e: any) {
         why = e?.message ?? String(e);
+        console.error('[SEIRS-STATEMENT] driverLink failed:', why, JSON.stringify(e ?? {}));
       }
       if (link?.url) {
         const opened = await Linking.openURL(link.url).then(() => true).catch(() => false);
@@ -277,8 +278,8 @@ Sharing the figures as text instead.`);
             </Text>
             <Text style={[styles.heroValue, { color: theme.text }]}>{naira(netNgn)}</Text>
             <Text style={[styles.heroSub, { color: theme.textSecond }]}>
-              yours in this period Â· {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
-              {carried.length > 0 ? ` Â· ${naira(carriedNgn)} carried forward` : ''}
+              yours in this period · {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
+              {carried.length > 0 ? ` · ${naira(carriedNgn)} carried forward` : ''}
             </Text>
 
             {/* The deduction, shown. A statement that printed only net would

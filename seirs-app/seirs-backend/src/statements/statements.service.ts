@@ -93,12 +93,27 @@ export class StatementsService {
 
   async driverStatement(driverId: string, from?: string, to?: string) {
     const w = this.window(from, to);
+    /**
+     * The column is vehiclePlate. It was written as "plateNumber", which
+     * does not exist, so this query threw on every call; the .catch(() => [])
+     * below turned that into an empty array, and the rider was then told
+     * "Driver not found." A rider who obviously exists, being told they do
+     * not, because a SQL error was dressed up as a missing row.
+     *
+     * The driver statement PDF had therefore NEVER been issued: /health
+     * reported 3 statements with 1 document, and the missing two are these.
+     * The app fell back to sharing plain text and looked like it had chosen
+     * to.
+     *
+     * The catch is gone with it. A query that cannot run should say so, not
+     * pretend the subject is absent.
+     */
     const driver = await this.ds.query(
-      `SELECT d.id, u.name, d."plateNumber"
+      `SELECT d.id, u.name, d."vehiclePlate"
          FROM drivers d JOIN users u ON u.id = d."userId"
         WHERE d.id = $1 LIMIT 1`,
       [driverId],
-    ).catch(() => []);
+    );
     if (!driver?.length) throw new NotFoundException('Driver not found.');
 
     const rows = await this.ds.query(
@@ -109,7 +124,7 @@ export class StatementsService {
           AND e."createdAt" BETWEEN $2 AND $3
         ORDER BY e."createdAt" ASC`,
       [driverId, w.from.toISOString(), w.to.toISOString()],
-    ).catch(() => []);
+    );
 
     const lines: StatementLine[] = (rows as any[]).map((r) => ({
       date:      r.createdAt,
@@ -123,7 +138,7 @@ export class StatementsService {
       subjectType: 'driver' as const,
       subjectId:   driverId,
       subjectName: driver[0].name,
-      subjectMeta: driver[0].plateNumber ? `Vehicle ${driver[0].plateNumber}` : undefined,
+      subjectMeta: driver[0].vehiclePlate ? `Vehicle ${driver[0].vehiclePlate}` : undefined,
       title:       'Driver Earnings',
       window: w,
       lines,
