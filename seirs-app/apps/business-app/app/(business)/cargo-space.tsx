@@ -76,6 +76,45 @@ export default function CargoSpaceScreen() {
   const [searched, setSearched] = useState(false);
   const [error, setError]     = useState('');
 
+  /**
+   * Narrowing the board.
+   *
+   * Discovery was a route pair and nothing else: three lorries running Kano
+   * to Lagos tomorrow came back in one order with no way to choose between
+   * them. A trader with perishables wants the soonest; a trader with two tons
+   * wants the most room; and both usually mean "today" or "tomorrow", not
+   * whatever is on the board three weeks out.
+   *
+   * Done on the rows already fetched rather than as query parameters. The
+   * result set for one route is small, so filtering here is instant and
+   * cannot fail, and it keeps the endpoint the customer app shares unchanged.
+   */
+  const [sortBy, setSortBy] = useState<'soonest' | 'space'>('soonest');
+  const [when,   setWhen]   = useState<'any' | 'today' | 'tomorrow' | 'week'>('any');
+
+  const visibleTrips = (() => {
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const today = startOfDay(new Date());
+    const DAY   = 24 * 60 * 60 * 1000;
+
+    const withinWindow = (t: any) => {
+      if (when === 'any') return true;
+      const at = new Date(t.departAt).getTime();
+      if (!Number.isFinite(at)) return true;   // unreadable date is not a reason to hide work
+      const day = startOfDay(new Date(at));
+      if (when === 'today')    return day === today;
+      if (when === 'tomorrow') return day === today + DAY;
+      return at < today + 7 * DAY;             // 'week'
+    };
+
+    const rows = trips.filter(withinWindow);
+    return rows.sort((a, b) =>
+      sortBy === 'space'
+        ? Number(b.spareCapacityKg ?? 0) - Number(a.spareCapacityKg ?? 0)
+        : new Date(a.departAt).getTime() - new Date(b.departAt).getTime(),
+    );
+  })();
+
   const search = useCallback(async (f?: string, t?: string) => {
     const a = (f ?? from).trim();
     const b = (t ?? to).trim();
@@ -187,7 +226,54 @@ export default function CargoSpaceScreen() {
           </View>
         )}
 
-        {trips.map((trip) => {
+        {/* Controls appear only once there is something to narrow. Chips on an
+            empty board are furniture. */}
+        {searched && !loading && trips.length > 0 && (
+          <View style={{ gap: 8 }}>
+            <View style={styles.filterRow}>
+              {([['soonest', 'Leaving soonest'], ['space', 'Most room']] as const).map(([key, label]) => (
+                <Pressable
+                  key={key}
+                  onPress={() => setSortBy(key)}
+                  style={[styles.filterChip, {
+                    borderColor: sortBy === key ? theme.primary : theme.border,
+                    backgroundColor: sortBy === key ? theme.primary : theme.surface,
+                  }]}
+                >
+                  <Text style={[styles.filterChipTxt, { color: sortBy === key ? '#fff' : theme.text }]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.filterRow}>
+              {([['any', 'Any time'], ['today', 'Today'], ['tomorrow', 'Tomorrow'], ['week', 'This week']] as const).map(([key, label]) => (
+                <Pressable
+                  key={key}
+                  onPress={() => setWhen(key)}
+                  style={[styles.filterChip, {
+                    borderColor: when === key ? theme.primary : theme.border,
+                    backgroundColor: when === key ? `${theme.primary}15` : theme.surface,
+                  }]}
+                >
+                  <Text style={[styles.filterChipTxt, { color: when === key ? theme.primary : theme.textSecond }]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {/* Say when a filter is the reason the board looks empty, rather
+                than letting it read as "no lorries run this route". */}
+            {visibleTrips.length === 0 && (
+              <Text style={[styles.intro, { color: theme.textSecond }]}>
+                {trips.length} {trips.length === 1 ? 'trip' : 'trips'} on this route, none in that window.
+                Try Any time.
+              </Text>
+            )}
+          </View>
+        )}
+
+        {visibleTrips.map((trip) => {
           const spare = Number(trip.spareCapacityKg ?? 0);
           return (
             <View
@@ -275,6 +361,11 @@ const styles = StyleSheet.create({
   routesRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   routeChip:    { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999, borderWidth: 1 },
   routeChipTxt: { fontSize: 13, fontWeight: '600' },
+  // Deliberately smaller than the route chips above: those start a search,
+  // these narrow one that already ran, and they should not compete.
+  filterRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  filterChip:   { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
+  filterChipTxt:{ fontSize: 12, fontWeight: '600' },
 
   emptyWrap:  { alignItems: 'center', paddingTop: 44, gap: 8 },
   emptyTitle: { fontSize: 15, fontWeight: '700' },

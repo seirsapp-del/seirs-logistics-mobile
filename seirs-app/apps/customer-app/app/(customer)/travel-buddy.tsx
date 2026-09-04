@@ -91,6 +91,44 @@ export default function TravelBuddyScreen() {
   const [booking,  setBooking]  = useState<string | null>(null);
 
   /**
+   * Narrowing the board.
+   *
+   * Discovery was a route pair and nothing else, so three buses running Lagos
+   * to Ibadan tomorrow came back in one order with no way to choose between
+   * them. Someone travelling wants the one leaving soonest, or the one with
+   * room for the whole family, and almost always today or tomorrow rather
+   * than whatever sits three weeks out.
+   *
+   * Applied to rows already fetched. One route returns a small set, so this
+   * is instant, cannot fail, and leaves the endpoint the business app shares
+   * completely alone.
+   */
+  const [sortBy, setSortBy] = useState<'soonest' | 'seats'>('soonest');
+  const [when,   setWhen]   = useState<'any' | 'today' | 'tomorrow' | 'week'>('any');
+
+  const visibleTrips = (() => {
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const today = startOfDay(new Date());
+    const DAY   = 24 * 60 * 60 * 1000;
+
+    const withinWindow = (t: any) => {
+      if (when === 'any') return true;
+      const at = new Date(t.departAt).getTime();
+      if (!Number.isFinite(at)) return true;   // an unreadable date is not a reason to hide a trip
+      const day = startOfDay(new Date(at));
+      if (when === 'today')    return day === today;
+      if (when === 'tomorrow') return day === today + DAY;
+      return at < today + 7 * DAY;             // 'week'
+    };
+
+    return trips.filter(withinWindow).sort((a, b) =>
+      sortBy === 'seats'
+        ? Number(b.seatsLeft ?? 0) - Number(a.seatsLeft ?? 0)
+        : new Date(a.departAt).getTime() - new Date(b.departAt).getTime(),
+    );
+  })();
+
+  /**
    * Re-read the seat counts every time this screen comes back.
    *
    * The list was fetched once and never again. Booking pushes straight
@@ -307,7 +345,53 @@ export default function TravelBuddyScreen() {
           </View>
         )}
 
-        {trips.map((trip) => (
+        {/* Only once there is something to narrow. Chips on an empty board
+            are furniture. */}
+        {searched && !loading && trips.length > 0 && (
+          <View style={{ gap: 8, marginBottom: Spacing.sm }}>
+            <View style={styles.filterRow}>
+              {([['soonest', 'Leaving soonest'], ['seats', 'Most seats']] as const).map(([key, label]) => (
+                <Pressable
+                  key={key}
+                  onPress={() => setSortBy(key)}
+                  style={[styles.filterChip, {
+                    borderColor: sortBy === key ? theme.primary : theme.border,
+                    backgroundColor: sortBy === key ? theme.primary : theme.surface,
+                  }]}
+                >
+                  <Text style={[styles.filterChipText, { color: sortBy === key ? '#fff' : theme.text }]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.filterRow}>
+              {([['any', 'Any time'], ['today', 'Today'], ['tomorrow', 'Tomorrow'], ['week', 'This week']] as const).map(([key, label]) => (
+                <Pressable
+                  key={key}
+                  onPress={() => setWhen(key)}
+                  style={[styles.filterChip, {
+                    borderColor: when === key ? theme.primary : theme.border,
+                    backgroundColor: when === key ? `${theme.primary}15` : theme.surface,
+                  }]}
+                >
+                  <Text style={[styles.filterChipText, { color: when === key ? theme.primary : theme.textSecond }]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {/* A filter emptying the board must not read as "nobody drives
+                this route". */}
+            {visibleTrips.length === 0 && (
+              <Text style={{ fontSize: FontSize.sm, color: theme.textSecond }}>
+                {trips.length} {trips.length === 1 ? 'trip' : 'trips'} on this route, none in that window. Try Any time.
+              </Text>
+            )}
+          </View>
+        )}
+
+        {visibleTrips.map((trip) => (
           <View key={trip.id} style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               {trip.driver?.vehiclePhotoUrl ? (
@@ -480,6 +564,11 @@ const styles = StyleSheet.create({
   routesRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   routeChip:     { paddingHorizontal: 12, paddingVertical: 9, borderRadius: Radius.full, borderWidth: 1 },
   routeChipText: { fontSize: FontSize.sm, fontWeight: '600' },
+  // Smaller than the route chips above on purpose: those start a search,
+  // these narrow one that already ran, and they should not compete for it.
+  filterRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  filterChip:     { paddingHorizontal: 11, paddingVertical: 6, borderRadius: Radius.full, borderWidth: 1 },
+  filterChipText: { fontSize: FontSize.xs, fontWeight: '600' },
   routesNote:    { fontSize: FontSize.xs, lineHeight: 16, marginTop: 2 },
   searchBtn:     { height: 50, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   searchBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: '700' },
