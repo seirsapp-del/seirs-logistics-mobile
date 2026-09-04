@@ -7,7 +7,7 @@
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { LessThan, Repository } from 'typeorm';
+import { LessThan, Repository, Between } from 'typeorm';
 import { IdentityVerification, VerificationStatus } from './user-verification.entity';
 import { SubmitIdentityDto } from './dto/submit-verification.dto';
 import { User } from '../users/user.entity';
@@ -147,12 +147,38 @@ export class UserVerificationService {
     status: VerificationStatus = 'submitted',
     limit = 50,
     page = 1,
+    /**
+     * Submitted between, as YYYY-MM-DD.
+     *
+     * This queue only grows, and it is ordered by submittedAt, so without
+     * a range the only way to reach a given week is paging from one end of
+     * the pile to the other.
+     */
+    from?: string,
+    to?: string,
   ) {
     const take = Math.min(Math.max(Number(limit) || 50, 1), 200);
     const skip = (Math.max(Number(page) || 1, 1) - 1) * take;
 
     const [rows, total] = await this.repo.findAndCount({
-      where: { status },
+      where: {
+        status,
+        /**
+         * Ranged on submittedAt, which is also the column this list is
+         * ordered by, so the window and the paging through it agree.
+         *
+         * `to` runs to the END of its day: stopping at midnight would drop
+         * everything submitted ON the end date, and on a review queue that
+         * reads as "nobody applied that day".
+         */
+        ...(from || to ? {
+          submittedAt: Between(
+            from ? new Date(`${from}T00:00:00Z`) : new Date(0),
+            to   ? new Date(new Date(`${to}T00:00:00Z`).getTime() + 86_400_000)
+                 : new Date(8.64e15),
+          ),
+        } : {}),
+      },
       order: { submittedAt: status === 'submitted' ? 'ASC' : 'DESC' },
       take,
       skip,

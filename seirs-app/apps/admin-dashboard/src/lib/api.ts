@@ -1020,9 +1020,9 @@ export const adminApi = {
      * not say they existed.
      */
     list:    (status: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | 'revoked' | 'expired' = 'submitted',
-              page = 1, limit = 50) =>
+              page = 1, limit = 50, from?: string, to?: string) =>
       req<{ items: any[]; total: number; page: number; limit: number }>(
-        `/admin/identity-verifications?status=${status}&page=${page}&limit=${limit}`),
+        `/admin/identity-verifications?status=${status}&page=${page}&limit=${limit}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`),
     get:     (id: string) =>
       req<any>(`/admin/identity-verifications/${id}`),
     approve: (id: string, adminNote?: string) =>

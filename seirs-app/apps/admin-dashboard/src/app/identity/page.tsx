@@ -114,11 +114,20 @@ export default function IdentityVerificationPage() {
   // the rows already on screen and says so, rather than pretending to
   // reach the whole table.
   const [filter,  setFilter]    = useState('');
+  /**
+   * Submitted between, as YYYY-MM-DD.
+   *
+   * This queue only grows and is ordered by when things were submitted, so
+   * without a range the only way to reach a given week is paging from one
+   * end of the pile to the other.
+   */
+  const [from, setFrom] = useState('');
+  const [to,   setTo]   = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    adminApi.identityVerifications.list(status, page, SERVER_CAP)
+    adminApi.identityVerifications.list(status, page, SERVER_CAP, from || undefined, to || undefined)
       /* Returns { items, total, page, limit } now. The array fallback
          stays so a stale deploy of either side degrades to a list rather
          than an empty queue, which on a review board would read as
@@ -130,7 +139,7 @@ export default function IdentityVerificationPage() {
       })
       .catch((e: any) => setError(e?.message ?? 'Could not load the queue.'))
       .finally(() => setLoading(false));
-  }, [status, page]);
+  }, [status, page, from, to]);
 
   useEffect(() => { setPage(1); }, [status]);
   useEffect(() => { load(); }, [load]);
@@ -314,6 +323,42 @@ export default function IdentityVerificationPage() {
             {visible.length} of the {items.length} rows on screen
           </span>
         )}
+
+        {/* Submitted between.
+
+            Unlike the box to its left, which filters the rows already on
+            screen, this one narrows the QUERY, so it reaches submissions
+            that are not on this page. Worth knowing which is which: the
+            filter says "the rows below" for exactly that reason.
+
+            The end date covers its whole day, or ranging the 3rd to the 3rd
+            would return nothing and read as "nobody applied". */}
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-[#0F2B4C]/50">Submitted</span>
+          <input
+            type="date"
+            value={from}
+            max={to || undefined}
+            onChange={(e) => { setFrom(e.target.value); setPage(1); }}
+            className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+          />
+          <span className="text-[#0F2B4C]/40">to</span>
+          <input
+            type="date"
+            value={to}
+            min={from || undefined}
+            onChange={(e) => { setTo(e.target.value); setPage(1); }}
+            className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+          />
+          {(from || to) && (
+            <button
+              onClick={() => { setFrom(''); setTo(''); setPage(1); }}
+              className="font-semibold text-[#3A7BD5] hover:underline"
+            >
+              Clear dates
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Was a warning that the list "stops at 100 and there may be more".

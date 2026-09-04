@@ -23,9 +23,11 @@ export class AdminUserVerificationController {
     @Query('status') status?: string,
     @Query('limit')  limit?: string,
     @Query('page')   page?: string,
+    @Query('from')   from?: string,
+    @Query('to')     to?: string,
   ) {
     const s = (status ?? 'submitted') as VerificationStatus;
-    return this.svc.adminList(s, Number(limit ?? 50), Number(page ?? 1));
+    return this.svc.adminList(s, Number(limit ?? 50), Number(page ?? 1), from, to);
   }
 
   // GET /api/v1/admin/identity-verifications/:id
