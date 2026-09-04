@@ -370,6 +370,35 @@ export class HealthController {
     }
 
     /**
+     * Call-log probe (2026-09-04).
+     *
+     * Same silent-DDL reasoning as its neighbours. The failure that matters
+     * here is quiet in a particular way: if the table is missing, the calls
+     * panel simply renders "nobody has called yet" for every shop forever,
+     * which is indistinguishable from the truth on a platform that has not
+     * started calling anybody.
+     */
+    let callsSchema: Record<string, unknown> = { ok: false };
+    try {
+      const [tbl] = await this.dataSource.query(
+        `SELECT to_regclass('public.partner_call_logs') AS t`,
+      );
+      const counts = tbl?.t ? await this.dataSource.query(
+        `SELECT COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE "calledAt" IS NULL)::int AS "noAnswer"
+           FROM "partner_call_logs"`,
+      ).catch(() => null) : null;
+      callsSchema = {
+        ok: Boolean(tbl?.t),
+        table: tbl?.t ?? null,
+        ...(counts?.[0] ? { calls: counts[0].total, didNotConnect: counts[0].noAnswer } : {}),
+        ...(tbl?.t ? {} : { warn: 'partner_call_logs missing: every shop will read as never called, which looks identical to the truth' }),
+      };
+    } catch (err: any) {
+      callsSchema = { ok: false, error: err?.message ?? 'unknown' };
+    }
+
+    /**
      * KYC document store probe (2026-09-02).
      *
      * driver_documents was generalised into kyc_documents and the copy-in
@@ -504,6 +533,7 @@ export class HealthController {
       hoursSchema,
       movesSchema,
       recoverySchema,
+      callsSchema,
       // Did the statement_records ALTERs land? Same class of silent
       // failure: issuing looks healthy and every download 404s.
       statementsSchema,

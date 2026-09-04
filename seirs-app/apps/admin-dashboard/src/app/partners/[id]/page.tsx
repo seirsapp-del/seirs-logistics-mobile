@@ -115,6 +115,7 @@ export default function PartnerDetailPage() {
   const [move, setMove] = useState<any>(null);
   const [audit, setAudit] = useState<any>(null);
   const [recovery, setRecovery] = useState<any[]>([]);
+  const [calls, setCalls] = useState<any[]>([]);
   const [openParcel, setOpenParcel] = useState<string | null>(null);
   const [movingBusy, setMovingBusy] = useState(false);
 
@@ -199,6 +200,8 @@ const METHOD_LABEL: Record<string, string> = {
     adminApi.partnerMoves.parcels(id).then(setAudit).catch(() => setAudit(null));
     adminApi.partnerMoves.recovery(id).then(r => setRecovery(Array.isArray(r) ? r : []))
       .catch(() => setRecovery([]));
+    adminApi.partnerCalls.list(id).then(r => setCalls(Array.isArray(r) ? r : []))
+      .catch(() => setCalls([]));
 
     const storeLoad = adminApi.partnerStores.get(id)
       .then(setData)
@@ -1282,6 +1285,142 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
             </div>
           </div>
         )}
+
+        {/* Did anyone actually speak to this shop?
+
+            The one check in the partner flow a forged photograph cannot
+            pass. Everything else on this page is a document somebody sent
+            us; this is a record that a person spoke to a person.
+
+            Text only, deliberately. No recording, no still. The value of a
+            call is the judgement of whoever made it, which fits in a
+            sentence, and storing somebody's face and shop would create
+            personal data we would then have to protect and justify. It
+            would also mean asking Nigerian shopkeepers on metered data to
+            upload video before they are allowed to work. */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+          <Section
+            title="Calls with this shop"
+            storageKey="partner-calls"
+            bare
+            defaultOpen={calls.length === 0}
+            summary={
+              calls.length === 0
+                ? <span className="text-amber-700">nobody has called yet</span>
+                : `${calls.length} recorded`
+            }
+          >
+            {calls.length === 0 ? (
+              <p className="text-sm text-[#5C6E82]">
+                No call has been recorded for this shop. Every other check on this page is a
+                document somebody sent us, and documents can be borrowed. A call is the only
+                one that needs a real person at a real counter.
+              </p>
+            ) : (
+              <ol className="space-y-3">
+                {calls.map((c: any) => (
+                  <li key={c.id} className="rounded-lg border border-gray-200 p-3">
+                    <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                      <p className="text-sm font-medium text-[#16232F]">
+                        {c.calledAt
+                          ? `Spoke to ${c.spokeTo || "someone at the shop"}`
+                          : "Call did not connect"}
+                      </p>
+                      <span className="text-xs text-gray-500 tabular-nums">
+                        {new Date(c.calledAt ?? c.createdAt).toLocaleString("en-NG")}
+                      </span>
+                    </div>
+                    {c.observations && (
+                      <p className="mt-1 text-sm text-[#5C6E82]">{c.observations}</p>
+                    )}
+                    {c.decision && (
+                      <p className="mt-1 text-sm text-[#16232F]">
+                        <span className="font-medium">Decided:</span> {c.decision}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-400">
+                      {c.adminName ? `Logged by ${c.adminName}` : "Logged by an admin"}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            <div className="mt-4 flex gap-2 flex-wrap">
+              <button
+                onClick={async () => {
+                  const spokeTo = await prompt({
+                    title: "Who did you speak to?",
+                    message: "Their name, and what they do at the shop. It is often not the account holder: "
+                           + "a son minds the counter, a manager runs it. \"The owner\" and \"whoever answered\" "
+                           + "are different facts and only one supports an approval.",
+                    label: "Name and role",
+                    multiline: false,
+                    confirmLabel: "Next",
+                  });
+                  if (spokeTo === null) return;
+                  const observations = await prompt({
+                    title: "What did you see and hear?",
+                    message: "The shop, the shelf, anything that did not match the photographs.",
+                    label: "Observations",
+                    multiline: true,
+                    confirmLabel: "Next",
+                  });
+                  if (observations === null) return;
+                  const decision = await prompt({
+                    title: "What did you conclude?",
+                    message: "Free text on purpose. Most calls end in neither approve nor reject, and "
+                           + "\"shelf is smaller than the photo suggests, ask about capacity\" is the honest outcome.",
+                    label: "Decision",
+                    multiline: true,
+                    confirmLabel: "Save the call",
+                  });
+                  if (decision === null) return;
+                  try {
+                    const r = await adminApi.partnerCalls.log(id, {
+                      connected: true,
+                      spokeTo: String(spokeTo),
+                      observations: String(observations),
+                      decision: String(decision),
+                    });
+                    void notify({ title: "Call recorded", message: r.message, tone: "success" });
+                    adminApi.partnerCalls.list(id).then(x => setCalls(Array.isArray(x) ? x : [])).catch(() => {});
+                  } catch (e: any) {
+                    void notify({ title: "Not saved", message: e?.message ?? "Try again.", tone: "error" });
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-[#0F2B4C] text-white text-sm font-medium"
+              >
+                Record a call
+              </button>
+              <button
+                onClick={async () => {
+                  const note = await prompt({
+                    title: "Call did not connect",
+                    message: "Worth recording. Three of these in a row is the clearest sign a shop is not really there, "
+                           + "and a log holding only successful calls cannot show it.",
+                    label: "What happened",
+                    multiline: true,
+                    confirmLabel: "Record it",
+                  });
+                  if (note === null) return;
+                  try {
+                    const r = await adminApi.partnerCalls.log(id, {
+                      connected: false, observations: String(note ?? ""),
+                    });
+                    void notify({ title: "Recorded", message: r.message, tone: "success" });
+                    adminApi.partnerCalls.list(id).then(x => setCalls(Array.isArray(x) ? x : [])).catch(() => {});
+                  } catch (e: any) {
+                    void notify({ title: "Not saved", message: e?.message ?? "Try again.", tone: "error" });
+                  }
+                }}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-[#5C6E82] text-sm font-medium"
+              >
+                No answer
+              </button>
+            </div>
+          </Section>
+        </div>
 
         {/* When this shop is open.
             Founder, 2026-09-03: partners "should be able to set up their

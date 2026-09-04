@@ -17,7 +17,10 @@ import { PartnerMoveRequest } from './partner-move-request.entity';
 import { PartnerMoveService } from './partner-move.service';
 import { ParcelRecoveryTask } from './parcel-recovery-task.entity';
 import { ParcelRecoveryService } from './parcel-recovery.service';
-import { PartnerMoveController, AdminPartnerMovesController } from './partner-move.controller';
+import { PartnerCallLog } from './partner-call-log.entity';
+import {
+  PartnerMoveController, AdminPartnerMovesController, AdminPartnerCallsController,
+} from './partner-move.controller';
 import { SupportModule } from '../support/support.module';
 import { FeesModule } from '../fees/fees.module';
 import { IdentityModule } from '../identity/identity.module';
@@ -41,7 +44,7 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
   imports: [
     // KycDocument registered locally as well as globally, so a provider
     // resolution mistake is a compile error rather than a boot crash.
-    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery, PartnerPayout, KycDocument, PartnerMoveRequest, ParcelRecoveryTask]),
+    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery, PartnerPayout, KycDocument, PartnerMoveRequest, ParcelRecoveryTask, PartnerCallLog]),
     FeesModule,
     IdentityModule,
     PricingModule,
@@ -52,7 +55,7 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
     SupportModule,
   ],
   controllers: [PartnerStoreController, AdminPartnerDocumentsController, AdminPartnerPayoutsController,
-                PartnerMoveController, AdminPartnerMovesController],
+                PartnerMoveController, AdminPartnerMovesController, AdminPartnerCallsController],
   providers:   [PartnerStoreService, PartnerDocumentsService, PartnerPayoutsService, PartnerMoveService, ParcelRecoveryService],
   exports:     [PartnerStoreService, PartnerMoveService, ParcelRecoveryService],
 })
@@ -114,6 +117,22 @@ export class PartnerStoreModule implements OnModuleInit {
        * partially-created table from an interrupted boot heals rather than
        * silently staying wrong.
        */
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "partner_call_logs" (
+          "id"             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "partnerStoreId" uuid NOT NULL,
+          "scheduledFor"   timestamptz NULL,
+          "calledAt"       timestamptz NULL,
+          "adminUserId"    uuid NULL,
+          "spokeTo"        varchar(120) NULL,
+          "observations"   text NULL,
+          "decision"       text NULL,
+          "createdAt"      timestamptz NOT NULL DEFAULT now()
+        )`);
+      await this.ds.query(
+        `CREATE INDEX IF NOT EXISTS "idx_calls_store_created"
+           ON "partner_call_logs" ("partnerStoreId", "createdAt")`);
+
       await this.ds.query(`
         CREATE TABLE IF NOT EXISTS "parcel_recovery_tasks" (
           "id"                uuid PRIMARY KEY DEFAULT gen_random_uuid(),

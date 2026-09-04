@@ -25,6 +25,7 @@ import { secureCode } from '../common/utils/auth-codes';
 import { withinWorkingHours } from '../common/utils/working-hours';
 import { ParcelRecoveryService } from './parcel-recovery.service';
 import { RecoveryTrigger } from './parcel-recovery-task.entity';
+import { PartnerCallLog } from './partner-call-log.entity';
 
 // "In store" means physically present at the pickup or dropoff location -
 // these statuses count against capacity, accrue storage fees, etc.
@@ -197,6 +198,7 @@ export class PartnerStoreService {
     @InjectRepository(PartnerSponsorship)   private sponsorshipRepo: Repository<PartnerSponsorship>,
     @InjectRepository(Delivery)             private deliveriesRepo:  Repository<Delivery>,
     @InjectRepository(PartnerPayout)        private payoutsRepo:     Repository<PartnerPayout>,
+    @InjectRepository(PartnerCallLog)       private callsRepo:       Repository<PartnerCallLog>,
     private readonly feesService: FeesService,
     // Raises a job per parcel when a shop is suspended or wound down.
     private readonly recovery: ParcelRecoveryService,
@@ -2694,6 +2696,68 @@ export class PartnerStoreService {
       accuracyM: doc.capturedAccuracyM ?? null,
       message: 'The shop pin now sits where that photo was taken.',
     };
+  }
+
+  /**
+   * Write down that somebody spoke to this shop.
+   *
+   * Text only, deliberately: see the entity for why there is no recording.
+   * Nothing here changes the shop's status. A call informs a decision; it
+   * is not one, and letting it approve anything would turn a note into an
+   * action nobody reviewed.
+   */
+  async logPartnerCall(storeId: string, adminUserId: string, body: {
+    scheduledFor?: string;
+    connected?:    boolean;
+    spokeTo?:      string;
+    observations?: string;
+    decision?:     string;
+  }) {
+    const store = await this.storeRepo.findOne({ where: { id: storeId }, select: ['id'] as any });
+    if (!store) throw new NotFoundException('Partner store not found.');
+
+    /**
+     * A call that did not connect is still a record worth keeping. Three
+     * of those in a row is the clearest signal a shop is not really there,
+     * and a log that only holds successful calls cannot show it.
+     */
+    const connected = body.connected !== false;
+    if (connected && !body.observations?.trim()) {
+      throw new BadRequestException(
+        'Write down what you saw and heard. A call with no observations tells the next reviewer nothing.',
+      );
+    }
+
+    const row = await this.callsRepo.save(this.callsRepo.create({
+      partnerStoreId: storeId,
+      scheduledFor:   body.scheduledFor ? new Date(body.scheduledFor) : null,
+      calledAt:       connected ? new Date() : null,
+      adminUserId:    adminUserId ?? null,
+      spokeTo:        body.spokeTo?.trim()?.slice(0, 120) ?? null,
+      observations:   body.observations?.trim()?.slice(0, 4000) ?? null,
+      decision:       body.decision?.trim()?.slice(0, 4000) ?? null,
+    }));
+    return { id: row.id, message: connected ? 'Call recorded.' : 'Recorded that the call did not connect.' };
+  }
+
+  /** Every call about this shop, newest first, with the caller's name. */
+  async partnerCalls(storeId: string) {
+    const rows = await this.callsRepo.find({
+      where: { partnerStoreId: storeId },
+      order: { createdAt: 'DESC' },
+      take:  100,
+    });
+    if (!rows.length) return [];
+
+    // Named columns only. A relation load here would pull each admin's
+    // whole User row to render a name.
+    const admins: any[] = await this.callsRepo.manager.query(
+      `SELECT id, name FROM "users" WHERE id = ANY($1)`,
+      [rows.map(r => r.adminUserId).filter(Boolean)],
+    ).catch(() => []);
+    const byId = new Map(admins.map(a => [a.id, a.name]));
+
+    return rows.map(r => ({ ...r, adminName: byId.get(r.adminUserId ?? '') ?? null }));
   }
 
   async adminGetStore(id: string) {

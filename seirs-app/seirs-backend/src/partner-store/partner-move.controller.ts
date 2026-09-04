@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import { PartnerMoveService } from './partner-move.service';
 import { ParcelRecoveryService } from './parcel-recovery.service';
+import { PartnerStoreService } from './partner-store.service';
 import { RecoveryOutcome } from './parcel-recovery-task.entity';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
@@ -154,5 +155,38 @@ export class AdminPartnerMovesController {
       note:          body.note,
       rejectedItems: body.rejectedItems,
     });
+  }
+}
+
+
+/**
+ * Calls made to a partner shop before approving it.
+ *
+ * Its own controller because it is neither a move nor a document: it is
+ * the record that a human spoke to a human, which is the one check in the
+ * whole partner flow that a forged photograph cannot pass.
+ */
+@UseGuards(JwtAuthGuard, AdminGuard)
+@Controller('admin/partner-calls')
+export class AdminPartnerCallsController {
+  constructor(private readonly stores: PartnerStoreService) {}
+
+  /** GET /api/v1/admin/partner-calls/:storeId */
+  @Get(':storeId')
+  list(@Param('storeId') storeId: string) {
+    return this.stores.partnerCalls(storeId);
+  }
+
+  /** POST /api/v1/admin/partner-calls/:storeId */
+  @Post(':storeId')
+  log(
+    @Param('storeId') storeId: string,
+    @CurrentUser() admin: any,
+    @Body() body: {
+      scheduledFor?: string; connected?: boolean;
+      spokeTo?: string; observations?: string; decision?: string;
+    },
+  ) {
+    return this.stores.logPartnerCall(storeId, admin?.id, body);
   }
 }

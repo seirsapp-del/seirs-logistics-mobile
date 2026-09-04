@@ -262,6 +262,20 @@ export const adminApi = {
    * Approving one is the ONLY thing that moves a live shop's address and
    * map pin, which is why it is a decision route and not a field edit.
    */
+  /**
+   * Calls made to a shop before approving it. Text only, no recording:
+   * the reviewer's judgement is the artefact, not the footage.
+   */
+  partnerCalls: {
+    list: (storeId: string) => req<any[]>(`/admin/partner-calls/${storeId}`),
+    log:  (storeId: string, body: {
+      scheduledFor?: string; connected?: boolean;
+      spokeTo?: string; observations?: string; decision?: string;
+    }) => req<any>(`/admin/partner-calls/${storeId}`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  },
+
   partnerMoves: {
     queue:    () => req<any[]>('/admin/partner-moves'),
     forStore: (storeId: string) => req<any>(`/admin/partner-moves/store/${storeId}`),
