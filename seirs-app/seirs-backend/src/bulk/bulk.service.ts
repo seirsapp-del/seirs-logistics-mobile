@@ -5,6 +5,7 @@ import { Delivery, DeliveryStatus, PackageSize, UrgencyLevel } from '../deliveri
 import { User } from '../users/user.entity';
 import { CreateBulkDeliveryDto } from './dto/bulk-delivery.dto';
 import { PricingService } from '../deliveries/pricing.service';
+import { secureCode } from '../common/utils/auth-codes';
 
 const B2B_DISCOUNT = 0.10; // 10% discount on bulk orders of 5+
 const BULK_THRESHOLD = 5;
@@ -48,7 +49,22 @@ export class BulkService {
       const basePrice = quotes[urgency].price;
       const price     = applyDiscount ? basePrice * (1 - B2B_DISCOUNT) : basePrice;
 
-      const trackingCode = `SRS-${Date.now().toString(36).toUpperCase()}-${i}`;
+      /**
+       * Crypto-secure, like every other generator.
+       *
+       * This was `SRS-${Date.now().toString(36)}-${i}`: a timestamp and a
+       * SEQUENTIAL INDEX. Brute force was never the risk. The risk is that
+       * one code hands over the whole batch, because -0 becomes -1 becomes
+       * -2. A business bulk-uploads two hundred deliveries, one recipient
+       * shares their tracking link, and every other recipient's address in
+       * that upload is one character away. Tracking returns the pickup
+       * address in full, the destination, the recipient's first name and the
+       * driver's live position.
+       *
+       * The 2026-08-09 predictability sweep fixed deliveries.service and a
+       * later pass fixed business.service. This one was missed.
+       */
+      const trackingCode = 'SRS-' + secureCode(8);
 
       const delivery = this.deliveriesRepo.create({
         trackingCode,

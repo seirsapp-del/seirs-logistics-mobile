@@ -91,6 +91,41 @@ function watermark(doc: PDFKit.PDFDocument, text: string) {
  * client builds is a document the client can quietly change before
  * anyone sees it.
  */
+/**
+ * The okada, drawn rather than embedded.
+ *
+ * The statement carried no mark at all: a document that is meant to be proof
+ * of income, with nothing on it identifying who issued it but the word SEIRS
+ * set in Helvetica. Vector rather than a PNG so it stays crisp at any size and
+ * the backend needs no binary asset shipped alongside it.
+ *
+ * Geometry is the founder's locked pick, identical to
+ * scripts/build-mark-assets.js: A3 weight, run D at 15.94, head at 13.3
+ * degrees off vertical. Ink box is 42 wide by 36.48 tall, x from 3, y from
+ * -5.48. The hubs are painted in the ground colour because the band behind is
+ * solid, which is the same result the asset cutter gets by punching alpha.
+ */
+function drawOkada(
+  doc: PDFKit.PDFDocument,
+  x: number, y: number, h: number,
+  ink: string, ground: string,
+) {
+  const INK_W = 42, INK_H = 36.48, INK_X = 3, INK_Y = -5.48;
+  const s = h / INK_H;
+  doc.save();
+  doc.translate(x - INK_X * s, y - INK_Y * s).scale(s);
+  doc.lineCap('round').lineJoin('round');
+  doc.path('M 10 24 L 18 16 L 30 16 L 38 24').lineWidth(5.5).stroke(ink);
+  doc.circle(10, 24, 7).fill(ink);
+  doc.circle(38, 24, 7).fill(ink);
+  doc.moveTo(37, 12).lineTo(42, 9).lineWidth(5.5).stroke(ink);
+  doc.moveTo(24, 16).lineTo(31.13, 1.74).lineWidth(5.5).stroke(ink);
+  doc.circle(31.82, -1.18, 4.3).fill(ink);
+  doc.moveTo(29.35, 5.30).lineTo(37, 12).lineWidth(5.5).stroke(ink);
+  doc.circle(10, 24, 2.4).fill(ground);
+  doc.circle(38, 24, 2.4).fill(ground);
+  doc.restore();
+}
 export async function renderStatementPdf(input: StatementInput): Promise<Buffer> {
   const doc = new PDFDocument({ size: 'A4', margin: 44, bufferPages: true });
   const chunks: Buffer[] = [];
@@ -104,10 +139,11 @@ export async function renderStatementPdf(input: StatementInput): Promise<Buffer>
 
   // ── Header band ──────────────────────────────────────────────────────
   doc.rect(0, 0, doc.page.width, 92).fill(NAVY);
+  drawOkada(doc, 44, 30, 32, '#FFFFFF', NAVY);
   doc.fillColor('#FFFFFF').fontSize(20).font('Helvetica-Bold')
-     .text('SEIRS', 44, 30, { characterSpacing: 5 });
+     .text('SEIRS', 90, 30, { characterSpacing: 5 });
   doc.fontSize(8).font('Helvetica').fillColor('#8FA8C7')
-     .text('LOGISTICS', 44, 56, { characterSpacing: 3 });
+     .text('LOGISTICS', 90, 56, { characterSpacing: 3 });
   doc.fillColor('#FFFFFF').fontSize(13).font('Helvetica-Bold')
      .text(input.title, 300, 34, { width: 258, align: 'right' });
   doc.fontSize(8.5).font('Helvetica').fillColor('#C7D6E8')
@@ -208,12 +244,12 @@ export async function renderStatementPdf(input: StatementInput): Promise<Buffer>
   doc.rect(44, vy, 507, 96).fillAndStroke('#F9FAFB', RULE);
   doc.image(qrBuffer, 56, vy + 12, { width: 72, height: 72 });
   doc.fillColor(INK).fontSize(10).font('Helvetica-Bold')
-     .text('Verify this statement', 142, vy + 14);
+     .text('Confirm this statement online', 142, vy + 14);
   doc.fillColor(MUTED).fontSize(8.5).font('Helvetica')
      .text(
-       'A PDF can be edited. Do not trust this document on its appearance. Scan the code or ' +
-       'open the link below to see the figures SEIRS actually issued. If they differ from this ' +
-       'page, this page is not genuine.',
+       'Every Seirs statement can be checked independently. Scan the code, or open the link ' +
+       'below, to see these same figures on our website. No account and no sign-in is needed, ' +
+       'so anyone you show it to can confirm it for themselves.',
        142, vy + 30, { width: 396 },
      );
   doc.fillColor(BLUE).fontSize(8.5).font('Helvetica-Bold')
@@ -225,9 +261,9 @@ export async function renderStatementPdf(input: StatementInput): Promise<Buffer>
     doc.switchToPage(i);
     doc.fillColor(MUTED).fontSize(7.5).font('Helvetica')
        .text(
-         `Statement ${input.code}  ·  SEIRS Logistics, Lagos, Nigeria  ·  Page ${i - range.start + 1} of ${range.count}` +
+         `Statement ${input.code}  ·  Seirs Logistics, Lagos, Nigeria  ·  Page ${i - range.start + 1} of ${range.count}` +
          (input.issuedNote ? `  ·  ${input.issuedNote}` : ''),
-         44, 790, { width: 507, align: 'center' },
+         44, 782, { width: 507, align: 'center', lineBreak: false },
        );
   }
 
