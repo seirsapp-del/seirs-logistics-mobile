@@ -27,15 +27,28 @@ import { withinWorkingHours } from '../common/utils/working-hours';
 // "In store" means physically present at the pickup or dropoff location -
 // these statuses count against capacity, accrue storage fees, etc.
 //
-// KNOWN GAP, not fixed here on purpose: DRIVER_EN_ROUTE is missing, and
-// in that state the parcel has not moved. The driver is on the way TO
-// the shop, so it is still on the shelf and still occupying space.
-// Adding it would change how many parcels a shop is allowed to accept,
-// which is an operational decision with money behind it rather than a
-// tidy-up, so it is written down here instead of slipped in.
+// DRIVER_EN_ROUTE was missing until 2026-09-04 and is now included, by the
+// founder's decision: "yes it should count since its still on the shelf,
+// because of chain of custody".
+//
+// That reasoning is the right one and it is stronger than the space
+// argument I raised it with. A rider being on the way to collect changes
+// nothing about where the parcel is or who is answerable for it: the shop
+// still has it, the shop signed for it, and the shop is who we would ask
+// if it went missing in that window. A count that drops it would show a
+// shelf holding fewer parcels than the shop is actually responsible for,
+// which is exactly the number a custody question needs to be right.
+//
+// The cost is accepted and small: shops reach "full" slightly sooner, so a
+// counter with a rider inbound stops taking new work a little earlier.
+//
+// Storage charging is NOT affected. enforceStoragePolicy keeps its own
+// narrower list, deliberately, because what a shop is holding and what a
+// sender is billed for are different questions.
 const IN_STORE_STATUSES: DropoffStatus[] = [
   DropoffStatus.RECEIVED_AT_STORE,
   DropoffStatus.AWAITING_DRIVER,
+  DropoffStatus.DRIVER_EN_ROUTE,
   DropoffStatus.AT_DROPOFF_STORE,
   DropoffStatus.AWAITING_COLLECTION,
 ];
