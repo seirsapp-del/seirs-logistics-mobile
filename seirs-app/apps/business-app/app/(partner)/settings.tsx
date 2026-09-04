@@ -281,6 +281,17 @@ export default function PartnerSettingsScreen() {
             <Text style={[styles.linkRowText, { color: colors.text }]}>Messages &amp; support</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
+          {/* Added with the payout rail (2026-09-03). A shop cannot be
+              approved without an account, so this row is the way through
+              that gate and must never be hard to find. */}
+          <Pressable
+            style={[styles.linkRow, { borderTopColor: colors.border }]}
+            onPress={() => router.push('/(partner)/payout-account' as any)}
+          >
+            <Icon name="Banknote" size={16} color={colors.textSecond} />
+            <Text style={[styles.linkRowText, { color: colors.text }]}>Payout account</Text>
+            <Icon name="ChevronRight" size={16} color={colors.textThird} />
+          </Pressable>
           {/* The statement lives here as well as on Payout History
               (founder, 2026-09-03). Earnings is where you look when you
               are checking a number; Account is where you look when you

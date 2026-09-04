@@ -1659,6 +1659,38 @@ export const partnerApi = {
    * a slot nobody has filled has nothing to carry them, and the app must
    * not hold a second copy of the policy that would drift from the first.
    */
+  /**
+   * Where the shop's counter earnings are sent.
+   *
+   * The account number comes back MASKED. A shop owner already knows
+   * their own account, so showing it in full buys nothing and costs
+   * everything if somebody is reading over their shoulder in a market.
+   */
+  myBank: () => request<{
+    hasAccount: boolean;
+    bankName: string | null;
+    accountName: string | null;
+    accountNumberMasked: string | null;
+    verifiedAt: string | null;
+    pending: {
+      bankName: string; accountName: string;
+      accountNumberMasked: string | null; requestedAt: string;
+    } | null;
+  }>('GET', '/partner-store/my-bank'),
+
+  /**
+   * Save, or ask to change, the payout account.
+   *
+   * The number is resolved with the bank before anything is stored, and
+   * the name that comes back is the BANK's answer rather than what was
+   * typed. The first account saves instantly; replacing one queues for a
+   * human and the current account keeps paying until then, which is why
+   * the response says whether the change is pending.
+   */
+  setBank: (body: { bankName: string; bankCode: string; accountNumber: string }) =>
+    request<{ saved: boolean; pending: boolean; accountName: string; message: string }>(
+      'POST', '/partner-store/my-bank', body),
+
   myDocuments: () => request<PartnerDocuments>('GET', '/partner-store/my-documents'),
 
   /**

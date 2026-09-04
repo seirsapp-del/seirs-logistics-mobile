@@ -107,6 +107,7 @@ export default function PartnerLayout() {
           renders the missing-glyph box. Documents is reached from Store
           Settings and the statement from Payout History. */}
       <Tabs.Screen name="documents"        options={HIDDEN} />
+      <Tabs.Screen name="payout-account"   options={HIDDEN} />
       <Tabs.Screen name="statement"        options={HIDDEN} />
     </Tabs>
   );
