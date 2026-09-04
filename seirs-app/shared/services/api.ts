@@ -1868,15 +1868,66 @@ export const dropoffApi = {
 
   // Browse partner stores near a location, with capacity bucket exposed
   // (Plenty / Limited / Full) so the customer doesn't see ops numbers.
+  /**
+   * The counter a rider is riding to: real name, open or shut, hours, phone.
+   *
+   * The driver handover screen took the shop's name as a route param and its
+   * caller hardcoded "Partner counter", so nobody on the road was told which
+   * shop they were going to or whether it had already closed.
+   */
+  counterDetails: (storeId: string) =>
+    request<{
+      id: string; storeName: string; storeAddress: string;
+      phone: string | null;
+      openTime: string | null; closeTime: string | null;
+      operatingDays: string[];
+      workingHours: Record<string, { enabled: boolean; start: string; end: string }> | null;
+      isOpenNow: boolean;
+      acceptingNew: boolean;
+    }>('GET', `/partner-store/store/${encodeURIComponent(storeId)}/counter`),
+
   listCapacityNearby: (lat?: number, lng?: number, radiusKm = 10) => {
     const params = new URLSearchParams();
     if (lat != null)  params.append('lat',      String(lat));
     if (lng != null)  params.append('lng',      String(lng));
     if (radiusKm)     params.append('radiusKm', String(radiusKm));
+    /**
+     * The WHOLE payload, not the eight fields this used to name.
+     *
+     * The server has always sent nineteen. Declaring eight did not drop the
+     * other eleven, it hid them: the customer's shop card showed no photo,
+     * no hours and no open-or-closed for months while every one of those
+     * fields sat in the response, because nothing in the editor or the
+     * compiler suggested they existed.
+     *
+     * That is a worse failure than a missing field. A missing field is a
+     * runtime undefined somebody eventually notices. A too-narrow response
+     * type is invisible: the data arrives, the type says it did not, and the
+     * screen is built around an absence that was never real.
+     *
+     * Everything beyond the original eight is optional, so no existing
+     * caller is forced to handle it and nothing breaks by widening.
+     */
     return request<Array<{
       id: string; storeName: string; storeAddress: string;
       currentLoad: number; maxCapacity: number; percent: number;
       bucket: 'plenty' | 'limited' | 'full'; full: boolean;
+
+      lat?: number | null;
+      lng?: number | null;
+      distanceKm?: number | null;
+      phone?: string | null;
+      /** The APPROVED shop-front photo only, never a pending upload. */
+      photoUrl?: string | null;
+      /** Computed server-side. Null hours mean OPEN, never closed. */
+      isOpenNow?: boolean;
+      /** Per-day schedule. Null on a shop that never set one. */
+      workingHours?: Record<string, { enabled: boolean; start: string; end: string }> | null;
+      /** Legacy single window, still populated. Prefer workingHours. */
+      openTime?: string | null;
+      closeTime?: string | null;
+      operatingDays?: string[];
+      acceptingNew?: boolean;
     }>>('GET', `/partner-store/capacity/nearby?${params.toString()}`);
   },
 
