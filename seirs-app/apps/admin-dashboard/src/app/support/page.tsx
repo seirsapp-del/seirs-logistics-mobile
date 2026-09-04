@@ -84,6 +84,10 @@ const TOPIC_LABEL: Record<string, string> = {
   driver:   'Driver',
   account:  'Account',
   delivery: 'Delivery',
+  // Raised by SEIRS, not by the person. Named for what the reader must
+  // do about it rather than what happened, because the whole point of
+  // the queue is that somebody checks the parcels before they strand.
+  hours_change: 'Hours changed',
   other:    'Something else',
 };
 
@@ -494,6 +498,7 @@ export default function SupportInboxPage() {
             <option value="driver">Driver</option>
             <option value="account">Account</option>
             <option value="delivery">Delivery</option>
+            <option value="hours_change">Hours changed</option>
             <option value="other">Something else</option>
           </select>
           <select value={accountTypeFilter} onChange={e => setAccountTypeFilter(e.target.value)}

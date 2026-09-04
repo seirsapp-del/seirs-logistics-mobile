@@ -235,6 +235,54 @@ export class HealthController {
     }
 
     /**
+     * Working-hours probe (2026-09-03).
+     *
+     * partner_stores.workingHours is added by self-heal DDL inside a
+     * try/catch, and the migration that carries old hours across
+     * deliberately SKIPS every store still carrying defaults. Both of
+     * those are silent by design, which means "no store has hours" and
+     * "the column never got added" look identical from the outside, and
+     * so do "the migration correctly skipped everyone" and "the
+     * migration threw on the first row".
+     *
+     * What makes it worth a probe rather than a log line: hours decide
+     * whether a shop appears in the drop-off directory at all. A store
+     * wrongly marked closed does not error, it just quietly stops being
+     * offered, and the partner's first hint is that parcels stopped
+     * arriving.
+     *
+     * migrated vs withHours is the pair to read. migrated counts stores
+     * that chose their own hours; open counts those still null, which
+     * withinWorkingHours treats as always open.
+     */
+    let hoursSchema: Record<string, unknown> = { ok: false };
+    try {
+      const [col] = await this.dataSource.query(
+        `SELECT data_type FROM information_schema.columns
+          WHERE table_name = 'partner_stores' AND column_name = 'workingHours'`,
+      );
+      const [counts] = await this.dataSource.query(
+        `SELECT COUNT(*)::int AS total,
+                COUNT("workingHours")::int AS "withHours"
+           FROM "partner_stores"`,
+      ).catch(() => [null]);
+      hoursSchema = {
+        ok: Boolean(col),
+        column: col?.data_type ?? null,
+        ...(counts ? {
+          stores:      counts.total,
+          withHours:   counts.withHours,
+          alwaysOpen:  counts.total - counts.withHours,
+        } : {}),
+        ...(col ? {} : {
+          warn: 'partner_stores has no workingHours column: every shop reads as always open and no partner can save hours',
+        }),
+      };
+    } catch (err: any) {
+      hoursSchema = { ok: false, error: err?.message ?? 'unknown' };
+    }
+
+    /**
      * KYC document store probe (2026-09-02).
      *
      * driver_documents was generalised into kyc_documents and the copy-in
@@ -366,6 +414,7 @@ export class HealthController {
       // Did driver_documents actually reach kyc_documents? A silent
       // try/catch copy-in fails identically to succeeding.
       kycSchema,
+      hoursSchema,
       // Did the statement_records ALTERs land? Same class of silent
       // failure: issuing looks healthy and every download 404s.
       statementsSchema,

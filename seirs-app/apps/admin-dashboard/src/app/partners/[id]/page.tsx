@@ -99,6 +99,30 @@ export default function PartnerDetailPage() {
   const [docs, setDocs] = useState<any[] | null>(null);
   const [busyDoc, setBusyDoc] = useState<string | null>(null);
   const docsWaiting = (docs ?? []).filter((d: any) => d.status === 'submitted').length;
+
+  /**
+   * Is this shop open at this moment, in Lagos.
+   *
+   * Recomputed on a one-minute tick rather than at page load, because the
+   * founder asked to see this live and a badge that says "open" an hour
+   * after closing time is worse than no badge: somebody would ring the
+   * shop on the strength of it.
+   *
+   * Same rules the server uses in withinWorkingHours, including the two
+   * that are easy to get wrong: no hours at all means OPEN, and a window
+   * whose end is before its start runs past midnight.
+   */
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  // Lagos is UTC+1 all year, no daylight saving.
+  const lagos = new Date(nowTick + 60 * 60 * 1000);
+  const TODAY_KEY = DAY_KEYS[lagos.getUTCDay()];
+
   /** Approved only. A pending upload must never become the shop's face. */
   const approvedStorefront = (docs ?? []).find(
     (d: any) => d.docId === 'storefront_photo' && d.status === 'approved',
@@ -148,6 +172,33 @@ export default function PartnerDetailPage() {
   }
 
   const { store, owner, activity } = data;
+
+  /**
+   * Open at this moment, by the same rules the server uses.
+   *
+   * Sits below the early return rather than beside the timer above it
+   * because `store` does not exist until `data` has loaded. The timer
+   * itself has to stay above: a hook that stops running on some renders
+   * is a hook that breaks the whole component.
+   *
+   * The two rules worth stating, both easy to get backwards: no hours at
+   * all means OPEN, not shut, and an end time before a start time is a
+   * window that runs past midnight rather than an error.
+   */
+  const openRightNow = (() => {
+    const hours: any = (store as any)?.workingHours;
+    if (!hours) return true;
+    const today = hours[TODAY_KEY];
+    if (!today?.enabled) return false;
+    const toMin = (v: string) => {
+      const m = /^(\d{1,2}):(\d{2})/.exec(String(v ?? ''));
+      return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    };
+    const from = toMin(today.start), to = toMin(today.end);
+    if (from == null || to == null) return true;
+    const mins = lagos.getUTCHours() * 60 + lagos.getUTCMinutes();
+    return from <= to ? mins >= from && mins < to : mins >= from || mins < to;
+  })();
   const hasCoords = store.storeLat != null && store.storeLng != null;
 
   const exportData = async () => {
@@ -737,6 +788,81 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
               {store.reviewedAt && <p>Looked at on {new Date(store.reviewedAt).toLocaleString('en-NG')}</p>}
             </div>
           )}
+        </div>
+
+        {/* When this shop is open.
+            Founder, 2026-09-03: partners "should be able to set up their
+            working hours and we should see the live update on their
+            profile", because a partner holding parcels who quietly stops
+            opening is the failure that costs a customer their package.
+
+            Mirrors the rider page's Working hours section rather than
+            inventing a second shape, and reads the same workingHours
+            object through the same rules: a day missing or disabled is
+            closed, and no hours at all means open, not shut. */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+          <Section
+            title="Opening hours"
+            storageKey="partner-hours"
+            bare
+            defaultOpen={false}
+            summary={
+              <span className="flex items-center gap-2">
+                <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                  openRightNow
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-gray-50 text-gray-600 border-gray-200'
+                }`}>
+                  {openRightNow ? 'Open right now' : 'Closed right now'}
+                </span>
+                <span>
+                  {store.workingHours
+                    ? `${Object.values(store.workingHours as any).filter((d: any) => d?.enabled).length} days a week`
+                    : 'never set'}
+                </span>
+              </span>
+            }
+          >
+            {!store.workingHours ? (
+              <p className="text-sm text-[#5C6E82]">
+                They have never set any, so this shop counts as open at all times. That is
+                deliberate: every store was created with default hours nobody chose, and
+                treating a default as a decision would quietly drop shops out of the
+                drop-off list on a rule their owner never made.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+                  {['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => {
+                    const row: any = (store.workingHours as any)?.[d];
+                    const on = row?.enabled;
+                    const today = d === TODAY_KEY;
+                    return (
+                      <div key={d} className={`rounded-lg border p-2 text-center ${
+                        on ? 'border-emerald-200 bg-emerald-50' : 'border-[#E5E7EB] bg-[#F5F5F0]'
+                      } ${today ? 'ring-2 ring-[#3A7BD5]/40' : ''}`}>
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#0F2B4C]/50">{d}</p>
+                        <p className={`mt-0.5 text-xs tabular-nums ${on ? 'text-emerald-800' : 'text-[#0F2B4C]/30'}`}>
+                          {on ? `${row.start} - ${row.end}` : 'closed'}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-xs text-[#5C6E82]">
+                  Times are Lagos time, and the ringed day is today. Storage charges do not
+                  build up on days this shop is closed, so a sender is never billed for a
+                  wait they could not do anything about.
+                </p>
+              </>
+            )}
+            <p className="mt-3 text-xs text-[#5C6E82]">
+              Changing these while holding parcels raises a support ticket under
+              &ldquo;Hours changed&rdquo;, so somebody checks the parcels can still be
+              collected. The change itself is never blocked: a partner who is punished for
+              telling us stops telling us.
+            </p>
+          </Section>
         </div>
 
       </main>

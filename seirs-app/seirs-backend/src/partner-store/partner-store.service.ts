@@ -22,9 +22,17 @@ import { MailService } from '../mail/mail.service';
 import { PartnerDocumentsService } from './partner-documents.service';
 import { RouteDistanceService } from '../deliveries/route-distance.service';
 import { secureCode } from '../common/utils/auth-codes';
+import { withinWorkingHours } from '../common/utils/working-hours';
 
 // "In store" means physically present at the pickup or dropoff location -
 // these statuses count against capacity, accrue storage fees, etc.
+//
+// KNOWN GAP, not fixed here on purpose: DRIVER_EN_ROUTE is missing, and
+// in that state the parcel has not moved. The driver is on the way TO
+// the shop, so it is still on the shelf and still occupying space.
+// Adding it would change how many parcels a shop is allowed to accept,
+// which is an operational decision with money behind it rather than a
+// tidy-up, so it is written down here instead of slipped in.
 const IN_STORE_STATUSES: DropoffStatus[] = [
   DropoffStatus.RECEIVED_AT_STORE,
   DropoffStatus.AWAITING_DRIVER,
@@ -72,17 +80,45 @@ function areaOf(address: string | null | undefined): string {
 }
 
 /** Open right now in Africa/Lagos (UTC+1, no DST). */
-function isOpenNow(days: string[] | null, open: string, close: string): boolean {
-  try {
-    const now  = new Date();
-    const lagos = new Date(now.getTime() + 60 * 60 * 1000);
-    const dow  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][lagos.getUTCDay()];
-    if (Array.isArray(days) && days.length && !days.includes(dow)) return false;
-    const mins = lagos.getUTCHours() * 60 + lagos.getUTCMinutes();
-    const [oh, om] = (open  ?? '08:00').split(':').map(Number);
-    const [ch, cm] = (close ?? '18:00').split(':').map(Number);
-    return mins >= oh * 60 + om && mins < ch * 60 + cm;
-  } catch { return false; }
+/**
+ * isOpenNow lived here and is gone (2026-09-03).
+ *
+ * It was a second implementation of a question drivers already answered,
+ * and it disagreed with the first in two ways that mattered. It could
+ * not express a shop open past midnight, because it tested
+ * `mins >= open && mins < close` and an 18:00 to 02:00 kiosk makes that
+ * impossible: such a shop computed as closed forever. And it read
+ * "no hours recorded" as CLOSED, where the driver check reads it as
+ * open, on the reasoning that not answering a question is not a refusal.
+ *
+ * withinWorkingHours from common/utils is the single answer now. Stores
+ * with no workingHours fall back to the legacy columns so nothing
+ * changes for a shop that has not been migrated.
+ */
+function storeIsOpenNow(store: {
+  workingHours?: Record<string, { enabled: boolean; start: string; end: string }> | null;
+  operatingDays?: string[] | null;
+  openTime?: string | null;
+  closeTime?: string | null;
+}): boolean {
+  if (store.workingHours) return withinWorkingHours(store.workingHours as any);
+
+  /**
+   * Not migrated, so read the old columns THROUGH the new check rather
+   * than keeping the old code path. Every store carries defaults nobody
+   * chose, which is why these were not migrated, but a shop that opens
+   * at 18:00 and closes at 02:00 should still read as open at midnight
+   * whether or not anybody has touched its settings.
+   */
+  const days  = Array.isArray(store.operatingDays) ? store.operatingDays : null;
+  const open  = store.openTime  ?? '08:00';
+  const close = store.closeTime ?? '18:00';
+  const LABEL = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+  const shaped: Record<string, { enabled: boolean; start: string; end: string }> = {};
+  for (const [key, label] of Object.entries(LABEL)) {
+    shaped[key] = { enabled: days ? days.includes(label) : true, start: open, end: close };
+  }
+  return withinWorkingHours(shaped as any);
 }
 
 /**
@@ -1365,14 +1401,10 @@ export class PartnerStoreService {
       return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
     };
 
-    // Lagos time, because opening hours are local trading hours.
-    const now = new Date(Date.now() + 60 * 60 * 1000);
-    const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][now.getUTCDay()];
-    const minutesNow = now.getUTCHours() * 60 + now.getUTCMinutes();
-    const toMinutes = (hhmm?: string | null) => {
-      const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm ?? ''));
-      return m ? Number(m[1]) * 60 + Number(m[2]) : null;
-    };
+    // The Lagos clock, the day name and the minute maths that used to sit
+    // here all belonged to the hand-rolled open-check that storeIsOpenNow
+    // replaced. withinWorkingHours owns the timezone now, in one place,
+    // so this cannot drift from the other two copies again.
 
     const withGeo = stores.map((st) => {
       const sLat = st.storeLat != null ? Number(st.storeLat) : null;
@@ -1392,12 +1424,17 @@ export class PartnerStoreService {
 
     return Promise.all(top.map(async ({ st, sLat, sLng, km }) => {
       const cap = await this.getCapacity(st.id);
-      const days = (st.operatingDays ?? []).map((d) => String(d).slice(0, 3).toLowerCase());
-      const openM = toMinutes(st.openTime), closeM = toMinutes(st.closeTime);
-      const openToday = days.length === 0 || days.includes(dayName);
-      const isOpenNow = openToday && openM != null && closeM != null
-        ? minutesNow >= openM && minutesNow < closeM
-        : openToday;
+      /**
+       * The same open-check as everywhere else.
+       *
+       * This was a THIRD hand-rolled version of the question, and it
+       * carried the same midnight bug as the one it sat beside: a kiosk
+       * open 18:00 to 02:00 can never satisfy
+       * `now >= open && now < close`, so it showed as shut all night,
+       * which is precisely when somebody looking for a late drop-off
+       * needs it.
+       */
+      const isOpenNow = storeIsOpenNow(st);
       return {
         id:            st.id,
         storeName:     st.storeName,
@@ -1410,6 +1447,7 @@ export class PartnerStoreService {
         openTime:      st.openTime,
         closeTime:     st.closeTime,
         operatingDays: st.operatingDays ?? [],
+        workingHours:  st.workingHours ?? null,
         isOpenNow,
         acceptingNew:  st.acceptingNew,
         ...cap,
@@ -1537,7 +1575,7 @@ export class PartnerStoreService {
             storeCode:    s.storeCode,
             storeName:    s.storeName,
             area:         areaOf(s.storeAddress),
-            openNow:      isOpenNow(s.operatingDays, s.openTime, s.closeTime),
+            openNow:      storeIsOpenNow(s),
             // Coarsened to ~1km so the map shows a neighbourhood, not a door.
             approxLat:    s.storeLat != null ? Math.round(Number(s.storeLat) * 100) / 100 : null,
             approxLng:    s.storeLng != null ? Math.round(Number(s.storeLng) * 100) / 100 : null,
@@ -1571,6 +1609,16 @@ export class PartnerStoreService {
           operatingDays: s.operatingDays,
           openTime:      s.openTime,
           closeTime:     s.closeTime,
+          /**
+           * The real per-day schedule, null when the shop never set one.
+           *
+           * The three fields above cannot express "closes early on
+           * Saturday" or "open past midnight", because they are one
+           * window applied to every open day. They stay because existing
+           * callers read them; this is the one to render when present.
+           */
+          workingHours:  s.workingHours ?? null,
+          openNow:       storeIsOpenNow(s),
           lat:           s.storeLat != null ? Number(s.storeLat) : null,
           lng:           s.storeLng != null ? Number(s.storeLng) : null,
           distanceKm:    distanceRaw != null ? Number(distanceRaw) : null,
@@ -1750,11 +1798,59 @@ export class PartnerStoreService {
    * rather than incremented, so a cron that runs twice, or not at all
    * for two days, still arrives at the same number.
    */
-  private storageOwed(arrivedAt: Date, now: Date, freeHours: number, perDay: number): number {
-    const hours = (now.getTime() - new Date(arrivedAt).getTime()) / 3_600_000;
-    const chargeable = hours - freeHours;
+  private storageOwed(
+    arrivedAt: Date,
+    now: Date,
+    freeHours: number,
+    perDay: number,
+    /**
+     * The shop's own hours. Null means never answered, which charges
+     * exactly as before, so nothing changes for a store that has not set
+     * any.
+     */
+    hours?: Record<string, { enabled: boolean; start: string; end: string }> | null,
+  ): number {
+    const elapsed = (now.getTime() - new Date(arrivedAt).getTime()) / 3_600_000;
+    const chargeable = elapsed - freeHours;
     if (chargeable <= 0) return 0;
-    return Math.ceil(chargeable / 24) * perDay;
+
+    const started = Math.ceil(chargeable / 24);
+    if (!hours) return started * perDay;
+
+    /**
+     * Do not charge a sender for days the shop chose to be shut.
+     *
+     * The escalation clock has always counted WORKING days while the
+     * money counted calendar hours, so the two disagreed. A shop closes
+     * for three days over a festive period, the sender cannot collect,
+     * and the sender pays SEIRS for every one of those days for a delay
+     * that was not theirs. The partner loses nothing either way: they
+     * are paid a flat handling fee per parcel and storage never reaches
+     * a partner payout.
+     *
+     * Counted from the end of the free window, one calendar day at a
+     * time, charging only days the shop was open at all. A day the shop
+     * never opened is not storage the sender agreed to.
+     */
+    const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const from = new Date(new Date(arrivedAt).getTime() + freeHours * 3_600_000);
+    let chargeableDays = 0;
+    const cursor = new Date(from);
+    for (let i = 0; i < started; i++) {
+      // Lagos is UTC+1 all year, matching withinWorkingHours.
+      const lagos = new Date(cursor.getTime() + 60 * 60 * 1000);
+      const day = hours[DAY_KEYS[lagos.getUTCDay()]];
+      // A day the shop did not describe counts, for the same reason
+      // unset hours mean open: silence is not a claim to be closed.
+      if (!day || day.enabled !== false) chargeableDays++;
+      // Exactly 24 hours, not "the same clock time tomorrow".
+      // setDate() walks the SERVER's local calendar while the day above
+      // is read in UTC, so on a host with daylight saving the two would
+      // disagree twice a year and a parcel would gain or lose a day of
+      // storage. Railway runs UTC today; this does not depend on it.
+      cursor.setTime(cursor.getTime() + 24 * 60 * 60 * 1000);
+    }
+    return chargeableDays * perDay;
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
@@ -1782,14 +1878,60 @@ export class PartnerStoreService {
     let accrued  = 0;
     const now = new Date();
 
+    /**
+     * The hours of every shop holding a parcel, in one query.
+     *
+     * store_dropoffs carries ids, not relations, so this cannot be a join
+     * without changing the entity. One lookup keyed by id costs a single
+     * round trip for the whole nightly sweep.
+     */
+    const hoursByStore = new Map<string, any>();
+    const storeIds = Array.from(new Set(
+      inStore.flatMap(d => [d.pickupStoreId, d.dropoffStoreId]).filter(Boolean),
+    ));
+    if (storeIds.length) {
+      const rows: any[] = await this.storeRepo.manager
+        .query(`SELECT id, "workingHours" FROM "partner_stores" WHERE id = ANY($1)`, [storeIds])
+        .catch((e: any) => {
+          // Charging as before is the safe failure here, and it is the
+          // one this ran with for months. Skipping the sweep entirely
+          // would freeze every parcel's storage and its escalation.
+          this.logger.warn(`storage hours lookup failed: ${e?.message ?? e}`);
+          return [];
+        });
+      for (const r of rows) if (r.workingHours) hoursByStore.set(r.id, r.workingHours);
+    }
+
     for (const d of inStore) {
       const arrivedAt = d.arrivedAtDropoffStoreAt ?? d.receivedAtStoreAt;
       if (!arrivedAt) continue;
       const workingDays = this.workingDaysBetween(new Date(arrivedAt), now);
 
-      // Storage accrues on calendar hours, not working days: a package
-      // occupies a shelf on Sunday too.
-      const owed = this.storageOwed(new Date(arrivedAt), now, freeHours, perDay);
+      /**
+       * Storage no longer accrues on days the shop was shut.
+       *
+       * This comment used to read "storage accrues on calendar hours, not
+       * working days: a package occupies a shelf on Sunday too", and that
+       * is true about the shelf and wrong about the money. The escalation
+       * clock immediately above counts WORKING days; the charge counted
+       * every calendar day. So a shop closes for three days over a festive
+       * period, the sender cannot collect no matter how much they want to,
+       * and the sender is billed for all three.
+       *
+       * Nobody is on the other side of that charge: storage is read only
+       * as an amount owed by the sender and never enters a partner payout,
+       * so a closed day was pure charge with no cost to anyone but the
+       * customer, for a delay that was not theirs.
+       *
+       * Which shop is holding it decides whose hours apply: once it has
+       * arrived at the destination store that is the one the recipient
+       * must reach, and before that it is still sitting at the origin.
+       */
+      const holdingStoreId = d.arrivedAtDropoffStoreAt ? d.dropoffStoreId : d.pickupStoreId;
+      const owed = this.storageOwed(
+        new Date(arrivedAt), now, freeHours, perDay,
+        holdingStoreId ? hoursByStore.get(holdingStoreId) : null,
+      );
       if (owed !== Number(d.storageFeesAccruedNgn ?? 0)) {
         await this.dropoffRepo.update(d.id, { storageFeesAccruedNgn: owed } as any);
         accrued++;
@@ -2247,7 +2389,15 @@ export class PartnerStoreService {
       : null;
 
     const [held, lifetimePickup, lifetimeDropoff, payouts] = await Promise.all([
-      this.dropoffRepo.count({ where: { pickupStoreId: id, status: DropoffStatus.RECEIVED_AT_STORE } }),
+      // Both roles. A shop is holding a parcel whether it is waiting for a
+      // driver to collect it or for a recipient to walk in, and the old
+      // count saw only the first.
+      this.dropoffRepo.count({
+        where: [
+          { pickupStoreId:  id, status: In(IN_STORE_STATUSES) },
+          { dropoffStoreId: id, status: In(IN_STORE_STATUSES) },
+        ],
+      }),
       this.dropoffRepo.count({ where: { pickupStoreId: id } }),
       this.dropoffRepo.count({ where: { dropoffStoreId: id } }),
       this.payoutsRepo

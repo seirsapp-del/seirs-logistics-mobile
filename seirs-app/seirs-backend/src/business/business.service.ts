@@ -25,6 +25,9 @@ import { DeliveriesService } from '../deliveries/deliveries.service';
 import { DriversService } from '../drivers/drivers.service';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
 import { secureCode } from '../common/utils/auth-codes';
+import { StoreDropoff, DropoffStatus } from '../partner-store/store-dropoff.entity';
+import { SupportService } from '../support/support.service';
+import { TicketTopic } from '../support/support-ticket.entity';
 import { spendNarrative, methodLabel } from './spend-narrative';
 
 import { redactDriverForCustomer } from '../common/redact-driver';
@@ -138,7 +141,10 @@ export class BusinessService {
     @InjectRepository(Delivery)            private deliveriesRepo:  Repository<Delivery>,
     @InjectRepository(DeliveryStop)        private stopsRepo:       Repository<DeliveryStop>,
     @InjectRepository(RecurringTemplate)   private recurringRepo:   Repository<RecurringTemplate>,
+    // Parcels a shop is holding, read when its hours change.
+    @InjectRepository(StoreDropoff)        private dropoffRepo:     Repository<StoreDropoff>,
     private mailService: MailService,
+    private support: SupportService,
     private paymentsService: PaymentsService,
     private pricing: PricingService,
     private routing: RoutingService,
@@ -1824,6 +1830,9 @@ export class BusinessService {
     const allowed = [
       'storeName', 'storeAddress', 'phone', 'maxCapacity',
       'operatingDays', 'openTime', 'closeTime',
+      // Per-day hours. The three legacy fields above are still accepted
+      // because the older settings screen still sends them.
+      'workingHours',
       'notifyNewPackage', 'notifyPickup', 'notifyPayout',
     ];
     const update: any = {};
@@ -1831,8 +1840,109 @@ export class BusinessService {
       if (data[key] !== undefined) update[key] = data[key];
     }
 
+    const hoursChanged = data.workingHours !== undefined
+      && JSON.stringify(data.workingHours ?? null) !== JSON.stringify(store.workingHours ?? null);
+
     await this.storeRepo.update(store.id, update);
+
+    /**
+     * The change is already saved before we look at whether it matters.
+     *
+     * Deliberate, and agreed with the founder: a partner is never blocked
+     * from saying when they are open. Blocking would teach them to stop
+     * telling us, which loses the only early warning we have. We record
+     * it, then decide whether somebody should look.
+     */
+    if (hoursChanged) {
+      await this.flagHoursChange(store, data.workingHours ?? null).catch(() => undefined);
+    }
+
     return { message: 'Settings updated.' };
+  }
+
+  /**
+   * Tell support a shop changed its hours, but only when parcels are at
+   * stake.
+   *
+   * Founder, 2026-09-03: a partner "could decide to leave without telling
+   * anyone while they still hold packages of users, especially during
+   * festive period". An hours change is the earliest signal we get, and
+   * unlike every other signal it arrives BEFORE the parcels are stranded.
+   *
+   * The exposure check is what keeps this queue worth reading. A shop
+   * holding nothing can move its hours freely and nobody needs to know:
+   * raising a ticket every time would bury the one change that matters
+   * under a hundred that do not, and a queue nobody trusts is a queue
+   * nobody opens.
+   */
+  private async flagHoursChange(store: PartnerStore, next: any): Promise<void> {
+    const held = await this.dropoffRepo.find({
+      where: [
+        { pickupStoreId:  store.id, status: In([DropoffStatus.AWAITING_DRIVER, DropoffStatus.AWAITING_COLLECTION, DropoffStatus.AT_DROPOFF_STORE]) },
+        { dropoffStoreId: store.id, status: In([DropoffStatus.AWAITING_DRIVER, DropoffStatus.AWAITING_COLLECTION, DropoffStatus.AT_DROPOFF_STORE]) },
+      ],
+      take: 50,
+    });
+    if (!held.length) return;   // nothing at stake, nothing to read
+
+    const DAYS: Array<[string, string]> = [
+      ['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'],
+      ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday'],
+    ];
+    const describe = (h: any) => {
+      if (!h) return 'Open every day (no hours set)';
+      const lines = DAYS.map(([key, label]) => {
+        const d = h[key];
+        return d?.enabled === false || !d
+          ? `  ${label}: closed`
+          : `  ${label}: ${d.start} to ${d.end}`;
+      });
+      return lines.join('\n');
+    };
+
+    /**
+     * Days that USED to be open and are not any more. This is the line
+     * an agent actually acts on, and computing it here means nobody has
+     * to read two schedules side by side and spot the difference
+     * themselves at 2am.
+     */
+    const before = store.workingHours as any;
+    const wasOpen = (h: any, key: string) => !h || h[key]?.enabled !== false;
+    const nowClosed = DAYS
+      .filter(([key]) => wasOpen(before, key) && !wasOpen(next, key))
+      .map(([, label]) => label);
+
+    const codes = held.map(d => d.dropCode).filter(Boolean);
+    const shown = codes.slice(0, 20);
+
+    const body = [
+      `${store.storeName} changed when they are open.`,
+      '',
+      `They are holding ${held.length} ${held.length === 1 ? 'parcel' : 'parcels'} right now.`,
+      nowClosed.length
+        ? `They have just closed: ${nowClosed.join(', ')}. Someone needs to check that the parcels below can still be collected.`
+        : 'They have not closed any day they were open before, so this may be a change of times only.',
+      '',
+      'Parcels currently at this shop:',
+      shown.map(c => `  ${c}`).join('\n'),
+      codes.length > shown.length ? `  ...and ${codes.length - shown.length} more` : '',
+      '',
+      'New hours:',
+      describe(next),
+      '',
+      'Previous hours:',
+      describe(before),
+      '',
+      `Shop phone: ${store.phone ?? 'not on file'}`,
+      `Address: ${store.storeAddress ?? 'not on file'}`,
+    ].filter(l => l !== null).join('\n');
+
+    await this.support.raiseSystemTicket(store.userId, {
+      topic:      TicketTopic.HOURS,
+      subject:    `${store.storeName} changed opening hours while holding ${held.length} ${held.length === 1 ? 'parcel' : 'parcels'}`,
+      body,
+      systemType: 'partner_hours_change',
+    });
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────

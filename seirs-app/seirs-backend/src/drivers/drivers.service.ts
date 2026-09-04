@@ -15,6 +15,7 @@ import { FraudService } from '../fraud/fraud.service';
 import { TrackingGateway } from '../tracking/tracking.gateway';
 import { FeesService } from '../fees/fees.service';
 import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
+import { SupportService } from '../support/support.service';
 import { DriverEarning } from '../earnings/driver-earning.entity';
 import { vehicleIdentityForPassenger } from '../common/redact-driver';
 import { KycDocument, KycDocStatus } from '../kyc/kyc-document.entity';
@@ -137,6 +138,11 @@ export class DriversService {
     private fraudService:    FraudService,
     private trackingGateway: TrackingGateway,
     private feesService:     FeesService,
+    /**
+     * Raises the hours-change alert below. SupportModule provides only its
+     * own repositories, so importing it here adds no cycle.
+     */
+    private readonly support: SupportService,
   ) {}
 
   findByUserId(userId: string) {
@@ -2816,10 +2822,118 @@ export class DriversService {
     }
     // An empty object would read as "works no hours ever", which is a way to
     // lock somebody out of earning by sending a malformed body. Null it.
-    await this.repo.update(driver.id, {
-      workingHours: Object.keys(clean).length ? clean : null,
-    } as any);
-    return { workingHours: Object.keys(clean).length ? clean : null };
+    const next = Object.keys(clean).length ? clean : null;
+    // Read the old hours BEFORE the write lands, or the comparison that tells
+    // support which days just closed is a comparison against itself.
+    const before = driver.workingHours ?? null;
+    await this.repo.update(driver.id, { workingHours: next } as any);
+    await this.alertSupportIfCarryingWork(driver, userId, before, next);
+    return { workingHours: next };
+  }
+
+  /**
+   * Tell support when a rider changes their hours WHILE CARRYING WORK.
+   *
+   * The partner-store twin lives in business.service.ts and the two are
+   * deliberately the same shape: they land in one support queue under the
+   * same "Hours changed" filter, and an agent should not have to learn two
+   * formats to read them.
+   *
+   * THE GATE IS THE WHOLE POINT. This fires only when the rider actually has
+   * jobs on them right now. Raise a ticket on every hours change and the one
+   * that matters is buried under a hundred that are not, and then nobody
+   * opens any of them. A rider setting their hours on a quiet Sunday with an
+   * empty queue is not news.
+   *
+   * IT DOES NOT BLOCK THE CHANGE, by the founder's decision. Someone punished
+   * for telling us stops telling us, and this alert is the only warning that
+   * arrives BEFORE a parcel strands rather than after. That is also why it
+   * cannot throw: raiseSystemTicket returns null rather than raising, and the
+   * catch here covers everything else, so a support outage can never fail a
+   * rider's settings save.
+   */
+  private async alertSupportIfCarryingWork(
+    driver: Driver,
+    userId: string,
+    before: Record<string, { enabled: boolean; start: string; end: string }> | null,
+    next:   Record<string, { enabled: boolean; start: string; end: string }> | null,
+  ): Promise<void> {
+    try {
+      const held = await this.deliveriesRepo.find({
+        where: {
+          driver: { id: driver.id },
+          status: In([DeliveryStatus.ASSIGNED, DeliveryStatus.PICKED_UP, DeliveryStatus.IN_TRANSIT]),
+        },
+        // Named columns, no eager joins. A Delivery drags in the customer and
+        // the driver eagerly and this needs neither: all it prints is a code.
+        select: { id: true, trackingCode: true, status: true },
+        loadEagerRelations: false,
+        take: 50,
+      } as any);
+      if (!held.length) return;   // nothing at stake, nothing to read
+
+      const DAYS: Array<[string, string]> = [
+        ['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'],
+        ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday'],
+      ];
+      const describe = (h: any) => {
+        if (!h) return 'Available every day (no hours set)';
+        return DAYS.map(([key, label]) => {
+          const d = h[key];
+          return d?.enabled === false || !d
+            ? `  ${label}: not working`
+            : `  ${label}: ${d.start} to ${d.end}`;
+        }).join('\n');
+      };
+
+      /**
+       * Days that USED to be worked and are not any more. This is the line an
+       * agent acts on, and computing it here means nobody has to read two
+       * schedules side by side at 2am and spot the difference themselves.
+       */
+      const wasOpen = (h: any, key: string) => !h || h[key]?.enabled !== false;
+      const nowClosed = DAYS
+        .filter(([key]) => wasOpen(before, key) && !wasOpen(next, key))
+        .map(([, label]) => label);
+
+      const codes = held.map((d: any) => d.trackingCode).filter(Boolean);
+      const shown = codes.slice(0, 20);
+      const name  = driver.user?.name ?? 'A rider';
+      const word  = held.length === 1 ? 'delivery' : 'deliveries';
+
+      const body = [
+        `${name} changed when they are available.`,
+        '',
+        `They are carrying ${held.length} ${word} right now.`,
+        nowClosed.length
+          ? `They have just stopped working: ${nowClosed.join(', ')}. Someone needs to check the ${word} below can still be delivered.`
+          : 'They have not dropped a day they used to work, so this may be a change of times only.',
+        '',
+        `${held.length === 1 ? 'Delivery' : 'Deliveries'} on this rider now:`,
+        shown.map((c: string) => `  ${c}`).join('\n'),
+        codes.length > shown.length ? `  ...and ${codes.length - shown.length} more` : '',
+        '',
+        'New hours:',
+        describe(next),
+        '',
+        'Previous hours:',
+        describe(before),
+        '',
+        `Rider phone: ${driver.user?.phone ?? 'not on file'}`,
+        `Vehicle: ${driver.vehicleType ?? 'not on file'} ${driver.vehiclePlate ?? ''}`.trim(),
+      ].join('\n');
+
+      await this.support.raiseSystemTicket(userId, {
+        topic:      TicketTopic.HOURS,
+        subject:    `${name} changed working hours while carrying ${held.length} ${word}`,
+        body,
+        systemType: 'driver_hours_change',
+      });
+    } catch (err: any) {
+      // Deliberately swallowed. See the doc comment: a settings save must
+      // succeed even when support does not.
+      this.logger.warn(`Hours-change alert failed for driver ${driver.id}: ${err?.message ?? 'unknown'}`);
+    }
   }
 
   async vehicleHistory(driverId: string) {

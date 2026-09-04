@@ -13,6 +13,8 @@ import { RecurringTemplate } from './recurring-template.entity';
 import { User } from '../users/user.entity';
 import { MailModule } from '../mail/mail.module';
 import { PricingModule } from '../pricing/pricing.module';
+import { SupportModule } from '../support/support.module';
+import { StoreDropoff, DropoffStatus } from '../partner-store/store-dropoff.entity';
 import { PaymentsModule } from '../payments/payments.module';
 import { RoutingModule } from '../routing/routing.module';
 import { Delivery } from '../deliveries/delivery.entity';
@@ -23,6 +25,9 @@ import { DriversModule } from '../drivers/drivers.module';
 @Module({
   imports: [
     PaymentsModule,
+    // For the working-hours alert. SupportModule pulls in only its own
+    // repositories, so there is no cycle back to business.
+    SupportModule,
     TypeOrmModule.forFeature([
       User,
       BusinessAccount,
@@ -33,6 +38,7 @@ import { DriversModule } from '../drivers/drivers.module';
       Delivery,
       DeliveryStop,
       RecurringTemplate,
+      StoreDropoff,
     ]),
     MulterModule.register({ limits: { fileSize: 5 * 1024 * 1024 } }),
     MailModule,

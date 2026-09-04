@@ -95,6 +95,9 @@ export class PartnerStoreModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "pendingBankAccountName"   character varying NULL,
           ADD COLUMN IF NOT EXISTS "pendingBankRequestedAt"   timestamptz NULL
       `);
+      await this.ds.query(
+        `ALTER TABLE "partner_stores" ADD COLUMN IF NOT EXISTS "workingHours" jsonb NULL`,
+      );
       await this.ds.query(`
         ALTER TABLE "partner_payouts"
           ADD COLUMN IF NOT EXISTS "paidToBankName"      character varying NULL,
@@ -119,6 +122,60 @@ export class PartnerStoreModule implements OnModuleInit {
       );
     } catch (e: any) {
       this.logger.error(`partner payout rail self-heal failed: ${e?.message ?? e}`);
+    }
+
+    /**
+     * Carry hours across ONLY for shops that actually chose them.
+     *
+     * partner_stores defaults operatingDays to Mon through Sat, openTime
+     * to 08:00 and closeTime to 18:00, so every store on the platform
+     * already "has hours" and not one owner picked them. Migrating those
+     * would turn a default into a statement: withinWorkingHours reads
+     * unset as open, but a migrated default says CLOSED ON SUNDAY, and
+     * dispatch would start skipping shops on a rule nobody made.
+     *
+     * So a row is migrated only where at least one of the three differs
+     * from its default. Everything else stays null and stays open.
+     *
+     * The asymmetry is deliberate and it is the reason to be cautious in
+     * this direction: an over-open shop receives a parcel it can refuse,
+     * an over-closed one silently disappears from the directory and
+     * nobody finds out.
+     */
+    try {
+      const DAY = { Mon: 'mon', Tue: 'tue', Wed: 'wed', Thu: 'thu', Fri: 'fri', Sat: 'sat', Sun: 'sun' } as const;
+      const DEFAULT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      const rows: any[] = await this.ds.query(`
+        SELECT id, "operatingDays", "openTime", "closeTime"
+          FROM "partner_stores"
+         WHERE "workingHours" IS NULL
+      `);
+
+      let migrated = 0;
+      for (const r of rows) {
+        const days  = Array.isArray(r.operatingDays) ? r.operatingDays : [];
+        const open  = String(r.openTime  ?? '08:00');
+        const close = String(r.closeTime ?? '18:00');
+
+        const sameDays = days.length === DEFAULT_DAYS.length
+          && DEFAULT_DAYS.every(d => days.includes(d));
+        const untouched = sameDays && open === '08:00' && close === '18:00';
+        if (untouched) continue;      // a default is not an answer
+
+        const hours: Record<string, { enabled: boolean; start: string; end: string }> = {};
+        for (const [label, key] of Object.entries(DAY)) {
+          hours[key] = { enabled: days.includes(label), start: open, end: close };
+        }
+        await this.ds.query(
+          `UPDATE "partner_stores" SET "workingHours" = $2 WHERE id = $1`,
+          [r.id, JSON.stringify(hours)],
+        );
+        migrated++;
+      }
+      if (migrated) this.logger.log(`partner working hours carried across: ${migrated}`);
+    } catch (e: any) {
+      this.logger.error(`partner working hours migration failed: ${e?.message ?? e}`);
     }
 
     try {

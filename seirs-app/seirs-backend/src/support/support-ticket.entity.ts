@@ -33,6 +33,27 @@ export enum TicketTopic {
   DRIVER    = 'driver',
   ACCOUNT   = 'account',
   DELIVERY  = 'delivery',
+  /**
+   * A partner or rider changed when they work, while holding parcels or
+   * with jobs already booked.
+   *
+   * Nobody picks this one. It is raised by the system, and it exists as
+   * its own topic rather than folding into OTHER so the queue can be
+   * filtered down to exactly these: the founder asked to know where to
+   * look without reading every ticket in the inbox.
+   *
+   * Founder, 2026-09-03, on why this is worth a queue at all: a partner
+   * "could decide to leave without telling anyone while they still hold
+   * packages of users, especially during festive period". The hours
+   * change is the earliest warning we get, and it is the only one that
+   * arrives BEFORE the parcels are stranded rather than after.
+   *
+   * 12 characters, and the column is varchar(16). partner_hours_change
+   * was the obvious name and would have been silently truncated or
+   * rejected on insert. It covers riders too, which is why it is not
+   * called partner anything.
+   */
+  HOURS     = 'hours_change',
   OTHER     = 'other',
 }
 

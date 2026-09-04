@@ -19,6 +19,7 @@ import { FraudModule } from '../fraud/fraud.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationsService } from '../notifications/notifications.service';
 import { FeesModule } from '../fees/fees.module';
+import { SupportModule } from '../support/support.module';
 import { AdminDriverDocumentsController } from './admin-driver-documents.controller';
 import { KycDocument } from '../kyc/kyc-document.entity';
 
@@ -34,6 +35,9 @@ import { KycDocument } from '../kyc/kyc-document.entity';
     FraudModule,
     NotificationsModule,
     FeesModule,
+    // For the working-hours alert raised in DriversService. SupportModule
+    // pulls in only its own repositories, so this adds no cycle.
+    SupportModule,
   ],
   controllers: [DriversController, AdminDriverDocumentsController],
   providers: [DriversService],

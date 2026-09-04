@@ -87,6 +87,32 @@ export class PartnerStore {
   @Column({ default: PartnerStoreStatus.PENDING_REVIEW })
   status: PartnerStoreStatus | 'active';
 
+  /**
+   * When the shop is actually open, per day.
+   *
+   * Replaces operatingDays + openTime + closeTime, which could describe
+   * only ONE window applied to every open day, and could not describe a
+   * shop open past midnight at all: isOpenNow tested
+   * `mins >= open && mins < close`, so an 18:00 to 02:00 kiosk computed
+   * as closed forever.
+   *
+   * Same shape drivers use, and read by the same withinWorkingHours, so
+   * there is one answer to "are they open now" rather than two that
+   * disagree.
+   *
+   * NULL means never answered, and never answered means OPEN. That is
+   * not laziness: every existing store carries DEFAULT operating days
+   * that no shop owner ever chose, and migrating a default into this
+   * column would turn it into a statement. A store that has genuinely
+   * never set hours must keep getting parcels it can refuse, rather than
+   * silently vanishing from the directory on a rule nobody made.
+   *
+   * The three legacy columns stay for now: the app still writes them and
+   * the settings screen still reads them.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  workingHours: Record<string, { enabled: boolean; start: string; end: string }> | null;
+
   // Partner's day-to-day on/off toggle. true = taking new drop-offs.
   // false = paused (e.g. over capacity, closing early). Independent of
   // approval status; an unapproved store can't toggle this either way.

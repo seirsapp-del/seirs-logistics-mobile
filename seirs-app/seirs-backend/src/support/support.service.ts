@@ -508,6 +508,84 @@ export class SupportService {
     return saved as ChatMessage;
   }
 
+  /**
+   * A ticket SEIRS raises about a user, rather than one they wrote.
+   *
+   * create() is the wrong door for these in two ways that both fail
+   * quietly, which is the worst way for an alert to fail:
+   *
+   *   1. It enforces rate limits. A partner already holding three open
+   *      tickets is exactly the partner worth watching, and their hours
+   *      change would have thrown BadRequestException into a caller that
+   *      cannot do anything useful with it. The alert would vanish at
+   *      the moment it mattered most.
+   *   2. It writes the opening message as the USER's, so the queue would
+   *      show the partner saying words they never said.
+   *
+   * Deduplicated per user and topic: a partner fiddling with their hours
+   * five times in an evening is one situation to look at, not five
+   * tickets. A repeat appends to the open one, so ops keeps the whole
+   * sequence in the order it happened.
+   *
+   * Returns the ticket, or null if it could not be raised. It never
+   * throws: this is called from inside a settings save, and a partner
+   * must not see their own hours change fail because our alerting did.
+   *
+   * @param userId  whose account the ticket belongs to
+   * @param topic   TicketTopic; HOURS for a working-hours change
+   * @param subject one line, shown in the queue list
+   * @param body    the detail, written for a non-technical reader
+   * @param systemType short slug stored on the message for later filtering
+   */
+  async raiseSystemTicket(
+    userId: string,
+    opts: { topic: TicketTopic; subject: string; body: string; systemType: string },
+  ): Promise<SupportTicket | null> {
+    try {
+      const user = await this.users.findOne({ where: { id: userId } });
+      if (!user) return null;
+
+      const existing = await this.tickets.findOne({
+        where: {
+          user:   { id: userId },
+          topic:  opts.topic,
+          status: In([TicketStatus.OPEN, TicketStatus.AWAITING_AGENT, TicketStatus.AWAITING_USER]),
+        },
+        order: { lastMessageAt: 'DESC' },
+      });
+
+      const now = new Date();
+      if (existing) {
+        await this.appendSystemMessage(existing, opts.systemType, opts.body);
+        await this.tickets.update(existing.id, {
+          lastMessageAt: now,
+          // Back to the agent queue: something new happened on a ticket
+          // an agent may already have replied to and moved on from.
+          status: TicketStatus.AWAITING_AGENT,
+        } as any);
+        return existing;
+      }
+
+      const ticket = await this.tickets.save(this.tickets.create({
+        user,
+        userAccountType:  this.accountTypeOf(user),
+        topic:            opts.topic,
+        status:           TicketStatus.OPEN,
+        subject:          opts.subject.trim().slice(0, 200),
+        linkedDeliveryId: null,
+        assignedAgentId:  null,
+        lastMessageAt:    now,
+      }));
+      await this.appendSystemMessage(ticket, opts.systemType, opts.body);
+      return ticket;
+    } catch (e: any) {
+      // Loud in the log, silent to the caller. The settings save that
+      // triggered this must still succeed.
+      this.logger.error(`system ticket (${opts.systemType}) failed: ${e?.message ?? e}`);
+      return null;
+    }
+  }
+
   private async appendSystemMessage(
     ticket: SupportTicket, systemType: string, bodyText: string,
   ): Promise<void> {

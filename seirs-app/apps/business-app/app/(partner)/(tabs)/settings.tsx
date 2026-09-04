@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, Pressable, ActivityIndicator, Image,
+  Switch, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -10,7 +11,41 @@ import { useAuth } from '@/context/AuthContext';
 import { useColors, useTheme } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+type DayId = typeof DAYS[number];
+
+interface DaySchedule { enabled: boolean; start: string; end: string; }
+
+/**
+ * The UI says Mon, the server says mon.
+ *
+ * Exactly the mapping the rider schedule screen uses, and deliberately
+ * the same shape end to end: one withinWorkingHours on the server reads
+ * both, so a shop and a rider cannot drift into two different answers to
+ * "are they open right now".
+ */
+const API_KEY: Record<DayId, string> = {
+  Mon: 'mon', Tue: 'tue', Wed: 'wed', Thu: 'thu', Fri: 'fri', Sat: 'sat', Sun: 'sun',
+};
+const toApi = (h: Record<DayId, DaySchedule>) =>
+  Object.fromEntries(Object.entries(API_KEY).map(([ui, api]) => [api, h[ui as DayId]]));
+
+/**
+ * Half hours, not whole ones.
+ *
+ * The rider screen offers 24 whole hours because a shift starting at
+ * 07:30 is unusual. A shop is the opposite: opening at 7:30 and closing
+ * at 18:30 is ordinary in Lagos, and rounding a real trading day to the
+ * hour is the kind of small lie that ends with somebody standing outside
+ * a shut shutter holding a parcel.
+ */
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2), m = i % 2 ? '30' : '00';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return { value: `${String(h).padStart(2, '0')}:${m}`, label: `${h12}:${m} ${h < 12 ? 'AM' : 'PM'}` };
+});
+
+const fmtTime = (t: string) => TIME_OPTIONS.find(o => o.value === t)?.label ?? t;
 
 interface StoreSettings {
   storeName:       string;
@@ -66,10 +101,30 @@ export default function PartnerSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
 
+  /**
+   * Per-day opening hours.
+   *
+   * null until the shop answers, and null is what gets SENT until they
+   * do. That matters more than it looks: every store row was created
+   * with Mon to Sat, 08:00 to 18:00 that no owner ever chose, so writing
+   * those up as if they were an answer would tell the server this shop
+   * is closed on Sundays on nobody's authority. A shop with no hours is
+   * treated as always open, which at worst means a parcel it can refuse.
+   */
+  const [hours, setHours] = useState<Record<DayId, DaySchedule> | null>(null);
+  const [pickerOpen, setPickerOpen] = useState<{ day: DayId; field: 'start' | 'end' } | null>(null);
+
   useEffect(() => {
     partnerApi.getSettings?.()
       .then((d: any) => {
-        if (d) setSettings((prev) => ({ ...prev, ...d }));
+        if (!d) return;
+        setSettings((prev) => ({ ...prev, ...d }));
+        if (d.workingHours) {
+          setHours(Object.fromEntries(DAYS.map((ui) => [
+            ui,
+            d.workingHours[API_KEY[ui]] ?? { enabled: false, start: '08:00', end: '18:00' },
+          ])) as Record<DayId, DaySchedule>);
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -94,7 +149,10 @@ export default function PartnerSettingsScreen() {
     }
     setSaving(true);
     try {
-      await partnerApi.updateSettings(settings);
+      // workingHours goes only once the shop has actually set it, so an
+      // untouched store stays null on the server rather than being
+      // handed the seeded defaults as though it had chosen them.
+      await partnerApi.updateSettings(hours ? { ...settings, workingHours: toApi(hours) } : settings);
       alertDialog('Saved', 'Your store settings have been updated.');
     } catch (e: any) {
       alertDialog('Error', e.message ?? 'Could not save settings.');
@@ -161,56 +219,141 @@ export default function PartnerSettingsScreen() {
           />
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Operating Hours</Text>
+        {/* When this shop is open, one row per day.
 
-          <Text style={[styles.label, { color: colors.textSecond }]}>Operating Days</Text>
-          <View style={styles.daysRow}>
-            {DAYS.map((day) => {
-              const active = settings.operatingDays.includes(day);
-              return (
-                <Pressable
+            This was a row of day chips plus two free-text time boxes, so
+            every open day shared a single window: a shop that closes at
+            two on Saturday could not say so, and neither could one that
+            opens in the evening. The boxes took any text at all, which
+            meant "8am", "0800" and an empty string all saved happily and
+            none of them parsed.
+
+            Rows with a switch and two pickers is what the rider schedule
+            screen does, and this sends the identical shape to the same
+            server check, so a shop and a rider are read by one rule.
+
+            The change is never blocked, but if this shop is holding
+            parcels when it changes, support is told so someone can check
+            those parcels can still be collected. That is the whole point
+            of asking: a partner who shuts quietly while holding somebody
+            else's package is the failure this exists to catch. */}
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Opening Hours</Text>
+
+          {!hours ? (
+            <>
+              <Text style={[styles.hoursHint, { color: colors.textSecond }]}>
+                You have not set your opening hours yet, so your shop shows as open at all
+                times. Set them and customers see exactly when they can reach you.
+              </Text>
+              <Pressable
+                style={[styles.setHoursBtn, { borderColor: colors.primary }]}
+                onPress={() => setHours(Object.fromEntries(DAYS.map((d) => [
+                  d,
+                  // Seeded from the shop's own saved times, not from a
+                  // blank slate, so the first tap shows something close to
+                  // the truth instead of asking them to start over.
+                  {
+                    enabled: settings.operatingDays.includes(d),
+                    start:   settings.openTime  || '08:00',
+                    end:     settings.closeTime || '18:00',
+                  },
+                ])) as Record<DayId, DaySchedule>)}
+              >
+                <Icon name="Clock" size={16} color={colors.primary} strokeWidth={1.75} />
+                <Text style={[styles.setHoursBtnText, { color: colors.primary }]}>Set your opening hours</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              {DAYS.map((day, i) => (
+                <View
                   key={day}
                   style={[
-                    styles.dayBtn,
-                    { backgroundColor: colors.background, borderColor: colors.border },
-                    active && { backgroundColor: colors.primary, borderColor: colors.primary },
+                    styles.dayRow,
+                    i < DAYS.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
                   ]}
-                  onPress={() => toggleDay(day)}
                 >
-                  <Text style={[styles.dayBtnText, { color: colors.textSecond }, active && { color: '#fff' }]}>{day}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                  <Switch
+                    value={hours[day].enabled}
+                    onValueChange={() => setHours((h) => h && ({ ...h, [day]: { ...h[day], enabled: !h[day].enabled } }))}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor="#fff"
+                  />
+                  <Text style={[styles.dayLabel, { color: hours[day].enabled ? colors.text : colors.textThird }]}>
+                    {day}
+                  </Text>
 
-          <View style={styles.timeRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { color: colors.textSecond }]}>Opens At</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-                value={settings.openTime}
-                onChangeText={(v) => set('openTime', v)}
-                placeholder="08:00"
-                placeholderTextColor={colors.textThird}
-                // 08:00 is digits and a colon: the alpha keyboard was wrong
-                // for both opening-hours fields (B-5.2).
-                keyboardType="numbers-and-punctuation"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { color: colors.textSecond }]}>Closes At</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-                value={settings.closeTime}
-                onChangeText={(v) => set('closeTime', v)}
-                placeholder="18:00"
-                placeholderTextColor={colors.textThird}
-                keyboardType="numbers-and-punctuation"
-              />
-            </View>
-          </View>
+                  {hours[day].enabled ? (
+                    <View style={styles.timePills}>
+                      <Pressable
+                        style={[styles.timePill, { backgroundColor: colors.background, borderColor: colors.border }]}
+                        onPress={() => setPickerOpen({ day, field: 'start' })}
+                      >
+                        <Text style={[styles.timePillText, { color: colors.text }]}>{fmtTime(hours[day].start)}</Text>
+                      </Pressable>
+                      <Text style={[styles.timeSep, { color: colors.textThird }]}>to</Text>
+                      <Pressable
+                        style={[styles.timePill, { backgroundColor: colors.background, borderColor: colors.border }]}
+                        onPress={() => setPickerOpen({ day, field: 'end' })}
+                      >
+                        <Text style={[styles.timePillText, { color: colors.text }]}>{fmtTime(hours[day].end)}</Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Text style={[styles.closedText, { color: colors.textThird }]}>Closed</Text>
+                  )}
+                </View>
+              ))}
+
+              <Text style={[styles.hoursHint, { color: colors.textSecond }]}>
+                {/* Said plainly, because a closing time before an opening
+                    time reads like a mistake and is not one: a shop open
+                    from 6pm until 2am is a normal Lagos kiosk. */}
+                A closing time earlier than the opening time means you stay open past
+                midnight. Customers are never charged storage for days you are closed.
+              </Text>
+            </>
+          )}
         </View>
+
+        {/* One long list, not a wheel: a wheel needs a native picker per
+            platform, and this screen already opens plain modals elsewhere. */}
+        <Modal visible={!!pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(null)}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setPickerOpen(null)}>
+            <Pressable
+              style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {pickerOpen ? `${pickerOpen.day}: ${pickerOpen.field === 'start' ? 'opens at' : 'closes at'}` : ''}
+              </Text>
+              <ScrollView style={{ maxHeight: 320 }}>
+                {TIME_OPTIONS.map((o) => {
+                  const current = pickerOpen && hours ? hours[pickerOpen.day][pickerOpen.field] === o.value : false;
+                  return (
+                    <Pressable
+                      key={o.value}
+                      style={[styles.timeOption, current && { backgroundColor: colors.background }]}
+                      onPress={() => {
+                        if (!pickerOpen) return;
+                        setHours((h) => h && ({
+                          ...h,
+                          [pickerOpen.day]: { ...h[pickerOpen.day], [pickerOpen.field]: o.value },
+                        }));
+                        setPickerOpen(null);
+                      }}
+                    >
+                      <Text style={[styles.timeOptionText, { color: current ? colors.primary : colors.text }]}>
+                        {o.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         {/* B-10.7: three per-event switches used to live here while the
             Profile tab had deliberately REMOVED its Notifications row on
@@ -389,6 +532,23 @@ const SIGN_OUT_TINT = (isDark: boolean, error: string) => (isDark
   : { backgroundColor: '#FEF2F2',    borderColor: '#FECACA' });
 
 const styles = StyleSheet.create({
+  dayRow:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
+  dayLabel:      { fontSize: 15, fontFamily: 'Inter_600SemiBold', width: 44 },
+  timePills:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 'auto' },
+  timePill:      { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1 },
+  timePillText:  { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  timeSep:       { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  closedText:    { fontSize: 13, fontFamily: 'Inter_400Regular', marginLeft: 'auto' },
+  hoursHint:     { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17, marginTop: 10 },
+  setHoursBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                   borderWidth: 1, borderRadius: 10, paddingVertical: 12, marginTop: 12 },
+  setHoursBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 32 },
+  modalCard:     { borderRadius: 14, borderWidth: 1, padding: 16 },
+  modalTitle:    { fontSize: 15, fontFamily: 'Inter_600SemiBold', marginBottom: 10 },
+  timeOption:    { paddingVertical: 11, paddingHorizontal: 10, borderRadius: 8 },
+  timeOptionText:{ fontSize: 14, fontFamily: 'Inter_500Medium' },
+
   centered:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header:        { paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1 },
   heading:       { fontSize: 20, fontWeight: '800' },
