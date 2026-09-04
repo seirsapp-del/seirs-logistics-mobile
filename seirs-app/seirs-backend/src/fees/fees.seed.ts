@@ -159,6 +159,23 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'corridor_max_hours', name: 'Corridor max hours',
     description: 'Longest a declared corridor can stay active. Three days, because interstate trips are declared days ahead.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.HOURS, value: 72 },
+  /**
+   * The other end of the same window, and until 2026-09-04 there was none.
+   *
+   * The server accepted any departure not more than 60 seconds in the past,
+   * so a rider could declare a trip leaving in twenty minutes. Nobody can
+   * find it, agree a price, pay, and physically reach the park in twenty
+   * minutes, so that trip simply never matched. It failed silently, which is
+   * the expensive part: the rider concludes the whole feature is dead and
+   * stops declaring, and the board a real sender opens looks empty.
+   *
+   * Founder chose 3 hours (2026-09-04) over 2, for the sender who has to
+   * leave work, collect the parcel and cross town. Set to 0 to switch the
+   * gate off entirely.
+   */
+  { key: 'corridor_min_lead_minutes', name: 'Trip minimum notice (minutes)',
+    description: 'How far ahead a rider must declare an intercity trip. Below this the departure is refused, because a sender cannot find, agree, pay and reach the park in less. 0 turns the gate off.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 180 },
   { key: 'driver_level_id_gate', name: 'Level ID-verification gate',
     description: 'Levels at or above this require verified identity (per the identity policy). Auto-raise stops below it for unverified drivers.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 6 },

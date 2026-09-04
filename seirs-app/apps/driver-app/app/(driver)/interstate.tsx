@@ -22,7 +22,7 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { driversApi, configApi, mapsApi } from '@/services/api';
+import { driversApi, configApi, mapsApi, feesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
@@ -230,6 +230,26 @@ export default function InterstateScreen() {
   const [departDate,  setDepartDate]  = useState('');
   const [departTime,  setDepartTime]  = useState('');
   const [pickerOpen,  setPickerOpen]  = useState(false);
+
+  /**
+   * How much notice a trip needs, in minutes.
+   *
+   * The server refuses a departure inside this window, so the picker must
+   * not offer one: a rider who taps a time and is then told no learns that
+   * the screen lies to them. 180 is the shipped default and the fallback if
+   * the value cannot be fetched, which matches the server's own fallback.
+   */
+  const [minLeadMins, setMinLeadMins] = useState(180);
+  useEffect(() => {
+    let alive = true;
+    feesApi.get('corridor_min_lead_minutes')
+      .then(r => {
+        const v = Number(r?.value);
+        if (alive && Number.isFinite(v) && v >= 0) setMinLeadMins(v);
+      })
+      .catch(() => {});   // keep the default; never block the screen on config
+    return () => { alive = false; };
+  }, []);
 
   const origin      = stops[0];
   const destination = stops[stops.length - 1];
@@ -1314,12 +1334,34 @@ export default function InterstateScreen() {
                   <Text style={[styles.label, { color: theme.textSecond, marginBottom: 8 }]}>
                     DEPARTURE TIME
                   </Text>
+                  {/* Say why the early times are greyed, or it reads as a bug. */}
+                  {minLeadMins > 0 && (
+                    <Text style={{
+                      fontSize: FontSize.xs,
+                      color: theme.textSecond,
+                      marginBottom: 10,
+                    }}>
+                      {`Give at least ${Math.round((minLeadMins / 60) * 10) / 10} hours notice, so a sender can find your trip, agree a price and reach you.`}
+                    </Text>
+                  )}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {DEPART_SLOTS.map(slot => {
                       const active = departTime === slot;
-                      // A time already gone today cannot be a departure.
-                      const past = departDate === TODAY_ISO
-                        && slot <= new Date().toTimeString().slice(0, 5);
+                      /**
+                       * Too soon, not just past.
+                       *
+                       * This used to grey out only times already gone today,
+                       * which let a rider declare a trip leaving in twenty
+                       * minutes. The server now refuses that, and a picker
+                       * that offers a time the server rejects is worse than
+                       * no picker. One test covers both cases: a slot in the
+                       * past is simply a slot inside the notice window.
+                       */
+                      const slotAt = new Date(
+                        `${departDate || TODAY_ISO}T${slot}:00`,
+                      ).getTime();
+                      const past = Number.isFinite(slotAt)
+                        && slotAt < Date.now() + minLeadMins * 60_000;
                       return (
                         <Pressable
                           key={slot}

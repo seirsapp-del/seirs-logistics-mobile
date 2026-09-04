@@ -529,6 +529,38 @@ export class DriversService {
       throw new BadRequestException('Departure time must be in the future.');
     }
 
+    /**
+     * Minimum notice, added 2026-09-04. There was none.
+     *
+     * "In the future" was the only test, so a rider could declare a trip
+     * leaving in twenty minutes. Nobody can find that trip, agree a price,
+     * pay for it and physically reach the park in twenty minutes, so it
+     * never matched anything. That failure was silent, which is what made it
+     * expensive: the rider sees no requests, decides the feature does not
+     * work, and stops declaring. The board a real sender opens then looks
+     * empty, and the marketplace never starts.
+     *
+     * Tunable rather than fixed, because the right number is a guess until
+     * there is traffic to measure. 0 switches the gate off.
+     */
+    const minLeadMins = Number(
+      await this.feesService.getValueOr('corridor_min_lead_minutes', 180).catch(() => 180),
+    );
+    if (minLeadMins > 0) {
+      const earliest = Date.now() + minLeadMins * 60_000;
+      if (depart.getTime() < earliest) {
+        // Lagos is UTC+1 all year, so this needs no timezone database.
+        const lagos = new Date(earliest + 60 * 60 * 1000);
+        const hhmm  = `${String(lagos.getUTCHours()).padStart(2, '0')}:${String(lagos.getUTCMinutes()).padStart(2, '0')}`;
+        const hrs   = Math.round((minLeadMins / 60) * 10) / 10;
+        throw new BadRequestException(
+          `Declare a trip at least ${hrs} ${hrs === 1 ? 'hour' : 'hours'} before you leave, `
+          + `so a sender has time to find it, agree a price and reach you. `
+          + `The earliest you can set right now is ${hhmm}.`,
+        );
+      }
+    }
+
     const capacity = Number(body.spareCapacityKg ?? 0);
     if (!Number.isFinite(capacity) || capacity < 0) {
       throw new BadRequestException('Spare capacity must be a non-negative number.');
