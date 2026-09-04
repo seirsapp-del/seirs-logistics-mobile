@@ -60,6 +60,10 @@ interface PublicDelivery {
    *  can see: exactly the invented progress the backend added the field to
    *  prevent. */
   awaitingPayment: boolean;
+  /** Whether the addresses on this payload are the real ones or the area
+   *  only, and whether a check is available to unlock them. The backend
+   *  never says WHICH digits and never echoes the phone. */
+  verification?: { required: boolean; passed: boolean; hint: string | null } | null;
   pickupAddress:  string;
   dropoffAddress: string;
   /** Set when the receiver owes a redirect fee. While it is owed the backend
@@ -189,11 +193,38 @@ export function TrackingView() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastFetch,  setLastFetch]  = useState<Date | null>(null);
 
+  /**
+   * The last four digits of the number this delivery is going to.
+   *
+   * A tracking code is a bearer token: it carries the pickup address, the
+   * destination, the recipient name and the rider's live position, and codes
+   * travel. They are forwarded on WhatsApp, screenshotted and printed on
+   * labels. So a code alone shows the journey and the AREA; the digits
+   * unlock the addresses. The same pattern as DHL or Royal Mail asking for a
+   * postcode, so it is familiar rather than novel.
+   *
+   * Held per browser per code, so a receiver types it once. sessionStorage,
+   * not localStorage: it should not outlive the tab on a shared or borrowed
+   * phone, which here is a real case rather than a theoretical one.
+   */
+  const [verify, setVerify] = useState('');
+  const [vInput, setVInput] = useState('');
+  const [vError, setVError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!code) return;
+    try {
+      const held = sessionStorage.getItem(`seirs.v.${code}`);
+      if (held) setVerify(held);
+    } catch { /* private mode, or storage refused. Ask again; no harm done. */ }
+  }, [code]);
+
   const load = useCallback(async (background = false) => {
     if (!code) return;
     if (background) setRefreshing(true); else setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/deliveries/track/${encodeURIComponent(code)}`);
+      const q = verify ? `?v=${encodeURIComponent(verify)}` : '';
+      const res = await fetch(`${API_BASE}/deliveries/track/${encodeURIComponent(code)}${q}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message ?? `Tracking code ${code} not found`);
@@ -221,7 +252,7 @@ export function TrackingView() {
     } finally {
       if (background) setRefreshing(false); else setLoading(false);
     }
-  }, [code]);
+  }, [code, verify]);
 
   useEffect(() => { load(false); }, [load]);
 
@@ -403,6 +434,50 @@ export function TrackingView() {
             <button onClick={() => load(true)} className="font-semibold text-slate-900 hover:underline">
               Retry
             </button>
+          </div>
+        )}
+
+        {/* Show the full addresses only to someone who can name the number. */}
+        {delivery.verification?.required && !delivery.verification.passed && (
+          <div className="mx-5 mb-1 mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="text-sm font-semibold text-slate-900">See the full addresses</div>
+            <p className="mt-1 text-[13px] leading-snug text-slate-600">
+              {delivery.verification.hint
+                ?? 'Enter the last 4 digits of the phone number this delivery is going to.'}
+            </p>
+            <form
+              className="mt-3 flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const digits = vInput.replace(/\D/g, '').slice(-4);
+                if (digits.length < 4) { setVError('That needs to be 4 digits.'); return; }
+                setVError(null);
+                setVerify(digits);
+                try { sessionStorage.setItem(`seirs.v.${code}`, digits); } catch { /* ignore */ }
+              }}
+            >
+              <input
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={4}
+                value={vInput}
+                onChange={(e) => setVInput(e.target.value)}
+                placeholder="0000"
+                aria-label="Last 4 digits of the delivery phone number"
+                className="w-24 rounded-md border border-slate-300 px-3 py-2 text-center text-base tracking-[0.3em] text-slate-900 outline-none focus:border-slate-900"
+              />
+              <button
+                type="submit"
+                className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+              >
+                Show
+              </button>
+            </form>
+            {vError && <p className="mt-2 text-[13px] text-red-600">{vError}</p>}
+            <p className="mt-3 text-[12px] leading-snug text-slate-500">
+              Do not know it? Ask whoever sent this to you: they typed it when they booked.
+              Everything else on this page works without it.
+            </p>
           </div>
         )}
 
