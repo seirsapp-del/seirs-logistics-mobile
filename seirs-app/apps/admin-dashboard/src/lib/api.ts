@@ -1080,8 +1080,8 @@ export const adminApi = {
   },
 
   auditLog: {
-    list: (page = 1, adminId?: string, action?: string) =>
-      req<any>(`/admin/audit-log?page=${page}${adminId ? `&adminId=${adminId}` : ''}${action ? `&action=${encodeURIComponent(action)}` : ''}`),
+    list: (page = 1, adminId?: string, action?: string, from?: string, to?: string) =>
+      req<any>(`/admin/audit-log?page=${page}${adminId ? `&adminId=${adminId}` : ''}${action ? `&action=${encodeURIComponent(action)}` : ''}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`),
   },
 
   opsMap: {

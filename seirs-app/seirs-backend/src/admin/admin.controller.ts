@@ -917,8 +917,10 @@ export class AdminController {
 
   // GET /api/v1/admin/audit-log?page=1&adminId=...&action=...
   @Get('audit-log')
-  getAuditLog(@Query() q: { page?: number; adminId?: string; action?: string }) {
-    return this.adminService.getAuditLog(q.page ?? 1, q.adminId, q.action);
+  getAuditLog(@Query() q: {
+    page?: number; adminId?: string; action?: string; from?: string; to?: string;
+  }) {
+    return this.adminService.getAuditLog(q.page ?? 1, q.adminId, q.action, q.from, q.to);
   }
 
   // ── Real-Time Ops Map ─────────────────────────────────────────────────────

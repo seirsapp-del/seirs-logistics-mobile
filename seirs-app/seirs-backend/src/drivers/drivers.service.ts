@@ -1082,7 +1082,15 @@ export class DriversService {
 
   // Admin board - Spec V8 §3.12. Returns trips with driver + user joined
   // for the UI to display "<name> | Lagos → Ibadan | <kg> free".
-  async listAllInterstateTrips(opts: { status?: DriverTripStatus } = {}) {
+  async listAllInterstateTrips(opts: {
+    status?: DriverTripStatus;
+    /** Inclusive departure-date range for audit. Both optional. */
+    from?: Date;
+    to?: Date;
+    limit?: number;
+    /** How far back the board looks when no range is given. Active is exempt. */
+    defaultWindowDays?: number;
+  } = {}) {
     /**
      * Narrow selects (2026-08-28). leftJoinAndSelect pulled the whole
      * Driver and the whole User behind it, so an interstate trips list
@@ -1098,10 +1106,44 @@ export class DriversService {
         'd.vehiclePlate', 'd.isOnline',
       ])
       .leftJoin('d.user', 'u')
-      .addSelect(['u.id', 'u.name', 'u.phone', 'u.accountId'])
-      .orderBy('t.departAt', 'ASC')
-      .limit(100);
+      .addSelect(['u.id', 'u.name', 'u.phone', 'u.accountId']);
+
     if (opts.status) qb.where('t.status = :status', { status: opts.status });
+
+    /**
+     * A window, and the right end of the list.
+     *
+     * This ordered departAt ASC with a flat limit of 100 for every status.
+     * For ACTIVE that is correct and deliberate: ops want the next departure
+     * first. For COMPLETED it was exactly backwards. Once more than a hundred
+     * trips had finished, the tab showed the OLDEST hundred forever and a
+     * trip that finished yesterday could not be seen at all. The board did
+     * not merely accumulate, it showed the wrong end of the list and kept
+     * showing it, which is worse than showing too much because it looks
+     * complete.
+     *
+     * Founder 2026-09-04, and he is right that trips must not pile up
+     * unbounded. He is also right that they must not be DELETED: a declared
+     * trip is what a dispute over a parcel or a seat is argued from, and it
+     * ties to handoff records and payments. So the retention is in the VIEW.
+     * A default window keeps the board about now; a date range reaches back
+     * for audit; the row itself lives forever.
+     */
+    if (opts.from) qb.andWhere('t."departAt" >= :from', { from: opts.from });
+    if (opts.to)   qb.andWhere('t."departAt" <= :to',   { to: opts.to });
+    if (!opts.from && !opts.to && opts.status !== DriverTripStatus.ACTIVE) {
+      // No range asked for, and not the live board: keep it to recent history
+      // rather than the beginning of time.
+      const days = Number(opts.defaultWindowDays ?? 30);
+      qb.andWhere('t."departAt" >= :window', {
+        window: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+      });
+    }
+
+    // Soonest first while they are still coming; most recent first once they
+    // are history, because that is the end of each list a person needs.
+    qb.orderBy('t.departAt', opts.status === DriverTripStatus.ACTIVE ? 'ASC' : 'DESC')
+      .limit(Math.min(Number(opts.limit ?? 100), 500));
     const trips = await qb.getMany();
 
     /**

@@ -1344,7 +1344,48 @@ export class TravelBuddyService {
    */
 
   /** Declared trips with their route and how full each segment is. */
-  async adminTrips(limit = 50) {
+  /**
+   * The seat board, which had no WHERE CLAUSE AT ALL.
+   *
+   * Every trip ever declared, newest departure first, capped only by the
+   * limit. So a finished trip from three weeks ago sat in the same list as
+   * tonight's departure with nothing to tell them apart, no status filter,
+   * and no way to reach a particular week for audit. The live trips an
+   * operator actually watches were crowded out by history as soon as there
+   * was any history.
+   *
+   * Founder 2026-09-04, on both trip boards. Trips are NOT deleted: a
+   * declared trip is what a dispute over a seat is argued from and it ties to
+   * bookings and payments. The retention is in the view. A default window
+   * keeps it about now, a date range reaches back, and the rows live forever.
+   */
+  async adminTrips(limit = 50, opts: {
+    status?: string;
+    from?: Date;
+    to?: Date;
+    defaultWindowDays?: number;
+  } = {}) {
+    const where: string[] = [];
+    const args: any[] = [];
+    const add = (sql: string, v: any) => { args.push(v); where.push(sql.replace('?', `$${args.length}`)); };
+
+    if (opts.status) add('t.status = ?', opts.status);
+    if (opts.from)   add('t."departAt" >= ?', opts.from);
+    if (opts.to)     add('t."departAt" <= ?', opts.to);
+    if (!opts.from && !opts.to) {
+      /**
+       * No range asked for. Show what is coming, plus recent history, rather
+       * than the beginning of time. An ACTIVE trip is never hidden by this
+       * however far ahead it departs: a live trip is the whole point of the
+       * board and must not fall off the end of a window.
+       */
+      const days = Number(opts.defaultWindowDays ?? 30);
+      add(`(t."departAt" >= ? OR t.status = 'active')`,
+        new Date(Date.now() - days * 24 * 60 * 60 * 1000));
+    }
+    args.push(limit);
+    const limitArg = `$${args.length}`;
+
     const trips: Array<any> = await this.bookingsRepo.manager.query(
       `SELECT t.id, t."fromCity", t."toCity", t."departAt", t."routeKm",
               t."seatsTotal", t."seatsBooked", t.status,
@@ -1356,10 +1397,16 @@ export class TravelBuddyService {
          FROM "driver_trips" t
          LEFT JOIN "drivers" d ON d.id = t."driverId"
          LEFT JOIN "users" u ON u.id = d."userId"
+        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
         ORDER BY t."departAt" DESC
-        LIMIT $1`,
-      [limit],
-    ).catch(() => []);
+        LIMIT ${limitArg}`,
+      args,
+    ).catch((e: any) => {
+      // Not a silent []. A mistyped column here looks exactly like an empty
+      // board, and an empty board looks like a quiet day.
+      this.logger.error(`adminTrips query failed: ${e?.message ?? e}`);
+      return [] as any[];
+    });
     /**
      * NAME THE STOPS AND THE PEOPLE (founder, 2026-08-28).
      *

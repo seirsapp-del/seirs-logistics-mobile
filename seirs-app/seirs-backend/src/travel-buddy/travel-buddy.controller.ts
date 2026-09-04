@@ -173,8 +173,24 @@ export class TravelBuddyController {
    */
   @UseGuards(AdminGuard)
   @Get('admin/trips')
-  adminTrips(@Query('limit') limit?: string) {
-    return this.travelBuddy.adminTrips(Number(limit ?? 50));
+  adminTrips(
+    @Query('limit')  limit?: string,
+    @Query('status') status?: string,
+    @Query('from')   from?: string,
+    @Query('to')     to?: string,
+  ) {
+    // An unparseable date is ignored rather than rejected: a filter that
+    // 500s on a typo is worse than one that shows too much.
+    const parse = (v?: string) => {
+      if (!v) return undefined;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    };
+    return this.travelBuddy.adminTrips(Number(limit ?? 50), {
+      status: status || undefined,
+      from:   parse(from),
+      to:     parse(to),
+    });
   }
 
   /** Every seat booking, filterable by status. */
