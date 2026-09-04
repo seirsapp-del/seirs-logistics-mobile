@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Get, Param, Post, Patch, Query, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { DeliveriesService } from './deliveries.service';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -90,8 +91,24 @@ export class DeliveriesController {
     return this.deliveriesService.findAvailable(numLat, numLng, radiusKm, limit, user?.id);
   }
 
-  // GET /api/v1/deliveries/track/:code - public tracking by code (no login required)
+  /**
+   * GET /api/v1/deliveries/track/:code - public tracking by code (no login).
+   *
+   * 20 a minute per IP, not the global 300.
+   *
+   * A tracking code is a bearer token for a whole journey: this payload
+   * carries the pickup address in full, the destination, the recipient's
+   * first name, the driver's name and plate, and the driver's live position.
+   * Guessing a code is not the worry, secureCode(8) is 32^8, but 300 tries a
+   * minute is a generous budget for somebody working through a leaked list,
+   * and nothing about honest use needs more than a handful.
+   *
+   * A real person refreshing a parcel page hits this every 30 seconds. Twenty
+   * leaves room for several tabs and a shaky connection retrying, and still
+   * makes a scan stand out.
+   */
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
   @Get('track/:code')
   track(@Param('code') code: string) {
     return this.deliveriesService.findByTracking(code);
