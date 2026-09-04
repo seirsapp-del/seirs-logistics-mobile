@@ -95,17 +95,32 @@ function DisputesContent() {
   const [queueLoading, setQueueLoading] = useState(true);
   const [queueError,   setQueueError]   = useState('');
 
-  const loadQueue = useCallback((p = 1) => {
+  /**
+   * The window this queue is showing, as YYYY-MM-DD.
+   *
+   * Reviewing a claim is dated work: what happened around the 12th, what
+   * was flagged the week of the outage. No backend change was needed for
+   * it, because this board already reads through the deliveries endpoint,
+   * which learned about ranges an hour ago.
+   */
+  const [from, setFrom] = useState('');
+  const [to,   setTo]   = useState('');
+
+  /**
+   * Dates are parameters, not read from state, so a handler that sets
+   * state and loads in the same tick does not fetch one edit behind.
+   */
+  const loadQueue = useCallback((p = 1, f = from, t = to) => {
     setQueueLoading(true);
     setQueueError('');
     setQueuePage(p);
-    adminApi.deliveries(p, 'disputed')
+    adminApi.deliveries(p, 'disputed', undefined, undefined, f || undefined, t || undefined)
       .then(setQueue)
       // A failure used to be indistinguishable from "nothing is flagged",
       // which on this page reads as good news and is the wrong answer.
       .catch((e: any) => setQueueError(e?.message ?? 'Could not load the flagged jobs.'))
       .finally(() => setQueueLoading(false));
-  }, []);
+  }, [from, to]);
 
   useEffect(() => { loadQueue(1); }, [loadQueue]);
 
@@ -218,11 +233,48 @@ function DisputesContent() {
       {/* THE QUEUE. This page had none: every flagged job in the system
           was invisible from the screen named after them. */}
       <section className="mb-8">
-        <div className="mb-3 flex items-baseline justify-between gap-4">
+        <div className="mb-3 flex items-baseline justify-between gap-4 flex-wrap">
           <h2 className="text-sm font-bold uppercase tracking-wide text-[#0F2B4C]/70">Jobs a driver flagged</h2>
           <span className="text-xs text-[#0F2B4C]/50">
             {queueLoading ? 'Loading' : total === 0 ? 'None open' : `${total.toLocaleString()} in total`}
           </span>
+        </div>
+
+        {/* Booked between.
+
+            Reviewing a claim is dated work: what happened around the 12th,
+            what was flagged the week of the outage. There was no way to ask
+            and the only route was paging.
+
+            Ranged on when the job was BOOKED rather than when it was
+            flagged, because that is what the underlying list is sorted by,
+            and a window keyed on a different column from the ordering gives
+            paging that jumps about. */}
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-[#0F2B4C]/50">Booked</span>
+          <input
+            type="date"
+            value={from}
+            max={to || undefined}
+            onChange={(e) => { setFrom(e.target.value); loadQueue(1, e.target.value, to); }}
+            className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+          />
+          <span className="text-[#0F2B4C]/40">to</span>
+          <input
+            type="date"
+            value={to}
+            min={from || undefined}
+            onChange={(e) => { setTo(e.target.value); loadQueue(1, from, e.target.value); }}
+            className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+          />
+          {(from || to) && (
+            <button
+              onClick={() => { setFrom(''); setTo(''); loadQueue(1, '', ''); }}
+              className="font-semibold text-[#3A7BD5] hover:underline"
+            >
+              Clear dates
+            </button>
+          )}
         </div>
 
         {queueError && (

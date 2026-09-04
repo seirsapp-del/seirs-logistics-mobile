@@ -159,6 +159,15 @@ export default function AuditLogPage() {
   const [hasMore,   setHasMore]   = useState(false);
   const [adminId,   setAdminId]   = useState('');
   const [action,    setAction]    = useState('');
+  /**
+   * The day, or span of days, being looked at.
+   *
+   * Every question an audit log answers is dated: who changed that on the
+   * 3rd, what happened the night the rates moved. Without this the only
+   * route was Previous and Next, guessing where a day started.
+   */
+  const [from,      setFrom]      = useState('');
+  const [to,        setTo]        = useState('');
   const [expanded,  setExpanded]  = useState<string | null>(null);
   const [rawOpen,   setRawOpen]   = useState<string | null>(null);
   const [error,     setError]     = useState<string | null>(null);
@@ -167,9 +176,17 @@ export default function AuditLogPage() {
 
   const [isSuper,  setIsSuper]  = useState<boolean | null>(null);
 
-  const load = (p = 1, who = adminId, what = action) => {
+  /**
+   * Dates are parameters, not read from state.
+   *
+   * The other filters already work this way for a reason: a handler that
+   * changes state and calls load() in the same tick reads the PREVIOUS
+   * value out of the closure, so the fetch runs one edit behind. Clearing
+   * the range would have re-fetched the range it was clearing.
+   */
+  const load = (p = 1, who = adminId, what = action, f = from, t = to) => {
     setLoading(true);
-    adminApi.auditLog.list(p, who || undefined, what || undefined)
+    adminApi.auditLog.list(p, who || undefined, what || undefined, f || undefined, t || undefined)
       .then((data: any) => {
         const items = Array.isArray(data) ? data : data?.items ?? [];
         // Previous/Next are page jumps, not infinite scroll. Appending on
@@ -313,6 +330,43 @@ export default function AuditLogPage() {
               placeholder="suspend, export, refund"
               className="w-48 rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
             />
+          </div>
+
+          {/* When.
+
+              The one filter this page most needed. Every question an audit
+              log exists to answer is dated, and without a range the only
+              route to a given day was Previous and Next, guessing where it
+              started. The end date covers its whole day: ranging the 3rd to
+              the 3rd and getting nothing back would read as "nothing
+              happened", which on an audit log is the worst available lie. */}
+          <div>
+            <label className="mb-1 block text-xs text-gray-500">When</label>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={from}
+                max={to || undefined}
+                onChange={(e) => { setFrom(e.target.value); setPage(1); load(1, adminId, action, e.target.value, to); }}
+                className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
+              />
+              <span className="text-xs text-gray-400">to</span>
+              <input
+                type="date"
+                value={to}
+                min={from || undefined}
+                onChange={(e) => { setTo(e.target.value); setPage(1); load(1, adminId, action, from, e.target.value); }}
+                className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
+              />
+              {(from || to) && (
+                <button
+                  onClick={() => { setFrom(''); setTo(''); setPage(1); load(1, adminId, action, '', ''); }}
+                  className="text-sm font-semibold text-[#3A7BD5] hover:underline"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
           {filtersOn && (
             <button

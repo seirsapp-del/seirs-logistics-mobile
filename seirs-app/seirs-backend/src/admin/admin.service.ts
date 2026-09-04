@@ -4118,7 +4118,19 @@ export class AdminService {
     };
   }
 
-  async getAuditLog(page: number, adminId?: string, action?: string) {
+  async getAuditLog(
+    page: number, adminId?: string, action?: string,
+    /**
+     * The day, as YYYY-MM-DD.
+     *
+     * An audit log without a date filter is the one that hurts most,
+     * because the questions it exists to answer are ALL dated: who changed
+     * that on the 3rd, what happened the night the rates moved. It had
+     * pages, so the record was reachable, but reaching it meant clicking
+     * through guessing where a day started.
+     */
+    from?: string, to?: string,
+  ) {
     const limit = 50;
     const qb = this.auditRepo.createQueryBuilder('a')
       .orderBy('a.createdAt', 'DESC')
@@ -4127,6 +4139,17 @@ export class AdminService {
 
     if (adminId) qb.andWhere('a.adminId = :adminId', { adminId });
     if (action)  qb.andWhere('a.action ILIKE :action', { action: `%${action}%` });
+
+    /**
+     * `to` covers the whole of its day.
+     *
+     * Stopping at midnight would exclude everything done ON the end date,
+     * which on an audit log is the specific failure that matters: somebody
+     * asks what happened on the 3rd, ranges the 3rd to the 3rd, and is
+     * shown an empty page that reads as "nothing happened".
+     */
+    if (from) qb.andWhere('a.createdAt >= :from', { from: new Date(`${from}T00:00:00Z`) });
+    if (to)   qb.andWhere('a.createdAt <  :to',   { to: new Date(new Date(`${to}T00:00:00Z`).getTime() + 86_400_000) });
 
     const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit, hasMore: page * limit < total };
