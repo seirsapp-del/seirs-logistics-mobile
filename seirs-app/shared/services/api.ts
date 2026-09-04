@@ -1899,6 +1899,13 @@ export const partnerApi = {
    * refused. byUs false means they paused themselves and the switch is
    * theirs to flip back.
    */
+  /**
+   * Ask our team to change something the shop cannot change itself.
+   * Nothing is applied: it opens a conversation.
+   */
+  requestFieldChange: (body: { field: string; requested: string; reason?: string }) =>
+    request<{ message: string }>('POST', '/business/partner/change-request', body),
+
   pausedReason: (storeId: string) =>
     request<{ paused: boolean; reason: string | null; byUs: boolean }>(
       'GET', `/partner-store/store/${storeId}/paused-reason`),

@@ -1839,8 +1839,42 @@ export class BusinessService {
   async updateSettings(userId: string, data: any) {
     const store = await this.getPartnerStore(userId);
 
+    /**
+     * LOCKED FIELDS. Changing these is a request, not an edit.
+     *
+     * storeAddress was made read-only on the settings screen when the move
+     * request shipped, and it was still sitting in this allowlist. So the
+     * lock was UI-only: an older build of the app, or anything that posted
+     * to this endpoint directly, could still rewrite the address and leave
+     * the map pin behind, which is the exact bug the move flow exists to
+     * prevent. Third time today that a guard has been fixed in the visible
+     * half and left open at the tap.
+     *
+     * storeName joins it. It is what a customer reads when choosing where
+     * to leave a parcel, and it is what an admin approved. A shop that was
+     * approved as one business quietly becoming another is a trust problem
+     * whether or not the building moved.
+     *
+     * Refused only when the value actually DIFFERS. The settings screen
+     * still posts its whole state on every save, address included, so
+     * throwing on presence would break every ordinary save on the current
+     * build for no gain.
+     */
+    const LOCKED: Array<{ key: string; how: string }> = [
+      { key: 'storeAddress', how: 'Use "Moving to a new shop?" on the settings screen so your map pin moves with your address.' },
+      { key: 'storeName',    how: 'Ask our team to change it, so the name customers see stays the one we approved.' },
+    ];
+    for (const { key, how } of LOCKED) {
+      const sent = data[key];
+      if (sent === undefined) continue;
+      const current = (store as any)[key];
+      if (String(sent).trim() !== String(current ?? '').trim()) {
+        throw new BadRequestException(`That is not something you can change here. ${how}`);
+      }
+    }
+
     const allowed = [
-      'storeName', 'storeAddress', 'phone', 'maxCapacity',
+      'phone', 'maxCapacity',
       'operatingDays', 'openTime', 'closeTime',
       // Per-day hours. The three legacy fields above are still accepted
       // because the older settings screen still sends them.
@@ -1870,6 +1904,58 @@ export class BusinessService {
     }
 
     return { message: 'Settings updated.' };
+  }
+
+  /**
+   * Ask our team to change something the shop cannot change itself.
+   *
+   * The other half of a locked field. A lock with no way through it is not
+   * a safeguard, it is a dead end: the shopkeeper still needs the thing
+   * changed, so they ring somebody, or they stop telling us, and either
+   * way we have made the record worse rather than safer.
+   *
+   * Raised as a support ticket rather than a new queue, because it is a
+   * conversation: our team needs to ask why, and sometimes to say no. The
+   * change is never applied here.
+   */
+  async requestFieldChange(userId: string, field: string, requested: string, reason?: string) {
+    const store = await this.getPartnerStore(userId);
+
+    const LABEL: Record<string, string> = {
+      storeName: 'shop name',
+      phone:     'phone number',
+    };
+    const label = LABEL[field];
+    if (!label) {
+      throw new BadRequestException('That is not something our team changes for you.');
+    }
+    const want = String(requested ?? '').trim();
+    if (want.length < 2) {
+      throw new BadRequestException(`Tell us what you would like the ${label} to be.`);
+    }
+
+    const body = [
+      `${store.storeName} has asked us to change their ${label}.`,
+      '',
+      `Now:     ${(store as any)[field] ?? 'not on file'}`,
+      `Wants:   ${want}`,
+      reason ? `Because: ${reason}` : '',
+      '',
+      'Nothing has been changed. This needs a person to decide, and to check it is not a '
+      + 'different business quietly taking over an approved shop.',
+      '',
+      `Shop phone: ${store.phone ?? 'not on file'}`,
+      `Address:    ${store.storeAddress ?? 'not on file'}`,
+    ].filter(l => l !== '').join('\n');
+
+    await this.support.raiseSystemTicket(store.userId, {
+      topic:      TicketTopic.OTHER,
+      subject:    `${store.storeName} asked to change their ${label}`,
+      body,
+      systemType: 'partner_field_change',
+    }).catch(() => undefined);
+
+    return { message: 'Our team will look at it and come back to you. Nothing has changed yet.' };
   }
 
   /**

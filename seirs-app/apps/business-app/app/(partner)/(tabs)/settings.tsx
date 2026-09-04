@@ -142,6 +142,32 @@ export default function PartnerSettingsScreen() {
     }));
   };
 
+  /**
+   * Ask our team for a new shop name. Never applies it.
+   *
+   * A modal with both fields rather than chained alerts: the reason is the
+   * part a reviewer actually needs, and asking for it in a second popup
+   * after the name is how it arrives empty every time.
+   */
+  const [nameAsk,    setNameAsk]    = useState(false);
+  const [wantedName, setWantedName] = useState('');
+  const [whyName,    setWhyName]    = useState('');
+  const [askingName, setAskingName] = useState(false);
+
+  const sendNameChange = async () => {
+    if (!wantedName.trim()) return;
+    setAskingName(true);
+    try {
+      const r = await partnerApi.requestFieldChange({
+        field: 'storeName', requested: wantedName.trim(), reason: whyName.trim() || undefined,
+      });
+      setNameAsk(false); setWantedName(''); setWhyName('');
+      alertDialog('Sent', r?.message ?? 'Our team will come back to you.');
+    } catch (e: any) {
+      alertDialog('Not sent', e?.message ?? 'Try again in a moment.');
+    } finally { setAskingName(false); }
+  };
+
   const handleSave = async () => {
     if (!settings.storeName.trim()) {
       alertDialog('Validation', 'Store name is required.');
@@ -152,7 +178,17 @@ export default function PartnerSettingsScreen() {
       // workingHours goes only once the shop has actually set it, so an
       // untouched store stays null on the server rather than being
       // handed the seeded defaults as though it had chosen them.
-      await partnerApi.updateSettings(hours ? { ...settings, workingHours: toApi(hours) } : settings);
+      /**
+       * The locked fields are not sent at all.
+       *
+       * The server refuses a storeName or storeAddress that differs from
+       * what it holds, and this screen posts its whole state on save. So
+       * leaving them in worked only for as long as they happened to match,
+       * and any drift would have started failing every ordinary save with
+       * a message about a field the shopkeeper never touched.
+       */
+      const { storeName: _n, storeAddress: _a, ...editable } = settings as any;
+      await partnerApi.updateSettings(hours ? { ...editable, workingHours: toApi(hours) } : editable);
       alertDialog('Saved', 'Your store settings have been updated.');
     } catch (e: any) {
       alertDialog('Error', e.message ?? 'Could not save settings.');
@@ -185,7 +221,26 @@ export default function PartnerSettingsScreen() {
             onChangeText={(v) => set('storeName', v)}
             placeholder="My Partner Store"
             placeholderTextColor={colors.textThird}
+            {...({ editable: false } as any)}
           />
+          {/* Locked, with a way through.
+
+              The shop name is what a customer reads when choosing where to
+              leave a parcel, and it is what an admin approved. A shop
+              approved as one business quietly becoming another is a trust
+              problem whether or not the building moved.
+
+              But a lock with no route through it is not a safeguard, it is
+              a dead end: the shopkeeper still needs it changed, so they
+              ring somebody or they stop telling us, and either way the
+              record gets worse rather than safer. */}
+          <Pressable
+            style={[styles.moveBtn, { borderColor: colors.primary }]}
+            onPress={() => setNameAsk(true)}
+          >
+            <Icon name="MessageSquare" size={16} color={colors.primary} strokeWidth={1.75} />
+            <Text style={[styles.moveBtnText, { color: colors.primary }]}>Ask to change the shop name</Text>
+          </Pressable>
 
           {/* The address is READ-ONLY, and moving is a request.
 
@@ -341,6 +396,55 @@ export default function PartnerSettingsScreen() {
 
         {/* One long list, not a wheel: a wheel needs a native picker per
             platform, and this screen already opens plain modals elsewhere. */}
+        <Modal visible={nameAsk} transparent animationType="fade" onRequestClose={() => setNameAsk(false)}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setNameAsk(false)}>
+            <Pressable
+              style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Ask to change the shop name</Text>
+              <Text style={[styles.hoursHint, { color: colors.textSecond, marginTop: 0 }]}>
+                Our team checks it first, so customers keep seeing the name we approved. Nothing
+                changes until they say so.
+              </Text>
+
+              <Text style={[styles.label, { color: colors.textSecond, marginTop: 12 }]}>New name</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+                value={wantedName}
+                onChangeText={setWantedName}
+                placeholder={settings.storeName}
+                placeholderTextColor={colors.textThird}
+              />
+
+              <Text style={[styles.label, { color: colors.textSecond, marginTop: 10 }]}>Why is it changing?</Text>
+              <TextInput
+                style={[styles.input, styles.multiline, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+                value={whyName}
+                onChangeText={setWhyName}
+                placeholder="e.g. the business was renamed"
+                placeholderTextColor={colors.textThird}
+                multiline
+              />
+
+              <Pressable
+                style={[styles.setHoursBtn, {
+                  borderColor: wantedName.trim() ? colors.primary : colors.border,
+                  marginTop: 14,
+                }]}
+                onPress={sendNameChange}
+                disabled={!wantedName.trim() || askingName}
+              >
+                <Text style={[styles.setHoursBtnText, {
+                  color: wantedName.trim() ? colors.primary : colors.textThird,
+                }]}>
+                  {askingName ? 'Sending...' : 'Send the request'}
+                </Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
         <Modal visible={!!pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(null)}>
           <Pressable style={styles.modalBackdrop} onPress={() => setPickerOpen(null)}>
             <Pressable

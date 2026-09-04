@@ -216,6 +216,23 @@ export class BusinessController {
   // ─── Partner Store ────────────────────────────────────────────────────────────
 
   @UseGuards(PartnerStoreGuard)
+  /**
+   * POST /api/v1/business/partner/change-request
+   *
+   * The way through a locked field. Nothing is applied: it opens a
+   * conversation with our team, because a lock with no route through it
+   * only teaches a shopkeeper to stop telling us things.
+   */
+  @Post('partner/change-request')
+  requestFieldChange(
+    @CurrentUser() user: any,
+    @Body() body: { field: string; requested: string; reason?: string },
+  ) {
+    return this.svc.requestFieldChange(
+      user.id, body?.field, body?.requested, body?.reason,
+    );
+  }
+
   @Get('partner/dashboard')
   partnerDashboard(@CurrentUser() user: User) {
     return this.svc.partnerDashboard(user.id);
