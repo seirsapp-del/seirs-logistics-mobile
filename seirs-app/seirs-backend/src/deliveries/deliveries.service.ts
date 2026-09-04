@@ -5446,6 +5446,25 @@ export class DeliveriesService {
 
     await this.repo.update(deliveryId, {
       cancellationFeeNgn:    quote.feeNgn,
+      /**
+       * The rider's share, WRITTEN rather than only calculated.
+       *
+       * driverShare was computed above, put in the log line, and returned
+       * to the app, and then never stored. updateStatus pays a rider off
+       * driverFailedTripNgn, which only reportIssue ever wrote. So a
+       * customer cancelling after a rider had been dispatched was charged
+       * NGN 300, the rider who was already riding received nothing, and
+       * SEIRS kept the lot.
+       *
+       * That is the exact failure the comment on the payout block warns
+       * about, in a second path: money calculated, displayed nowhere, and
+       * never paid. It also inverted the intent, since the fee exists to
+       * compensate the rider rather than to earn from a cancellation.
+       *
+       * Only at post_assign. Before dispatch nobody has ridden anywhere and
+       * driverShare is already 0.
+       */
+      driverFailedTripNgn:   driverShare > 0 ? driverShare : null,
       cancelledAt:           new Date(),
       cancellationReason:    (reason ?? '').slice(0, 200) || null,
     } as any);
