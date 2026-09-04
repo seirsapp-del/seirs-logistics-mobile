@@ -15,6 +15,8 @@ import { User } from '../users/user.entity';
 import { Delivery } from '../deliveries/delivery.entity';
 import { PartnerMoveRequest } from './partner-move-request.entity';
 import { PartnerMoveService } from './partner-move.service';
+import { ParcelRecoveryTask } from './parcel-recovery-task.entity';
+import { ParcelRecoveryService } from './parcel-recovery.service';
 import { PartnerMoveController, AdminPartnerMovesController } from './partner-move.controller';
 import { SupportModule } from '../support/support.module';
 import { FeesModule } from '../fees/fees.module';
@@ -39,7 +41,7 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
   imports: [
     // KycDocument registered locally as well as globally, so a provider
     // resolution mistake is a compile error rather than a boot crash.
-    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery, PartnerPayout, KycDocument, PartnerMoveRequest]),
+    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery, PartnerPayout, KycDocument, PartnerMoveRequest, ParcelRecoveryTask]),
     FeesModule,
     IdentityModule,
     PricingModule,
@@ -51,8 +53,8 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
   ],
   controllers: [PartnerStoreController, AdminPartnerDocumentsController, AdminPartnerPayoutsController,
                 PartnerMoveController, AdminPartnerMovesController],
-  providers:   [PartnerStoreService, PartnerDocumentsService, PartnerPayoutsService, PartnerMoveService],
-  exports:     [PartnerStoreService, PartnerMoveService],
+  providers:   [PartnerStoreService, PartnerDocumentsService, PartnerPayoutsService, PartnerMoveService, ParcelRecoveryService],
+  exports:     [PartnerStoreService, PartnerMoveService, ParcelRecoveryService],
 })
 export class PartnerStoreModule implements OnModuleInit {
   private readonly logger = new Logger(PartnerStoreModule.name);
@@ -112,6 +114,37 @@ export class PartnerStoreModule implements OnModuleInit {
        * partially-created table from an interrupted boot heals rather than
        * silently staying wrong.
        */
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "parcel_recovery_tasks" (
+          "id"                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "partnerStoreId"    uuid NOT NULL,
+          "dropoffId"         uuid NOT NULL,
+          "dropCode"          varchar(24) NULL,
+          "trigger"           varchar(12) NOT NULL,
+          "status"            varchar(12) NOT NULL DEFAULT 'open',
+          "outcome"           varchar(16) NULL,
+          "note"              text NULL,
+          "resolvedByAdminId" uuid NULL,
+          "resolvedAt"        timestamptz NULL,
+          "createdAt"         timestamptz NOT NULL DEFAULT now()
+        )`);
+      await this.ds.query(
+        `CREATE INDEX IF NOT EXISTS "idx_recovery_store_status"
+           ON "parcel_recovery_tasks" ("partnerStoreId", "status")`);
+      /**
+       * One OPEN task per parcel, enforced by the database.
+       *
+       * openTasksFor already skips parcels that have an open task, but that
+       * is a read followed by a write. Suspend a shop twice in quick
+       * succession and both passes see no existing task and both insert,
+       * leaving two jobs for one parcel and a count that can never reach
+       * zero honestly.
+       */
+      await this.ds.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS "uniq_recovery_open_per_parcel"
+           ON "parcel_recovery_tasks" ("dropoffId")
+         WHERE "status" = 'open'`);
+
       await this.ds.query(`
         CREATE TABLE IF NOT EXISTS "partner_move_requests" (
           "id"                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),

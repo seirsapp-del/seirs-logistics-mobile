@@ -267,6 +267,12 @@ export const adminApi = {
     forStore: (storeId: string) => req<any>(`/admin/partner-moves/store/${storeId}`),
     /** Every parcel in the shop, whose it is, and its whole history. */
     parcels:  (storeId: string) => req<any>(`/admin/partner-moves/store/${storeId}/parcels`),
+    /** Parcels left behind when a shop was suspended or wound down. */
+    recovery: (storeId: string) => req<any[]>(`/admin/partner-moves/store/${storeId}/recovery`),
+    resolveRecovery: (taskId: string, outcome: string, note?: string) =>
+      req<any>(`/admin/partner-moves/recovery/${taskId}`, {
+        method: 'PATCH', body: JSON.stringify({ outcome, note }),
+      }),
     decide:   (storeId: string, approve: boolean, note?: string, rejectedItems?: string[]) =>
       req<any>(`/admin/partner-moves/store/${storeId}/decide`, {
         method: 'PATCH',

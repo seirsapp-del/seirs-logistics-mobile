@@ -114,6 +114,7 @@ export default function PartnerDetailPage() {
    */
   const [move, setMove] = useState<any>(null);
   const [audit, setAudit] = useState<any>(null);
+  const [recovery, setRecovery] = useState<any[]>([]);
   const [openParcel, setOpenParcel] = useState<string | null>(null);
   const [movingBusy, setMovingBusy] = useState(false);
 
@@ -128,7 +129,59 @@ export default function PartnerDetailPage() {
   const lagos = new Date(nowTick + 60 * 60 * 1000);
   const TODAY_KEY = DAY_KEYS[lagos.getUTCDay()];
 
-  /** Approved only. A pending upload must never become the shop's face. */
+  /**
+ * What happened to a parcel, in the words a non-technical reader needs.
+ *
+ * Keys match the RecoveryOutcome enum on the server. There is no "other":
+ * every value names a real destination, and "unaccounted for" is shouted
+ * rather than softened, because a parcel nobody can find is the one thing
+ * on this page that must never read as routine.
+ */
+const OUTCOME_LABEL: Record<string, string> = {
+  collected:   'Collected by the recipient',
+  redirected:  'Moved to another counter or delivered',
+  returned:    'Returned to the sender',
+  with_driver: 'A rider took it out of the shop',
+  unaccounted: 'UNACCOUNTED FOR',
+};
+
+/**
+ * Custody stages in words, taken from the HandoffStage enum itself.
+ *
+ * The panel used to print the raw value, so a non-technical reader was
+ * shown "customer_to_store" and had to work out that it meant the sender
+ * handed the parcel over the counter.
+ *
+ * Every key here was read off HandoffStage in handoff-record.entity.ts
+ * rather than guessed from what the stages ought to be called. That
+ * matters: the other session's first pass at the same job invented
+ * "sender_to_driver", which does not exist, and missed customer_to_store
+ * entirely. A label map built from imagination fails silently, because an
+ * unmatched key just falls through to the raw string and looks like a
+ * stage nobody has styled yet.
+ *
+ * Unmatched values still fall back to the raw string on purpose: a stage
+ * added later should look unpolished, not disappear.
+ */
+const STAGE_LABEL: Record<string, string> = {
+  customer_to_store:   'Sender handed it in at the shop',
+  customer_to_driver:  'Sender handed it to the rider',
+  store_to_driver:     'Shop handed it to the rider',
+  driver_to_store:     'Rider handed it to the shop',
+  store_to_recipient:  'Shop handed it to the recipient',
+  driver_to_recipient: 'Rider handed it to the recipient',
+  driver_to_driver:    'Rider handed it to another rider',
+};
+
+/** How the person proved who they were. */
+const METHOD_LABEL: Record<string, string> = {
+  physical_id:     'showed an ID document',
+  seirs_id:        'used their SEIRS ID',
+  typed_signature: 'typed their name',
+  receiver_name:   'named as the receiver',
+};
+
+/** Approved only. A pending upload must never become the shop's face. */
   const approvedStorefront = (docs ?? []).find(
     (d: any) => d.docId === 'storefront_photo' && d.status === 'approved',
   )?.url ?? null;
@@ -144,6 +197,8 @@ export default function PartnerDetailPage() {
     // The shelf. Loaded always, not only during a move: a bare count is
     // what made "check the parcels first" impossible to follow.
     adminApi.partnerMoves.parcels(id).then(setAudit).catch(() => setAudit(null));
+    adminApi.partnerMoves.recovery(id).then(r => setRecovery(Array.isArray(r) ? r : []))
+      .catch(() => setRecovery([]));
 
     const storeLoad = adminApi.partnerStores.get(id)
       .then(setData)
@@ -969,6 +1024,105 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
           </div>
         )}
 
+        {/* Parcels left behind when a shop went away.
+
+            Founder: an ops task per parcel, never auto-cancel, and the
+            suspension stays open until every one is accounted for.
+
+            Sits ABOVE the shelf panel when it exists, because a parcel with
+            an open recovery task is somebody's property in a shop that has
+            been stopped, which outranks everything else on this page.
+
+            The distinction the whole panel exists to hold: AN EMPTY SHELF IS
+            NOT THE SAME AS EVERY PARCEL BEING ACCOUNTED FOR. A parcel can
+            leave a shop by being collected and it can leave by being lost.
+            Only a person can say which. */}
+        {recovery.length > 0 && (() => {
+          const open = recovery.filter((t: any) => t.status === "open");
+          return (
+            <div className="bg-white rounded-xl border-2 border-amber-400 shadow-sm mb-6 overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+                <h2 className="font-semibold text-[#0F2B4C]">Parcels to account for</h2>
+                <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                  open.length
+                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                    : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                }`}>
+                  {open.length ? `${open.length} still open` : "All accounted for"}
+                </span>
+              </div>
+
+              <div className="divide-y divide-gray-100">
+                {recovery.map((t: any) => (
+                  <div key={t.id} className="px-5 py-3">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="min-w-0">
+                        <p className="font-mono text-sm font-semibold text-[#0F2B4C]">
+                          {t.dropCode ?? t.dropoffId.slice(0, 8)}
+                        </p>
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          {t.sender?.name ?? "sender unknown"}
+                          {" \u2192 "}
+                          {t.recipient?.name ?? "no recipient named"}
+                          {t.recipient?.phone ? ` \u00b7 ${t.recipient.phone}` : ""}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Opened because the shop was {t.trigger === "suspension" ? "suspended" : t.trigger === "closure" ? "closing" : "moving"}
+                          {t.stillInStore
+                            ? ". Still on the shelf."
+                            : ". No longer on the shelf, which is not the same as dealt with."}
+                        </p>
+                        {t.status === "resolved" && (
+                          <p className="text-xs text-emerald-700 mt-1">
+                            {OUTCOME_LABEL[t.outcome] ?? t.outcome}
+                            {t.note ? ` \u2014 ${t.note}` : ""}
+                          </p>
+                        )}
+                      </div>
+
+                      {t.status === "open" && (
+                        <button
+                          onClick={async () => {
+                            const outcome = await prompt({
+                              title: `What happened to ${t.dropCode ?? "this parcel"}?`,
+                              message: "Type one of: collected, redirected, returned, with_driver, unaccounted. "
+                                     + "Unaccounted for is a real answer and needs a note saying what was checked.",
+                              label: "Outcome",
+                              multiline: false,
+                              confirmLabel: "Next",
+                            });
+                            if (outcome === null) return;
+                            const note = await prompt({
+                              title: "Anything to record?",
+                              message: "What was done, and who you spoke to.",
+                              label: "Note",
+                              multiline: true,
+                              confirmLabel: "Save",
+                            });
+                            if (note === null) return;
+                            try {
+                              const r = await adminApi.partnerMoves.resolveRecovery(
+                                t.id, String(outcome).trim(), String(note ?? ""));
+                              void notify({ title: "Recorded", message: r.message, tone: "success" });
+                              adminApi.partnerMoves.recovery(id)
+                                .then(x => setRecovery(Array.isArray(x) ? x : [])).catch(() => {});
+                            } catch (e: any) {
+                              void notify({ title: "Not saved", message: e?.message ?? "Try again.", tone: "error" });
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-[#0F2B4C] text-[#0F2B4C] text-xs font-medium shrink-0"
+                        >
+                          Record outcome
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* What is actually on the shelf.
 
             Founder, 2026-09-04: "can they view each package in detail and
@@ -1090,11 +1244,13 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
                                     {new Date(h.createdAt).toLocaleString("en-NG")}
                                   </span>
                                   <span className="text-[#16232F]">
-                                    {h.stage}
+                                    {STAGE_LABEL[h.stage] ?? h.stage}
                                     {h.signatureName || h.releasedByName
-                                      ? ` \u2014 signed by ${h.releasedByName ?? h.signatureName}`
+                                      ? `, signed by ${h.releasedByName ?? h.signatureName}`
                                       : ""}
-                                    {h.idType ? ` (${h.idType} ending ${h.idLast4})` : ""}
+                                    {h.method && METHOD_LABEL[h.method]
+                                      ? ` (${METHOD_LABEL[h.method]}${h.idLast4 ? `, ending ${h.idLast4}` : ""})`
+                                      : h.idType ? ` (${h.idType} ending ${h.idLast4})` : ""}
                                   </span>
                                   {h.proofPhotoUrl && (
                                     <a href={h.proofPhotoUrl} target="_blank" rel="noreferrer"

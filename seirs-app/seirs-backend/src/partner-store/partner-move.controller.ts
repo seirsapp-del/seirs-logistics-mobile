@@ -2,6 +2,8 @@ import {
   Controller, Get, Post, Patch, Param, Body, UseGuards,
 } from '@nestjs/common';
 import { PartnerMoveService } from './partner-move.service';
+import { ParcelRecoveryService } from './parcel-recovery.service';
+import { RecoveryOutcome } from './parcel-recovery-task.entity';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -77,7 +79,10 @@ export class PartnerMoveController {
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller('admin/partner-moves')
 export class AdminPartnerMovesController {
-  constructor(private readonly moves: PartnerMoveService) {}
+  constructor(
+    private readonly moves: PartnerMoveService,
+    private readonly rec: ParcelRecoveryService,
+  ) {}
 
   /** GET /api/v1/admin/partner-moves  the queue, oldest first. */
   @Get()
@@ -104,6 +109,33 @@ export class AdminPartnerMovesController {
   @Get('store/:storeId/parcels')
   parcels(@Param('storeId') storeId: string) {
     return this.moves.parcelAudit(storeId);
+  }
+
+  /**
+   * GET /api/v1/admin/partner-moves/store/:storeId/recovery
+   *
+   * Parcels left behind when a shop was suspended or wound down, each with
+   * what has been recorded about it.
+   */
+  @Get('store/:storeId/recovery')
+  recovery(@Param('storeId') storeId: string) {
+    return this.rec.listForStore(storeId);
+  }
+
+  /**
+   * PATCH /api/v1/admin/partner-moves/recovery/:taskId
+   *
+   * Say what happened to one parcel. An outcome is required and there is
+   * no "other": every value names a real destination, including
+   * unaccounted for, so an honest answer always has somewhere to go.
+   */
+  @Patch('recovery/:taskId')
+  resolveRecovery(
+    @Param('taskId') taskId: string,
+    @CurrentUser() admin: any,
+    @Body() body: { outcome: RecoveryOutcome; note?: string },
+  ) {
+    return this.rec.resolve(taskId, admin?.id, body?.outcome, body?.note);
   }
 
   /**

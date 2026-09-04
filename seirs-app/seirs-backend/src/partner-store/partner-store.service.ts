@@ -23,6 +23,8 @@ import { PartnerDocumentsService } from './partner-documents.service';
 import { RouteDistanceService } from '../deliveries/route-distance.service';
 import { secureCode } from '../common/utils/auth-codes';
 import { withinWorkingHours } from '../common/utils/working-hours';
+import { ParcelRecoveryService } from './parcel-recovery.service';
+import { RecoveryTrigger } from './parcel-recovery-task.entity';
 
 // "In store" means physically present at the pickup or dropoff location -
 // these statuses count against capacity, accrue storage fees, etc.
@@ -195,7 +197,9 @@ export class PartnerStoreService {
     @InjectRepository(PartnerSponsorship)   private sponsorshipRepo: Repository<PartnerSponsorship>,
     @InjectRepository(Delivery)             private deliveriesRepo:  Repository<Delivery>,
     @InjectRepository(PartnerPayout)        private payoutsRepo:     Repository<PartnerPayout>,
-    private readonly feesService:    FeesService,
+    private readonly feesService: FeesService,
+    // Raises a job per parcel when a shop is suspended or wound down.
+    private readonly recovery: ParcelRecoveryService,
     private readonly pricing:        PricingService,
     private readonly payments:       PaymentsService,
     private readonly identityService: IdentityService,
@@ -2332,6 +2336,36 @@ export class PartnerStoreService {
       ],
     });
 
+    // Same jobs, different trigger. A wind-down is the other way a shop
+    // goes away and the parcels need the same accounting.
+    if (held > 0) await this.recovery.openTasksFor(storeId, RecoveryTrigger.CLOSURE);
+
+    /**
+     * An empty shelf is not the same as every parcel being accounted for.
+     *
+     * This used to gate only on the live count, so a parcel that left the
+     * shop for ANY reason let the shop close: collected, yes, but equally
+     * cancelled, lost, or quietly marked something else. The count reaching
+     * zero cannot tell those apart, and closing on it is how a missing
+     * package becomes a closed ticket.
+     *
+     * Now a person has to have recorded an outcome for each one, and
+     * "unaccounted for" is an outcome they can record, so an honest answer
+     * is always available and never has to be faked.
+     */
+    const unaccounted = await this.recovery.openCount(storeId);
+    if (unaccounted > 0 && held === 0) {
+      return {
+        storeId,
+        closed: false,
+        packagesRemaining: 0,
+        unaccountedFor: unaccounted,
+        message:
+          `The shelf is empty, but ${unaccounted} ${unaccounted === 1 ? 'parcel has' : 'parcels have'} `
+          + 'no record of what happened to them. Each one needs an outcome before this shop can close.',
+      };
+    }
+
     if (held > 0) {
       return {
         storeId,
@@ -2394,6 +2428,22 @@ export class PartnerStoreService {
     }
     const store = await this.storeRepo.findOne({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Partner store not found.');
+
+    /**
+     * The parcels do not suspend with the shop.
+     *
+     * Suspension used to flip two flags and say nothing about what was on
+     * the shelf, so a counter could be stopped for misconduct while still
+     * holding six people's property and nothing anywhere recorded that
+     * those six needed getting back. Raised BEFORE the flags flip, so a
+     * failure here cannot leave a suspended shop with no follow-up.
+     */
+    const raised = await this.recovery.openTasksFor(storeId, RecoveryTrigger.SUSPENSION);
+    if (raised > 0) {
+      this.logger.warn(
+        `Store ${storeId} suspended holding ${raised} parcel(s): recovery tasks opened.`,
+      );
+    }
 
     await this.storeRepo.update(storeId, {
       status:       PartnerStoreStatus.SUSPENDED,
