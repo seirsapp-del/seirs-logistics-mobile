@@ -18,6 +18,7 @@ import { HamburgerButton } from '@/components/HamburgerButton';
 import { deliveriesApi, loyaltyApi, promotionsApi, usersApi } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { savePdf, saveJson } from '@seirs/shared/utils/dataExport';
 
 // The marketing site is the single home for FAQ and the legal documents:
 // it is edited without shipping a release, and it teaches people SEIRS
@@ -97,10 +98,48 @@ export default function ProfileScreen() {
       // shared. Rate limited server-side to one per 24 hours: building it
       // walks every delivery, payment and audit row the person owns.
       const r: any = await usersApi.requestExportToDocuments();
-      alertDialog(r?.ok ? 'Your data is ready' : 'Already prepared',
-        r?.message ?? 'Open Documents to read or share it.');
+      /**
+       * Ready, and now something can actually be DONE with it.
+       *
+       * Filing it in Documents was the fix for an export that promised an
+       * email nobody ever sent. But the shelf copy is a readable summary,
+       * and a person asking for their data usually wants to keep it or take
+       * it somewhere. So: a PDF to keep, and the machine-readable copy that
+       * NDPR Article 24 actually asks for, which a PDF is not.
+       */
+      alertDialog(
+        r?.ok ? 'Your data is ready' : 'Already prepared',
+        r?.message ?? 'Open Documents to read or share it.',
+        [
+          { text: 'Save as PDF',            onPress: () => void exportAsPdf() },
+          { text: 'Machine-readable copy',  onPress: () => void exportAsJson() },
+          { text: 'Close', style: 'cancel' },
+        ],
+      );
     } catch {
       alertDialog('Could not prepare it', 'Please try again later, or contact support.');
+    }
+  };
+
+  const exportAsPdf = async () => {
+    try {
+      const html = await usersApi.exportHtml();
+      const out  = await savePdf(html, 'Your SEIRS data');
+      if (!out.ok) alertDialog('Could not make the PDF', out.message);
+      else if (!out.shared) alertDialog('Saved', 'The PDF was created on this phone.');
+    } catch {
+      alertDialog('Could not make the PDF', 'Your data is still in Documents and can be read there.');
+    }
+  };
+
+  const exportAsJson = async () => {
+    try {
+      const bundle = await usersApi.exportJson();
+      const out    = await saveJson(bundle);
+      if (!out.ok) alertDialog('Could not save it', out.message);
+      else if (!out.shared) alertDialog('Saved', 'The file was created on this phone.');
+    } catch {
+      alertDialog('Could not save it', 'Please try again later, or contact support.');
     }
   };
 

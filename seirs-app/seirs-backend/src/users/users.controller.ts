@@ -107,7 +107,14 @@ export class UsersController {
     }
 
     const bundle = await this.usersService.exportUserData(user.id);
-    const html   = buildHtmlExport(bundle);
+    /**
+     * TEXT, not HTML. The Documents viewer renders body in a plain Text
+     * view, so filing HTML here showed the person raw markup opening with
+     * <!doctype html>, and sharing it shared the markup. The HTML build is
+     * still what the apps turn into a PDF, and still what format=html
+     * returns; it just does not belong in this field.
+     */
+    const text   = buildTextExport(bundle);
     const when   = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const doc = await this.documents.sendToUser(
@@ -115,7 +122,7 @@ export class UsersController {
       {
         title:    `Your SEIRS data, ${when}`,
         category: 'other',
-        body:     html,
+        body:     text,
       },
       { id: undefined, name: 'SEIRS' },
     );
@@ -186,6 +193,71 @@ function escapeHtml(s: any): string {
   return str
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** Two decimals everywhere, so the maths reconciles. */
+function ngn(v: any): string {
+  return Number(v ?? 0).toLocaleString('en-NG', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
+}
+
+/**
+ * The same export, as text a person can actually read on a phone.
+ *
+ * The Documents shelf renders a document's `body` in a plain Text view: it
+ * has exactly two modes, inline text or a fileUrl it opens. HTML was filed
+ * into it as body, so what a person saw when they asked for their own data
+ * was raw markup, opening with <!doctype html>. Sharing it shared the markup
+ * too. Found by the founder on 2026-09-04.
+ *
+ * So the shelf copy is text, which that viewer renders correctly today with
+ * no new dependency, and the HTML is kept for the PDF the apps generate from
+ * it and for anyone who asks for format=html.
+ *
+ * Deliberately mirrors the HTML section for section rather than inventing a
+ * second layout, so the two never drift into disagreeing about what a
+ * person's data is.
+ */
+function buildTextExport(bundle: any): string {
+  const user = bundle?.user ?? {};
+  const deliveries: any[] = Array.isArray(bundle?.deliveries) ? bundle.deliveries : [];
+  const line = (label: string, value: any) => `  ${label.padEnd(10)} ${value ?? '-'}`;
+
+  const out: string[] = [
+    'YOUR SEIRS DATA',
+    `Prepared ${new Date().toLocaleString('en-NG')}`,
+    '',
+    'This is your copy of what SEIRS holds about you, under NDPR Article 24.',
+    '',
+    'PROFILE',
+    line('Name',     user.name),
+    line('Email',    user.email),
+    line('Phone',    user.phone),
+    line('SEIRS ID', user.accountId),
+    line('Joined',   user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-NG') : null),
+    '',
+    `DELIVERIES (${deliveries.length}${deliveries.length > 500 ? ', showing the most recent 500' : ''})`,
+  ];
+
+  if (deliveries.length === 0) {
+    out.push('  None yet.');
+  } else {
+    for (const d of deliveries.slice(0, 500)) {
+      out.push('');
+      out.push(`  ${d.trackingCode ?? 'no code'}   ${d.status ?? ''}   NGN ${ngn(d.price)}`);
+      out.push(`    ${d.createdAt ? new Date(d.createdAt).toISOString().slice(0, 10) : ''}`);
+      out.push(`    from ${d.pickupAddress ?? '-'}`);
+      out.push(`    to   ${d.dropoffAddress ?? '-'}`);
+    }
+  }
+
+  out.push('');
+  out.push('WHAT IS NOT IN THIS COPY');
+  out.push('  This is the readable summary. The machine-readable copy, which you');
+  out.push('  can ask for in the app, also carries your payments, store drop-offs');
+  out.push('  and handover records in full.');
+  return out.join('\n');
 }
 
 function buildHtmlExport(bundle: any): string {

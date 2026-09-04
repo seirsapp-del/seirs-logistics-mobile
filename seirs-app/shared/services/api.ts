@@ -105,6 +105,44 @@ export async function request<T>(
   return data as T;
 }
 
+/**
+ * The same request, for endpoints that do not answer in JSON.
+ *
+ * request() calls res.json() unconditionally, so anything returning HTML or
+ * CSV throws while parsing before a caller ever sees it. The NDPR export has
+ * offered format=html and format=csv since it was written and no app could
+ * call either, which is part of why the export was only ever reachable in one
+ * shape.
+ *
+ * Kept deliberately thin and next to request() so the two cannot drift on
+ * auth: same token, same 401 handling, same session-expiry signal.
+ */
+export async function requestText(
+  method: string,
+  path: string,
+  auth = true,
+): Promise<string> {
+  const headers: Record<string, string> = {};
+  if (auth) {
+    const token = await getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  }
+  const res  = await fetch(`${_apiBase}${path}`, { method, headers });
+  const text = await res.text();
+
+  if (res.status === 401 && auth) {
+    await AsyncStorage.removeItem(_storageKey);
+    onSessionExpired?.();
+    throw new Error('Session expired. Please sign in again.');
+  }
+  if (!res.ok) {
+    const err = new Error('Request failed') as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+  return text;
+}
+
 // ─── Upload ───────────────────────────────────────────────────────────────────
 export type UploadFolder = 'kyc' | 'proof' | 'avatars' | 'cms' | 'chat' | 'documents' | 'packages';
 
@@ -209,6 +247,17 @@ export const usersApi = {
   // Files the export into the user's Documents shelf and returns a result.
   // exportData above returns the bundle to whoever called it, and every app
   // discarded it while promising an email that does not exist.
+  /**
+   * The same data in the two shapes the endpoint has always offered and no
+   * app could ask for, because request() parses JSON unconditionally.
+   *
+   * exportHtml is what the apps turn into a PDF locally through expo-print;
+   * exportJson is the machine-readable copy NDPR Article 24 actually asks
+   * for, which a PDF is not.
+   */
+  exportHtml: () => requestText('GET', '/users/me/export?format=html'),
+  exportJson: () => request<any>('GET', '/users/me/export?format=json'),
+
   requestExportToDocuments: () =>
     request<{ ok: boolean; reason?: string; hoursRemaining?: number; message: string }>(
       'POST', '/users/me/export/request'),

@@ -9,6 +9,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Image, Platform
 import { useEffect, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useSeirsDialog } from '@/components/SeirsDialog';
+import { savePdf, saveJson } from '@seirs/shared/utils/dataExport';
 import { Drawer } from '@/components/Drawer';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -77,10 +78,45 @@ export default function BusinessProfileTab() {
   const handleExportData = async () => {
     try {
       const r: any = await usersApi.requestExportToDocuments();
-      dialog.alert(r?.ok ? 'Your data is ready' : 'Already prepared',
-        r?.message ?? 'Open Documents to read or share it.');
+      /**
+       * Ready, and now something can be DONE with it. The shelf copy is a
+       * readable summary; a business asking for its data usually wants to
+       * keep it or hand it to an accountant, and the machine-readable copy
+       * is what NDPR Article 24 actually asks for, which a PDF is not.
+       */
+      dialog.alert(
+        r?.ok ? 'Your data is ready' : 'Already prepared',
+        r?.message ?? 'Open Documents to read or share it.',
+        [
+          { text: 'Save as PDF',           onPress: () => { void exportAsPdf(); } },
+          { text: 'Machine-readable copy', onPress: () => { void exportAsJson(); } },
+          { text: 'Close', style: 'cancel' },
+        ],
+      );
     } catch {
       dialog.alert('Could not prepare it', 'Please try again later, or contact support.');
+    }
+  };
+
+  const exportAsPdf = async () => {
+    try {
+      const html = await usersApi.exportHtml();
+      const out  = await savePdf(html, 'Your SEIRS data');
+      if (!out.ok) dialog.alert('Could not make the PDF', out.message);
+      else if (!out.shared) dialog.alert('Saved', 'The PDF was created on this phone.');
+    } catch {
+      dialog.alert('Could not make the PDF', 'Your data is still in Documents and can be read there.');
+    }
+  };
+
+  const exportAsJson = async () => {
+    try {
+      const bundle = await usersApi.exportJson();
+      const out    = await saveJson(bundle);
+      if (!out.ok) dialog.alert('Could not save it', out.message);
+      else if (!out.shared) dialog.alert('Saved', 'The file was created on this phone.');
+    } catch {
+      dialog.alert('Could not save it', 'Please try again later, or contact support.');
     }
   };
 

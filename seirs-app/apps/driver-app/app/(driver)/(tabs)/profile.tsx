@@ -25,6 +25,7 @@ import { HamburgerButton } from '@/components/HamburgerButton';
 import { driversApi, earningsApi, notificationsApi, usersApi } from '@/services/api';
 import { naira, nairaShort } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+import { savePdf, saveJson } from '@seirs/shared/utils/dataExport';
 
 // The marketing site is the single home for FAQ and the legal documents:
 // it is edited without shipping a release, and it teaches people SEIRS
@@ -207,10 +208,45 @@ export default function DriverProfileScreen() {
       // shared. Rate limited server-side to one per 24 hours: building it
       // walks every delivery, payment and audit row the person owns.
       const r: any = await usersApi.requestExportToDocuments();
-      alertDialog(r?.ok ? 'Your data is ready' : 'Already prepared',
-        r?.message ?? 'Open Documents to read or share it.');
+      /**
+       * Ready, and now something can be DONE with it. The shelf copy is a
+       * readable summary; a rider asking for their data usually wants to keep
+       * it or take it to an accountant, and the machine-readable copy is what
+       * NDPR Article 24 actually asks for, which a PDF is not.
+       */
+      alertDialog(
+        r?.ok ? 'Your data is ready' : 'Already prepared',
+        r?.message ?? 'Open Documents to read or share it.',
+        [
+          { text: 'Save as PDF',           onPress: () => void exportAsPdf() },
+          { text: 'Machine-readable copy', onPress: () => void exportAsJson() },
+          { text: 'Close', style: 'cancel' },
+        ],
+      );
     } catch {
       alertDialog('Could not prepare it', 'Please try again later, or contact support.');
+    }
+  };
+
+  const exportAsPdf = async () => {
+    try {
+      const html = await usersApi.exportHtml();
+      const out  = await savePdf(html, 'Your SEIRS data');
+      if (!out.ok) alertDialog('Could not make the PDF', out.message);
+      else if (!out.shared) alertDialog('Saved', 'The PDF was created on this phone.');
+    } catch {
+      alertDialog('Could not make the PDF', 'Your data is still in Documents and can be read there.');
+    }
+  };
+
+  const exportAsJson = async () => {
+    try {
+      const bundle = await usersApi.exportJson();
+      const out    = await saveJson(bundle);
+      if (!out.ok) alertDialog('Could not save it', out.message);
+      else if (!out.shared) alertDialog('Saved', 'The file was created on this phone.');
+    } catch {
+      alertDialog('Could not save it', 'Please try again later, or contact support.');
     }
   };
 
