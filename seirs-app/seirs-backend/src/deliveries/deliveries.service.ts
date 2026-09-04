@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { publicSiteUrl } from '../common/utils/public-site';
-import { withinWorkingHours } from '../drivers/working-hours';
+import { withinWorkingHours } from '../common/utils/working-hours';
 import { aVehicle } from '../common/vehicle-labels';
 import { Payment, PaymentStatus } from '../payments/payment.entity';
 import { TicketTopic } from '../support/support-ticket.entity';

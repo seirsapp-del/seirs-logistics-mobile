@@ -17,6 +17,19 @@ export type WorkingHours =
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
+/**
+ * Are they working right now?
+ *
+ * Moved out of drivers/ on 2026-09-03 because partner stores need the
+ * same answer and had a SECOND implementation of it, isOpenNow in
+ * partner-store.service, which could not express a shop open past
+ * midnight: it tested mins >= 1080 && mins < 120, which is never true,
+ * so an 18:00 to 02:00 kiosk computed as closed forever.
+ *
+ * One implementation, two owner types. deliveries.service already
+ * imported this across module boundaries, so common/utils is where it
+ * belonged already.
+ */
 export function withinWorkingHours(hours: WorkingHours, now: Date = new Date()): boolean {
   if (!hours) return true;
   try {

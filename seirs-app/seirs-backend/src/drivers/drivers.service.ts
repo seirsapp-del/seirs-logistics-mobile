@@ -21,7 +21,7 @@ import { KycDocument, KycDocStatus } from '../kyc/kyc-document.entity';
 import { KycDocumentsService } from '../kyc/kyc-documents.service';
 import { buildKycQueue } from './kyc-queue';
 import { adminsWithPermission } from '../notifications/admin-audience';
-import { withinWorkingHours } from './working-hours';
+import { withinWorkingHours } from '../common/utils/working-hours';
 
 /**
  * The five documents a vehicle change carries, keyed exactly as the driver
