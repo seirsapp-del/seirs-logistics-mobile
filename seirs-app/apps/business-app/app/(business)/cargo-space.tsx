@@ -208,9 +208,29 @@ export default function CargoSpaceScreen() {
                 </View>
               </View>
 
+              {/*
+                * Where to bring the load.
+                *
+                * The card carried the vehicle and the spare kilos but never
+                * said where the driver actually leaves from, so a trader
+                * could pick a lorry with no idea whether it meant crossing
+                * Lagos or walking to the next street. The customer screen has
+                * shown this since Travel Buddy shipped and the payload has
+                * always carried it; only this screen left it out. Same
+                * wording as the customer app, deliberately.
+                */}
+              <Text style={[styles.tripMeta, { color: theme.textSecond, marginTop: 2 }]}>
+                {trip.pickupMode === 'fixed' && trip.pickupAddress
+                  ? `Load at: ${trip.pickupAddress}`
+                  : 'Loads along the route (agree the spot in chat)'}
+              </Text>
+
               <View style={styles.tripFacts}>
                 <Text style={[styles.tripMeta, { color: theme.textSecond }]}>
                   {vehicleLine(trip.driver)}
+                  {/* A trader handing over goods is choosing a person, not
+                      just a lorry. The rating is already in the payload. */}
+                  {trip.driver?.rating != null ? `  ·  ${Number(trip.driver.rating).toFixed(1)} rating` : ''}
                 </Text>
                 <Text style={[styles.spare, { color: spare > 0 ? theme.primary : theme.textSecond }]}>
                   {spare > 0 ? `${spare} kg of space` : 'Space not stated'}

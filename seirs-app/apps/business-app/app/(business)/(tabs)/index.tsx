@@ -125,6 +125,18 @@ export default function BusinessDashboard() {
                     already chosen. */}
                 <ActionCard icon="Truck"           label="Special Cargo" sub="Trucks, cold chain & heavy loads"
                   onPress={() => router.push({ pathname: '/(business)/send-package', params: { preset: 'cargo' } } as any)} />
+                {/*
+                  * Cargo Space was reachable from the drawer only, while the
+                  * customer app puts its equivalent on the home screen. That
+                  * is backwards: room on a lorry already making the run is
+                  * worth more to a trader than Travel Buddy is to a customer,
+                  * and it is the harder of the two to stumble across. Founder
+                  * approved promoting it on 2026-09-04; the drawer entry
+                  * stays. Route, not Truck, so it does not read as a second
+                  * Special Cargo sitting next to the first.
+                  */}
+                <ActionCard icon="Route"           label="Cargo Space" sub="Room on a trip already being made"
+                  onPress={() => router.push('/(business)/cargo-space' as any)} />
               </View>
 
               <View style={styles.statsGrid}>
