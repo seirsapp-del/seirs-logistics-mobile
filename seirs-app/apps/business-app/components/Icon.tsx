@@ -15,6 +15,9 @@ import {
   // registered here, and the component renders nothing for unknown names.
   AlignLeft, BellOff, CheckCheck, LifeBuoy, MessageSquare, Paperclip, Receipt,
   MessageCircle, MoreHorizontal,
+  // 2026-09-05: trip-requests renders Navigation and it was never here,
+  // so that icon has been invisible. Found by giving ICONS a real type.
+  Navigation,
   // Added 2026-08-23 (B-7.1), the third under-fill of this registry. All six
   // were live call sites rendering NOTHING: AlertTriangle is the SOS Emergency
   // drawer row and the seirs-id security warning, QrCode is "My SEIRS ID" in
@@ -36,7 +39,7 @@ import {
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-const ICONS: Record<string, LucideIcon> = {
+const ICONS = {
   Package, PackageCheck, PackageX, PackagePlus, ScanLine, LayoutDashboard, TrendingUp,
   Settings, LogOut, ArrowLeft, ArrowRight, ChevronRight, Search, X, Calendar, CheckSquare, Check, Maximize2, Gift, XCircle, Megaphone,
   AlertCircle, Clock, Wallet, Banknote, Users, UserPlus, UserMinus, Camera,
@@ -52,7 +55,7 @@ const ICONS: Record<string, LucideIcon> = {
   // Messages tab is MessageSquare, the support CTA is LifeBuoy) but never
   // registered here, and the component renders nothing for unknown names.
   AlignLeft, BellOff, CheckCheck, LifeBuoy, MessageSquare, Paperclip, Receipt,
-  MessageCircle, MoreHorizontal,
+  MessageCircle, MoreHorizontal, Navigation,
   // Added 2026-08-23 (B-7.1), the third under-fill of this registry. All six
   // were live call sites rendering NOTHING: AlertTriangle is the SOS Emergency
   // drawer row and the seirs-id security warning, QrCode is "My SEIRS ID" in
@@ -79,8 +82,20 @@ const ICONS: Record<string, LucideIcon> = {
 // A visible circle is a control the user can still find and tap.
 const FALLBACK_ICON: LucideIcon = Circle;
 
+/**
+ * Every name the registry actually answers to.
+ *
+ * ICONS used to be typed `Record<string, LucideIcon>`, which made this
+ * `string`: any name compiled, and an unregistered one rendered nothing
+ * at all. The file carries three separate comments about call sites
+ * discovered rendering invisible chrome, which is what that type costs.
+ * With the annotation gone the object keeps its literal keys and a wrong
+ * name is a build error instead of a blank space on someone's screen.
+ */
+export type IconName = keyof typeof ICONS;
+
 interface IconProps {
-  name:         keyof typeof ICONS;
+  name:         IconName;
   size?:        number;
   color?:       string;
   strokeWidth?: number;

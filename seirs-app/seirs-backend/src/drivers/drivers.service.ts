@@ -17,7 +17,7 @@ import { FeesService } from '../fees/fees.service';
 import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
 import { SupportService } from '../support/support.service';
 import { DriverEarning } from '../earnings/driver-earning.entity';
-import { vehicleIdentityForPassenger } from '../common/redact-driver';
+import { vehicleIdentityForPassenger, driverForBrowsing } from '../common/redact-driver';
 import { KycDocument, KycDocStatus } from '../kyc/kyc-document.entity';
 import { KycDocumentsService } from '../kyc/kyc-documents.service';
 import { buildKycQueue } from './kyc-queue';
@@ -715,6 +715,27 @@ export class DriversService {
       }
     }
 
+    /**
+     * Tell the people who asked for this corridor (founder 2026-09-04).
+     *
+     * Someone searched Travel Buddy for this route, found nothing, and
+     * left their name against it. This is the moment that request comes
+     * good, and it is the only moment: nothing else in the system knows
+     * a new corridor has appeared.
+     *
+     * Lazily referenced and non-blocking. TravelBuddyModule already
+     * imports this module, so importing it back would close a cycle, and
+     * a failed notification must never cost the rider their declared
+     * trip.
+     */
+    try {
+      const tb: any = (this as any).travelBuddyRef;
+      if (tb?.notifyRouteWatchers) {
+        void tb.notifyRouteWatchers(saved.fromCity, saved.toCity, saved.id)
+          .catch(() => undefined);
+      }
+    } catch { /* the trip is saved either way */ }
+
     return saved;
   }
 
@@ -816,19 +837,63 @@ export class DriversService {
    * no use for a car with two seats free, and showing them one wastes
    * their time and makes the product look unserious.
    */
-  async browseTrips(fromCity: string, toCity: string, forPackages = false) {
+  async browseTrips(
+    fromCity: string,
+    toCity: string,
+    forPackages = false,
+    /**
+     * Coordinates, when the searcher gave us any (founder 2026-09-04).
+     *
+     * Names are the weak link in this whole product. A driver's stop is
+     * filed under whatever a geocoder called it, a passenger types
+     * whatever they call it, and when those disagree a real declared
+     * trip is invisible to the exact person it was declared for. Two
+     * live cases on one evening: Obafemi Awolowo University filed as
+     * "Kajola", and a market in Ibadan filed as "Aba".
+     *
+     * Coordinates do not disagree. When both ends are supplied this adds
+     * a distance match ALONGSIDE the name match, so a trip qualifies if
+     * either the names line up or the stops are physically near where
+     * the person is standing and going. Additive on purpose: a searcher
+     * with no location, or one who typed a place we could not resolve,
+     * loses nothing.
+     */
+    geo?: {
+      fromLat?: number; fromLng?: number;
+      toLat?: number;   toLng?: number;
+      radiusKm?: number;
+    },
+  ) {
     const from = `%${(fromCity ?? '').trim()}%`;
     const to   = `%${(toCity ?? '').trim()}%`;
+
+    const num = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : null);
+    const fLat = num(geo?.fromLat), fLng = num(geo?.fromLng);
+    const tLat = num(geo?.toLat),   tLng = num(geo?.toLng);
+    const hasGeo = fLat !== null && fLng !== null && tLat !== null && tLng !== null;
+
+    /**
+     * How far off the route still counts as "near me".
+     *
+     * 25 km is the founder's figure, and it is the right shape for
+     * Nigerian cities: Lagos is roughly 40 km across, so a smaller
+     * radius would cut a passenger in Ikorodu off from a trip boarding
+     * at Ojota, which is a trip they would absolutely take. Clamped
+     * because an unbounded radius turns "near me" into "everything".
+     */
+    const radiusKm = Math.min(200, Math.max(1, num(geo?.radiusKm) ?? 25));
     const trips = await this.tripsRepo
       .createQueryBuilder('t')
       .leftJoin('t.driver', 'd')
-      // Exactly the columns vehicleIdentityForPassenger reads, and no
-      // more: make, model and colour live inside vehicleDetails, they
-      // are not columns of their own.
-      .addSelect([
-        'd.id', 'd.rating', 'd.vehicleType', 'd.vehiclePlate',
-        'd.vehiclePhotoUrl', 'd.vehicleDetails',
-      ])
+      /**
+       * Only what BROWSING may show (2026-09-04). The plate, the vehicle
+       * photograph and the make/model/colour inside vehicleDetails were
+       * being selected here and returned to anyone who ran a search.
+       * Not selecting them at all is stronger than filtering them later:
+       * a column that never leaves the database cannot be leaked by a
+       * future edit to the mapping below.
+       */
+      .addSelect(['d.id', 'd.rating', 'd.vehicleType'])
       .leftJoin('d.user', 'u')
       .addSelect(['u.id', 'u.name'])
       .where('t.status = :status', { status: DriverTripStatus.ACTIVE })
@@ -846,8 +911,39 @@ export class DriversService {
                 AND s1."city" ILIKE :from
                 AND s2."city" ILIKE :to
            )
+           OR EXISTS (
+             SELECT 1
+               FROM "trip_stops" s1
+               JOIN "trip_stops" s2
+                 ON s2."trip_id" = s1."trip_id"
+                AND s2."sequence" > s1."sequence"
+              WHERE s1."trip_id" = t."id"
+                AND s1."address" ILIKE :from
+                AND s2."address" ILIKE :to
+           )
+           ${hasGeo ? `
+           OR EXISTS (
+             SELECT 1
+               FROM "trip_stops" s1
+               JOIN "trip_stops" s2
+                 ON s2."trip_id" = s1."trip_id"
+                AND s2."sequence" > s1."sequence"
+              WHERE s1."trip_id" = t."id"
+                AND (6371 * acos(LEAST(1, GREATEST(-1,
+                      cos(radians(:fLat)) * cos(radians(s1."latitude"))
+                    * cos(radians(s1."longitude") - radians(:fLng))
+                    + sin(radians(:fLat)) * sin(radians(s1."latitude"))
+                    )))) <= :radiusKm
+                AND (6371 * acos(LEAST(1, GREATEST(-1,
+                      cos(radians(:tLat)) * cos(radians(s2."latitude"))
+                    * cos(radians(s2."longitude") - radians(:tLng))
+                    + sin(radians(:tLat)) * sin(radians(s2."latitude"))
+                    )))) <= :radiusKm
+           )` : ''}
          )`,
-        { from, to },
+        hasGeo
+          ? { from, to, fLat, fLng, tLat, tLng, radiusKm }
+          : { from, to },
       )
       .andWhere(forPackages ? 't."acceptsPackages" = true' : '1=1')
       // No point listing a rider with nothing left to give.
@@ -911,25 +1007,30 @@ export class DriversService {
       /** Where THIS passenger boards and alights, when they matched a
        *  segment rather than the whole trip. Null for an endpoint match. */
       segment: segByTrip.get(t.id) ?? null,
-      pickupMode: t.pickupMode, pickupAddress: t.pickupAddress,
+      pickupMode: t.pickupMode,
+      /**
+       * The AREA, never the address (2026-09-04).
+       *
+       * This returned the exact spot the driver typed, to anybody who
+       * ran a search. Combined with departAt, a plate and a photograph,
+       * it told a stranger precisely where a named driver would be
+       * standing and when. The city is all a passenger needs to decide;
+       * the address arrives with the acceptance.
+       */
+      pickupArea: t.fromCity ?? null,
       routeKm: t.routeKm != null ? Number(t.routeKm) : null,
-      destLat: t.destLat != null ? Number(t.destLat) : null,
-      destLng: t.destLng != null ? Number(t.destLng) : null,
-      destAddress: t.destAddress ?? null,
       acceptsPassengers: !!t.acceptsPassengers,
       acceptsPackages: !!t.acceptsPackages,
       seatsLeft: Math.max(0, Number(t.seatsTotal) - Number(t.seatsBooked)),
       spareCapacityKg: Number(t.spareCapacityKg ?? 0),
-      driver: {
-        name: t.driver?.user?.name ?? 'Driver',
-        rating: t.driver?.rating ?? null,
-        // Plate, colour, make and model, not just the class of machine:
-        // somebody standing in a motor park at 5am has to pick this
-        // vehicle out of the row and be sure it is the one they paid
-        // for. Whitelisted in one place so the driver row's bank
-        // details and home address cannot follow it out here.
-        ...vehicleIdentityForPassenger(t.driver),
-      },
+      /**
+       * A person and a class of vehicle, which is enough to choose
+       * between trips. Plate, photograph, colour and model come from
+       * vehicleIdentityForPassenger on the booking detail, once the
+       * driver has accepted this passenger and the two have actually
+       * agreed to meet.
+       */
+      driver: driverForBrowsing(t.driver),
     }));
   }
 
@@ -1270,6 +1371,47 @@ export class DriversService {
    * measured distances that every segment fare is computed from, so a
    * different route is a different trip: cancel and declare it.
    */
+  /**
+   * What the driver has already PROMISED somebody on this trip.
+   *
+   * driver_trips.seatsBooked is a payment fact, not an agreement fact:
+   * reserveSeats runs on the money path, so a driver who has accepted a
+   * request still reads as zero booked until the card clears. The edit
+   * guard keyed on that counter, which left a live window between the
+   * driver saying yes and the passenger paying, in which the departure
+   * time, the seat count and the whole passenger offer could still be
+   * moved under someone about to be charged (founder 2026-09-04).
+   *
+   * So the question this answers is "has anyone been told yes", counted
+   * from the booking rows themselves. Raw SQL rather than a repository
+   * because DriversModule does not own these tables and must not import
+   * the module that does: TravelBuddyModule already imports this one.
+   */
+  private async liveCommitments(tripId: string): Promise<{ seats: number; parcels: number; total: number }> {
+    const seatRows = await this.tripsRepo.manager
+      .query(
+        `SELECT COALESCE(SUM("seats"), 0)::int AS n
+           FROM "seat_bookings"
+          WHERE "trip_id" = $1
+            AND "status" IN ('accepted', 'pending_payment', 'booked', 'boarded')`,
+        [tripId],
+      )
+      .catch(() => [{ n: 0 }]);
+
+    const parcelRows = await this.tripsRepo.manager
+      .query(
+        `SELECT COUNT(*)::int AS n
+           FROM "parcel_requests"
+          WHERE "tripId" = $1 AND "status" = 'accepted'`,
+        [tripId],
+      )
+      .catch(() => [{ n: 0 }]);
+
+    const seats   = Number(seatRows?.[0]?.n ?? 0);
+    const parcels = Number(parcelRows?.[0]?.n ?? 0);
+    return { seats, parcels, total: seats + parcels };
+  }
+
   async editInterstateTrip(
     userId: string,
     tripId: string,
@@ -1298,8 +1440,37 @@ export class DriversService {
       throw new BadRequestException('This trip has already departed.');
     }
 
+    /**
+     * Once the driver has said yes to anybody, the trip is frozen
+     * (founder 2026-09-04): "when the driver already accept a booking
+     * they should not be able to edit it again".
+     *
+     * A passenger who has been accepted is arranging their day around
+     * this departure and is often mid-payment against these exact terms.
+     * Letting the other side move the time, cut the seats or withdraw
+     * the passenger offer after agreeing is not an edit, it is a
+     * different deal. Cancelling is still available, and it goes through
+     * the refund path where it belongs rather than quietly stranding
+     * somebody.
+     */
+    const live   = await this.liveCommitments(tripId);
     const booked = Number(trip.seatsBooked ?? 0);
-    const hasPassengers = booked > 0;
+
+    if (live.total > 0 || booked > 0) {
+      const parts: string[] = [];
+      const heldSeats = Math.max(live.seats, booked);
+      if (heldSeats > 0) parts.push(`${heldSeats} seat${heldSeats === 1 ? '' : 's'}`);
+      if (live.parcels > 0) parts.push(`${live.parcels} package${live.parcels === 1 ? '' : 's'}`);
+      throw new BadRequestException(
+        `You have already accepted ${parts.join(' and ')} on this trip, so it can no longer be changed. ` +
+        'They arranged around what you agreed to. Cancel the trip if you can no longer make it.',
+      );
+    }
+
+    // Second line, and deliberately kept: if the freeze above is ever
+    // relaxed to allow harmless edits, these are the ones that must
+    // still refuse.
+    const hasPassengers = booked > 0 || live.seats > 0;
 
     if (body.departAt !== undefined) {
       const when = new Date(body.departAt);

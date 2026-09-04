@@ -52,7 +52,7 @@ const TERMS_URL   = 'https://seirs-website.vercel.app/terms-of-service';
 const PRIVACY_URL = 'https://seirs-website.vercel.app/privacy-policy';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Icon } from '@/components/Icon';
+import { Icon, type IconName } from '@/components/Icon';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { authApi } from '@/services/api';
 import { validatePassword, isPasswordValid } from '@seirs/shared';
@@ -474,7 +474,7 @@ type ThemeShape = typeof Colors.light;
  */
 function Field({ theme, label, optional, required, icon, hint, anchor, onAnchor, children, ...props }: {
   theme: ThemeShape; label: string; optional?: boolean; required?: boolean;
-  icon?: string; hint?: string; children?: ReactNode;
+  icon?: IconName; hint?: string; children?: ReactNode;
   anchor?: string; onAnchor?: (k: string, y: number) => void;
 } & React.ComponentProps<typeof TextInput>) {
   return (

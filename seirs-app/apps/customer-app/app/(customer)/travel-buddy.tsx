@@ -14,9 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { deliveriesApi } from '@/services/api';
+import * as Location from 'expo-location';
+import { deliveriesApi, mapsApi } from '@/services/api';
+import { derivePlace } from '@seirs/shared/models/cities';
 import { showDialog, type DialogAction } from '@/components/SeirsDialog';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
+import { CitySearchField } from '@/components/CitySearchField';
 
 
 /**
@@ -106,22 +109,153 @@ export default function TravelBuddyScreen() {
   const [sortBy, setSortBy] = useState<'soonest' | 'seats'>('soonest');
   const [when,   setWhen]   = useState<'any' | 'today' | 'tomorrow' | 'week'>('any');
 
+  /**
+   * The day, and how many of you there are (founder 2026-09-04).
+   *
+   * The search asked for two cities and nothing else, so a family of
+   * three looking for Friday were shown one seat left on a Tuesday okada
+   * and had to work out for themselves that it was no use. Both are
+   * applied to rows already fetched, so the endpoint the business app
+   * shares is untouched.
+   */
+  const [dayISO, setDayISO] = useState<string | null>(null);
+  const [seats,  setSeats]  = useState(1);
+
+  /**
+   * A route nobody runs yet is still worth knowing about.
+   *
+   * An empty search used to be a dead end: a sentence apologising, and
+   * no way to act. The person in front of it is the clearest demand
+   * signal the business has, someone who has named both ends of a route
+   * and wants to pay for it, and we were throwing that away
+   * (founder 2026-09-04). Now they can ask to be told, which also gives
+   * operations a list of corridors to go and recruit drivers onto.
+   */
+  const [alerted, setAlerted] = useState(false);
+
+  /**
+   * Coordinates for each end, when we have any (founder 2026-09-04).
+   *
+   * The server matches names AND, when both ends carry coordinates,
+   * distance. Distance is the half that cannot be defeated by a geocoder
+   * calling Ile-Ife "Kajola", so the screen collects coordinates
+   * wherever it can: from the device when somebody taps "use my
+   * location", and otherwise by resolving the typed city once, at search
+   * time, rather than on every keystroke.
+   */
+  const [fromCoords, setFromCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [toCoords,   setToCoords]   = useState<{ lat: number; lng: number } | null>(null);
+  const [locating,   setLocating]   = useState<'from' | 'to' | null>(null);
+
+  const useMyLocation = async (which: 'from' | 'to') => {
+    setLocating(which);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        showDialog({
+          title:   'Location is off',
+          message: 'Turn on location for SEIRS, or type the town instead. Both work.',
+        });
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      // Name it for the human, but keep the coordinates for the match.
+      let label = '';
+      try {
+        const json: any = await mapsApi.geocode({ latlng: `${lat},${lng}` });
+        const top = json?.results?.[0];
+        label = derivePlace({
+          components:       top?.address_components ?? null,
+          formattedAddress: top?.formatted_address ?? null,
+        }).city;
+      } catch { /* a nameless pin still searches correctly */ }
+
+      if (which === 'from') { setFromCoords({ lat, lng }); if (label) setFrom(label); }
+      else                  { setToCoords({ lat, lng });   if (label) setTo(label); }
+    } catch (e: any) {
+      showDialog({
+        title:   'Could not find you',
+        message: e?.message ?? 'Try again, or type the town instead.',
+      });
+    } finally {
+      setLocating(null);
+    }
+  };
+
+  /** A city name turned into a point, so the distance match can run. */
+  const coordsFor = async (
+    text: string,
+    known: { lat: number; lng: number } | null,
+  ): Promise<{ lat: number; lng: number } | null> => {
+    if (known) return known;
+    const q = text.trim();
+    if (!q) return null;
+    try {
+      const json: any = await mapsApi.geocode({ address: `${q}, Nigeria` });
+      const loc = json?.results?.[0]?.geometry?.location;
+      if (loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
+        return { lat: Number(loc.lat), lng: Number(loc.lng) };
+      }
+    } catch { /* the name-based match still runs without this */ }
+    return null;
+  };
+
+  /**
+   * A month of days, not a fortnight (founder 2026-09-05).
+   *
+   * Two weeks is the wrong horizon for intercity travel here: people
+   * book around a wedding, a burial, a school run or a market day that
+   * is three or four weeks out, and a strip that stops before the date
+   * they have in mind reads as "we do not go then".
+   */
+  const DAY_STRIP = (() => {
+    const out: Array<{ iso: string; top: string; bottom: string }> = [];
+    const now = new Date();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      out.push({
+        iso,
+        top:    i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-GB', { weekday: 'short' }),
+        bottom: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+      });
+    }
+    return out;
+  })();
+
   const visibleTrips = (() => {
     const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const today = startOfDay(new Date());
     const DAY   = 24 * 60 * 60 * 1000;
 
     const withinWindow = (t: any) => {
-      if (when === 'any') return true;
       const at = new Date(t.departAt).getTime();
       if (!Number.isFinite(at)) return true;   // an unreadable date is not a reason to hide a trip
       const day = startOfDay(new Date(at));
+      // A chosen day wins over the coarse window: they are one control.
+      if (dayISO) {
+        const [y, m, d] = dayISO.split('-').map(Number);
+        return day === startOfDay(new Date(y, m - 1, d));
+      }
+      if (when === 'any')      return true;
       if (when === 'today')    return day === today;
       if (when === 'tomorrow') return day === today + DAY;
       return at < today + 7 * DAY;             // 'week'
     };
 
-    return trips.filter(withinWindow).sort((a, b) =>
+    /**
+     * Room for the whole party.
+     *
+     * A trip with one seat left is not a result for three people, and
+     * showing it only to refuse them at the seat picker wastes the trip
+     * they might have found instead.
+     */
+    const fitsParty = (t: any) => Number(t.seatsLeft ?? 0) >= seats;
+
+    return trips.filter(t => withinWindow(t) && fitsParty(t)).sort((a, b) =>
       sortBy === 'seats'
         ? Number(b.seatsLeft ?? 0) - Number(a.seatsLeft ?? 0)
         : new Date(a.departAt).getTime() - new Date(b.departAt).getTime(),
@@ -149,7 +283,14 @@ export default function TravelBuddyScreen() {
   const refresh = useCallback(async () => {
     if (!from.trim() || !to.trim()) return;
     try {
-      const rows = await deliveriesApi.travelBuddyTrips(from.trim(), to.trim());
+      const [a, b] = await Promise.all([
+        coordsFor(from, fromCoords),
+        coordsFor(to,   toCoords),
+      ]);
+      const rows = await deliveriesApi.travelBuddyTrips(from.trim(), to.trim(),
+        a && b
+          ? { fromLat: a.lat, fromLng: a.lng, toLat: b.lat, toLng: b.lng, radiusKm: 25 }
+          : undefined);
       setTrips(rows ?? []);
     } catch { /* keep what is on screen */ }
   }, [from, to]);
@@ -185,13 +326,34 @@ export default function TravelBuddyScreen() {
     }
     setLoading(true);
     setSearched(true);
+    setAlerted(false);          // a new route is a new question
     try {
-      const rows = await deliveriesApi.travelBuddyTrips(from.trim(), to.trim());
+      const [a, b] = await Promise.all([
+        coordsFor(from, fromCoords),
+        coordsFor(to,   toCoords),
+      ]);
+      const rows = await deliveriesApi.travelBuddyTrips(from.trim(), to.trim(),
+        a && b
+          ? { fromLat: a.lat, fromLng: a.lng, toLat: b.lat, toLng: b.lng, radiusKm: 25 }
+          : undefined);
       setTrips(rows ?? []);
     } catch (e: any) {
       showDialog({ title: 'Search failed', message: e?.message ?? 'Try again.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  /** Register the route, so an empty search leaves something behind. */
+  const alertMe = async () => {
+    try {
+      await deliveriesApi.watchTravelBuddyRoute(from.trim(), to.trim());
+      setAlerted(true);
+    } catch (e: any) {
+      showDialog({
+        title:   'Could not set that alert',
+        message: e?.message ?? 'Try again in a moment.',
+      });
     }
   };
 
@@ -233,10 +395,13 @@ export default function TravelBuddyScreen() {
     }
     showDialog({
       title: 'How many seats?',
-      // The vehicle goes in front of the seat count on purpose: this is
-      // the last screen before money moves, and the passenger should
-      // know what they are walking up to before they pay for it.
-      message: `${vehicleSummary(trip.driver)}\n\n${trip.seatsLeft} available on this trip.`,
+      // The vehicle used to be named here, on the reasoning that this is
+      // the last screen before money moves. It cannot be: at this point
+      // the driver has not agreed to carry this person, and printing
+      // their plate to anyone who taps Book would hand it out for the
+      // price of a tap. It is promised instead, and delivered on
+      // acceptance, before any money actually moves.
+      message: `${trip.seatsLeft} available on this trip.\n\nThe plate, colour and photo of the vehicle are shown as soon as the driver accepts, so you can pick it out before you board.`,
       actions: [...seats, { text: 'Cancel', style: 'cancel' }],
     });
   };
@@ -287,22 +452,86 @@ export default function TravelBuddyScreen() {
           </Text>
         </View>
 
-        <View style={styles.formRow}>
-          <TextInput
+        {/* A trip is a route, a day and a number of people. The screen used
+            to ask only the route, so the other two were discovered at the
+            seat picker, three taps in (founder 2026-09-04). */}
+        <View style={[styles.searchCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+          <CitySearchField
+            label="FROM"
             value={from}
-            onChangeText={setFrom}
-            placeholder="From (e.g. Ibadan)"
-            placeholderTextColor={theme.textThird}
-            style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
+            onChange={(v) => { setFrom(v); setFromCoords(null); }}
+            placeholder="Where you are leaving"
+            theme={theme}
+            onLocate={() => useMyLocation('from')}
+            locating={locating === 'from'}
+            accessory={
+              <Pressable
+                onPress={() => {
+                  const a = from, ac = fromCoords;
+                  setFrom(to); setFromCoords(toCoords);
+                  setTo(a);    setToCoords(ac);
+                }}
+                hitSlop={10}
+                style={[styles.swapBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
+              >
+                <Ionicons name="swap-vertical" size={16} color={theme.text} />
+              </Pressable>
+            }
           />
-          <TextInput
+
+          <CitySearchField
+            label="TO"
             value={to}
-            onChangeText={setTo}
-            placeholder="To (e.g. Lagos)"
-            placeholderTextColor={theme.textThird}
-            style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
+            onChange={(v) => { setTo(v); setToCoords(null); }}
+            placeholder="Where you are going"
+            theme={theme}
+            onLocate={() => useMyLocation('to')}
+            locating={locating === 'to'}
           />
+
+          <View style={styles.metaRow}>
+            <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>WHEN</Text>
+            <View style={styles.seatsInline}>
+              <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>SEATS</Text>
+              <View style={[styles.stepper, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+                <Pressable onPress={() => setSeats(s => Math.max(1, s - 1))} hitSlop={8} style={styles.stepBtn}>
+                  <Text style={[styles.stepMark, { color: seats <= 1 ? theme.textThird : theme.text }]}>–</Text>
+                </Pressable>
+                <Text style={[styles.stepVal, { color: theme.text }]}>{seats}</Text>
+                <Pressable onPress={() => setSeats(s => Math.min(4, s + 1))} hitSlop={8} style={styles.stepBtn}>
+                  <Text style={[styles.stepMark, { color: seats >= 4 ? theme.textThird : theme.text }]}>+</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.dayStrip}
+          >
+            {[{ iso: null as string | null, top: 'Any', bottom: 'date' },
+              ...DAY_STRIP.map(d => ({ iso: d.iso as string | null, top: d.top, bottom: d.bottom }))
+            ].map(d => {
+              const on = dayISO === d.iso;
+              return (
+                <Pressable
+                  key={d.iso ?? 'any'}
+                  onPress={() => setDayISO(d.iso)}
+                  style={[styles.dayChip, {
+                    borderColor:     on ? theme.primary : theme.border,
+                    backgroundColor: on ? theme.primary : theme.surface,
+                  }]}
+                >
+                  <Text style={[styles.dayTop,    { color: on ? '#fff' : theme.text }]}>{d.top}</Text>
+                  <Text style={[styles.dayBottom, { color: on ? '#fff' : theme.textThird }]}>{d.bottom}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
+
         <Pressable style={[styles.searchBtn, { backgroundColor: theme.primary }]} onPress={search} disabled={loading}>
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.searchBtnText}>Find trips</Text>}
         </Pressable>
@@ -333,15 +562,54 @@ export default function TravelBuddyScreen() {
           </View>
         )}
 
-        {searched && !loading && trips.length === 0 && (
+        {searched && !loading && visibleTrips.length === 0 && (
           <View style={styles.empty}>
             <Ionicons name="calendar-outline" size={40} color={theme.textThird} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips on this route yet</Text>
-            <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Drivers declare trips a day or two ahead. Check back, or send
-              your package the normal way and it can still ride with an
-              intercity driver.
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+              {trips.length > 0 ? 'Nothing matching that day' : 'No trips on this route yet'}
             </Text>
+            <Text style={[styles.emptySub, { color: theme.textSecond }]}>
+              {trips.length > 0
+                ? `There are ${trips.length} trip${trips.length === 1 ? '' : 's'} on this route, just not for ${seats} seat${seats === 1 ? '' : 's'} on the day you picked. Try Any date.`
+                : 'Drivers declare trips a day or two ahead. Check back, or send your package the normal way and it can still ride with an intercity driver.'}
+            </Text>
+
+            {/* The dead end, made into a door. */}
+            {trips.length === 0 && (
+              alerted ? (
+                <View style={[styles.alertDone, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+                  <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
+                  <Text style={[styles.alertDoneText, { color: theme.text }]}>
+                    We will tell you when a driver declares {from.trim()} to {to.trim()}.
+                  </Text>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={alertMe}
+                  style={[styles.alertBtn, { borderColor: theme.primary, backgroundColor: theme.surface }]}
+                >
+                  <Ionicons name="notifications-outline" size={17} color={theme.primary} />
+                  <Text style={[styles.alertBtnText, { color: theme.primary }]}>
+                    Alert me when someone declares this route
+                  </Text>
+                </Pressable>
+              )
+            )}
+
+            <Text style={[styles.routesLabel, { color: theme.textSecond, marginTop: Spacing.lg }]}>OR TRY</Text>
+            <View style={styles.routesRow}>
+              {POPULAR_ROUTES.map(r => (
+                <Pressable
+                  key={`empty-${r.from}-${r.to}`}
+                  onPress={() => { setFrom(r.from); setTo(r.to); setDayISO(null); }}
+                  style={[styles.routeChip, { borderColor: theme.border, backgroundColor: theme.surfaceSecond }]}
+                >
+                  <Text style={[styles.routeChipText, { color: theme.text }]}>
+                    {r.from} <Text style={{ color: theme.textThird }}>→</Text> {r.to}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         )}
 
@@ -446,9 +714,9 @@ export default function TravelBuddyScreen() {
                     send them to the wrong city. */}
                 <Text style={[styles.tripMeta, { color: theme.textThird }]}>
                   {trip.segment
-                    ? `Board at ${trip.segment.boardCity} (agree the exact spot in chat)`
-                    : trip.pickupMode === 'fixed' && trip.pickupAddress
-                      ? `Pickup: ${trip.pickupAddress}`
+                    ? `Board at ${trip.segment.boardCity} (exact spot once the driver accepts)`
+                    : trip.pickupMode === 'fixed' && trip.pickupArea
+                      ? `Boards in ${trip.pickupArea}`
                       : 'Pickup along the route (agree in chat)'}
                 </Text>
               </View>
@@ -461,27 +729,32 @@ export default function TravelBuddyScreen() {
               only thing that tells the right vehicle from a stranger's,
               so it has to be the part of the card that is easy to read.
             */}
+            {/*
+              Which car, and WHEN you get to know (2026-09-04).
+
+              This row printed the plate, colour and model straight off
+              the browse list, and the card above it carried a photograph
+              of the vehicle and the driver's full name. So any stranger
+              running a search could assemble, for every declared trip, a
+              named driver, their vehicle, the exact place they would be
+              standing and the exact minute. The founder's reason for
+              keeping trips off the home screen was driver safety; this
+              was the same exposure through another door.
+
+              The list now says what KIND of vehicle, which is what a
+              passenger needs in order to choose. The plate, photograph
+              and colour arrive with the acceptance, which is the moment
+              the driver has agreed to meet this particular person.
+            */}
             <View style={[styles.vehicleId, { backgroundColor: theme.primary + '10' }]}>
-              <Ionicons name="eye-outline" size={15} color={theme.primary} />
+              <Ionicons name="lock-closed-outline" size={15} color={theme.primary} />
               <View style={{ flex: 1 }}>
-                {vehicleDescription(trip.driver) ? (
-                  <Text style={[styles.vehicleDesc, { color: theme.text }]}>
-                    Look for a {vehicleDescription(trip.driver).toLowerCase()}
-                  </Text>
-                ) : (
-                  <Text style={[styles.vehicleDesc, { color: theme.textSecond }]}>
-                    Colour and model not listed: ask in chat
-                  </Text>
-                )}
-                {trip.driver?.vehiclePlate ? (
-                  <Text style={[styles.vehiclePlate, { color: theme.text }]}>
-                    {trip.driver.vehiclePlate}
-                  </Text>
-                ) : (
-                  <Text style={[styles.tripMeta, { color: theme.textThird }]}>
-                    No plate on file: confirm it with the driver before you board
-                  </Text>
-                )}
+                <Text style={[styles.vehicleDesc, { color: theme.text }]}>
+                  {VEHICLE_LABEL[trip.driver?.vehicleType] ?? 'Vehicle'}
+                </Text>
+                <Text style={[styles.tripMeta, { color: theme.textThird }]}>
+                  Plate, colour and photo are shown once the driver accepts you
+                </Text>
               </View>
             </View>
 
@@ -559,6 +832,34 @@ const styles = StyleSheet.create({
 
   formRow: { gap: Spacing.sm },
   input:   { borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: FontSize.base },
+
+  // The trip search: route, day and party size in one card, so the three
+  // questions a journey actually has are asked together.
+  searchCard:  { borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: Spacing.md },
+  swapBtn:     { width: 34, height: 34, borderRadius: 17, borderWidth: 1,
+                 alignItems: 'center', justifyContent: 'center' },
+  fieldLabel:  { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
+  metaRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  seatsInline: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  stepper:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: Radius.full,
+                 paddingHorizontal: 4, height: 34 },
+  stepBtn:     { width: 30, alignItems: 'center', justifyContent: 'center' },
+  stepMark:    { fontSize: 19, fontWeight: '600', lineHeight: 22 },
+  stepVal:     { fontSize: FontSize.base, fontWeight: '700', minWidth: 18, textAlign: 'center' },
+  dayStrip:    { gap: Spacing.sm, paddingRight: Spacing.md },
+  dayChip:     { borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 8,
+                 alignItems: 'center', minWidth: 62 },
+  dayTop:      { fontSize: FontSize.sm, fontWeight: '700' },
+  dayBottom:   { fontSize: FontSize.xs, marginTop: 1 },
+
+  // The empty result, which is a demand signal rather than an apology.
+  alertBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                   borderWidth: 1, borderRadius: Radius.full, paddingVertical: 12, paddingHorizontal: 16,
+                   marginTop: Spacing.md },
+  alertBtnText:  { fontSize: FontSize.sm, fontWeight: '700' },
+  alertDone:     { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1,
+                   borderRadius: Radius.md, padding: 12, marginTop: Spacing.md },
+  alertDoneText: { fontSize: FontSize.sm, flex: 1, lineHeight: 19 },
   routesWrap:    { marginTop: Spacing.lg, gap: Spacing.sm },
   routesLabel:   { fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 0.5 },
   routesRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },

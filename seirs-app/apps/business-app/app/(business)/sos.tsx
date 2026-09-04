@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
-import { Icon } from '@/components/Icon';
+import { Icon, type IconName } from '@/components/Icon';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'expo-router';
@@ -21,7 +21,7 @@ import type { EmergencyContactDTO } from '@seirs/shared/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
 /** Which glyph a directory entry gets, from the category an admin set. */
-const CATEGORY_ICON: Record<string, string> = {
+const CATEGORY_ICON: Record<string, IconName> = {
   emergency: 'AlertCircle',
   national:  'AlertCircle',
   police:    'Shield',

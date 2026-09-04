@@ -43,6 +43,20 @@ export class TravelBuddyController {
 
   // ── Passenger ────────────────────────────────────────────────────────
 
+  /**
+   * POST /api/v1/travel-buddy/route-alerts { from, to }
+   *
+   * Raised from the empty state of the search, so a corridor nobody runs
+   * yet leaves a record instead of a departing passenger.
+   */
+  @Post('route-alerts')
+  watchRoute(
+    @CurrentUser() user: User,
+    @Body() body: { from?: string; to?: string },
+  ) {
+    return this.travelBuddy.watchRoute(user.id, body?.from ?? '', body?.to ?? '');
+  }
+
   // POST /api/v1/travel-buddy/trips/:tripId/requests
   // Asks for a segment. NOTHING is charged: a decline costs nothing and
   // leaves no refund to chase.

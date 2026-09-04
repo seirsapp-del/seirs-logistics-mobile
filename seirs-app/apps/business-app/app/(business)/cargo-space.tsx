@@ -33,8 +33,11 @@ import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
-import { deliveriesApi } from '@/services/api';
+import * as Location from 'expo-location';
+import { deliveriesApi, mapsApi } from '@/services/api';
+import { derivePlace } from '@seirs/shared/models/cities';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
+import { CitySearchField } from '@/components/CitySearchField';
 
 /**
  * The corridors a trader is most likely to want, so the common case is
@@ -62,7 +65,14 @@ function prettyDepart(iso: string): string {
 /**
  * The machine, in the words a trader uses to judge whether their load
  * fits. Colour and make matter far less here than on a passenger card,
- * so this leads with the class and the plate.
+ * so this leads with the class.
+ *
+ * The plate is deliberately absent while browsing (2026-09-04). It used
+ * to print on every card, which handed a stranger a named driver, their
+ * plate and the exact place and minute they would be standing. Do not
+ * put it back here: it arrives on the accepted request, where the driver
+ * has agreed to carry this particular load. The `plate` branch is kept
+ * because the same helper renders accepted requests, where it IS known.
  */
 function vehicleLine(driver: any): string {
   const kind = VEHICLE_LABEL[driver?.vehicleType] ?? driver?.vehicleType ?? 'vehicle';
@@ -98,22 +108,138 @@ export default function CargoSpaceScreen() {
   const [sortBy, setSortBy] = useState<'soonest' | 'space'>('soonest');
   const [when,   setWhen]   = useState<'any' | 'today' | 'tomorrow' | 'week'>('any');
 
+  /**
+   * The day, and how heavy the load is (founder 2026-09-04).
+   *
+   * The board asked for two cities and nothing else, so a trader with
+   * 400 kg of yam was shown a car with 8 kg of boot space and had to
+   * work out for themselves that it was no use. Both are applied to rows
+   * already fetched, so the endpoint the customer app shares is
+   * untouched.
+   */
+  const [dayISO,  setDayISO]  = useState<string | null>(null);
+  const [loadKg,  setLoadKg]  = useState('');
+  const [alerted, setAlerted] = useState(false);
+
+  /**
+   * Coordinates for each end, when we have any (founder 2026-09-04).
+   *
+   * The board matched on typed names, and names are the weak link: a
+   * driver's stop is filed under whatever a geocoder called it. With
+   * both ends carrying coordinates the server also matches by distance,
+   * which no naming mistake can defeat.
+   */
+  const [fromCoords, setFromCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [toCoords,   setToCoords]   = useState<{ lat: number; lng: number } | null>(null);
+  const [locating,   setLocating]   = useState<'from' | 'to' | null>(null);
+
+  const useMyLocation = async (which: 'from' | 'to') => {
+    setLocating(which);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Location is off. Turn it on for SEIRS, or type the town instead.');
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      let label = '';
+      try {
+        const json: any = await mapsApi.geocode({ latlng: `${lat},${lng}` });
+        const top = json?.results?.[0];
+        label = derivePlace({
+          components:       top?.address_components ?? null,
+          formattedAddress: top?.formatted_address ?? null,
+        }).city;
+      } catch { /* a nameless pin still searches correctly */ }
+
+      if (which === 'from') { setFromCoords({ lat, lng }); if (label) setFrom(label); }
+      else                  { setToCoords({ lat, lng });   if (label) setTo(label); }
+      setError('');
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not find you. Type the town instead.');
+    } finally {
+      setLocating(null);
+    }
+  };
+
+  /** A town name turned into a point, so the distance match can run. */
+  const coordsFor = async (
+    text: string,
+    known: { lat: number; lng: number } | null,
+  ): Promise<{ lat: number; lng: number } | null> => {
+    if (known) return known;
+    const q = text.trim();
+    if (!q) return null;
+    try {
+      const json: any = await mapsApi.geocode({ address: `${q}, Nigeria` });
+      const loc = json?.results?.[0]?.geometry?.location;
+      if (loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
+        return { lat: Number(loc.lat), lng: Number(loc.lng) };
+      }
+    } catch { /* the name-based match still runs without this */ }
+    return null;
+  };
+
+  /**
+   * A month of days, not a fortnight (founder 2026-09-05).
+   *
+   * Two weeks is the wrong horizon for intercity travel here: people
+   * book around a wedding, a burial, a school run or a market day that
+   * is three or four weeks out, and a strip that stops before the date
+   * they have in mind reads as "we do not go then".
+   */
+  const DAY_STRIP = (() => {
+    const out: Array<{ iso: string; top: string; bottom: string }> = [];
+    const now = new Date();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      out.push({
+        iso,
+        top:    i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-GB', { weekday: 'short' }),
+        bottom: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+      });
+    }
+    return out;
+  })();
+
   const visibleTrips = (() => {
     const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const today = startOfDay(new Date());
     const DAY   = 24 * 60 * 60 * 1000;
 
     const withinWindow = (t: any) => {
-      if (when === 'any') return true;
       const at = new Date(t.departAt).getTime();
       if (!Number.isFinite(at)) return true;   // unreadable date is not a reason to hide work
       const day = startOfDay(new Date(at));
+      // A chosen day wins over the coarse window: they are one control.
+      if (dayISO) {
+        const [y, m, d] = dayISO.split('-').map(Number);
+        return day === startOfDay(new Date(y, m - 1, d));
+      }
+      if (when === 'any')      return true;
       if (when === 'today')    return day === today;
       if (when === 'tomorrow') return day === today + DAY;
       return at < today + 7 * DAY;             // 'week'
     };
 
-    const rows = trips.filter(withinWindow);
+    /**
+     * Room for the actual load.
+     *
+     * A rider with 8 kg spare is not a result for 400 kg of yam, and
+     * showing them only to be refused at the request screen wastes the
+     * lorry the trader might have found instead.
+     */
+    const wanted = Number(loadKg);
+    const fitsLoad = (t: any) =>
+      !Number.isFinite(wanted) || wanted <= 0
+        ? true
+        : Number(t.spareCapacityKg ?? 0) >= wanted;
+
+    const rows = trips.filter(t => withinWindow(t) && fitsLoad(t));
     return rows.sort((a, b) =>
       sortBy === 'space'
         ? Number(b.spareCapacityKg ?? 0) - Number(a.spareCapacityKg ?? 0)
@@ -121,6 +247,16 @@ export default function CargoSpaceScreen() {
     );
   })();
 
+
+  /** Register the corridor, so an empty board leaves something behind. */
+  const alertMe = async () => {
+    try {
+      await deliveriesApi.watchTravelBuddyRoute(from.trim(), to.trim());
+      setAlerted(true);
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not set that alert. Try again in a moment.');
+    }
+  };
   const search = useCallback(async (f?: string, t?: string) => {
     const a = (f ?? from).trim();
     const b = (t ?? to).trim();
@@ -133,9 +269,17 @@ export default function CargoSpaceScreen() {
     setLoading(true);
     try {
       // forPackages: never show a trader a trip that only takes people.
-      const rows = await deliveriesApi.cargoTrips(a, b);
+      const [ga, gb] = await Promise.all([
+        coordsFor(a, fromCoords),
+        coordsFor(b, toCoords),
+      ]);
+      const rows = await deliveriesApi.cargoTrips(a, b,
+        ga && gb
+          ? { fromLat: ga.lat, fromLng: ga.lng, toLat: gb.lat, toLng: gb.lng, radiusKm: 25 }
+          : undefined);
       setTrips(Array.isArray(rows) ? rows : []);
       setSearched(true);
+    setAlerted(false);          // a new corridor is a new question
     } catch (e: any) {
       setError(e?.message ?? 'Could not load trips right now.');
       setTrips([]);
@@ -188,32 +332,98 @@ export default function CargoSpaceScreen() {
           costs you nothing.
         </Text>
 
-        <View style={{ gap: 8 }}>
-          <TextInput
+        {/* A shipment is a route, a day and a weight. The board asked only
+            the route, so the other two were discovered at the request
+            screen (founder 2026-09-04). */}
+        <View style={[styles.searchCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+          <CitySearchField
+            label="LOAD IS GOING FROM"
             value={from}
-            onChangeText={setFrom}
-            placeholder="Load is going from, e.g. Kano"
-            placeholderTextColor={theme.textSecond}
-            style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
+            onChange={(v) => { setFrom(v); setFromCoords(null); }}
+            placeholder="Where it is picked up"
+            theme={theme}
+            onLocate={() => useMyLocation('from')}
+            locating={locating === 'from'}
+            accessory={
+              <Pressable
+                onPress={() => {
+                  const a = from, ac = fromCoords;
+                  setFrom(to); setFromCoords(toCoords);
+                  setTo(a);    setToCoords(ac);
+                }}
+                hitSlop={10}
+                style={[styles.swapBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
+              >
+                <Icon name="Repeat" size={15} color={theme.text} />
+              </Pressable>
+            }
           />
-          <TextInput
+
+          <CitySearchField
+            label="GOING TO"
             value={to}
-            onChangeText={setTo}
-            placeholder="Going to, e.g. Lagos"
-            placeholderTextColor={theme.textSecond}
-            style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
+            onChange={(v) => { setTo(v); setToCoords(null); }}
+            placeholder="Where it is dropped"
+            theme={theme}
+            onLocate={() => useMyLocation('to')}
+            locating={locating === 'to'}
           />
-          <Pressable
-            onPress={() => search()}
-            disabled={loading}
-            style={[styles.searchBtn, { backgroundColor: loading ? theme.border : theme.primary }]}
+
+          <View style={styles.metaRow}>
+            <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>WHEN</Text>
+            <View style={styles.loadInline}>
+              <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>WEIGHT</Text>
+              <View style={[styles.loadBox, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+                <TextInput
+                  value={loadKg}
+                  onChangeText={t => setLoadKg(t.replace(/[^0-9.]/g, ''))}
+                  placeholder="Any"
+                  placeholderTextColor={theme.textThird}
+                  keyboardType="numeric"
+                  style={[styles.loadInput, { color: theme.text }]}
+                />
+                <Text style={[styles.loadUnit, { color: theme.textSecond }]}>kg</Text>
+              </View>
+            </View>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.dayStrip}
           >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.searchTxt}>Find space</Text>}
-          </Pressable>
-          {!!error && <Text style={[styles.error, { color: '#DC2626' }]}>{error}</Text>}
+            {[{ iso: null as string | null, top: 'Any', bottom: 'date' },
+              ...DAY_STRIP.map(d => ({ iso: d.iso as string | null, top: d.top, bottom: d.bottom }))
+            ].map(d => {
+              const on = dayISO === d.iso;
+              return (
+                <Pressable
+                  key={d.iso ?? 'any'}
+                  onPress={() => setDayISO(d.iso)}
+                  style={[styles.dayChip, {
+                    borderColor:     on ? theme.primary : theme.border,
+                    backgroundColor: on ? theme.primary : theme.surface,
+                  }]}
+                >
+                  <Text style={[styles.dayTop,    { color: on ? '#fff' : theme.text }]}>{d.top}</Text>
+                  <Text style={[styles.dayBottom, { color: on ? '#fff' : theme.textThird }]}>{d.bottom}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
+
+        <Pressable
+          onPress={() => search()}
+          disabled={loading}
+          style={[styles.searchBtn, { backgroundColor: loading ? theme.border : theme.primary }]}
+        >
+          {loading
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.searchTxt}>Find space</Text>}
+        </Pressable>
+        {!!error && <Text style={[styles.error, { color: '#DC2626' }]}>{error}</Text>}
 
         {!searched && (
           <View style={{ gap: 8, marginTop: 4 }}>
@@ -232,15 +442,53 @@ export default function CargoSpaceScreen() {
           </View>
         )}
 
-        {searched && !loading && trips.length === 0 && (
+        {searched && !loading && visibleTrips.length === 0 && (
           <View style={styles.emptyWrap}>
             <Icon name="Truck" size={40} color={theme.textSecond} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No space on that route yet</Text>
-            <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Drivers usually declare a trip a day or two ahead. Check again, or
-              send it the normal way and a driver going that way can still pick
-              it up.
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+              {trips.length > 0 ? 'Nothing that size on that day' : 'No space on that route yet'}
             </Text>
+            <Text style={[styles.emptySub, { color: theme.textSecond }]}>
+              {trips.length > 0
+                ? `There ${trips.length === 1 ? 'is' : 'are'} ${trips.length} trip${trips.length === 1 ? '' : 's'} on this route, just none with room for what you asked on the day you picked. Try Any date, or a lighter load.`
+                : 'Drivers usually declare a trip a day or two ahead. Check again, or send it the normal way and a driver going that way can still pick it up.'}
+            </Text>
+
+            {/* The dead end, made into a door: a trader who has named both
+                ends of a corridor is the clearest demand signal we get. */}
+            {trips.length === 0 && (
+              alerted ? (
+                <View style={[styles.alertDone, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+                  <Icon name="CheckCircle2" size={17} color={theme.primary} />
+                  <Text style={[styles.alertDoneTxt, { color: theme.text }]}>
+                    We will tell you when a driver declares {from.trim()} to {to.trim()}.
+                  </Text>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={alertMe}
+                  style={[styles.alertBtn, { borderColor: theme.primary, backgroundColor: theme.surface }]}
+                >
+                  <Icon name="Bell" size={16} color={theme.primary} />
+                  <Text style={[styles.alertBtnTxt, { color: theme.primary }]}>
+                    Alert me when a driver runs this route
+                  </Text>
+                </Pressable>
+              )
+            )}
+
+            <Text style={[styles.routesLabel, { color: theme.textSecond, marginTop: 18 }]}>OR TRY</Text>
+            <View style={styles.routesRow}>
+              {COMMON_ROUTES.map(([a, b]) => (
+                <Pressable
+                  key={`empty-${a}-${b}`}
+                  onPress={() => { setDayISO(null); useRoute(a, b); }}
+                  style={[styles.routeChip, { borderColor: theme.border, backgroundColor: theme.surface }]}
+                >
+                  <Text style={[styles.routeChipTxt, { color: theme.text }]}>{a} to {b}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         )}
 
@@ -323,9 +571,18 @@ export default function CargoSpaceScreen() {
                 * always carried it; only this screen left it out. Same
                 * wording as the customer app, deliberately.
                 */}
+              {/*
+                The AREA, not the address (2026-09-04).
+
+                This printed the exact spot the driver typed, to anybody
+                who ran a search, alongside their plate and departure
+                minute. A trader needs to know which town the lorry loads
+                in before they ask; the address belongs to the driver
+                until they have accepted the load.
+              */}
               <Text style={[styles.tripMeta, { color: theme.textSecond, marginTop: 2 }]}>
-                {trip.pickupMode === 'fixed' && trip.pickupAddress
-                  ? `Load at: ${trip.pickupAddress}`
+                {trip.pickupMode === 'fixed' && trip.pickupArea
+                  ? `Loads in ${trip.pickupArea} (exact spot once the driver accepts)`
                   : 'Loads along the route (agree the spot in chat)'}
               </Text>
 
@@ -371,6 +628,32 @@ const styles = StyleSheet.create({
 
   intro:       { fontSize: 14, lineHeight: 20 },
   input:       { borderWidth: 1, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, fontSize: 15 },
+  // The cargo search: route, day and weight asked together, because a
+  // shipment is all three.
+  searchCard:  { borderWidth: 1, borderRadius: 16, padding: 14, gap: 14 },
+  swapBtn:     { width: 32, height: 32, borderRadius: 16, borderWidth: 1,
+                 alignItems: 'center', justifyContent: 'center' },
+  fieldLabel:  { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
+  metaRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  loadInline:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  loadBox:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 999,
+                 paddingHorizontal: 12, height: 34 },
+  loadInput:   { fontSize: 15, fontWeight: '700', minWidth: 46, padding: 0, textAlign: 'right' },
+  loadUnit:    { fontSize: 12, marginLeft: 4 },
+  dayStrip:    { gap: 8, paddingRight: 14 },
+  dayChip:     { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8,
+                 alignItems: 'center', minWidth: 62 },
+  dayTop:      { fontSize: 13, fontWeight: '700' },
+  dayBottom:   { fontSize: 11, marginTop: 1 },
+
+  // The empty board, which is a demand signal rather than an apology.
+  alertBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  borderWidth: 1, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 16,
+                  marginTop: 14 },
+  alertBtnTxt:  { fontSize: 13, fontWeight: '700' },
+  alertDone:    { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1,
+                  borderRadius: 12, padding: 12, marginTop: 14 },
+  alertDoneTxt: { fontSize: 13, flex: 1, lineHeight: 19 },
   searchBtn:   { paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
   searchTxt:   { color: '#fff', fontSize: 15, fontWeight: '700' },
   error:       { fontSize: 13 },

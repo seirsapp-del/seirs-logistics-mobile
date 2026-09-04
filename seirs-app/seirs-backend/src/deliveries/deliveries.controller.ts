@@ -353,9 +353,29 @@ export class DeliveriesController {
     // app's Cargo Space screen. A trader wanting room for 100 kg of yam
     // must not be shown a car with two seats free.
     @Query('forPackages') forPackages?: string,
+    /**
+     * Coordinates, when the app has them (2026-09-04).
+     *
+     * Optional on purpose. Someone who typed two city names and never
+     * granted location gets exactly the search they always got; someone
+     * who tapped "use my location", or picked a place from suggestions,
+     * additionally matches on distance, which is the only part of this
+     * that cannot be defeated by a geocoder naming a town wrongly.
+     */
+    @Query('fromLat') fromLat?: string,
+    @Query('fromLng') fromLng?: string,
+    @Query('toLat')   toLat?: string,
+    @Query('toLng')   toLng?: string,
+    @Query('radiusKm') radiusKm?: string,
   ) {
+    const n = (v?: string) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined);
     return (this.deliveriesService as any).driversService.browseTrips(
       from ?? '', to ?? '', forPackages === '1' || forPackages === 'true',
+      {
+        fromLat: n(fromLat), fromLng: n(fromLng),
+        toLat:   n(toLat),   toLng:   n(toLng),
+        radiusKm: n(radiusKm),
+      },
     );
   }
 

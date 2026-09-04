@@ -112,3 +112,38 @@ export function vehicleIdentityForPassenger(dr: any) {
     vehicleColor:    v.color ?? null,
   };
 }
+
+/**
+ * What a STRANGER may see about a driver, before any agreement exists.
+ *
+ * vehicleIdentityForPassenger is correct and stays: someone standing in
+ * a motor park at 5am has to pick the right vehicle out of the row. But
+ * it was being called on the public browse endpoint, so anyone who ran a
+ * search got, for every declared trip, the driver's full name, their
+ * plate, a photograph of their vehicle, the exact address they would be
+ * standing at and the exact minute (found 2026-09-04). That is a
+ * stalking kit, and the founder's own reason for keeping trip listings
+ * off the home screen was driver safety.
+ *
+ * So browsing sees a person and a class of vehicle, enough to choose.
+ * Plate, photograph, colour and model appear once the driver has
+ * accepted that specific passenger, which is the moment the two of them
+ * have actually agreed to meet.
+ */
+export function driverForBrowsing(dr: any) {
+  const full = String(dr?.user?.name ?? '').trim();
+  // A first name is enough to greet somebody. A full name is enough to
+  // find them.
+  const first = full ? full.split(/\s+/)[0] : 'Driver';
+  return {
+    name:        first,
+    rating:      dr?.rating ?? null,
+    vehicleType: dr?.vehicleType ?? null,
+    /**
+     * Say WHY the rest is missing. Without this the app renders the
+     * "this driver has not listed a plate, ask before you board" line,
+     * which is a different and alarming claim.
+     */
+    identityRevealed: false as const,
+  };
+}

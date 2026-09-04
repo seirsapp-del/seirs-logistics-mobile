@@ -82,7 +82,16 @@ export interface DrawerProps {
    * Lucide icon component injected by the host app
    * (each app has its own thin Icon wrapper).
    */
-  Icon: ComponentType<{ name: string; size?: number; color?: string; strokeWidth?: number }>;
+  /**
+   * Each app hands in its own Icon, and those registries are now typed:
+   * business narrowed `name` to the keys it actually holds, so a wrong
+   * name is a build error rather than a blank space (2026-09-05). A
+   * component that accepts fewer names cannot be assigned to one
+   * declared to accept every string, so the name is deliberately left
+   * open HERE and enforced where icons are actually written. Nothing is
+   * lost: DrawerItem.icon has always been a plain string.
+   */
+  Icon: ComponentType<{ name: any; size?: number; color?: string; strokeWidth?: number }>;
 }
 
 /**

@@ -23,6 +23,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi, configApi, mapsApi, feesApi } from '@/services/api';
+import { derivePlace } from '@seirs/shared/models/cities';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
@@ -33,17 +34,27 @@ import { vehicleLabel } from '@seirs/shared/models/vehicles';
 // destination address or destination partner store.
 
 /**
- * Departure times a rider can actually leave at.
+ * Departure times a rider can actually leave at. All of them.
  *
- * Half-hour steps from 04:00, because intercity runs leave at first
- * light and a park at 05:30 is a real departure, through to 22:00.
- * Anything outside that is a night run nobody is declaring in advance.
+ * This ran 04:00 to 22:00, on the reasoning that "anything outside that is a
+ * night run nobody is declaring in advance". That assumption is wrong for the
+ * country this runs in. Overnight interstate travel is ordinary here: people
+ * leave at 23:00 or midnight to miss the heat and the traffic, and a rider
+ * doing Lagos to Abuja overnight could not declare their trip AT ALL.
+ *
+ * The founder hit it on the device at 22:00 trying to declare a trip for that
+ * night: "the time is not there, it ends at 22:00". No setting could help,
+ * because the list itself did not contain the hours.
+ *
+ * It is the same mistake as the working-hours bug fixed earlier the same day,
+ * where a shop trading 18:00 to 02:00 computed as shut all night. Both came
+ * from treating the working day as ending in the evening.
  */
 const DEPART_SLOTS: string[] = (() => {
   const out: string[] = [];
-  for (let h = 4; h <= 22; h++) {
+  for (let h = 0; h < 24; h++) {
     out.push(`${String(h).padStart(2, '0')}:00`);
-    if (h < 22) out.push(`${String(h).padStart(2, '0')}:30`);
+    out.push(`${String(h).padStart(2, '0')}:30`);
   }
   return out;
 })();
@@ -155,21 +166,20 @@ function cityFromDescription(description: string): string {
 async function deriveCity(place: PickedPlace): Promise<{ city: string; guessed: boolean }> {
   try {
     const json: any = await mapsApi.geocode({ latlng: `${place.lat},${place.lng}` });
-    const parts: any[] = json?.results?.[0]?.address_components ?? [];
-    const pick = (type: string) =>
-      parts.find((c: any) => Array.isArray(c.types) && c.types.includes(type))?.long_name;
-    const found = pick('locality')
-      ?? pick('administrative_area_level_2')
-      ?? pick('sublocality')
-      ?? pick('administrative_area_level_1');
-    if (found) {
-      return { city: String(found).replace(STATE_SUFFIX, '').trim(), guessed: false };
+    const top = json?.results?.[0];
+    const derived = derivePlace({
+      components:       top?.address_components ?? null,
+      formattedAddress: top?.formatted_address ?? place.description ?? null,
+    });
+    if (derived.city) {
+      return { city: derived.city, guessed: !derived.confident };
     }
   } catch {
-    // Offline or a refused key. Fall through to the text reading rather
-    // than leaving the rider with an empty city and no way forward.
+    // Offline or a refused key. Read the description instead of leaving
+    // the rider with an empty city and no way forward.
   }
-  return { city: cityFromDescription(place.description), guessed: true };
+  const written = derivePlace({ components: null, formattedAddress: place.description ?? null });
+  return { city: written.city || cityFromDescription(place.description), guessed: true };
 }
 
 /**
@@ -1358,7 +1368,17 @@ export default function InterstateScreen() {
                       color: theme.textSecond,
                       marginBottom: 10,
                     }}>
-                      {`Give at least ${Math.round((minLeadMins / 60) * 10) / 10} hours notice, so a sender can find your trip, agree a price and reach you.`}
+                      {/*
+                        * This divided by 60 whatever the number was, so a five
+                        * minute rule announced itself as "at least 0.1 hours
+                        * notice", which is not a sentence anybody says.
+                        * Minutes under an hour, hours above it.
+                        */}
+                      {`Give at least ${
+                        minLeadMins < 60
+                          ? `${Math.round(minLeadMins)} minute${Math.round(minLeadMins) === 1 ? '' : 's'}`
+                          : `${Math.round((minLeadMins / 60) * 10) / 10} hour${minLeadMins === 60 ? '' : 's'}`
+                      } notice, so a sender can find your trip, agree a price and reach you.`}
                     </Text>
                   )}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -1401,6 +1421,33 @@ export default function InterstateScreen() {
                       );
                     })}
                   </View>
+
+                  {/*
+                    * When the whole day is gone, SAY SO.
+                    *
+                    * Found by the founder on the device at 21:58: every slot
+                    * from 04:00 to 22:00 was greyed, because the last one of
+                    * the day was already inside the notice window. That is
+                    * correct behaviour and it looked exactly like a broken
+                    * screen, with nothing telling him to pick another day.
+                    *
+                    * A control that is right and unexplained is indis-
+                    * tinguishable from one that is broken, and the person
+                    * hitting it has no way to tell which.
+                    */}
+                  {DEPART_SLOTS.every(slot => {
+                    const at = new Date(`${departDate || TODAY_ISO}T${slot}:00`).getTime();
+                    return Number.isFinite(at) && at < Date.now() + minLeadMins * 60_000;
+                  }) && (
+                    <Text style={{
+                      fontSize: FontSize.sm,
+                      color: theme.primary,
+                      fontWeight: FontWeight.semibold,
+                      marginTop: 12,
+                    }}>
+                      No departures left on this day. Pick tomorrow, or a later date, above.
+                    </Text>
+                  )}
                 </View>
               </View>
             )}

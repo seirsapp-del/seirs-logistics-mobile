@@ -16,14 +16,16 @@ import { PaymentsService } from '../payments/payments.service';
 import { DeliveriesModule } from '../deliveries/deliveries.module';
 import { DeliveriesService } from '../deliveries/deliveries.service';
 import { DriversModule } from '../drivers/drivers.module';
+import { DriversService } from '../drivers/drivers.service';
 import { ParcelRequest } from './parcel-request.entity';
+import { RouteAlert } from './route-alert.entity';
 import { ParcelRequestsService } from './parcel-requests.service';
 import { ParcelRequestsController } from './parcel-requests.controller';
 import { User } from '../users/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SeatBooking, SeatBookingEvent, DriverTrip, TripStop, Delivery, ParcelRequest, User]),
+    TypeOrmModule.forFeature([SeatBooking, SeatBookingEvent, DriverTrip, TripStop, Delivery, ParcelRequest, RouteAlert, User]),
     FeesModule,
     PricingModule,
     NotificationsModule,
@@ -53,12 +55,21 @@ export class TravelBuddyModule implements OnModuleInit {
     private readonly travelBuddy: TravelBuddyService,
     private readonly payments:    PaymentsService,
     private readonly deliveries:  DeliveriesService,
+    private readonly drivers:     DriversService,
     @InjectDataSource() private readonly ds: DataSource,
   ) {}
 
   async onModuleInit() {
     // Refunds go out through the existing Flutterwave escrow path.
     this.travelBuddy.paymentsServiceRef = this.payments;
+
+    /**
+     * Declaring a trip is the only moment a new corridor appears, and
+     * DriversService owns that moment. Wired the same lazy way as every
+     * other cross-module reference here, because this module already
+     * imports DriversModule and the reverse would be a cycle.
+     */
+    (this.drivers as any).travelBuddyRef = this.travelBuddy;
 
     /**
      * parcel_requests: the negotiation that happens BEFORE any money
@@ -117,6 +128,36 @@ export class TravelBuddyModule implements OnModuleInit {
       `);
     } catch (e: any) {
       this.logger.error(`parcel_requests self-heal failed: ${e?.message ?? e}`);
+    }
+
+    /**
+     * route_alerts: corridors people asked for and nobody runs yet
+     * (founder 2026-09-04). Created here for the same reason as every
+     * other table in this module, production runs with schema sync off.
+     */
+    try {
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "route_alerts" (
+          "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "userId" uuid NOT NULL,
+          "fromCity" varchar(120) NOT NULL,
+          "toCity" varchar(120) NOT NULL,
+          "notifiedAt" timestamptz NULL,
+          "createdAt" timestamptz NOT NULL DEFAULT now()
+        )
+      `);
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "idx_route_alerts_corridor"
+          ON "route_alerts" ("fromCity", "toCity")
+      `);
+      // One standing alert per person per corridor: asking twice is the
+      // same request, not two.
+      await this.ds.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS "idx_route_alerts_user_route"
+          ON "route_alerts" ("userId", "fromCity", "toCity")
+      `);
+    } catch (e: any) {
+      this.logger.error(`route_alerts self-heal failed: ${e?.message ?? e}`);
     }
 
     /**

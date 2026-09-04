@@ -8,6 +8,7 @@ import { SeatBooking, SeatBookingStatus, SEAT_HOLDING_STATUSES } from './seat-bo
 import { SeatBookingEvent, SeatBookingEventType } from './seat-booking-event.entity';
 import { DriverTrip, DriverTripStatus } from '../drivers/driver-trip.entity';
 import { TripStop } from '../drivers/trip-stop.entity';
+import { RouteAlert } from './route-alert.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { FeesService } from '../fees/fees.service';
 import { PricingService as RateCardPricing } from '../pricing/pricing.service';
@@ -110,6 +111,7 @@ export class TravelBuddyService {
     @InjectRepository(DriverTrip)       private tripsRepo:      Repository<DriverTrip>,
     @InjectRepository(TripStop)         private stopsRepo:      Repository<TripStop>,
     @InjectRepository(Delivery)         private deliveriesRepo: Repository<Delivery>,
+    @InjectRepository(RouteAlert)       private routeAlertsRepo: Repository<RouteAlert>,
     @InjectDataSource()                 private readonly ds:    DataSource,
     private readonly fees:          FeesService,
     private readonly rateCard:      RateCardPricing,
@@ -292,6 +294,88 @@ export class TravelBuddyService {
    * a lie the moment anybody got out halfway: it said full while a seat
    * sat empty from Osogbo onwards.
    */
+
+  /**
+   * Register a corridor nobody runs yet (founder 2026-09-04).
+   *
+   * Called from the empty state of the Travel Buddy search, which is the
+   * one moment we know exactly what somebody wanted and could not have.
+   * Asking twice is the same request, so this is an upsert rather than a
+   * second row, and the count returned is what makes the signal useful:
+   * fifteen people waiting on Ife to Ibadan is a recruiting brief.
+   */
+  async watchRoute(userId: string, fromCity: string, toCity: string) {
+    const from = (fromCity ?? '').trim().toLowerCase();
+    const to   = (toCity ?? '').trim().toLowerCase();
+    if (!from || !to) {
+      throw new BadRequestException('Both cities are needed to set an alert.');
+    }
+    if (from === to) {
+      throw new BadRequestException('Pick two different places.');
+    }
+
+    const existing = await this.routeAlertsRepo.findOne({
+      where: { userId, fromCity: from, toCity: to },
+    });
+    if (!existing) {
+      await this.routeAlertsRepo.save(
+        this.routeAlertsRepo.create({ userId, fromCity: from, toCity: to, notifiedAt: null }),
+      );
+    } else if (existing.notifiedAt) {
+      // They asked again after being told once, so arm it again rather
+      // than leaving a spent alert in place.
+      existing.notifiedAt = null;
+      await this.routeAlertsRepo.save(existing);
+    }
+
+    const watchers = await this.routeAlertsRepo.count({
+      where: { fromCity: from, toCity: to },
+    });
+    return { ok: true as const, watchers };
+  }
+
+  /**
+   * Tell everyone waiting on a corridor that it now exists.
+   *
+   * Called when a driver declares a trip. Matching is deliberately loose
+   * on both ends: the alert holds what the passenger typed and the trip
+   * holds what a geocoder decided, and those disagree often enough that
+   * an exact match would silently never fire.
+   */
+  async notifyRouteWatchers(fromCity: string, toCity: string, tripId: string) {
+    const from = (fromCity ?? '').trim().toLowerCase();
+    const to   = (toCity ?? '').trim().toLowerCase();
+    if (!from || !to) return 0;
+
+    const rows: RouteAlert[] = await this.routeAlertsRepo
+      .createQueryBuilder('a')
+      .where('a."notifiedAt" IS NULL')
+      .andWhere(
+        `(:from ILIKE '%' || a."fromCity" || '%' OR a."fromCity" ILIKE :fromLike)`,
+        { from, fromLike: `%${from}%` },
+      )
+      .andWhere(
+        `(:to ILIKE '%' || a."toCity" || '%' OR a."toCity" ILIKE :toLike)`,
+        { to, toLike: `%${to}%` },
+      )
+      .take(500)
+      .getMany();
+
+    for (const a of rows) {
+      try {
+        await this.notifications.create(
+          a.userId,
+          'A driver is running your route',
+          `Someone has declared ${fromCity} to ${toCity}. Seats are open now.`,
+          NotificationType.GENERAL,
+        );
+        a.notifiedAt = new Date();
+        await this.routeAlertsRepo.save(a);
+      } catch { /* one failed notice must not stop the rest */ }
+    }
+    return rows.length;
+  }
+
   async tripAvailability(tripId: string) {
     const trip = await this.loadTrip(tripId);
     const stops = await this.stopsRepo.find({ where: { tripId } as any, order: { sequence: 'ASC' } });

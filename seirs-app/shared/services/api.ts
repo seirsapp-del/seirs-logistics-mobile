@@ -419,8 +419,40 @@ export const deliveriesApi = {
       'POST', `/deliveries/${id}/cancel`, { reason },
     ),
   // ── Travel Buddy: browse declared intercity trips, book seats ─────────
-  travelBuddyTrips: (from: string, to: string) =>
-    request<any[]>('GET', `/deliveries/travel-buddy/trips?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  /**
+   * Declared trips on a corridor.
+   *
+   * `geo` is optional and additive (2026-09-04): with coordinates the
+   * server also matches stops by distance, which is what rescues a
+   * search when a geocoder has filed a town under the wrong name. Send
+   * them whenever the screen has them; send nothing and the search
+   * behaves exactly as it always did.
+   */
+  travelBuddyTrips: (
+    from: string,
+    to: string,
+    geo?: { fromLat?: number; fromLng?: number; toLat?: number; toLng?: number; radiusKm?: number },
+  ) => {
+    const q = new URLSearchParams({ from, to });
+    if (geo) {
+      for (const [k, v] of Object.entries(geo)) {
+        if (Number.isFinite(Number(v))) q.set(k, String(v));
+      }
+    }
+    return request<any[]>('GET', `/deliveries/travel-buddy/trips?${q.toString()}`);
+  },
+  /**
+   * Ask to be told when a driver declares a route nobody runs yet
+   * (founder 2026-09-04).
+   *
+   * A search returning nothing used to end the conversation. The person
+   * looking at it has named both ends of a journey they want to pay for,
+   * which is the cleanest demand signal the business gets, and it was
+   * being discarded. Registering it also gives operations a ranked list
+   * of corridors to recruit drivers onto.
+   */
+  watchTravelBuddyRoute: (from: string, to: string) =>
+    request<{ ok: true; watchers: number }>('POST', '/travel-buddy/route-alerts', { from, to }),
   /**
    * The same declared trips, narrowed to riders actually carrying
    * freight (2026-08-31). Powers the business app's Cargo Space screen,
@@ -449,8 +481,19 @@ export const deliveriesApi = {
     dropAddress: string; dropLat: number; dropLng: number; note?: string;
   }) => request<any>('POST', `/parcel-requests/${id}/counter`, body),
 
-  cargoTrips: (from: string, to: string) =>
-    request<any[]>('GET', `/deliveries/travel-buddy/trips?forPackages=1&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  cargoTrips: (
+    from: string,
+    to: string,
+    geo?: { fromLat?: number; fromLng?: number; toLat?: number; toLng?: number; radiusKm?: number },
+  ) => {
+    const q = new URLSearchParams({ forPackages: '1', from, to });
+    if (geo) {
+      for (const [k, v] of Object.entries(geo)) {
+        if (Number.isFinite(Number(v))) q.set(k, String(v));
+      }
+    }
+    return request<any[]>('GET', `/deliveries/travel-buddy/trips?${q.toString()}`);
+  },
   /**
    * Book seats. `segment` is the pair of stops the passenger is riding
    * when they are not taking the whole trip: without it the server

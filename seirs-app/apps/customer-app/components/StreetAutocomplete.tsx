@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Icon } from '@/components/Icon';
 import { mapsApi } from '@/services/api';
+import { derivePlace } from '@seirs/shared/models/cities';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 
@@ -56,7 +57,7 @@ interface Props {
    * a picked Lagos address could sit above a hand-typed "Abuja" (founder
    * 2026-08-16). Google already knows both, so the host can fill them.
    */
-  onPlaceResolved?: (info: { city?: string; state?: string; lat?: number; lng?: number }) => void;
+  onPlaceResolved?: (info: { city?: string; state?: string; lat?: number; lng?: number; confident?: boolean }) => void;
   /**
    * Fires when the suggestion list appears. The host lifts the field on
    * FOCUS, but the list only arrives ~300ms later after the fetch, so by
@@ -137,18 +138,26 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
         onCoordsResolved?.(loc.lat, loc.lng);
       }
       if (onPlaceResolved) {
-        // Google labels the Nigerian state as administrative_area_level_1
-        // and the town as locality, falling back to the LGA when a place
-        // has no locality of its own.
-        const parts: any[] = json?.result?.address_components ?? [];
-        const pick = (type: string) =>
-          parts.find((c) => Array.isArray(c.types) && c.types.includes(type))?.long_name;
-        const stateName = String(pick('administrative_area_level_1') ?? '').replace(/\s+State$/i, '').trim();
-        const cityName  = pick('locality') ?? pick('administrative_area_level_2') ?? pick('sublocality');
+        /**
+         * One derivation for the whole platform (2026-09-04).
+         *
+         * This read `locality -> administrative_area_level_2 ->
+         * sublocality` and filed Obafemi Awolowo University under
+         * "Kajola", an LGA, and Olorunda Aba Market in Ibadan under
+         * "Aba", a city in another state. Four files carried an
+         * identical copy of that logic. derivePlace reads the address
+         * text against the 774-LGA geography instead, and says when it
+         * is unsure rather than inventing a confident wrong answer.
+         */
+        const place = derivePlace({
+          components:       json?.result?.address_components ?? null,
+          formattedAddress: json?.result?.formatted_address ?? null,
+        });
         onPlaceResolved({
-          city:  cityName ? String(cityName).trim() : undefined,
-          state: stateName || undefined,
+          city:  place.city || undefined,
+          state: place.state || undefined,
           lat: loc?.lat, lng: loc?.lng,
+          confident: place.confident,
         });
       }
     } catch { /* silent: extras are optional, the address save must not fail */ }
