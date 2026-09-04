@@ -1061,8 +1061,13 @@ export const adminApi = {
   revenueSplit: () => req<any>('/admin/analytics/revenue-split'),
 
   fraud: {
-    list:    (page = 1, status?: string) =>
-      req<any>(`/admin/fraud?page=${page}${status ? `&status=${status}` : ''}`),
+    /**
+     * from/to are YYYY-MM-DD and range on when the flag was RAISED, which
+     * is what the list is ordered by. Patterns are the point of this
+     * board, and a pattern is a shape over time.
+     */
+    list:    (page = 1, status?: string, from?: string, to?: string) =>
+      req<any>(`/admin/fraud?page=${page}${status ? `&status=${status}` : ''}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`),
     resolve: (id: string, status: string) =>
       req<any>(`/admin/fraud/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   },

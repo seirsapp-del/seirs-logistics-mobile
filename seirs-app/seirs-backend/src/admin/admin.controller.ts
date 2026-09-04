@@ -786,8 +786,10 @@ export class AdminController {
 
   // GET /api/v1/admin/fraud?status=open&page=1
   @Get('fraud')
-  getFraudFlags(@Query() q: { page?: number; limit?: number; status?: string }) {
-    return this.adminService.getFraudFlags(q.page ?? 1, q.limit ?? 20, q.status);
+  getFraudFlags(@Query() q: {
+    page?: number; limit?: number; status?: string; from?: string; to?: string;
+  }) {
+    return this.adminService.getFraudFlags(q.page ?? 1, q.limit ?? 20, q.status, q.from, q.to);
   }
 
   // PATCH /api/v1/admin/fraud/:id  { status: 'reviewed' | 'dismissed' | 'actioned' }

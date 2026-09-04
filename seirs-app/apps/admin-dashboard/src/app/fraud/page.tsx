@@ -87,6 +87,16 @@ export default function FraudPage() {
   const [data,    setData]    = useState<any>(null);
   const [page,    setPage]    = useState(1);
   const [filter,  setFilter]  = useState('open');
+  /**
+   * Raised between, as YYYY-MM-DD.
+   *
+   * Patterns are the entire point of this board, and a pattern is a shape
+   * over time: three flags on one account in a week means something that
+   * three flags across a year does not. Without a range there was no way
+   * to see the difference.
+   */
+  const [from, setFrom] = useState('');
+  const [to,   setTo]   = useState('');
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [busyId,  setBusyId]  = useState<string | null>(null);
@@ -98,14 +108,14 @@ export default function FraudPage() {
   const load = (p = 1) => {
     setLoading(true);
     setError(null);
-    adminApi.fraud.list(p, filter || undefined)
+    adminApi.fraud.list(p, filter || undefined, from || undefined, to || undefined)
       .then(setData)
       .catch((e: any) => setError(e?.message ?? 'Could not load the flags.'))
       .finally(() => setLoading(false));
     setPage(p);
   };
 
-  useEffect(() => { load(1); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filter]);
+  useEffect(() => { load(1); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filter, from, to]);
 
   // resolveFlag only writes the flag row's status. It has never touched
   // the account, so the old "Action (Ban)" button cleared the queue and
@@ -232,6 +242,43 @@ export default function FraudPage() {
                 {f.label}
               </button>
             ))}
+
+            {/* Raised between.
+
+                Patterns are the entire point of this board, and a pattern
+                is a shape over time: three flags on one account in a week
+                mean something that three flags across a year do not. There
+                was no way to tell those apart.
+
+                Ranged on when the flag was RAISED, which is what the list
+                is ordered by, so the window and the paging agree. The end
+                date covers its whole day. */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-[#0F2B4C]/40">Raised</span>
+              <input
+                type="date"
+                value={from}
+                max={to || undefined}
+                onChange={(e) => setFrom(e.target.value)}
+                className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+              />
+              <span className="text-[#0F2B4C]/30">to</span>
+              <input
+                type="date"
+                value={to}
+                min={from || undefined}
+                onChange={(e) => setTo(e.target.value)}
+                className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+              />
+              {(from || to) && (
+                <button
+                  onClick={() => { setFrom(''); setTo(''); }}
+                  className="font-semibold text-[#3A7BD5] hover:underline"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
         }
       />
