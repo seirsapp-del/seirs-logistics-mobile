@@ -44,6 +44,15 @@ function DeliveriesContent() {
    * contains a matched package opens itself.
    */
   const [search, setSearch]     = useState('');
+  /**
+   * The window this board is showing, as YYYY-MM-DD.
+   *
+   * Empty means everything, which is what it did before and stays the
+   * default: narrowing the busiest board by default would hide today's
+   * work from somebody who opened it to see today's work.
+   */
+  const [from, setFrom] = useState('');
+  const [to,   setTo]   = useState('');
   // Rides vs packages: two product lines, one table (founder 23 Aug).
   const [kindFilter, setKindFilter] = useState<'' | 'ride' | 'package'>('');
   const [interOnly,  setInterOnly]  = useState(false);
@@ -54,7 +63,8 @@ function DeliveriesContent() {
   const load = (p = 1, term = search) => {
     setLoading(true);
     setError(null);
-    adminApi.deliveries(p, statusFilter || undefined, term.trim() || undefined, kindFilter || undefined)
+    adminApi.deliveries(p, statusFilter || undefined, term.trim() || undefined, kindFilter || undefined,
+                        from || undefined, to || undefined)
       .then((d) => setData(d))
       // A swallowed error left the last-good table on screen, or an empty
       // board on first load: neither says the request failed.
@@ -63,7 +73,7 @@ function DeliveriesContent() {
     setPage(p);
   };
 
-  useEffect(() => { load(1); }, [statusFilter, kindFilter]);
+  useEffect(() => { load(1); }, [statusFilter, kindFilter, from, to]);
 
   // Debounced so a support agent typing a code does not fire a request
   // per keystroke.
@@ -177,6 +187,50 @@ function DeliveriesContent() {
               {data?.total ?? 0} match{(data?.total ?? 0) === 1 ? '' : 'es'}
             </span>
           )}
+
+          {/* Booked between.
+
+              Almost every question put to this board is about a period:
+              what went wrong yesterday, what did last week look like, how
+              many on the day of the outage. Without a range the only route
+              to any of them was Next, Next, Next.
+
+              Ranged on when a delivery was BOOKED, which is also how the
+              list is sorted, so the window and the paging through it agree.
+              Empty by default: narrowing the busiest board on arrival would
+              hide today's work from somebody who opened it to see today's
+              work. */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-[#0F2B4C]/50">Booked</span>
+            <input
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(e) => setFrom(e.target.value)}
+              className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+            />
+            <span className="text-[#0F2B4C]/40">to</span>
+            <input
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(e) => setTo(e.target.value)}
+              className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+            />
+            {(from || to) && (
+              <button
+                onClick={() => { setFrom(''); setTo(''); }}
+                className="font-semibold text-[#3A7BD5] hover:underline"
+              >
+                Clear dates
+              </button>
+            )}
+            {(from || to) && (
+              <span className="text-xs text-[#0F2B4C]/50">
+                {data?.total ?? 0} in this range
+              </span>
+            )}
+          </div>
         </div>
 
         {error && (

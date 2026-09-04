@@ -413,8 +413,14 @@ export const adminApi = {
       body: JSON.stringify({ note }),
     }),
 
-  deliveries:     (page = 1, status?: string, search?: string, kind?: string) =>
-    req<any>(`/admin/deliveries?page=${page}${status ? `&status=${status}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}${kind ? `&kind=${kind}` : ''}`),
+  /**
+   * from/to are YYYY-MM-DD and range over when the delivery was BOOKED,
+   * which is also how the list is sorted, so the window and the paging
+   * through it agree with each other.
+   */
+  deliveries:     (page = 1, status?: string, search?: string, kind?: string,
+                   from?: string, to?: string) =>
+    req<any>(`/admin/deliveries?page=${page}${status ? `&status=${status}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}${kind ? `&kind=${kind}` : ''}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`),
   delivery:       (id: string) => req<any>(`/admin/deliveries/${id}`),
   /** Pickup, ordered stops, live driver position and GPS trail, for the map. */
   deliveryRoute:  (id: string) => req<any>(`/admin/deliveries/${id}/route`),

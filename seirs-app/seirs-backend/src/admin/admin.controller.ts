@@ -667,8 +667,13 @@ export class AdminController {
 
   // GET /api/v1/admin/deliveries?status=pending&page=1
   @Get('deliveries')
-  getDeliveries(@Query() q: { page?: number; limit?: number; status?: string; search?: string; kind?: string }) {
-    return this.adminService.getDeliveries(q.page ?? 1, q.limit ?? 20, q.status, q.search, q.kind);
+  getDeliveries(@Query() q: {
+    page?: number; limit?: number; status?: string; search?: string; kind?: string;
+    from?: string; to?: string;
+  }) {
+    return this.adminService.getDeliveries(
+      q.page ?? 1, q.limit ?? 20, q.status, q.search, q.kind, q.from, q.to,
+    );
   }
 
   // GET /api/v1/admin/deliveries/:id
@@ -956,9 +961,30 @@ export class AdminController {
   // GET /api/v1/admin/interstate-trips?status=active
   // Returns declared intercity trips for the ops board. Default: active only.
   @Get('interstate-trips')
-  getInterstateTrips(@Query('status') status?: DriverTripStatus) {
+  getInterstateTrips(
+    @Query('status') status?: DriverTripStatus,
+    @Query('from')   from?: string,
+    @Query('to')     to?: string,
+    @Query('limit')  limit?: string,
+  ) {
+    /**
+     * from and to are departure dates, for audit. Without them the board
+     * keeps to recent history on the finished tabs, and shows every live
+     * trip on the active one however far ahead it departs.
+     *
+     * An unparseable date is IGNORED rather than rejected: a filter that
+     * 500s on a typo is worse than one that shows too much.
+     */
+    const parse = (v?: string) => {
+      if (!v) return undefined;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    };
     return this.driversService.listAllInterstateTrips({
       status: status ?? DriverTripStatus.ACTIVE,
+      from:   parse(from),
+      to:     parse(to),
+      limit:  limit ? Number(limit) : undefined,
     });
   }
 

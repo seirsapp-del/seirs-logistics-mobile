@@ -2739,7 +2739,18 @@ export class AdminService {
    * Without this a package code found nothing at all, which is the one
    * thing a receiver actually has.
    */
-  async getDeliveries(page: number, limit: number, status?: string, search?: string, kind?: string) {
+  async getDeliveries(
+    page: number, limit: number, status?: string, search?: string, kind?: string,
+    /**
+     * Booked on or after / on or before, as YYYY-MM-DD.
+     *
+     * The busiest board on the dashboard had no way to ask about a period,
+     * and almost every question put to it is one: what went wrong
+     * yesterday, what did last week look like, how many on the day of the
+     * outage. Without a range the only way through is Next, Next, Next.
+     */
+    from?: string, to?: string,
+  ) {
     // Same cap as getUsers: an admin list must not be a bulk export.
     ({ page, limit } = this.clampPage(page, limit));
     /**
@@ -2826,6 +2837,21 @@ export class AdminService {
     }
     // Rides vs packages: two product lines, one table (founder 2026-08-23).
     if (kind === 'ride' || kind === 'package') qb.andWhere('d.kind = :kind', { kind });
+
+    /**
+     * Ranged on when the delivery was BOOKED, matching the sort.
+     *
+     * The list is ordered by createdAt DESC, so ranging on anything else
+     * would produce a window that does not correspond to the order the
+     * rows arrive in, and paging through it would jump around.
+     *
+     * `to` runs to the END of its day. A range ending on the 5th that
+     * stopped at midnight would exclude everything booked on the 5th,
+     * which is both the commonest date-filter bug and the one nobody
+     * notices, because the result still looks like a plausible list.
+     */
+    if (from) qb.andWhere('d.createdAt >= :from', { from: new Date(`${from}T00:00:00Z`) });
+    if (to)   qb.andWhere('d.createdAt <  :to',   { to: new Date(new Date(`${to}T00:00:00Z`).getTime() + 86_400_000) });
 
     const q = (search ?? '').trim();
     if (q) {
