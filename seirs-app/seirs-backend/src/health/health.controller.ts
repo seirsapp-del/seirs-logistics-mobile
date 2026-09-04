@@ -322,6 +322,54 @@ export class HealthController {
     }
 
     /**
+     * Parcel recovery probe (2026-09-04).
+     *
+     * Same reasoning as every probe above it, and the stakes are the
+     * highest of the lot: these rows are the ONLY record that a parcel
+     * left in a suspended shop needs getting back to somebody. The table
+     * is created by self-heal DDL inside a try/catch, so a failure is
+     * silent, and the failure mode is not an error page. Suspension would
+     * carry on working, quietly raising nothing, and the first sign would
+     * be a customer asking where their package went.
+     *
+     * openTasks is the number to actually watch. It is not a health
+     * figure, it is a work queue: every one is somebody's property sitting
+     * in a shop that has been stopped.
+     */
+    let recoverySchema: Record<string, unknown> = { ok: false };
+    try {
+      const [tbl] = await this.dataSource.query(
+        `SELECT to_regclass('public.parcel_recovery_tasks') AS t`,
+      );
+      const idx = await this.dataSource.query(
+        `SELECT indexname FROM pg_indexes
+          WHERE tablename = 'parcel_recovery_tasks'
+            AND indexname = 'uniq_recovery_open_per_parcel'`,
+      ).catch(() => []);
+      const counts = tbl?.t ? await this.dataSource.query(
+        `SELECT COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE status = 'open')::int AS "open",
+                COUNT(*) FILTER (WHERE outcome = 'unaccounted')::int AS unaccounted
+           FROM "parcel_recovery_tasks"`,
+      ).catch(() => null) : null;
+      recoverySchema = {
+        ok: Boolean(tbl?.t) && (idx as any[]).length > 0,
+        table:      tbl?.t ?? null,
+        openIndex:  (idx as any[]).length > 0,
+        ...(counts?.[0] ? {
+          tasks:       counts[0].total,
+          openTasks:   counts[0].open,
+          // Parcels nobody could find. Never expected to be above zero.
+          unaccounted: counts[0].unaccounted,
+        } : {}),
+        ...(tbl?.t ? {} : { warn: 'parcel_recovery_tasks missing: suspending a shop will silently record nothing about the parcels inside it' }),
+        ...((idx as any[]).length ? {} : { warnIndex: 'no unique open index: one parcel can collect two open tasks and the count can never honestly reach zero' }),
+      };
+    } catch (err: any) {
+      recoverySchema = { ok: false, error: err?.message ?? 'unknown' };
+    }
+
+    /**
      * KYC document store probe (2026-09-02).
      *
      * driver_documents was generalised into kyc_documents and the copy-in
@@ -455,6 +503,7 @@ export class HealthController {
       kycSchema,
       hoursSchema,
       movesSchema,
+      recoverySchema,
       // Did the statement_records ALTERs land? Same class of silent
       // failure: issuing looks healthy and every download 404s.
       statementsSchema,
