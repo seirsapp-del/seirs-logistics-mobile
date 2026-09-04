@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
   TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Share,
+  Image, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -52,6 +53,34 @@ interface NearbyStore {
   maxCapacity:  number;
   bucket:       'plenty' | 'limited' | 'full';
   full:         boolean;
+  /**
+   * All of this has been served by /partner-store/capacity/nearby the whole
+   * time and none of it was declared here, so none of it was drawn. The card
+   * showed a name, an address and a capacity bucket, and a customer could be
+   * sent across town to a shop that shut an hour ago with no way to tell.
+   *
+   * isOpenNow is computed SERVER-side through the shared working-hours
+   * helper, so this screen never has to interpret the schedule itself. That
+   * matters: a shop with no hours set is OPEN, not closed, and a card that
+   * read null as "Closed" would wrongly shutter most of the directory.
+   */
+  photoUrl?:     string | null;
+  phone?:        string | null;
+  isOpenNow?:    boolean;
+  distanceKm?:   number | null;
+  openTime?:     string | null;
+  closeTime?:    string | null;
+  workingHours?: Record<string, { enabled: boolean; start: string; end: string }> | null;
+}
+
+/** Today's hours, in the shop's own words. Empty string when unknown. */
+function todayHours(s: NearbyStore): string {
+  const KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const day = s.workingHours?.[KEYS[new Date().getDay()]];
+  if (day) return day.enabled === false ? '' : `${day.start} to ${day.end}`;
+  // Legacy shape, still on shops that never opened the new hours screen.
+  if (s.openTime && s.closeTime) return `${s.openTime} to ${s.closeTime}`;
+  return '';
 }
 
 const BUCKET_STYLE: Record<string, { color: string; labelKey: string }> = {
@@ -330,13 +359,50 @@ export default function DropAtStoreScreen() {
                       },
                     ]}
                   >
-                    <View style={[styles.storeIcon, { backgroundColor: theme.primary + '15' }]}>
-                      <Store size={20} color={theme.primary} />
-                    </View>
+                    {/*
+                      * The shop front, not a generic pin.
+                      *
+                      * We refuse to approve a partner without this photo
+                      * precisely so somebody can recognise the building when
+                      * they arrive, and then never showed it to the person
+                      * doing the arriving. Falls back to the icon when a shop
+                      * has no approved photo yet.
+                      */}
+                    {s.photoUrl ? (
+                      <Image source={{ uri: s.photoUrl }} style={styles.storeIcon} resizeMode="cover" />
+                    ) : (
+                      <View style={[styles.storeIcon, { backgroundColor: theme.primary + '15' }]}>
+                        <Store size={20} color={theme.primary} />
+                      </View>
+                    )}
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.storeName, { color: theme.text }]}>{s.storeName}</Text>
                       <Text style={[styles.storeAddress, { color: theme.textSecond }]} numberOfLines={1}>{s.storeAddress}</Text>
+
+                      {/* Open or shut, and how far. The two facts that decide
+                          whether this shop is any use to you right now. */}
+                      <Text style={[styles.storeMeta, { color: theme.textSecond }]} numberOfLines={1}>
+                        {s.isOpenNow === false ? (
+                          <Text style={{ color: BUCKET_STYLE.full.color, fontWeight: FontWeight.bold }}>Closed now</Text>
+                        ) : (
+                          <Text style={{ color: BUCKET_STYLE.plenty.color, fontWeight: FontWeight.bold }}>Open now</Text>
+                        )}
+                        {todayHours(s) ? `  ·  ${todayHours(s)}` : ''}
+                        {s.distanceKm != null ? `  ·  ${s.distanceKm} km` : ''}
+                      </Text>
+
                       <Text style={[styles.bucketText, { color: bucket.color }]}>● {t(`dropAtStore.`+bucket.labelKey)}</Text>
+
+                      {/* Only when it is shut. A closed shop is the one moment
+                          a phone number is worth the clutter. */}
+                      {s.isOpenNow === false && s.phone ? (
+                        <Text
+                          style={[styles.storeMeta, { color: theme.primary, fontWeight: FontWeight.semibold }]}
+                          onPress={() => Linking.openURL(`tel:${s.phone}`).catch(() => {})}
+                        >
+                          Call to check
+                        </Text>
+                      ) : null}
                     </View>
                     {selected && <Check size={18} color={theme.primary} />}
                   </Pressable>
@@ -639,6 +705,7 @@ const styles = StyleSheet.create({
   storeIcon:     { width: 40, height: 40, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
   storeName:     { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
   storeAddress:  { fontSize: FontSize.xs, marginTop: 2 },
+  storeMeta:     { fontSize: FontSize.xs, marginTop: 3 },
   bucketText:    { fontSize: FontSize.xs, fontWeight: FontWeight.bold, marginTop: 4 },
 
   modeCard:      { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5, marginBottom: Spacing.xs },
