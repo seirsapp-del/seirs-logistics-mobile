@@ -1938,7 +1938,27 @@ export class DeliveriesService {
     }
   }
 
-  async findByTracking(trackingCode: string) {
+  /**
+   * The area, not the address.
+   *
+   * '15 Adeola Odeku Street, Victoria Island, Lagos' becomes
+   * 'Victoria Island, Lagos'. Enough for a receiver to see their parcel is
+   * moving toward the right part of the city; not enough to find a house.
+   */
+  private areaOnly(address?: string | null): string | null {
+    if (!address) return null;
+    const parts = String(address).split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length <= 2) return parts.join(', ') || null;
+    return parts.slice(-2).join(', ');
+  }
+
+  /** Last four digits of a Nigerian number, however it was typed. */
+  private lastFour(phone?: string | null): string | null {
+    const digits = String(phone ?? '').replace(/\\D/g, '');
+    return digits.length >= 4 ? digits.slice(-4) : null;
+  }
+
+  async findByTracking(trackingCode: string, verify?: string, viewerUserId?: string) {
     /**
      * Per-package codes (SRS-XXXXXXXX, multi-package rebuild 2026-08-16)
      * resolve to their stop first, then the parent run: the receiver of
@@ -2043,17 +2063,48 @@ export class DeliveriesService {
     //   `SELECT status FROM driver_subscriptions WHERE "driverId" = $1 LIMIT 1`, [delivery.driver.id]);
     const driverIsPro = false;
 
+    /**
+     * Two tiers, because a tracking code is a bearer token.
+     *
+     * The full payload carries the pickup address, the destination, the
+     * recipient's first name, the driver's name and plate and their live
+     * position. Both ends of a journey and the person carrying it. Anyone
+     * who obtains a code obtains all of it, and codes travel: they are
+     * forwarded on WhatsApp, screenshotted, and printed on labels.
+     *
+     * So a code alone shows movement, and the AREA rather than the address.
+     * Seeing more takes the last four digits of the number the parcel is
+     * going to, which the actual recipient knows without looking and a
+     * stranger holding a forwarded code does not. Ten thousand combinations
+     * against a 20-a-minute throttle is not a door, and somebody grinding
+     * at it is unmistakable in the logs.
+     *
+     * The pattern is DHL's and Royal Mail's, code plus postcode, so it is
+     * not novel to anyone who has tracked a parcel before.
+     *
+     * THREE WAYS PAST IT, all of them people who should be past it:
+     * the signed-in sender, because it is their parcel and the app already
+     * knows who they are; anyone who supplies the digits; and anyone
+     * tracking a delivery we hold no phone number for, because gating on
+     * nothing would lock the parcel away from everybody including its
+     * recipient.
+     */
+    const gatePhone = packageStop?.recipientPhone ?? (delivery as any).receiverPhone ?? null;
+    const expected  = this.lastFour(gatePhone);
+    const isSender  = Boolean(viewerUserId && delivery.customer?.id === viewerUserId);
+    const supplied  = this.lastFour(verify) === expected && expected !== null;
+    const unlocked  = isSender || supplied || expected === null;
     const publicDriver = delivery.driver
       ? {
-          name:        delivery.driver.user?.name ?? 'Driver',
+          name:        unlocked ? (delivery.driver.user?.name ?? 'Driver') : 'Your rider',
           vehicleType: delivery.driver.vehicleType ?? null,
           rating:      delivery.driver.rating ?? null,
           verifiedPro: driverIsPro,
           // Ride trust card (founder 2026-08-23): the passenger sees the
           // plate and the very vehicle photo the driver registered with.
           // Drivers are always fully identified: that is the deal.
-          vehiclePlate:    delivery.driver.vehiclePlate ?? null,
-          vehiclePhotoUrl: delivery.driver.vehiclePhotoUrl ?? null,
+          vehiclePlate:    unlocked ? (delivery.driver.vehiclePlate ?? null) : null,
+          vehiclePhotoUrl: unlocked ? (delivery.driver.vehiclePhotoUrl ?? null) : null,
         }
       : null;
 
@@ -2081,6 +2132,20 @@ export class DeliveriesService {
     return {
       id:             delivery.id,
       trackingCode:   delivery.trackingCode,
+      /**
+       * What the page needs to draw the prompt, and nothing that helps
+       * guess. It says a check EXISTS and whether it has been passed. It
+       * never says which digits, and never echoes the phone.
+       */
+      verification: {
+        required: expected !== null,
+        passed:   unlocked,
+        // Named so the copy can be specific: 'the last 4 digits of the
+        // number this is going to' is answerable; 'verify yourself' is not.
+        hint:     expected !== null && !unlocked
+          ? 'Enter the last 4 digits of the phone number this delivery is going to.'
+          : null,
+      },
       status:         delivery.status,
       // Rides read a different status ladder on the tracking screen.
       kind:           (delivery as any).kind ?? 'package',
@@ -2096,15 +2161,15 @@ export class DeliveriesService {
             code:               packageStop.packageTrackingCode,
             sequenceOrder:      packageStop.sequenceOrder,
             description:        packageStop.packageDescription ?? null,
-            photoUrl:           Array.isArray(packageStop.packagePhotoUrls) ? (packageStop.packagePhotoUrls[0] ?? null) : null,
+            photoUrl:           unlocked && Array.isArray(packageStop.packagePhotoUrls) ? (packageStop.packagePhotoUrls[0] ?? null) : null,
             status:             packageStop.status,
-            recipientFirstName: (packageStop.recipientName ?? '').split(' ')[0] || null,
-            address:            packageStop.address,
+            recipientFirstName: unlocked ? ((packageStop.recipientName ?? '').split(' ')[0] || null) : null,
+            address:            unlocked ? packageStop.address : this.areaOnly(packageStop.address),
             arrivedAt:          packageStop.arrivedAt ?? null,
             deliveredAt:        packageStop.deliveredAt ?? null,
           }
         : null,
-      pickupAddress:  delivery.pickupAddress,
+      pickupAddress:  unlocked ? delivery.pickupAddress : this.areaOnly(delivery.pickupAddress),
       // The pickup's coordinates, so the tracking map can draw where the
       // package started. The payload has always returned pickupAddress
       // in full and never its coordinates, which left the customer map
@@ -2113,15 +2178,15 @@ export class DeliveriesService {
       // where the package WENT, not where it came from, and the address
       // is already public on this endpoint so the coordinates reveal
       // nothing further.
-      pickupLat:      delivery.pickupLat != null ? Number(delivery.pickupLat) : null,
-      pickupLng:      delivery.pickupLng != null ? Number(delivery.pickupLng) : null,
+      pickupLat:      unlocked && delivery.pickupLat != null ? Number(delivery.pickupLat) : null,
+      pickupLng:      unlocked && delivery.pickupLng != null ? Number(delivery.pickupLng) : null,
       dropoffAddress: feeLocked
         ? 'SEIRS Partner Store (settle the redirect fee to reveal the pickup location)'
-        : delivery.dropoffAddress,
+        : unlocked ? delivery.dropoffAddress : this.areaOnly(delivery.dropoffAddress),
       // Coords power the customer's redirect-to-store picker (stores
       // sorted nearest to the ACTUAL dropoff, not the customer's phone).
-      dropoffLat:     feeLocked ? null : (delivery.dropoffLat != null ? Number(delivery.dropoffLat) : null),
-      dropoffLng:     feeLocked ? null : (delivery.dropoffLng != null ? Number(delivery.dropoffLng) : null),
+      dropoffLat:     feeLocked || !unlocked ? null : (delivery.dropoffLat != null ? Number(delivery.dropoffLat) : null),
+      dropoffLng:     feeLocked || !unlocked ? null : (delivery.dropoffLng != null ? Number(delivery.dropoffLng) : null),
       // Failed-delivery window state for the customer app's response
       // sheet + the driver app's waiting view.
       arrivalIssueAt:     delivery.arrivalIssueAt ?? null,

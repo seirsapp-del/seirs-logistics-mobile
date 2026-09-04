@@ -110,8 +110,12 @@ export class DeliveriesController {
   @Public()
   @Throttle({ default: { ttl: 60000, limit: 20 } })
   @Get('track/:code')
-  track(@Param('code') code: string) {
-    return this.deliveriesService.findByTracking(code);
+  track(
+    @Param('code') code: string,
+    @Query('v') v?: string,
+    @CurrentUser() user?: any,
+  ) {
+    return this.deliveriesService.findByTracking(code, v, user?.id);
   }
 
   // POST /api/v1/deliveries/:id/rate  { rating: 1-5, comment?: string }
