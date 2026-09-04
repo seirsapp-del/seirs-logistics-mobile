@@ -69,8 +69,17 @@ export class SupportController {
     // not merely their arrangement, the moment there is more than one page.
     @Query('sort')  sort?: 'recent' | 'waiting',
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('q')          q?: string,
+    @Query('unassigned') unassigned?: string,
+    @Query('from')       from?: string,
+    @Query('to')         to?: string,
   ) {
-    return this.svc.listQueue(user, { status, topic, accountType, limit, sort, page });
+    return this.svc.listQueue(user, {
+      status, topic, accountType, limit, sort, page, q,
+      // Query strings carry text, so "false" would be truthy as a value.
+      unassigned: unassigned === 'true' || unassigned === '1',
+      from, to,
+    });
   }
 
   // POST /api/v1/support/tickets/:id/agent-reply

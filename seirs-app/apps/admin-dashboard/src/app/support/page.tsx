@@ -150,6 +150,17 @@ export default function SupportInboxPage() {
    */
   const [sort, setSort] = useState<'recent' | 'waiting'>('recent');
   const [page,  setPage]  = useState(1);
+  const [unassignedOnly, setUnassignedOnly] = useState(false);
+  const [from, setFrom] = useState('');
+  const [to,   setTo]   = useState('');
+  /**
+   * The search term actually SENT, as opposed to what is being typed.
+   *
+   * Separate because the search now hits the database: firing a query on
+   * every keystroke would put a LIKE across the whole ticket table on each
+   * letter. Committed on Enter or the button.
+   */
+  const [query, setQuery] = useState('');
   const [total, setTotal] = useState(0);
 
   const confirm = useConfirm();
@@ -168,6 +179,10 @@ export default function SupportInboxPage() {
         limit:       QUEUE_LIMIT,
         sort,
         page,
+        q:           query || undefined,
+        unassigned:  unassignedOnly || undefined,
+        from:        from || undefined,
+        to:          to   || undefined,
       });
       /**
        * The queue returns { items, total, page } now. Array.isArray is the
@@ -185,7 +200,7 @@ export default function SupportInboxPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, topicFilter, accountTypeFilter, sort, page]);
+  }, [statusFilter, topicFilter, accountTypeFilter, sort, page, query, unassignedOnly, from, to]);
 
   useEffect(() => { loadQueue(); }, [loadQueue]);
 
@@ -434,12 +449,15 @@ export default function SupportInboxPage() {
    * find box and ordered the way the agent asked for.
    */
   const visible = useMemo(() => {
-    const term = find.trim().toLowerCase();
-    const rows = term
-      ? tickets.filter(t =>
-          `${t.subject} ${t.user?.name ?? ''} ${t.user?.email ?? ''} ${t.user?.phone ?? ''} ${t.user?.accountId ?? ''}`
-            .toLowerCase().includes(term))
-      : tickets.slice();
+    /**
+     * No local filtering any more. The server searches the whole table.
+     *
+     * This used to filter the fetched page, so a ticket on page three was
+     * invisible to a search for it and the box returned nothing, which
+     * looks exactly like "no such ticket". A search that answers
+     * confidently and wrongly is worse than no search.
+     */
+    const rows = tickets.slice();
     /**
      * Sorting moved to the server and is deliberately NOT redone here.
      *
@@ -453,7 +471,7 @@ export default function SupportInboxPage() {
      * quietly returning nothing for a ticket sitting on page three.
      */
     return rows;
-  }, [tickets, find]);
+  }, [tickets]);
 
   /**
    * Any change to what is being asked for goes back to page one.
@@ -462,10 +480,14 @@ export default function SupportInboxPage() {
    * fourth page of a much shorter list and shows an empty queue, which on
    * a support inbox reads as "nothing to do" rather than "wrong page".
    */
-  useEffect(() => { setPage(1); }, [statusFilter, topicFilter, accountTypeFilter, sort]);
+  useEffect(() => { setPage(1); },
+    [statusFilter, topicFilter, accountTypeFilter, sort, query, unassignedOnly, from, to]);
 
   const filtersActive = Boolean(statusFilter || topicFilter || accountTypeFilter);
-  const clearFilters  = () => { setStatusFilter(''); setTopicFilter(''); setAccountTypeFilter(''); setFind(''); };
+  const clearFilters  = () => {
+    setStatusFilter(''); setTopicFilter(''); setAccountTypeFilter('');
+    setFind(''); setQuery(''); setUnassignedOnly(false); setFrom(''); setTo('');
+  };
   const isForbidden   = Boolean(error && /403|forbidden|support agent role/i.test(error));
 
   const t          = thread?.ticket;
@@ -547,17 +569,61 @@ export default function SupportInboxPage() {
             <option value="waiting">Longest wait first</option>
           </select>
 
+          {/* Searches every ticket, not the loaded page.
+
+              Committed on Enter rather than filtering as you type, because
+              this now runs a LIKE across the whole ticket table and firing
+              one per keystroke would put a query on the database for every
+              letter of somebody's name. */}
           <div className="relative">
             <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={find}
               onChange={e => setFind(e.target.value)}
-              placeholder="Find on this page: name, email, phone, SEIRS ID"
+              onKeyDown={e => { if (e.key === 'Enter') setQuery(find.trim()); }}
+              onBlur={() => setQuery(find.trim())}
+              placeholder="Search everything: name, email, phone, SEIRS ID"
               className="w-72 rounded-lg border border-gray-200 bg-white py-1.5 pl-7 pr-2 font-medium focus:outline-none focus:ring-1 focus:ring-[#3A7BD5]"
             />
           </div>
 
-          {filtersActive || find.trim() ? (
+          {/* The question a shift lead asks first, and the one a queue is
+              worst at answering by eye: an unowned ticket looks exactly
+              like an owned one. */}
+          <label className="flex items-center gap-1.5 font-medium text-[#0F2B4C]">
+            <input
+              type="checkbox"
+              checked={unassignedOnly}
+              onChange={e => setUnassignedOnly(e.target.checked)}
+              className="h-3.5 w-3.5 accent-[#3A7BD5]"
+            />
+            Nobody has this
+          </label>
+
+          {/* Opened between. On createdAt, not last activity: "what came in
+              over the weekend" is a question about arrival, and ranging on
+              last activity would drop a ticket raised Saturday and answered
+              Monday out of a Saturday-to-Sunday range. */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-500">Opened</span>
+            <input
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={e => setFrom(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-medium focus:outline-none focus:ring-1 focus:ring-[#3A7BD5]"
+            />
+            <span className="text-gray-400">to</span>
+            <input
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={e => setTo(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-medium focus:outline-none focus:ring-1 focus:ring-[#3A7BD5]"
+            />
+          </div>
+
+          {filtersActive || find.trim() || unassignedOnly || from || to ? (
             <button onClick={clearFilters} className="font-semibold text-[#3A7BD5] hover:underline">
               Clear filters
             </button>
@@ -571,10 +637,16 @@ export default function SupportInboxPage() {
           thing to do is say the older ones are not on this screen.
         */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+          {/* The real total, from the server.
+
+              This counted loaded rows, so it said "50 tickets" when it
+              meant "the 50 we fetched", and it could not tell a queue of
+              fifty from the first fifty of nine hundred. */}
           <span>
-            {find.trim()
-              ? `${visible.length} of ${tickets.length} loaded ticket${tickets.length === 1 ? '' : 's'} match "${find.trim()}"`
-              : `${tickets.length} ticket${tickets.length === 1 ? '' : 's'} loaded`}
+            {total === tickets.length
+              ? `${total} ticket${total === 1 ? '' : 's'}`
+              : `${tickets.length} of ${total} ticket${total === 1 ? '' : 's'}`}
+            {query ? ` matching "${query}"` : ''}
           </span>
           {waitingCount > 0 && (
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">

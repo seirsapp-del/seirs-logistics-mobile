@@ -1257,6 +1257,14 @@ export const adminApi = {
        */
       sort?:        'recent' | 'waiting';
       page?:        number;
+      /** Matched in the database, across the subject AND the person. */
+      q?:           string;
+      /** Only tickets nobody has picked up. */
+      unassigned?:  boolean;
+      /** Opened on or after (YYYY-MM-DD). */
+      from?:        string;
+      /** Opened on or before, whole day included. */
+      to?:          string;
     } = {}) => {
       const qs = new URLSearchParams();
       if (params.status)      qs.set('status',      params.status);
@@ -1264,6 +1272,10 @@ export const adminApi = {
       if (params.accountType) qs.set('accountType', params.accountType);
       if (params.sort)        qs.set('sort',        params.sort);
       if (params.page)        qs.set('page',        String(params.page));
+      if (params.q?.trim())   qs.set('q',           params.q.trim());
+      if (params.unassigned)  qs.set('unassigned',  'true');
+      if (params.from)        qs.set('from',        params.from);
+      if (params.to)          qs.set('to',          params.to);
       qs.set('limit', String(params.limit ?? 30));
       return req<any>(`/support/queue?${qs.toString()}`);
     },

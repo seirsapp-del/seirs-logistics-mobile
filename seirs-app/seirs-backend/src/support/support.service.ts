@@ -258,6 +258,14 @@ export class SupportService {
      */
     sort?:       'recent' | 'waiting';
     page?:       number;
+    /** Free text over the subject and the person, matched in the database. */
+    q?:          string;
+    /** Only tickets nobody has picked up. */
+    unassigned?: boolean;
+    /** Opened on or after this date (YYYY-MM-DD). */
+    from?:       string;
+    /** Opened on or before this date, inclusive of the whole day. */
+    to?:         string;
   } = {}) {
     if (!(await this.isAgent(requester))) {
       throw new ForbiddenException('Support agent role required');
@@ -304,6 +312,58 @@ export class SupportService {
     if (opts.status)      qb.andWhere('t.status = :s',              { s: opts.status });
     if (opts.topic)       qb.andWhere('t.topic = :tp',              { tp: opts.topic });
     if (opts.accountType) qb.andWhere('t."userAccountType" = :at',  { at: opts.accountType });
+
+    /**
+     * Searching in the DATABASE, not over the rows that happen to be loaded.
+     *
+     * The dashboard filtered the fetched page, so a ticket on page three
+     * was invisible to a search for it, and the box returned an empty
+     * result that looked exactly like "no such ticket". When a customer
+     * rings up, finding their ticket is the first thing an agent does, and
+     * a search that silently only covers the current page is worse than no
+     * search at all: it answers confidently and wrongly.
+     *
+     * The person's own columns are included because nobody rings quoting a
+     * ticket subject. They give a name, or a phone number, or read out
+     * their SEIRS ID.
+     */
+    if (opts.q?.trim()) {
+      const term = `%${opts.q.trim().toLowerCase()}%`;
+      qb.andWhere(
+        `(LOWER(t.subject) LIKE :term
+          OR LOWER(u.name)  LIKE :term
+          OR LOWER(u.email) LIKE :term
+          OR LOWER(COALESCE(u.phone, ''))     LIKE :term
+          OR LOWER(COALESCE(u."accountId", '')) LIKE :term)`,
+        { term },
+      );
+    }
+
+    /**
+     * The pile nobody has picked up.
+     *
+     * assignedAgentId has been recorded on every ticket since the table
+     * existed and nothing anywhere filtered on it, so "what has nobody
+     * taken" was unanswerable from the screen. That is the question a
+     * shift lead asks first and the one a queue is worst at answering by
+     * eye, because an unowned ticket looks identical to an owned one.
+     */
+    if (opts.unassigned) qb.andWhere('t."assignedAgentId" IS NULL');
+
+    /**
+     * Date range over when the ticket was OPENED, not last touched.
+     *
+     * "What came in over the weekend" is a question about arrival. Ranging
+     * on lastMessageAt would instead answer "what was touched", so a
+     * ticket raised on Saturday and replied to on Monday would fall out of
+     * a Saturday-to-Sunday range, which is the opposite of what was asked.
+     *
+     * `to` covers the whole of its day: a range ending on the 5th that
+     * stopped at midnight would silently exclude everything raised ON the
+     * 5th, which is the commonest way a date filter lies.
+     */
+    if (opts.from) qb.andWhere('t."createdAt" >= :from', { from: new Date(`${opts.from}T00:00:00Z`) });
+    if (opts.to)   qb.andWhere('t."createdAt" <  :to',   { to:   new Date(new Date(`${opts.to}T00:00:00Z`).getTime() + 86_400_000) });
 
     /**
      * Real pages, and a total.
