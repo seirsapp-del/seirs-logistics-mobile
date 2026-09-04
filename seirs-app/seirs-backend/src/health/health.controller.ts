@@ -28,6 +28,25 @@ import { KYC_HEAL_REPORT } from '../kyc/kyc.module';
 export class HealthController {
   private readonly bootedAt = new Date();
 
+  /**
+   * Which of the named columns exist, and which do not.
+   *
+   * Returns the MISSING ones rather than the present ones: an empty list
+   * is the healthy answer and anything in it is the thing to act on.
+   */
+  private async columnsOn(table: string, wanted: string[]): Promise<{ ok: boolean; missing: string[] }> {
+    try {
+      const rows = await this.dataSource.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [table],
+      );
+      const have = new Set((rows as any[]).map(r => r.column_name));
+      const missing = wanted.filter(c => !have.has(c));
+      return { ok: missing.length === 0, missing };
+    } catch {
+      return { ok: false, missing: wanted };
+    }
+  }
+
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     @InjectRepository(SupportTicket) private readonly ticketsRepo: Repository<SupportTicket>,
@@ -267,6 +286,21 @@ export class HealthController {
         documents: counts,
         legacyDriverDocuments: inLegacy,
         partnerStores: partnerSource?.[0] ?? null,
+        /**
+         * Did the two later self-heals actually apply?
+         *
+         * capture* are the per-photo location columns (Phase 1) and the
+         * bank/payout columns are the payout rail (Phase 4). Both arrive
+         * as ALTERs inside a try/catch, so a failure is invisible until
+         * somebody photographs a shopfront and gets a database error
+         * standing in the shop. Named individually so a partial apply
+         * says WHICH column is missing.
+         */
+        columns: {
+          kycCapture:   await this.columnsOn('kyc_documents',  ['capturedLat', 'capturedLng', 'capturedAccuracyM']),
+          storeBank:    await this.columnsOn('partner_stores', ['bankCode', 'bankAccountNumber', 'bankAccountName', 'pendingBankAccountNumber']),
+          payoutRail:   await this.columnsOn('partner_payouts', ['transferReference', 'paidToAccountNumber', 'failureReason']),
+        },
         // What the boot-time heal did, including anything it caught.
         heal: KYC_HEAL_REPORT,
         ...(partnerSource?.[0] && partnerSource[0].filesOnStores > (counts.partner_store ?? 0)
