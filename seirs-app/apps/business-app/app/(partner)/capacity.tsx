@@ -61,6 +61,8 @@ export default function PartnerCapacityScreen() {
   const [capacity,    setCapacity]    = useState<CapacityData | null>(null);
   const [dropoffs,    setDropoffs]    = useState<Dropoff[]>([]);
   const [storeStatus, setStoreStatus] = useState<'active' | 'paused'>('active');
+  /** Why they are paused, and whether SEIRS did it. Null when open. */
+  const [pause, setPause] = useState<{ paused: boolean; reason: string | null; byUs: boolean } | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
   const [toggling,    setToggling]    = useState(false);
@@ -77,9 +79,15 @@ export default function PartnerCapacityScreen() {
       ]);
       setCapacity(cap);
       setDropoffs(Array.isArray(list) ? list : []);
-      // The dashboard payload exposes partner-store status via `storeStatus`
-      // when populated by the backend; fall back to 'active' otherwise.
+      /**
+       * The dashboard sends storeStatus now. It never did before, so this
+       * fallback ran on every single load and the switch below showed ON
+       * for every shop whatever its real state, with the Paused banner
+       * unreachable. A partner we had paused was shown a screen telling
+       * them they were open.
+       */
       setStoreStatus((dash?.storeStatus ?? 'active') as 'active' | 'paused');
+      partnerApi.pausedReason(storeId).then(setPause).catch(() => setPause(null));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -164,12 +172,30 @@ export default function PartnerCapacityScreen() {
               <Switch
                 value={storeStatus === 'active'}
                 onValueChange={toggleAcceptIncoming}
-                disabled={toggling}
+                // Not theirs to flip when SEIRS paused them. A control that
+                // will be refused is worse than no control: they press it,
+                // get an error, and learn the app argues with them.
+                disabled={toggling || pause?.byUs === true}
                 trackColor={{ false: colors.border, true: colors.accent }}
                 thumbColor="#fff"
               />
             </View>
-            {storeStatus === 'paused' && (
+
+            {/* The reason, not just the state.
+
+                This said "Paused: customers can't book this store right
+                now" and stopped there, so a shop paused by a move under
+                review read exactly like one that had paused itself, and a
+                shopkeeper had no way to find out which. An empty inbox with
+                no explanation is its own silent failure: they decide the app
+                is broken and we never hear about it. */}
+            {pause?.paused && !!pause.reason && (
+              <View style={styles.pauseBanner}>
+                <Icon name="AlertCircle" size={14} color="#92400E" />
+                <Text style={styles.pauseText}>{pause.reason}</Text>
+              </View>
+            )}
+            {storeStatus === 'paused' && !pause?.reason && (
               <View style={styles.pauseBanner}>
                 <Icon name="AlertCircle" size={14} color="#92400E" />
                 <Text style={styles.pauseText}>Paused: customers can&apos;t book this store right now</Text>

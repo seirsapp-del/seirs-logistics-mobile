@@ -1630,6 +1630,18 @@ export class BusinessService {
       storeCode:   (store as any).storeCode ?? null,
       storeName:   store.storeName,
       hasLocation: (store as any).storeLat != null && (store as any).storeLng != null,
+      /**
+       * Whether this shop is taking parcels, and why not.
+       *
+       * The capacity screen has always read `dash.storeStatus`, and this
+       * payload has never sent it. So the fallback ran every single time:
+       * the Accept-new-drop-offs switch showed ON for every shop whatever
+       * its real state, and the "Paused" banner beneath it could never
+       * appear. A partner we had paused was shown a screen saying they were
+       * open, which is the worst of the three possible answers.
+       */
+      storeStatus:  (store as any).acceptingNew === false ? 'paused' : 'active',
+      acceptingNew: (store as any).acceptingNew !== false,
     };
   }
 

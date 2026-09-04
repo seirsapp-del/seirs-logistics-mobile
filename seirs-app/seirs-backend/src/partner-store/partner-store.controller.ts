@@ -332,6 +332,18 @@ export class PartnerStoreController {
     return this.svc.counterDetails(storeId);
   }
 
+  /**
+   * GET /api/v1/partner-store/store/:storeId/paused-reason
+   *
+   * Why this shop is not taking parcels, in words it can show a shopkeeper.
+   * An empty feed with no explanation is its own silent failure: the person
+   * decides the app is broken and we never hear about it.
+   */
+  @Get('store/:storeId/paused-reason')
+  pausedReason(@Param('storeId') storeId: string) {
+    return this.svc.pausedReason(storeId);
+  }
+
   // PATCH /api/v1/partner-store/store/:storeId/status  { status: 'active' | 'paused' }
   @Patch('store/:storeId/status')
   setStatus(

@@ -1767,9 +1767,92 @@ export class PartnerStoreService {
     if (!['active', 'paused'].includes(status)) {
       throw new BadRequestException('status must be "active" or "paused"');
     }
+    /**
+     * A shop may pause itself freely. It may not un-pause a pause we set.
+     *
+     * This wrote acceptingNew with no checks at all, which quietly undid
+     * every safety pause in the system. A partner with a move under review
+     * could switch drop-offs back on and start taking strangers' parcels at
+     * an address they are in the middle of leaving, which is precisely the
+     * failure the move pause exists to prevent. A suspended shop could do
+     * the same.
+     *
+     * Turning intake OFF is always allowed: a shopkeeper knows when they
+     * cannot take parcels, and refusing that would only teach them to stop
+     * telling us.
+     */
+    if (status === 'active') {
+      const store = await this.storeRepo.findOne({ where: { id: storeId } });
+      if (!store || !['approved', 'active'].includes(String(store.status))) {
+        throw new ForbiddenException(
+          'Your shop is not approved to take parcels at the moment. Message support and they will explain where it stands.',
+        );
+      }
+
+      const [pendingMove] = await this.storeRepo.manager.query(
+        `SELECT id FROM "partner_move_requests"
+          WHERE "partnerStoreId" = $1 AND status = 'pending' LIMIT 1`,
+        [storeId],
+      ).catch(() => [null]);
+      if (pendingMove) {
+        throw new ForbiddenException(
+          'You have a move under review, so new parcels stay paused until we confirm your new address. '
+          + 'You can still hand back anything you are already holding.',
+        );
+      }
+    }
+
     // Operational toggle now lives on `acceptingNew` (not approval `status`).
     await this.storeRepo.update(storeId, { acceptingNew: status === 'active' });
     return { storeId, status };
+  }
+
+  /**
+   * Why this shop is not taking parcels, in words it can show a shopkeeper.
+   *
+   * Null when it IS taking parcels. The distinction that matters is who
+   * paused it: a shop that paused itself needs a switch, and a shop we
+   * paused needs an explanation and no switch at all, because offering a
+   * control that will be refused is worse than offering none.
+   */
+  async pausedReason(storeId: string): Promise<{ paused: boolean; reason: string | null; byUs: boolean }> {
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+    if (!store) return { paused: true, reason: 'This shop is no longer on the system.', byUs: true };
+
+    if (String(store.status) === 'suspended') {
+      return {
+        paused: true,
+        byUs:   true,
+        reason: 'Your shop is suspended, so it is not taking parcels. Message support to sort it out. '
+              + 'Anything already on your shelf still needs handing back.',
+      };
+    }
+    if (!['approved', 'active'].includes(String(store.status))) {
+      return { paused: true, byUs: true, reason: 'Your shop has not been approved to take parcels yet.' };
+    }
+
+    const [move] = await this.storeRepo.manager.query(
+      `SELECT id FROM "partner_move_requests"
+        WHERE "partnerStoreId" = $1 AND status = 'pending' LIMIT 1`,
+      [storeId],
+    ).catch(() => [null]);
+    if (move) {
+      return {
+        paused: true,
+        byUs:   true,
+        reason: 'You asked to move shop, so new parcels are paused until we confirm the new address. '
+              + 'Please keep handing back anything you are already holding.',
+      };
+    }
+
+    if (!store.acceptingNew) {
+      return {
+        paused: true,
+        byUs:   false,
+        reason: 'You have paused new drop-offs. Turn them back on whenever you are ready.',
+      };
+    }
+    return { paused: false, reason: null, byUs: false };
   }
 
   // ── Partner store deletion readiness ───────────────────────────────────

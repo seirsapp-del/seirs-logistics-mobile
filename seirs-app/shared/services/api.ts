@@ -1880,6 +1880,18 @@ export const partnerApi = {
    * vehicle change: the live address is what customers and riders are sent
    * to, so it is written only when a person has approved the new one.
    */
+  /**
+   * Why this shop is not taking parcels, if it is not.
+   *
+   * byUs true means SEIRS paused them (a move under review, a suspension),
+   * so the screen explains rather than offering a switch that will be
+   * refused. byUs false means they paused themselves and the switch is
+   * theirs to flip back.
+   */
+  pausedReason: (storeId: string) =>
+    request<{ paused: boolean; reason: string | null; byUs: boolean }>(
+      'GET', `/partner-store/store/${storeId}/paused-reason`),
+
   move: {
     mine:     () => request<any>('GET',  '/partner-store/move'),
     request:  (body: {
