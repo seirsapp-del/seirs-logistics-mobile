@@ -12,6 +12,17 @@ import { HardDeleteModal } from '@/components/HardDeleteModal';
 import { SendDocumentModal } from '@/components/SendDocumentModal';
 import { EmptyState } from '@/components/EmptyState';
 import { useConfirm, usePrompt, useNotify } from '@/components/ConfirmDialog';
+import { Section } from '@/components/DetailSections';
+import dynamic from 'next/dynamic';
+
+/**
+ * Leaflet touches window on import, so it cannot be server-rendered.
+ * Same treatment the delivery pages give it.
+ */
+const DeliveryMap = dynamic(() => import('@/components/DeliveryMap'), {
+  ssr: false,
+  loading: () => <div className="h-[180px] rounded-lg bg-gray-50 border border-gray-100" />,
+});
 
 /**
  * Amber for needs_replacing, never red.
@@ -20,6 +31,21 @@ import { useConfirm, usePrompt, useNotify } from '@/components/ConfirmDialog';
  * colour is half of how that reads. Rejection means they did something
  * wrong; an expired certificate means time passed.
  */
+/**
+ * The four groups, in the order a reviewer works through them.
+ *
+ * Owner first because identity is what an approval actually rests on;
+ * premises last because it is the longest and the one with photographs
+ * to open. The subtitle says what makes each group get asked again, which
+ * is the whole reason they are separated (see kyc-labels on the server).
+ */
+const DOC_GROUPS: Array<{ key: string; title: string; note: string }> = [
+  { key: 'owner',    title: 'The owner',   note: 'Asked once. Does not change if the shop moves.' },
+  { key: 'business', title: 'The business', note: 'Optional. Most counter shops are not registered.' },
+  { key: 'premises', title: 'The premises', note: 'Asked again if the shop moves. Photographed on site.' },
+  { key: 'trust',    title: 'Trust',        note: 'Optional. They hold strangers\' parcels overnight.' },
+];
+
 const DOC_STATUS_STYLES: Record<string, string> = {
   approved:        'bg-emerald-100 text-emerald-700',
   submitted:       'bg-blue-100 text-blue-700',
@@ -72,6 +98,7 @@ export default function PartnerDetailPage() {
   const notify  = useNotify();
   const [docs, setDocs] = useState<any[] | null>(null);
   const [busyDoc, setBusyDoc] = useState<string | null>(null);
+  const docsWaiting = (docs ?? []).filter((d: any) => d.status === 'submitted').length;
 
   const reload = () => {
     // Returned, because the caller does reload().finally(() => setLoading(false)).
@@ -466,95 +493,192 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
           )}
         </div>
 
-        {/* KYC documents, each reviewed as itself */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-50">
-            <h2 className="font-semibold text-gray-900">Documents</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Decide each one on its own. Turning down a blurry photo no longer refuses the whole
-              application, and the partner is told which file to send again.
+        {/* Where the shop is, before the documents that claim it.
+            No map to build: DeliveryMap already draws OpenStreetMap tiles
+            with no API key and no per-load billing, chosen for exactly
+            that reason. This is one pin, so a reviewer can see the shop
+            sits on a street rather than in a lagoon without leaving the
+            page. The ops-map link stays for the full picture. */}
+        {Number.isFinite(Number(store.storeLat)) && Number.isFinite(Number(store.storeLng)) ? (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-50 flex items-baseline justify-between gap-4 flex-wrap">
+              <h2 className="font-semibold text-gray-900">Where it is</h2>
+              <span className="text-xs text-gray-400 font-mono">
+                {Number(store.storeLat).toFixed(5)}, {Number(store.storeLng).toFixed(5)}
+              </span>
+            </div>
+            <DeliveryMap
+              height={180}
+              points={[{
+                lat: Number(store.storeLat),
+                lng: Number(store.storeLng),
+                label: store.storeName,
+                kind: 'store',
+                detail: store.storeAddress ?? undefined,
+              }]}
+            />
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6 px-5 py-4">
+            <h2 className="font-semibold text-gray-900 mb-1">Where it is</h2>
+            <p className="text-sm text-amber-700">
+              No coordinates on this shop. It was applied for with a typed address rather than one
+              picked from the list, so it sorts last on Find a Partner and nothing can be checked
+              against it. The photographs below cannot be distance-checked either.
             </p>
           </div>
+        )}
 
-          {docs === null ? (
-            <div className="p-5 text-sm text-gray-400">Loading documents...</div>
-          ) : docs.length === 0 ? (
-            <div className="p-5 text-sm text-gray-400">
-              Nothing was uploaded with this application. There is no shopfront photo, no CAC
-              certificate and no ID to check against.
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {docs.map((d: any) => {
-                const busy = busyDoc === d.id;
-                const expired = d.expiresAt && new Date(d.expiresAt) < new Date();
-                return (
-                  <div key={d.id} className="px-5 py-4">
-                    <div className="flex items-start justify-between gap-4 flex-wrap">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-gray-900 text-sm">{d.label}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${DOC_STATUS_STYLES[d.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                            {DOC_STATUS_LABEL[d.status] ?? d.status}
-                          </span>
-                          {d.version > 1 && (
-                            <span className="text-xs text-gray-400" title="How many times this file has been replaced">
-                              v{d.version}
-                            </span>
-                          )}
-                        </div>
-                        {d.rejectionReason && (
-                          <p className="text-xs text-gray-600 mt-1">What they were told: {d.rejectionReason}</p>
-                        )}
-                        {d.reviewedByName && (
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            Signed off by {d.reviewedByName}
-                            {d.reviewedAt ? ` on ${new Date(d.reviewedAt).toLocaleDateString('en-NG')}` : ''}
-                          </p>
-                        )}
-                        {d.canExpire && (
-                          <p className={`text-xs mt-0.5 ${expired ? 'text-amber-700 font-medium' : 'text-gray-400'}`}>
-                            {d.expiresAt
-                              ? `${expired ? 'Ran out' : 'Valid until'} ${new Date(d.expiresAt).toLocaleDateString('en-NG')}`
-                              : 'No expiry recorded, so it will never be flagged'}
-                          </p>
-                        )}
+        {/* Documents, reviewed here, grouped by what each one is about.
+            The shared Section rather than a private card, so this panel
+            remembers its state per admin like the driver page does, and
+            opens itself only while something is waiting. */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+          <Section
+            title="Documents"
+            storageKey="partner-documents"
+            bare
+            defaultOpen={docsWaiting > 0}
+            summary={
+              docs === null ? 'loading' : (
+                <span className="flex items-center gap-2">
+                  {docsWaiting > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      {docsWaiting} waiting on you
+                    </span>
+                  )}
+                  <span>{docs.length} on record</span>
+                </span>
+              )
+            }
+          >
+            {docs === null ? (
+              <p className="text-sm text-gray-400">Loading documents...</p>
+            ) : docs.length === 0 ? (
+              <p className="text-sm text-gray-400">
+                Nothing was uploaded with this application. There is no shopfront photo, no CAC
+                certificate and no ID to check against.
+              </p>
+            ) : (
+              <div className="space-y-6">
+                {DOC_GROUPS.map((g) => {
+                  const inGroup = docs.filter((d: any) => d.group === g.key);
+                  if (inGroup.length === 0) return null;
+                  return (
+                    <div key={g.key}>
+                      <div className="mb-2">
+                        <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">{g.title}</h3>
+                        <p className="text-xs text-gray-400">{g.note}</p>
                       </div>
+                      <div className="space-y-2">
+                        {inGroup.map((d: any) => {
+                          const busy = busyDoc === d.id;
+                          const expired = d.expiresAt && new Date(d.expiresAt) < new Date();
+                          return (
+                            <div key={d.id} className="flex items-start gap-3 border border-gray-100 rounded-lg p-3">
+                              <a href={d.url} target="_blank" rel="noreferrer"
+                                 className="w-16 h-16 rounded-md overflow-hidden bg-gray-50 border border-gray-200 flex-shrink-0">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={d.url} alt={d.label} className="w-full h-full object-cover" />
+                              </a>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-medium text-gray-800">{d.label}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${DOC_STATUS_STYLES[d.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                    {DOC_STATUS_LABEL[d.status] ?? d.status}
+                                  </span>
+                                  {!d.required && (
+                                    <span className="text-xs text-gray-400">optional</span>
+                                  )}
+                                  {d.version > 1 && (
+                                    <span className="text-xs text-gray-400">re-uploaded &times;{d.version - 1}</span>
+                                  )}
+                                </div>
 
-                      <div className="flex items-center gap-2 flex-wrap shrink-0">
-                        {d.url && (
-                          <a href={d.url} target="_blank" rel="noreferrer"
-                            className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-1.5">
-                            <FileText size={13} /> Open <ExternalLink size={11} className="text-gray-400" />
-                          </a>
-                        )}
-                        <button disabled={busy} onClick={() => decide(d, 'approve')}
-                          className="text-xs px-3 py-1.5 rounded-lg font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40">
-                          Approve
-                        </button>
-                        <button disabled={busy} onClick={() => decide(d, 'needs_replacing')}
-                          className="text-xs px-3 py-1.5 rounded-lg font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-40"
-                          title="It was fine and has run out. Nobody is being blamed.">
-                          Needs replacing
-                        </button>
-                        <button disabled={busy} onClick={() => decide(d, 'reject')}
-                          className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-40">
-                          Reject
-                        </button>
-                        {d.canExpire && (
-                          <button disabled={busy} onClick={() => editExpiry(d)}
-                            className="text-xs px-3 py-1.5 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40"
-                            title="Set or clear the date without sending a fresh approval notice">
-                            {d.expiresAt ? 'Change date' : 'Set date'}
-                          </button>
-                        )}
+                                {/* Three different things, kept apart on purpose.
+                                    A phone that never said is not a phone that
+                                    lied, and only the last line is a reason to
+                                    doubt anybody. */}
+                                {d.farFromStore && (
+                                  <p className="mt-1 text-xs text-red-700 font-medium">
+                                    Taken {(d.metresFromStore / 1000).toFixed(1)} km from the shop&apos;s address.
+                                  </p>
+                                )}
+                                {!d.farFromStore && d.metresFromStore != null && (
+                                  <p className="mt-1 text-xs text-emerald-700">
+                                    Taken {d.metresFromStore} m from the address. Consistent.
+                                  </p>
+                                )}
+                                {d.imprecise && (
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    The phone was unsure of its position, so the distance above is soft.
+                                  </p>
+                                )}
+                                {d.noLocation && (
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    No location on this photo. Common indoors, and not a problem on its own.
+                                  </p>
+                                )}
+
+                                {d.rejectionReason && (
+                                  <p className="mt-1 text-xs text-red-700">What they were told: {d.rejectionReason}</p>
+                                )}
+                                {d.reviewedByName && d.reviewedAt && (
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    {d.status === 'approved' ? 'Approved' : 'Reviewed'} by{' '}
+                                    <span className="font-medium text-gray-700">{d.reviewedByName}</span>{' '}
+                                    on {new Date(d.reviewedAt).toLocaleDateString('en-GB', {
+                                      day: 'numeric', month: 'short', year: 'numeric',
+                                    })}
+                                  </p>
+                                )}
+                                {d.canExpire && (
+                                  <p className={`mt-1 text-xs ${expired ? 'text-amber-700 font-medium' : 'text-gray-400'}`}>
+                                    {d.expiresAt
+                                      ? `${expired ? 'Ran out' : 'Valid until'} ${new Date(d.expiresAt).toLocaleDateString('en-GB')}`
+                                      : 'No expiry recorded, so it will never be flagged'}
+                                  </p>
+                                )}
+
+                                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                  {d.status !== 'approved' && (
+                                    <button type="button" disabled={busy} onClick={() => void decide(d, 'approve')}
+                                      className="text-xs px-3 py-1.5 rounded-lg font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40">
+                                      Approve
+                                    </button>
+                                  )}
+                                  <button type="button" disabled={busy} onClick={() => void decide(d, 'needs_replacing')}
+                                    className="text-xs px-3 py-1.5 rounded-lg font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-40"
+                                    title="It was fine and has run out. Nobody is being blamed.">
+                                    Ask for a new one
+                                  </button>
+                                  {/* Reject stays available AFTER approval. An
+                                      approval made in error, or a forgery
+                                      noticed later, must be undoable from the
+                                      page it was made on. The driver page
+                                      learned this the hard way. */}
+                                  <button type="button" disabled={busy} onClick={() => void decide(d, 'reject')}
+                                    className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-40">
+                                    Reject
+                                  </button>
+                                  {d.canExpire && d.status === 'approved' && (
+                                    <button type="button" disabled={busy} onClick={() => void editExpiry(d)}
+                                      className="text-xs font-semibold text-[#3A7BD5] hover:underline disabled:opacity-50 px-1">
+                                      {d.expiresAt ? 'Change expiry date' : 'Set an expiry date'}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </Section>
 
           {(store.reviewNote || store.reviewedAt) && (
             <div className="px-5 py-3 border-t border-gray-50 text-xs text-gray-500">
@@ -566,6 +690,7 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
             </div>
           )}
         </div>
+
       </main>
 
       {sendDocOpen && owner?.id && (

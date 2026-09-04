@@ -28,7 +28,7 @@ export interface MapPoint {
   lat:    number;
   lng:    number;
   label:  string;
-  kind:   'pickup' | 'stop' | 'driver';
+  kind:   'pickup' | 'stop' | 'driver' | 'store';
   detail?: string;
 }
 
@@ -43,6 +43,10 @@ const COLOR = {
   pickup: '#3A7BD5',
   stop:   '#15803D',
   driver: '#D97706',
+  // A partner counter, for the pin on a store's profile (2026-09-03).
+  // Navy rather than the pickup blue: on a store page it is the only
+  // pin on the map and should not read as one leg of a route.
+  store:  '#0F2B4C',
 };
 
 /** Small coloured pin, drawn rather than fetched, so there is no image request. */
