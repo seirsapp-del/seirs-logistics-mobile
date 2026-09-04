@@ -31,10 +31,10 @@
  * sends the payload the HandoffRecord entity implies and surfaces the
  * server's real error rather than pretending a record was written.
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable,
-  ScrollView, StatusBar, StyleSheet, Text, TextInput, Vibration, View,
+  Linking, ScrollView, StatusBar, StyleSheet, Text, TextInput, Vibration, View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,7 +42,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize, FontWeight, Radius, Shadows, Spacing } from '@/constants/theme';
-import { deliveriesApi, identityApi, uploadApi } from '@/services/api';
+import { deliveriesApi, dropoffApi, identityApi, uploadApi } from '@/services/api';
 import { PackageCodeCapture } from '@/components/PackageCodeCapture';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 
@@ -95,15 +95,57 @@ export default function StoreHandoffScreen() {
 
   const params = useLocalSearchParams<{
     deliveryId?: string; code?: string; direction?: string;
-    storeName?: string; storeAddress?: string;
+    storeName?: string; storeAddress?: string; storeId?: string;
   }>();
 
   const deliveryId   = params.deliveryId ?? '';
   const expected     = (params.code ?? '').trim().toUpperCase();
   const direction    = (params.direction === 'collect' ? 'collect' : 'drop') as Direction;
-  const storeName    = params.storeName ?? 'Partner counter';
-  const storeAddress = params.storeAddress ?? '';
+  const storeId      = (params.storeId ?? '').trim();
   const copy         = COPY[direction];
+
+  /**
+   * Which counter is this, and is it even open?
+   *
+   * Until 2026-09-04 this screen was handed a name and an address as route
+   * params, and the screen that pushed it hardcoded the name as "Partner
+   * counter". So a rider could ride across Lagos to a shop whose name they
+   * were never told, which may have shut an hour before they set off, with no
+   * number to ring.
+   *
+   * Fetched rather than passed, so it is right at the moment the rider is
+   * standing there rather than right when the job was opened. Fails quietly
+   * to the params: a counter whose details cannot be loaded still shows the
+   * address and the handover still works, because nothing here is worth
+   * blocking a handover over.
+   */
+  const [counter, setCounter] = useState<{
+    storeName: string; storeAddress: string; phone: string | null;
+    workingHours: Record<string, { enabled: boolean; start: string; end: string }> | null;
+    openTime: string | null; closeTime: string | null;
+    isOpenNow: boolean; acceptingNew: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!storeId) return;
+    let alive = true;
+    dropoffApi.counterDetails(storeId)
+      .then(r => { if (alive && r) setCounter(r as any); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [storeId]);
+
+  const storeName    = counter?.storeName    ?? params.storeName ?? 'Partner counter';
+  const storeAddress = counter?.storeAddress ?? params.storeAddress ?? '';
+
+  /** Today's hours, in the shop's own words. Empty when unknown. */
+  const counterHours = (() => {
+    const KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const day = counter?.workingHours?.[KEYS[new Date().getDay()]];
+    if (day) return day.enabled === false ? '' : `${day.start} to ${day.end}`;
+    if (counter?.openTime && counter?.closeTime) return `${counter.openTime} to ${counter.closeTime}`;
+    return '';
+  })();
 
   const [step,        setStep]        = useState<Step>('scan');
   const [scanned,     setScanned]     = useState('');
@@ -253,6 +295,28 @@ export default function StoreHandoffScreen() {
           <Text style={[styles.headerSub, { color: theme.textSecond }]} numberOfLines={1}>
             {storeName}{storeAddress ? ` · ${storeAddress}` : ''}
           </Text>
+          {/* Shut, and a number to ring about it. Only drawn once the counter
+              has actually been looked up, so it never guesses. */}
+          {counter && (
+            <Text style={[styles.headerSub, { color: theme.textSecond }]} numberOfLines={1}>
+              <Text style={{
+                color: counter.isOpenNow ? '#16A34A' : '#DC2626',
+                fontWeight: FontWeight.bold,
+              }}>
+                {counter.isOpenNow ? 'Open now' : 'Closed now'}
+              </Text>
+              {counterHours ? `  ·  ${counterHours}` : ''}
+              {counter.phone ? '  ·  ' : ''}
+              {counter.phone ? (
+                <Text
+                  style={{ color: theme.primary, fontWeight: FontWeight.semibold }}
+                  onPress={() => Linking.openURL(`tel:${counter.phone}`).catch(() => {})}
+                >
+                  Call the counter
+                </Text>
+              ) : null}
+            </Text>
+          )}
         </View>
       </View>
 

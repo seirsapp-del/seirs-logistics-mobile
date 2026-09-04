@@ -312,6 +312,26 @@ export class PartnerStoreController {
     return this.svc.getCapacity(storeId);
   }
 
+  /**
+   * GET /api/v1/partner-store/store/:storeId/counter
+   *
+   * What a rider needs to know before riding to a counter: its real name,
+   * whether it is open, today's hours, and a number to ring.
+   *
+   * This did not exist, so the driver handover screen took the shop's name
+   * and address as route params and its caller hardcoded the name as
+   * "Partner counter". A rider was never told which shop they were going to,
+   * let alone whether it had already closed.
+   *
+   * Nothing here is private: name, address, hours and phone are what the
+   * public directory already publishes about a partner. Deliberately no
+   * capacity, no owner, no bank details, no documents.
+   */
+  @Get('store/:storeId/counter')
+  counterDetails(@Param('storeId') storeId: string) {
+    return this.svc.counterDetails(storeId);
+  }
+
   // PATCH /api/v1/partner-store/store/:storeId/status  { status: 'active' | 'paused' }
   @Patch('store/:storeId/status')
   setStatus(

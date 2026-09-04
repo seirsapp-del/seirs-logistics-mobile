@@ -1403,6 +1403,48 @@ export class PartnerStoreService {
   // Capacity is counts only, no PII, and the same numbers are already
   // public through /capacity/nearby. It is also called internally while
   // booking, where there is no staff actor, so it stays unguarded.
+  /**
+   * The counter, as a rider arriving at it needs to see it.
+   *
+   * Built 2026-09-04. The driver handover screen received a shop's name and
+   * address as route params, and the screen that pushed it hardcoded the name
+   * as "Partner counter", so a rider crossing Lagos was never told which shop
+   * they were going to or whether it had shut an hour ago.
+   *
+   * Columns are named rather than returning the row. A PartnerStore carries
+   * bank details, owner identity and document URLs, and none of that belongs
+   * in a payload a rider reads on a doorstep. Everything returned here is
+   * already published by the public directory.
+   *
+   * isOpenNow is computed here through the same shared helper the directory
+   * and the customer card use, so all three agree, including on the overnight
+   * case where a counter open 18:00 to 02:00 used to read as shut all night.
+   */
+  async counterDetails(partnerStoreId: string) {
+    const store = await this.storeRepo.findOne({
+      where:  { id: partnerStoreId },
+      select: {
+        id: true, storeName: true, storeAddress: true, phone: true,
+        openTime: true, closeTime: true, operatingDays: true,
+        workingHours: true as any, status: true, acceptingNew: true,
+      } as any,
+    });
+    if (!store) throw new NotFoundException('That counter was not found.');
+    return {
+      id:            store.id,
+      storeName:     store.storeName,
+      storeAddress:  store.storeAddress,
+      phone:         store.phone ?? null,
+      openTime:      store.openTime ?? null,
+      closeTime:     store.closeTime ?? null,
+      operatingDays: store.operatingDays ?? [],
+      workingHours:  store.workingHours ?? null,
+      isOpenNow:     storeIsOpenNow(store as any),
+      /** A rider should know before arriving that the shop has paused intake. */
+      acceptingNew:  store.acceptingNew,
+    };
+  }
+
   async getCapacity(partnerStoreId: string) {
     const store = await this.storeRepo.findOne({ where: { id: partnerStoreId } });
     if (!store) throw new NotFoundException('Partner store not found');

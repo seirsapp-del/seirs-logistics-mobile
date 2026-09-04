@@ -761,7 +761,7 @@ export default function ActiveDeliveryScreen() {
    */
   const counterHandoff: {
     direction: 'collect' | 'drop'; title: string; sub: string;
-    storeName: string; storeAddress: string;
+    storeName: string; storeAddress: string; storeId?: string;
   } | null = (() => {
     if (isRide || isDone) return null;
     const resolution = (delivery as any).arrivalResolution;
@@ -770,6 +770,17 @@ export default function ActiveDeliveryScreen() {
         direction: 'drop',
         title: 'Hand in at the partner counter',
         sub:   'Scan the parcel, then the counter signs for it. Until they sign it is still on you.',
+        /**
+         * No storeId on this branch, so the handover screen cannot look the
+         * counter up and the rider still gets an address without a name or
+         * opening hours.
+         *
+         * It is not an oversight here: the destination counter of a failed
+         * delivery redirect is `dropoffStoreId` on the store_dropoffs row,
+         * and Delivery carries only pickupStoreId. Closing it means widening
+         * the driver's delivery payload, which is a server change rather than
+         * something this screen can reach for.
+         */
         storeName:    'Partner counter',
         storeAddress: delivery.dropoffAddress ?? '',
       };
@@ -781,6 +792,9 @@ export default function ActiveDeliveryScreen() {
         sub:   'Scan the parcel, then the counter signs it out. After that it is on you.',
         storeName:    'Partner counter',
         storeAddress: delivery.pickupAddress ?? '',
+        // The handover screen swaps the placeholder above for the shop's real
+        // name, hours and phone once it has looked this up.
+        storeId:      (delivery as any).pickupStoreId,
       };
     }
     return null;
@@ -1026,6 +1040,7 @@ export default function ActiveDeliveryScreen() {
                 direction:  counterHandoff.direction,
                 storeName:  counterHandoff.storeName,
                 storeAddress: counterHandoff.storeAddress,
+                storeId:    counterHandoff.storeId ?? '',
               },
             } as any)}
           >
