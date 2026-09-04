@@ -99,6 +99,10 @@ export default function PartnerDetailPage() {
   const [docs, setDocs] = useState<any[] | null>(null);
   const [busyDoc, setBusyDoc] = useState<string | null>(null);
   const docsWaiting = (docs ?? []).filter((d: any) => d.status === 'submitted').length;
+  /** Approved only. A pending upload must never become the shop's face. */
+  const approvedStorefront = (docs ?? []).find(
+    (d: any) => d.docId === 'storefront_photo' && d.status === 'approved',
+  )?.url ?? null;
 
   const reload = () => {
     // Returned, because the caller does reload().finally(() => setLoading(false)).
@@ -265,15 +269,30 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
 
     let expiresAt: string | null = null;
     if (kind === 'approve' && doc.canExpire) {
-      expiresAt = await prompt({
+      /**
+       * A real calendar, the same one the driver queue uses.
+       *
+       * A free-text date is ambiguous and ConfirmDialog says why in its
+       * own comment: a reader cannot tell whether 03/12 is March or
+       * December, and will reverse it. date:true renders an
+       * <input type="date"> which can only produce an unambiguous ISO
+       * date. multiline:false is required alongside it, because
+       * multiline defaults to true and a date without it renders a
+       * textarea with no picker at all.
+       */
+      const answer = await prompt({
         title: `When does ${doc.label.toLowerCase()} run out?`,
-        message: 'Read it off the document. Leave it blank if it does not say. '
-               + 'This is what makes the expiry warnings work at all: approved with no date, it never lapses.',
-        placeholder: 'YYYY-MM-DD',
+        message: 'Pick the date printed on the document. The partner is told 30 days before, '
+               + 'and our team is warned again once it lapses.',
+        label: 'Expiry date',
+        date: true,
+        multiline: false,
+        helper: 'Leave it blank if the document carries no expiry date. '
+              + 'Approved with no date, it never lapses and nobody is ever warned.',
         confirmLabel: 'Approve',
       });
-      if (expiresAt === null) return;
-      expiresAt = expiresAt.trim() || null;
+      if (answer === null) return;
+      expiresAt = String(answer).trim() || null;
     }
 
     setBusyDoc(doc.id);
@@ -298,9 +317,13 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
 
   const editExpiry = async (doc: any) => {
     const next = await prompt({
-      title: `Expiry for ${doc.label.toLowerCase()}`,
-      message: 'YYYY-MM-DD. Leave it blank to remove the date entirely, which is a real answer if it was mistyped.',
-      placeholder: doc.expiresAt ?? 'YYYY-MM-DD',
+      title: doc.expiresAt ? 'Change the expiry date' : 'When does this expire?',
+      message: 'The partner is told 30 days before, and our team is warned once it lapses.',
+      label: 'Expiry date',
+      date: true,
+      multiline: false,
+      initialValue: doc.expiresAt ? String(doc.expiresAt).slice(0, 10) : '',
+      helper: 'Clear it and save to remove the date entirely, which is a real answer if it was mistyped.',
       confirmLabel: 'Save date',
     });
     if (next === null) return;
@@ -326,9 +349,34 @@ Packages already at the counter (${data?.activity?.packagesHeldNow ?? 0} right n
         {/* Store card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-start gap-6">
-            <div className="w-16 h-16 rounded-full bg-[#0F2B4C] flex items-center justify-center shrink-0">
-              <Store size={28} color="#fff" strokeWidth={1.75} />
-            </div>
+            {/**
+              * The shop's own face, and only if a human approved it.
+              *
+              * Founder, 2026-09-03: "that would help a user who wants to
+              * drop things off at a store, just like the way you know
+              * that's your real driver." A rider's vehicle photo is
+              * already on the customer trust card for exactly that
+              * reason: somebody standing outside has to know it is the
+              * right place.
+              *
+              * Read from the APPROVED document, never from the
+              * partner_stores column and never from a pending upload.
+              * The column is written the moment a partner sends a file,
+              * so using it would let an unreviewed image become the
+              * shop's public face by simply uploading one.
+              */}
+            {approvedStorefront ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={approvedStorefront}
+                alt={store.storeName}
+                className="w-16 h-16 rounded-full object-cover shrink-0 border border-gray-200"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-[#0F2B4C] flex items-center justify-center shrink-0">
+                <Store size={28} color="#fff" strokeWidth={1.75} />
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-1 flex-wrap">
                 <h1 className="text-xl font-bold text-gray-900">{store.storeName}</h1>

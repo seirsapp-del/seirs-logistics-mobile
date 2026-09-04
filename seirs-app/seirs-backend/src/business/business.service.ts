@@ -1796,7 +1796,26 @@ export class BusinessService {
 
   async getSettings(userId: string) {
     const store = await this.getPartnerStore(userId);
-    return store;
+
+    /**
+     * The approved storefront photo, alongside the raw column.
+     *
+     * partner_stores.storefrontPhotoUrl is written the moment a partner
+     * uploads, so it is the PENDING file as often as the accepted one.
+     * The app shows this photo as the shop's own picture, and an
+     * unreviewed image becoming a shop's face is exactly what the review
+     * exists to prevent. The column stays in the payload because other
+     * callers still read it; this is the one to render.
+     */
+    const [row] = await this.storeRepo.manager.query(
+      `SELECT "url" FROM "kyc_documents"
+        WHERE "ownerType" = 'partner_store' AND "ownerId" = $1
+          AND "docId" = 'storefront_photo' AND "status" = 'approved'
+        LIMIT 1`,
+      [store.id],
+    ).catch(() => [] as any[]);
+
+    return { ...store, approvedStorefrontPhotoUrl: row?.url ?? null };
   }
 
   async updateSettings(userId: string, data: any) {

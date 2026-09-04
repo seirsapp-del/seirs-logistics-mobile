@@ -35,6 +35,13 @@ interface StoreSettings {
    */
   storeCode?:          string | null;
   storefrontPhotoUrl?: string | null;
+  /**
+   * The APPROVED storefront photo, which is not the same thing as the
+   * column above. storefrontPhotoUrl is written the moment a file is
+   * uploaded, so rendering it would put an unreviewed image up as the
+   * shop own picture. This one has been through review.
+   */
+  approvedStorefrontPhotoUrl?: string | null;
 }
 
 export default function PartnerSettingsScreen() {
@@ -241,9 +248,9 @@ export default function PartnerSettingsScreen() {
             * actually recognises as theirs.
             */}
           <View style={styles.accountRow}>
-            {settings.storefrontPhotoUrl ? (
+            {settings.approvedStorefrontPhotoUrl ? (
               <Image
-                source={{ uri: settings.storefrontPhotoUrl }}
+                source={{ uri: settings.approvedStorefrontPhotoUrl }}
                 style={styles.storeAvatar}
                 resizeMode="cover"
               />

@@ -1492,6 +1492,32 @@ export class PartnerStoreService {
     const { entities, raw } = await qb.getRawAndEntities();
     const total = await qb.getCount();
 
+    /**
+     * Approved storefront photos for this page of stores, in one query.
+     *
+     * Looked up rather than joined so the distance ordering above stays
+     * exactly as it was, and fetched only for the ids actually returned
+     * rather than for every store in the country.
+     */
+    const approvedPhotos = new Map<string, string>();
+    if (entities.length) {
+      const rows = await this.storeRepo.manager.query(
+        `SELECT "ownerId", "url" FROM "kyc_documents"
+          WHERE "ownerType" = 'partner_store'
+            AND "docId"     = 'storefront_photo'
+            AND "status"    = 'approved'
+            AND "ownerId"   = ANY($1)`,
+        [entities.map(e => e.id)],
+      ).catch((e: any) => {
+        // A failure here must not blank a directory people are using to
+        // find somewhere to drop a parcel. No photo is a degraded page;
+        // no page is a broken one.
+        this.logger.warn(`approved storefront lookup failed: ${e?.message ?? e}`);
+        return [] as any[];
+      });
+      for (const r of rows as any[]) approvedPhotos.set(r.ownerId, r.url);
+    }
+
     return {
       total,
       limit:  clamped,
@@ -1526,7 +1552,22 @@ export class PartnerStoreService {
           storeName:     s.storeName,
           storeAddress:  s.storeAddress,
           phone:         s.phone,
-          storefrontPhotoUrl: s.storefrontPhotoUrl ?? null, // helps a customer recognise the shop on arrival
+          /**
+           * The APPROVED photo, or none.
+           *
+           * This read s.storefrontPhotoUrl, the column on partner_stores,
+           * which is written the moment a partner uploads a file and
+           * before anybody has looked at it. So a shop could put any
+           * image at all in front of customers choosing where to leave a
+           * parcel, simply by uploading one.
+           *
+           * The reason this photo exists at all is the reason it has to
+           * be reviewed: somebody standing in the street is using it to
+           * decide they are at the right shop, the same way a customer
+           * checks a rider's vehicle photo. An unreviewed picture is
+           * worse than none, because none makes them ask.
+           */
+          storefrontPhotoUrl: approvedPhotos.get(s.id) ?? null,
           operatingDays: s.operatingDays,
           openTime:      s.openTime,
           closeTime:     s.closeTime,
