@@ -1126,7 +1126,7 @@ export default function DeliveryDetailPage() {
                       ? <>Signed by <span className="font-semibold text-[#0F2B4C]">{h.signatureName}</span></>
                       : 'No name recorded'}
                     {h.idType ? ` · ${h.idType}${h.idLast ? ` ending ${h.idLast}` : ''}` : ''}
-                    {h.method ? ` · ${h.method}` : ''}
+                    {h.method ? ` · ${methodLabel(h.method)}` : ''}
                   </p>
                   <p className="text-xs text-[#0F2B4C]/40">
                     {h.createdAt ? new Date(h.createdAt).toLocaleString() : 'no timestamp'}
@@ -1171,4 +1171,23 @@ function stageLabel(stage?: string): string {
     driver_to_driver:    'Rider handed it to another rider',
   };
   return MAP[stage ?? ''] ?? (stage ?? 'Handover');
+}
+
+/**
+ * HandoffMethod, same treatment and for the same reason.
+ *
+ * This was rendering the raw value, so the page said "physical_id" to a
+ * reader who is not a developer. I had warned the other session about exactly
+ * this an hour before doing it myself, which is a fair reminder that the
+ * check has to be a habit rather than a thing you spot in someone else.
+ *
+ * Checked against HandoffMethod in handoff-record.entity.ts.
+ */
+function methodLabel(method?: string): string {
+  const MAP: Record<string, string> = {
+    physical_id:     'showed an ID document',
+    seirs_id:        'confirmed by SEIRS ID',
+    typed_signature: 'typed their name',
+  };
+  return MAP[method ?? ''] ?? (method ?? '');
 }
