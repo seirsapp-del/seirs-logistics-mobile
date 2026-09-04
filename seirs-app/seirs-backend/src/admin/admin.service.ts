@@ -63,6 +63,26 @@ export class AdminService {
 
   private readonly logger = new Logger(AdminService.name);
 
+  /**
+   * Fall back on a dashboard figure, but never silently.
+   *
+   * These queries feed tiles, and a tile that renders 0 because its query
+   * threw is indistinguishable from a quiet day. That is the shape that
+   * hid a broken driver statement for two days behind /health reporting
+   * "issued: 3" (2026-09-03). The fallback stays, because one bad query
+   * must not blank an entire dashboard, but it now leaves a trace.
+   *
+   * NOT for anything that decides whether money moves. See the payout
+   * idempotency check, which fails closed instead.
+   */
+  private tile<T>(label: string, fallback: T): (e: any) => T {
+    return (e: any) => {
+      this.logger.warn(`dashboard query "${label}" failed, showing a fallback: ${e?.message ?? e}`);
+      return fallback;
+    };
+  }
+
+
   constructor(
     @InjectRepository(User)                       private usersRepo:      Repository<User>,
     @InjectRepository(ArchivedUser)               private archiveRepo:    Repository<ArchivedUser>,
@@ -773,7 +793,7 @@ export class AdminService {
       `SELECT COALESCE(SUM(p."amountKobo"), 0) AS total, COUNT(*) AS cnt
          FROM "payments" p
         WHERE p.status = 'success'`,
-    ).catch(() => [{ total: '0', cnt: '0' }]);
+    ).catch(this.tile('payments received', [{ total: '0', cnt: '0' }]));
 
     const receivedTotal = Number(receivedRow?.[0]?.total ?? 0) / 100;
     const receivedCount = Number(receivedRow?.[0]?.cnt ?? 0);
@@ -784,7 +804,7 @@ export class AdminService {
       `SELECT COALESCE(SUM(d."driverEarnings"), 0) AS "driverTotal"
          FROM "deliveries" d
          JOIN "payments" p ON p."deliveryId" = d.id AND p.status = 'success'`,
-    ).catch(() => [{ driverTotal: '0' }]);
+    ).catch(this.tile('driver share of receipts', [{ driverTotal: '0' }]));
 
     const revenueTotal = receivedTotal;
     const driverTotal  = Number(realCutRow?.[0]?.driverTotal ?? 0);
@@ -995,7 +1015,7 @@ export class AdminService {
         WHERE d."createdAt" >= NOW() - ($1::int * INTERVAL '1 day')
           AND COALESCE(u."isDemo", false) = true`,
       [n],
-    ).catch(() => [{ cnt: '0' }]);
+    ).catch(this.tile('demo deliveries', [{ cnt: '0' }]));
 
     return {
       grid, peak, daysBack: n, timezone: 'Africa/Lagos',
@@ -1223,27 +1243,27 @@ export class AdminService {
           `SELECT COUNT(*) AS c, COALESCE(SUM(p."amountKobo"), 0) AS kobo
              FROM "payments" p JOIN "deliveries" d ON d.id = p."deliveryId"
             WHERE p."escrowStatus" = 'held' AND d.status IN ('cancelled','failed')`,
-        ).catch(() => [{ c: '0', kobo: '0' }]),
+        ).catch(this.tile('refunds owed', [{ c: '0', kobo: '0' }])),
         // A rider was owed and the transfer was refused.
         this.usersRepo.manager.query(
           `SELECT COUNT(*) AS c FROM "audit_logs"
             WHERE action = 'payout.declined' AND "createdAt" >= NOW() - INTERVAL '7 days'`,
-        ).catch(() => [{ c: '0' }]),
+        ).catch(this.tile('payouts refused', [{ c: '0' }])),
         // A passenger was marked dropped and never confirmed it.
         this.usersRepo.manager.query(
           `SELECT COUNT(*) AS c FROM "seat_bookings"
             WHERE status = 'dropped' AND "drop_confirmed_at" IS NULL`,
-        ).catch(() => [{ c: '0' }]),
+        ).catch(this.tile('drops unconfirmed', [{ c: '0' }])),
         // Dropped far from the declared stop: allowed, but recorded.
         this.usersRepo.manager.query(
           `SELECT COUNT(*) AS c FROM "seat_bookings" WHERE "drop_off_geofence" = true`,
-        ).catch(() => [{ c: '0' }]),
+        ).catch(this.tile('drops off geofence', [{ c: '0' }])),
         // The banner the Zones spec asked for and nobody built: SEIRS is
         // not operating somewhere right now, and the dashboard says so.
         this.usersRepo.manager.query(
           `SELECT COUNT(*) AS c FROM "zones"
             WHERE published = true AND status IN ('closed','no_pickup','no_dropoff')`,
-        ).catch(() => [{ c: '0' }]),
+        ).catch(this.tile('zones blocking', [{ c: '0' }])),
       ]);
 
     const moneyAndZoneAnomalies = {
@@ -1508,7 +1528,21 @@ export class AdminService {
     // Drivers: join to user for name/email match, or match plateNumber
     const driverRows = await this.driversRepo
       .createQueryBuilder('d')
-      .leftJoinAndSelect('d.user', 'u')
+      /**
+       * leftJoin and a named select, not leftJoinAndSelect.
+       *
+       * It loaded the WHOLE User entity to render a name in a search
+       * result: password hash, bank columns and KYC document urls pulled
+       * into memory so four characters could be shown. Nothing leaked,
+       * because the mapping below only reads three fields, but it was one
+       * refactor away from doing so and the user branch directly above
+       * already did it correctly. Same rule, same file, now both sides.
+       */
+      .leftJoin('d.user', 'u')
+      .select([
+        'd.id', 'd.vehicleType', 'd.vehiclePlate', 'd.createdAt',
+        'u.id', 'u.name', 'u.firstName', 'u.lastName',
+      ])
       .where('u.name ILIKE :like', { like })
       .orWhere('u.firstName ILIKE :like', { like })
       .orWhere('u.lastName ILIKE :like', { like })
@@ -4359,9 +4393,31 @@ export class AdminService {
       : Math.round((earned - sent) * 100) / 100;
 
     const reference = `RECON-${earning.id}`;
-    const existing = await this.earningsRepo.manager.query(
-      `SELECT id FROM "driver_payouts" WHERE "reference" = $1 LIMIT 1`, [reference],
-    ).catch(() => []);
+    /**
+     * The one catch on this file that must not swallow.
+     *
+     * This is the idempotency guard on a payout. Every other swallowed
+     * query here falls back to a zero on a dashboard, which is wrong but
+     * costs a wrong number. This one decides whether money is sent a
+     * second time: if the query throws and the catch hands back [], the
+     * guard passes and the same reconciliation runs again.
+     *
+     * So it fails CLOSED. A check that could not run is not a check that
+     * passed, and refusing a reconciliation somebody can retry is
+     * cheaper by any measure than paying it twice.
+     */
+    let existing: Array<{ id: string }>;
+    try {
+      existing = await this.earningsRepo.manager.query(
+        `SELECT id FROM "driver_payouts" WHERE "reference" = $1 LIMIT 1`, [reference],
+      );
+    } catch (e: any) {
+      this.logger.error(`payout idempotency check failed for ${reference}: ${e?.message ?? e}`);
+      throw new BadRequestException(
+        'We could not confirm whether this payout has already been reconciled, so nothing was '
+        + 'sent. Try again in a moment.',
+      );
+    }
     if (existing?.length) {
       throw new BadRequestException('This payout has already been reconciled.');
     }
