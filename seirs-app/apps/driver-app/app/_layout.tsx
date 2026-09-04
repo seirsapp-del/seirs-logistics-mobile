@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { requireOptionalNativeModule } from 'expo-modules-core';
-import { Platform, useColorScheme as useRNColorScheme } from 'react-native';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { ThemeProvider } from '@/context/ThemeContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
 import { API_BASE } from '@/constants/config';
 import { configureApi } from '@/services/api';
@@ -160,7 +160,28 @@ function AppContent() {
  * 2026-09-01). Android-only: iOS has no such bar, and the calls no-op there.
  */
 function SystemNavBar() {
-  const scheme = useRNColorScheme();
+  /**
+   * The APP theme, not the phone theme.
+   *
+   * This read used to be useRNColorScheme(), which is the OS setting. But all
+   * three apps let a person pin Light or Dark in the app regardless of the
+   * phone, so the two disagree the moment anyone uses that setting, and the
+   * nav buttons were coloured for the phone while the screen behind them was
+   * painted for the app:
+   *
+   *   phone Light + app Dark  ->  dark buttons on a dark screen
+   *   phone Dark  + app Light ->  white buttons on a white screen
+   *
+   * Either way the back, home and recents buttons vanish. That is the same
+   * invisible-nav-bar fault the 2 September rebuild was meant to end; the
+   * rebuild fixed the OS path and left the in-app override still broken.
+   *
+   * isDark is the value the screens themselves render from, so the buttons now
+   * always match what is actually behind them. This component must therefore
+   * stay INSIDE ThemeProvider. It used to sit above it, which is why it could
+   * only ever see the OS.
+   */
+  const { isDark } = useTheme();
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     /**
@@ -176,7 +197,7 @@ function SystemNavBar() {
     if (!requireOptionalNativeModule('ExpoNavigationBar')) return;
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const NavigationBar = require('expo-navigation-bar');
-    const dark = scheme === 'dark';
+    const dark = isDark;
     /**
      * Button style only. NOT setBackgroundColorAsync.
      *
@@ -193,7 +214,7 @@ function SystemNavBar() {
      * buttons are dark grey on a dark screen and effectively invisible.
      */
     NavigationBar.setButtonStyleAsync(dark ? 'light' : 'dark').catch(() => {});
-  }, [scheme]);
+  }, [isDark]);
   return null;
 }
 
@@ -223,13 +244,13 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <SystemNavBar />
       {/* Required root for react-native-gesture-handler (Swipeable rows
           in Notifications). Without it every gesture component throws
           "must be used as a descendant of GestureHandlerRootView". */}
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <ThemeProvider>
+            <SystemNavBar />
             <SeirsDialogProvider>
               <AuthProvider>
                 <AppContent />
