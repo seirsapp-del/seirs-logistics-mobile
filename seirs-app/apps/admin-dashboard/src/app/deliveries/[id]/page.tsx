@@ -212,6 +212,30 @@ export default function DeliveryDetailPage() {
       .catch(() => {});
     return () => { alive = false; };
   }, [id]);
+
+  /**
+   * Who was holding this parcel, and when it changed hands.
+   *
+   * The deck opens on "every person who touched the parcel signed for it",
+   * the records have been written at every counter and doorstep since
+   * 2026-08-25, and this page drew NONE of them. handoff_records rendered in
+   * exactly one place, the disputes screen, which an agent only reaches once
+   * something has already gone wrong and been flagged. Anyone asking the
+   * ordinary question, who had this parcel, opened THIS page and saw nothing.
+   *
+   * Same endpoint disputes uses. Fails quietly: a delivery from before we
+   * recorded handoffs has none, and that is not an error.
+   */
+  const [chain, setChain] = useState<any[]>([]);
+  const [chainErr, setChainErr] = useState<string | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    adminApi.identity.handoffChain(String(id))
+      .then((r: any) => { if (alive) setChain(Array.isArray(r) ? r : []); })
+      .catch((e: any) => { if (alive) setChainErr(e?.message ?? 'Could not load the chain of custody.'); });
+    return () => { alive = false; };
+  }, [id]);
   /* Preview is deliberately separate from issuing: an agent should see
      the split before any money moves. */
   const previewRefund = async (pct: string) => {
@@ -1064,6 +1088,87 @@ export default function DeliveryDetailPage() {
           </table>
         </section>
       )}
+
+      {/* Chain of custody. Every change of hands, in order, with who signed. */}
+      <section className="mt-4 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
+        <h2 className="flex items-center gap-1.5 border-b border-[#E5E7EB] bg-[#F5F5F0] px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-[#0F2B4C]/40">
+          <User size={12} /> Chain of custody
+          {chain.length > 0 && (
+            <span className="ml-2 rounded-full bg-[#0F2B4C]/10 px-2 py-0.5 text-[10px] font-semibold text-[#0F2B4C]">
+              {chain.length} {chain.length === 1 ? 'handover' : 'handovers'}
+            </span>
+          )}
+        </h2>
+
+        {chainErr ? (
+          <p className="p-4 text-sm text-red-700">{chainErr}</p>
+        ) : chain.length === 0 ? (
+          <p className="p-4 text-sm text-[#0F2B4C]/50">
+            No handovers recorded. Deliveries completed before SEIRS recorded them have none,
+            and a run that never left the sender has none yet.
+          </p>
+        ) : (
+          <ol className="p-4">
+            {chain.map((h: any, i: number) => (
+              <li key={h.id ?? i} className="relative flex gap-3 pb-4 last:pb-0">
+                {/* The line down the side is what makes it read as a sequence
+                    rather than a list of unrelated events. */}
+                {i < chain.length - 1 && (
+                  <span className="absolute left-[9px] top-5 h-full w-px bg-[#E5E7EB]" aria-hidden="true" />
+                )}
+                <span className="relative z-10 mt-1 h-[18px] w-[18px] shrink-0 rounded-full border-2 border-white bg-[#0F2B4C]" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#0F2B4C]">
+                    {stageLabel(h.stage)}
+                  </p>
+                  <p className="text-xs text-[#0F2B4C]/60">
+                    {h.signatureName
+                      ? <>Signed by <span className="font-semibold text-[#0F2B4C]">{h.signatureName}</span></>
+                      : 'No name recorded'}
+                    {h.idType ? ` · ${h.idType}${h.idLast ? ` ending ${h.idLast}` : ''}` : ''}
+                    {h.method ? ` · ${h.method}` : ''}
+                  </p>
+                  <p className="text-xs text-[#0F2B4C]/40">
+                    {h.createdAt ? new Date(h.createdAt).toLocaleString() : 'no timestamp'}
+                  </p>
+                  {h.proofPhotoUrl && (
+                    <a
+                      href={h.proofPhotoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#0F2B4C] hover:underline"
+                    >
+                      <Camera size={11} /> photo taken at the handover
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
     </div>
   );
+}
+
+/**
+ * Stage codes read as database values, and an agent under pressure should not
+ * have to translate driver_to_store in their head. Unknown values fall
+ * through unchanged rather than being hidden, because a stage we do not
+ * recognise is exactly the one worth seeing.
+ */
+function stageLabel(stage?: string): string {
+  // Checked against HandoffStage in handoff-record.entity.ts, not guessed.
+  // "customer" is the sender in that enum; the word here is the one a person
+  // reading this page would use.
+  const MAP: Record<string, string> = {
+    customer_to_store:   'Sender dropped it at the counter',
+    customer_to_driver:  'Sender handed it to the rider',
+    store_to_driver:     'Counter released it to the rider',
+    driver_to_store:     'Rider handed it in at the counter',
+    store_to_recipient:  'Counter released it to the recipient',
+    driver_to_recipient: 'Rider handed it to the recipient',
+    driver_to_driver:    'Rider handed it to another rider',
+  };
+  return MAP[stage ?? ''] ?? (stage ?? 'Handover');
 }
