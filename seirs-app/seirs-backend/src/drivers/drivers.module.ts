@@ -109,6 +109,17 @@ export class DriversModule implements OnModuleInit {
       console.error(`vehicle-change rejectedItems self-heal failed: ${e?.message ?? e}`);
     }
 
+    // Does the vehicle on file still work? (2026-09-04.) Its own statement,
+    // because ds.query takes parameters as its second argument, so a second
+    // SQL string there is silently treated as one.
+    try {
+      await this.ds.query(
+        `ALTER TABLE "driver_vehicle_changes" ADD COLUMN IF NOT EXISTS "currentVehicleUsable" boolean NOT NULL DEFAULT true`,
+      );
+    } catch (e: any) {
+      console.error(`vehicle-change currentVehicleUsable self-heal failed: ${e?.message ?? e}`);
+    }
+
     try {
       await this.ds.query(`
         ALTER TABLE "drivers"

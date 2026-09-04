@@ -227,16 +227,43 @@ export default function VehicleScreen() {
 
   const canSubmit = !pending && problems.length === 0 && !saving;
 
+  /**
+   * One question, asked at the only moment the rider knows the answer.
+   *
+   * This sheet used to say "You keep working with your current vehicle until
+   * they approve it, so nothing about your jobs changes today" and offer a
+   * single Submit button. That sentence is false in the most common case:
+   * riders change vehicle because the old one has been sold, stolen, written
+   * off, or taken back by whoever lent it. Dispatch kept sending jobs against
+   * a plate the rider could not produce, and the customer waiting at the kerb
+   * rated them one star for it.
+   *
+   * Asking costs two taps. "Still have it" is the behaviour that already
+   * existed. "It has gone" stops them going online until the new vehicle is
+   * decided, which is not a punishment: there is no approved vehicle left to
+   * dispatch, and pretending otherwise is what produces the one-star.
+   */
   const confirmSubmit = () => setSheet({
-    title: 'Submit this vehicle for review?',
-    message: 'Our team checks it before it applies. You keep working with your current vehicle until they approve it, so nothing about your jobs changes today.',
+    title: 'Do you still have your current vehicle?',
+    message: 'It changes what we do while your new one is being reviewed, so it is worth getting right.',
     options: [
-      { label: 'Submit for review', variant: 'primary', icon: 'send-outline', onPress: doSubmit },
+      {
+        label: 'Yes, I can still ride it',
+        variant: 'primary',
+        icon: 'checkmark-circle-outline',
+        onPress: () => doSubmit(true),
+      },
+      {
+        label: 'No, it has gone',
+        variant: 'default',
+        icon: 'close-circle-outline',
+        onPress: () => doSubmit(false),
+      },
     ],
     cancelLabel: 'Not yet',
   });
 
-  const doSubmit = async () => {
+  const doSubmit = async (currentVehicleUsable: boolean) => {
     setSaving(true);
     setError(null);
     try {
@@ -252,6 +279,7 @@ export default function VehicleScreen() {
         photoPlateUrl:     photos.plate ?? undefined,
         ownershipProofUrl: photos.ownershipProof ?? undefined,
         insuranceCertUrl:  photos.insuranceCert ?? undefined,
+        currentVehicleUsable,
         reason: reason.trim() || undefined,
         // Who owns it travels WITH the change. An approved rider cannot
         // edit the standing declaration any more (the server answers

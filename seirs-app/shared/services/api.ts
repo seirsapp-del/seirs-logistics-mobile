@@ -1,4 +1,4 @@
-﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 // Each app calls configureApi() once in its root _layout.tsx
@@ -703,6 +703,17 @@ export interface VehicleChangeRequest extends VehicleOwnershipInput {
   ownershipProofUrl?: string;
   insuranceCertUrl?:  string;
   reason?: string;
+  /**
+   * Does the vehicle on file still work?
+   *
+   * Asked once at submission, because only the rider knows. Undefined and
+   * true both mean unchanged behaviour: they keep working on the approved
+   * vehicle while the new one is reviewed. False stops them going online,
+   * because there is then no approved vehicle for dispatch to send jobs
+   * against, and a customer waiting for a plate that no longer exists rates
+   * the rider one star for it.
+   */
+  currentVehicleUsable?: boolean;
 }
 
 export interface VehicleChangeDTO extends VehicleChangeRequest {

@@ -1583,6 +1583,37 @@ export class DriversService {
       );
     }
 
+    /**
+     * The rider told us the vehicle on file is gone.
+     *
+     * submitVehicleChange asks one question: does the old one still work?
+     * When the answer is no, dispatch has nothing approved to send jobs
+     * against. Letting them go online means a customer waits at the kerb
+     * for a plate that no longer exists, and then rates the rider one star
+     * for it.
+     *
+     * Only blocks going ON. A rider already online when their vehicle is
+     * stolen can still finish, hand off and go offline the normal way; the
+     * active-jobs rule below governs that, and it should.
+     */
+    if (isOnline) {
+      const gone = await this.vehicleChangesRepo.findOne({
+        where: {
+          driverId: driver.id,
+          status: VehicleChangeStatus.PENDING,
+          currentVehicleUsable: false,
+        },
+      });
+      if (gone) {
+        throw new BadRequestException(
+          'VEHICLE_UNAVAILABLE: you told us your old vehicle is no longer available, ' +
+          'so we cannot send you jobs for it. Your new vehicle is being reviewed, ' +
+          'usually within 24 hours to 3 business days. If the old one is working ' +
+          'again, message support and they will put you back online today.',
+        );
+      }
+    }
+
     // Spec V8 §2.12 - driver CANNOT go offline while holding active jobs.
     // Otherwise customers' packages get abandoned mid-route.
     if (!isOnline) {
@@ -1927,6 +1958,8 @@ export class DriversService {
     ownerConsentUrl?:    string;
     ownerIdUrl?:         string;
     ownerSignatureName?: string;
+    /** Does the vehicle on file still work? Defaults true: see the entity. */
+    currentVehicleUsable?: boolean;
   }) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
@@ -2067,6 +2100,8 @@ export class DriversService {
     ownerConsentUrl?:    string;
     ownerIdUrl?:         string;
     ownerSignatureName?: string;
+    /** Does the vehicle on file still work? Defaults true: see the entity. */
+    currentVehicleUsable?: boolean;
   }) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
@@ -2170,6 +2205,9 @@ export class DriversService {
     const saved = await this.vehicleChangesRepo.save(this.vehicleChangesRepo.create({
       driverId: driver.id,
       status:   VehicleChangeStatus.PENDING,
+      // Only an explicit false counts. An older app that does not send the
+      // field must not silently take a rider offline.
+      currentVehicleUsable: body.currentVehicleUsable !== false,
       vehicleType,
       vehiclePlate: plate || null,
       make:  body.make  !== undefined ? String(body.make).trim().slice(0, 64)  : null,

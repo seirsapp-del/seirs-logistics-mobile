@@ -190,6 +190,28 @@ export class DriverVehicleChange {
   @Column({ type: 'simple-array', nullable: true })
   rejectedItems: string[] | null;
 
+  /**
+   * Does the vehicle on file still work?
+   *
+   * The reason a rider changes vehicle is usually that the old one has
+   * stopped being available: sold, stolen, written off, or back with the
+   * owner it was borrowed from. Dispatch does not know that. It keeps
+   * sending jobs against a plate the rider cannot produce, and a customer
+   * waits at the kerb for a keke that no longer exists, then rates the
+   * rider one star for it.
+   *
+   * Asked as one question at submission, because only the rider knows the
+   * answer. TRUE, the default, changes nothing: they keep working on the
+   * vehicle we approved while the new one is reviewed. FALSE stops them
+   * going online until the change is decided, which is not a punishment,
+   * it is the only honest state: we have no approved vehicle to dispatch.
+   *
+   * Defaults true so every row written before this column existed keeps
+   * the behaviour it was written under.
+   */
+  @Column({ type: 'boolean', default: true })
+  currentVehicleUsable: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }
