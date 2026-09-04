@@ -4613,8 +4613,34 @@ export class DeliveriesService {
       catch { /* seeded default stands */ }
     }
     const cutoff = new Date(Date.now() - minutes * 60_000);
+    /**
+     * A SCHEDULED booking is not a stale one (founder 2026-09-04: "we should
+     * be warned when an order sit for a certain period... except a schdules
+     * booking").
+     *
+     * This matched on createdAt alone, so a pickup booked for tomorrow
+     * morning, which is created now and sits PENDING by design, was cancelled
+     * and refunded once the window passed. The dispatch cron deliberately
+     * HOLDS matching until 15 minutes before the requested time, which is
+     * written on the scheduledFor column itself, so the two were working
+     * against each other: one holding the booking back, the other killing it
+     * for not having moved.
+     *
+     * It was already wrong at sixty minutes. It became far worse when the
+     * founder cut the window to ten, which would have destroyed very nearly
+     * every scheduled booking a few minutes after it was paid for. He caught
+     * it; I had changed the number without checking what else read it.
+     *
+     * The rule the clock should always have followed: expire a booking when
+     * it has been DUE and unclaimed for the window, not when it has merely
+     * EXISTED for it. For Send Now those are the same instant. For a
+     * scheduled pickup, due means its requested time.
+     */
     const stale = await this.repo.find({
-      where: { status: DeliveryStatus.PENDING, createdAt: LessThan(cutoff) },
+      where: [
+        { status: DeliveryStatus.PENDING, scheduledFor: IsNull(),        createdAt:   LessThan(cutoff) },
+        { status: DeliveryStatus.PENDING, scheduledFor: LessThan(cutoff) },
+      ],
       relations: ['customer'],
     });
     for (const d of stale) {
