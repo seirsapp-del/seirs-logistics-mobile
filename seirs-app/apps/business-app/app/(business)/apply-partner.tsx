@@ -23,6 +23,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { Icon } from '@/components/Icon';
 import { uploadApi, partnerApi } from '@/services/api';
 import { StatePicker } from '@/components/StatePicker';
@@ -63,6 +64,9 @@ export default function ApplyPartnerScreen() {
   // backend accepts submissions without them (existing behaviour) and
   // simply skips the /find-a-partner distance sort for such stores.
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  /** Where the shopfront photo was actually taken. */
+  const [storefrontWhere, setStorefrontWhere] =
+    useState<{ lat: number; lng: number; accuracyM: number } | null>(null);
 
   useEffect(() => {
     partnerApi.myPartnerApplication()
@@ -70,6 +74,55 @@ export default function ApplyPartnerScreen() {
       .catch(()                              => setExisting(null))
       .finally(() => setLoading(false));
   }, []);
+
+  /** Where the phone is now. Null on refusal or a failed fix, never an error. */
+  const currentPlace = async () => {
+    try {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (!perm.granted) return null;
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      if (!pos?.coords) return null;
+      return {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracyM: Math.round(pos.coords.accuracy ?? 9999),
+      };
+    } catch { return null; }
+  };
+
+  /**
+   * The shopfront is PHOTOGRAPHED AT THE SHOP, not chosen from the gallery.
+   *
+   * Every other photo on this form can come from the gallery, because a
+   * CAC certificate photographed at a kitchen table is perfectly fine. The
+   * shopfront cannot, and it is the one that decides where the shop is.
+   *
+   * The pin this application carries comes from an address picker, which
+   * can be operated from a sofa in another city. Every distance check SEIRS
+   * runs afterwards is measured against that pin, so the check looked
+   * rigorous while its reference point was a guess. A reading taken at the
+   * moment the shopfront is photographed is real evidence, and a reviewer
+   * can promote it to be the pin.
+   *
+   * Reading the position at upload time is also why the gallery is refused:
+   * a picture chosen from the gallery would be stamped with wherever the
+   * phone happens to be now rather than where the picture was taken, which
+   * turns the whole check into theatre.
+   */
+  const captureStorefront = async () => {
+    const cam = await ImagePicker.requestCameraPermissionsAsync();
+    if (!cam.granted) {
+      alertDialog(
+        'Camera needed',
+        'The shopfront photo has to be taken at the shop, so SEIRS needs permission to use the camera.',
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+    setStorefrontPhoto(result.assets[0].uri);
+    setStorefrontWhere(await currentPlace());
+  };
 
   const pickImage = async (setter: (uri: string | null) => void) => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -130,6 +183,10 @@ export default function ApplyPartnerScreen() {
         // the /find-a-partner list until an admin backfills.
         storeLat:           coords?.lat,
         storeLng:           coords?.lng,
+        // The reading taken at the shopfront, when the phone could give one.
+        storefrontLat:       storefrontWhere?.lat,
+        storefrontLng:       storefrontWhere?.lng,
+        storefrontAccuracyM: storefrontWhere?.accuracyM,
       });
       alertDialog(
         'Application submitted',
@@ -300,11 +357,17 @@ export default function ApplyPartnerScreen() {
 
         <Text style={[styles.section, { color: colors.text }]}>KYC Documents</Text>
 
+        {/* Camera only. See captureStorefront for why the gallery is
+            refused here and allowed for everything below it. */}
         <PhotoSlot
           label="Storefront photo (required)"
           uri={storefrontPhoto}
-          onPick={() => pickImage(setStorefrontPhoto)}
-          hint="Clear photo of your shop entrance from outside"
+          onPick={captureStorefront}
+          hint={
+            storefrontWhere
+              ? `Taken at your shop, accurate to about ${storefrontWhere.accuracyM} m`
+              : 'Stand outside your shop and take this one now. It is how we put your shop on the map.'
+          }
         />
         <PhotoSlot
           label="Owner ID (required)"

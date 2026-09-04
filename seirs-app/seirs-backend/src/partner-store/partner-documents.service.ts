@@ -362,10 +362,24 @@ export class PartnerDocumentsService {
    * document returns to 'submitted' and bumps its version exactly as a
    * single replacement does.
    */
-  async recordApplication(store: PartnerStore, urls: Record<string, string | null | undefined>) {
+  /**
+   * @param captures Where each photo was TAKEN, when the phone could say.
+   *
+   * Only premises photographs carry one, and only when the applicant let
+   * the phone read its position. The absence is normal and never blocks an
+   * application: a shop under a zinc roof may never get a fix, and refusing
+   * somebody their livelihood over their roof is the wrong trade.
+   */
+  async recordApplication(
+    store: PartnerStore,
+    urls: Record<string, string | null | undefined>,
+    captures?: Record<string, { lat?: number; lng?: number; accuracyM?: number } | undefined>,
+  ) {
     for (const docId of PARTNER_DOC_IDS) {
       const url = urls[docId];
       if (!url) continue;
+      const spec = partnerDocSpec(docId);
+      const cap = spec?.needsLocation ? captures?.[docId] : undefined;
       try {
         await this.kyc.upsert({
           ownerType:   'partner_store',
@@ -373,6 +387,9 @@ export class PartnerDocumentsService {
           ownerUserId: store.userId,
           docId,
           url,
+          capturedLat:       Number.isFinite(cap?.lat as number) ? Number(cap!.lat) : null,
+          capturedLng:       Number.isFinite(cap?.lng as number) ? Number(cap!.lng) : null,
+          capturedAccuracyM: Number.isFinite(cap?.accuracyM as number) ? Math.round(Number(cap!.accuracyM)) : null,
         });
       } catch (e: any) {
         // One document failing must not lose an application somebody has

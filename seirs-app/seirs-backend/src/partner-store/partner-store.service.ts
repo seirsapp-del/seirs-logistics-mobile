@@ -2211,6 +2211,23 @@ export class PartnerStoreService {
       // block the whole KYC submission.
       storeLat?:          number;
       storeLng?:          number;
+      /**
+       * Where the applicant was STANDING when they photographed the shop.
+       *
+       * Different from storeLat/storeLng in the way that matters. Those
+       * come from an address picker and can be chosen from a sofa in
+       * another city, which meant a shop's founding pin had no on-site
+       * evidence behind it at all, and every distance check we later ran
+       * was measured against it.
+       *
+       * This is a reading taken by the phone at the moment the shopfront
+       * was photographed. Optional, because the permission is refusable
+       * and a fix can fail indoors, and its absence is shown to the
+       * reviewer rather than used to refuse an application.
+       */
+      storefrontLat?:       number;
+      storefrontLng?:       number;
+      storefrontAccuracyM?: number;
     },
   ) {
     // Validate coordinates (Nigeria lat 4-14, lng 2.5-15). Drop if invalid.
@@ -2281,11 +2298,21 @@ export class PartnerStoreService {
      * a per-document decision, a reason and an expiry, none of which a
      * column can hold.
      */
-    await this.partnerDocs.recordApplication(store!, {
-      storefront_photo: body.storefrontPhotoUrl,
-      cac_registration: body.cacRegUrl,
-      owner_id:         body.ownerIdUrl,
-    });
+    await this.partnerDocs.recordApplication(
+      store!,
+      {
+        storefront_photo: body.storefrontPhotoUrl,
+        cac_registration: body.cacRegUrl,
+        owner_id:         body.ownerIdUrl,
+      },
+      {
+        storefront_photo: {
+          lat:       body.storefrontLat,
+          lng:       body.storefrontLng,
+          accuracyM: body.storefrontAccuracyM,
+        },
+      },
+    );
 
     this.logger.log(`Partner store application submitted: userId=${userId} storeId=${store!.id}`);
 
@@ -2618,6 +2645,57 @@ export class PartnerStoreService {
   // One store with its owner and activity numbers, for the admin detail
   // page. Owner comes back trimmed: the page links to /users/[id] for
   // the full account view.
+  /**
+   * Make a photograph's location the shop's pin.
+   *
+   * The pin a shop is created with comes from an address picker, so it is
+   * a guess somebody made about where their shop is, and it can be made
+   * from anywhere. Every distance check we run afterwards is measured
+   * against that guess, which is the weakest link in the whole partner
+   * system: the check looks rigorous and its reference point is not.
+   *
+   * A premises photograph carries a reading taken by a phone standing
+   * outside the building. This lets a reviewer promote that reading to be
+   * the pin, so the shop's position becomes something measured at the shop
+   * rather than chosen from a list.
+   *
+   * Deliberately a human action rather than automatic. A single reading
+   * can be wrong: a weak fix, a phone that cached a position from the last
+   * cell tower, or a photograph genuinely taken somewhere else. A reviewer
+   * looking at the picture and the distance can tell; a rule cannot.
+   */
+  async adoptDocumentLocationAsPin(storeId: string, docId: string, adminUserId: string) {
+    const [doc] = await this.storeRepo.manager.query(
+      `SELECT "capturedLat", "capturedLng", "capturedAccuracyM"
+         FROM "kyc_documents"
+        WHERE "ownerType" = 'partner_store' AND "ownerId" = $1 AND "docId" = $2
+        LIMIT 1`,
+      [storeId, docId],
+    );
+    if (!doc?.capturedLat || !doc?.capturedLng) {
+      throw new BadRequestException(
+        'That photo carries no location, so there is nothing to move the pin to.',
+      );
+    }
+
+    await this.storeRepo.update(storeId, {
+      storeLat: doc.capturedLat,
+      storeLng: doc.capturedLng,
+    } as any);
+
+    this.logger.log(
+      `Store ${storeId} pin set from ${docId} capture by admin ${adminUserId} `
+      + `(accuracy ${doc.capturedAccuracyM ?? 'unknown'} m)`,
+    );
+    return {
+      storeId,
+      lat: Number(doc.capturedLat),
+      lng: Number(doc.capturedLng),
+      accuracyM: doc.capturedAccuracyM ?? null,
+      message: 'The shop pin now sits where that photo was taken.',
+    };
+  }
+
   async adminGetStore(id: string) {
     const store = await this.storeRepo.findOne({ where: { id } });
     if (!store) throw new NotFoundException('Partner store not found');

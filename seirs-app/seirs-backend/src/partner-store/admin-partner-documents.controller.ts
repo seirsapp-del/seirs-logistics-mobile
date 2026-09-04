@@ -3,6 +3,7 @@ import {
   DefaultValuePipe, ParseIntPipe,
 } from '@nestjs/common';
 import { PartnerDocumentsService } from './partner-documents.service';
+import { PartnerStoreService } from './partner-store.service';
 import { KycDocumentsService } from '../kyc/kyc-documents.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
@@ -29,6 +30,8 @@ export class AdminPartnerDocumentsController {
   constructor(
     private readonly partnerDocs: PartnerDocumentsService,
     private readonly kyc: KycDocumentsService,
+    // Only for use-as-pin, which writes the store row rather than a document.
+    private readonly stores: PartnerStoreService,
   ) {}
 
   // GET /api/v1/admin/partner-documents?status=submitted&page=1&storeId=
@@ -110,5 +113,21 @@ export class AdminPartnerDocumentsController {
   @Get('store/:storeId')
   forStore(@Param('storeId') storeId: string) {
     return this.partnerDocs.listForStore(storeId);
+  }
+
+  /**
+   * PATCH /api/v1/admin/partner-documents/:storeId/:docId/use-as-pin
+   *
+   * Promote a photograph's recorded location to be the shop's map pin, so
+   * the position becomes something measured outside the building rather
+   * than picked from an address list.
+   */
+  @Patch(':storeId/:docId/use-as-pin')
+  useAsPin(
+    @Param('storeId') storeId: string,
+    @Param('docId')   docId: string,
+    @CurrentUser()    admin: any,
+  ) {
+    return this.stores.adoptDocumentLocationAsPin(storeId, docId, admin?.id);
   }
 }

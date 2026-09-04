@@ -1831,6 +1831,17 @@ export const partnerApi = {
     // instead of falling to the end of the list.
     storeLat?:          number;
     storeLng?:          number;
+    /**
+     * Where the applicant stood when they photographed the shop.
+     *
+     * Not the same as storeLat/storeLng, which come from an address picker
+     * and can be operated from anywhere. This is a reading taken at the
+     * shopfront, and it is what lets a reviewer put the pin on real ground
+     * instead of on a guess.
+     */
+    storefrontLat?:       number;
+    storefrontLng?:       number;
+    storefrontAccuracyM?: number;
   }) =>
     request<{ storeId: string; status: string; submittedAt: string; message: string }>(
       'POST', '/partner-store/apply', body,
