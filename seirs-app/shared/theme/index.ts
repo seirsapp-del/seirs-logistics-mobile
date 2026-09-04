@@ -31,6 +31,7 @@ export const Palette = {
   ink400:  '#3D444D',
   ink300:  '#444C56',
   ink200:  '#545D68',
+  ink250:  '#616A74', // dark-mode TERTIARY TEXT. Not a surface: see textThird.
 
   // Light surfaces
   white:   '#FFFFFF',
@@ -140,7 +141,28 @@ export const Colors = {
     // Typography
     text:          '#E6EDF3',
     textSecond:    '#8B949E',
-    textThird:     Palette.ink400,    // #3D444D
+    /**
+     * ink250, not ink400.
+     *
+     * textThird pointed at ink400 #3D444D, which is a SURFACE shade sitting
+     * between the border (ink500) and ink300. On the dark card colour it
+     * measures 1.76:1, against light mode's 2.54:1 for the same tier. The
+     * same screen therefore read one way in light and was close to invisible
+     * in dark, and it is used 247 times in business-app alone with customer
+     * and driver inheriting it.
+     *
+     * #616A74 gives 3.15:1 on the card and 2.95:1 on the sunk surface, so it
+     * is now slightly CLEARER than light mode's tertiary rather than a third
+     * of it, while staying plainly dimmer than textSecond at 5.62:1. The
+     * ladder reads as a ladder in both themes.
+     *
+     * SEPARATE AND STILL OPEN: this tier fails WCAG AA in BOTH themes, light
+     * included, at 2.54:1. Raising it to 4.5 would put tertiary text within
+     * touching distance of secondary and flatten a hierarchy the whole
+     * product uses. That is a design decision for the founder, not a bug fix,
+     * and it is deliberately not made here.
+     */
+    textThird:     Palette.ink250,    // #616A74
     textInverted:  Palette.ink900,
     textOnPrimary: Palette.white,
 
