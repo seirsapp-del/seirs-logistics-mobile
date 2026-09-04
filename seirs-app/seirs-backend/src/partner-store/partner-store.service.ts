@@ -1848,6 +1848,37 @@ export class PartnerStoreService {
     }
 
     if (!store.acceptingNew) {
+      /**
+       * Did WE stop them, or did they?
+       *
+       * Filing a move pauses intake, and withdrawing or being refused
+       * deliberately does not turn it back on: the shop told us it is
+       * leaving, and cancelling the paperwork does not make that untrue.
+       * But the message here said "You have paused new drop-offs", which
+       * is simply false in that case, and a shop reading it would look for
+       * a switch they never touched.
+       *
+       * So the last decided move is checked before blaming the shop.
+       */
+      const [lastMove] = await this.storeRepo.manager.query(
+        `SELECT status FROM "partner_move_requests"
+          WHERE "partnerStoreId" = $1 AND status IN ('withdrawn', 'rejected')
+          ORDER BY "decidedAt" DESC NULLS LAST LIMIT 1`,
+        [storeId],
+      ).catch(() => [null]);
+
+      if (lastMove) {
+        return {
+          paused: true,
+          byUs:   false,
+          reason: lastMove.status === 'rejected'
+            ? 'New parcels are still paused because your move was not approved. '
+            + 'Read what our team said on the move screen, or turn parcels back on if you are staying put.'
+            : 'New parcels are still paused from when you asked to move. '
+            + 'Turn them back on when you are ready to take parcels here again.',
+        };
+      }
+
       return {
         paused: true,
         byUs:   false,

@@ -270,9 +270,23 @@ export default function PartnerSettingsScreen() {
             <Icon name="MapPin" size={16} color={colors.primary} strokeWidth={1.75} />
             <Text style={[styles.moveBtnText, { color: colors.primary }]}>Moving to a new shop?</Text>
           </Pressable>
+          {/* Says what actually happens, which it did not.
+
+              This read "You keep trading at this address until the new one
+              is approved", written before the founder's override made
+              filing a move pause new parcels immediately. So a shop read a
+              promise of business as usual, filed a move, and their intake
+              stopped with nothing on screen explaining it.
+
+              Worse than a silent failure: the screen was actively telling
+              them the opposite of what the code did. Found by the other
+              session reading the screen on a phone, which is the only way
+              this kind of contradiction ever shows up, because both halves
+              are individually correct. */}
           <Text style={[styles.hoursHint, { color: colors.textSecond }]}>
             Customers and riders are sent here, so a change has to be checked by our team
-            first. You keep trading at this address until the new one is approved.
+            first. While we check it, new parcels stop coming to you, and you should keep
+            handing back anything you are already holding.
           </Text>
 
           <Text style={[styles.label, { color: colors.textSecond }]}>Phone Number</Text>
