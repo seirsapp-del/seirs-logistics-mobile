@@ -18,7 +18,7 @@ import { HamburgerButton } from '@/components/HamburgerButton';
 import { deliveriesApi, loyaltyApi, promotionsApi, usersApi } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
-import { savePdf, saveJson } from '@seirs/shared/utils/dataExport';
+import { savePdf } from '@seirs/shared/utils/dataExport';
 
 // The marketing site is the single home for FAQ and the legal documents:
 // it is edited without shipping a release, and it teaches people SEIRS
@@ -110,9 +110,18 @@ export default function ProfileScreen() {
       alertDialog(
         r?.ok ? 'Your data is ready' : 'Already prepared',
         r?.message ?? 'Open Documents to read or share it.',
+        /**
+         * No "machine-readable copy" button (founder 2026-09-04: "i dont
+         * think any not techincal user want machine readable copy").
+         *
+         * He is right. NDPR Article 24 obliges SEIRS to be ABLE to provide a
+         * portable copy; it does not oblige us to put the word JSON in front
+         * of somebody who wants their receipts. The endpoint stays, so
+         * support can produce one on request, and nothing in the app offers
+         * it unasked.
+         */
         [
-          { text: 'Save as PDF',            onPress: () => void exportAsPdf() },
-          { text: 'Machine-readable copy',  onPress: () => void exportAsJson() },
+          { text: 'Save as PDF', onPress: () => void exportAsPdf() },
           { text: 'Close', style: 'cancel' },
         ],
       );
@@ -132,16 +141,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const exportAsJson = async () => {
-    try {
-      const bundle = await usersApi.exportJson();
-      const out    = await saveJson(bundle);
-      if (!out.ok) alertDialog('Could not save it', out.message);
-      else if (!out.shared) alertDialog('Saved', 'The file was created on this phone.');
-    } catch {
-      alertDialog('Could not save it', 'Please try again later, or contact support.');
-    }
-  };
 
   const SECTIONS: MenuSection[] = [
     {

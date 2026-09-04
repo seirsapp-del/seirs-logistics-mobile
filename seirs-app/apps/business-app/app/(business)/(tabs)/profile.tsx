@@ -9,7 +9,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Image, Platform
 import { useEffect, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useSeirsDialog } from '@/components/SeirsDialog';
-import { savePdf, saveJson } from '@seirs/shared/utils/dataExport';
+import { savePdf } from '@seirs/shared/utils/dataExport';
 import { Drawer } from '@/components/Drawer';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -89,7 +89,6 @@ export default function BusinessProfileTab() {
         r?.message ?? 'Open Documents to read or share it.',
         [
           { text: 'Save as PDF',           onPress: () => { void exportAsPdf(); } },
-          { text: 'Machine-readable copy', onPress: () => { void exportAsJson(); } },
           { text: 'Close', style: 'cancel' },
         ],
       );
@@ -109,16 +108,6 @@ export default function BusinessProfileTab() {
     }
   };
 
-  const exportAsJson = async () => {
-    try {
-      const bundle = await usersApi.exportJson();
-      const out    = await saveJson(bundle);
-      if (!out.ok) dialog.alert('Could not save it', out.message);
-      else if (!out.shared) dialog.alert('Saved', 'The file was created on this phone.');
-    } catch {
-      dialog.alert('Could not save it', 'Please try again later, or contact support.');
-    }
-  };
 
   const sections: Array<{ title: string; items: Array<{ icon: string; label: string; onPress: () => void; danger?: boolean }> }> = [
     {

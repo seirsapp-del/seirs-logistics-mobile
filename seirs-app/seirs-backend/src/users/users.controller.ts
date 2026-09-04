@@ -149,7 +149,19 @@ export class UsersController {
     const fmt = (format ?? 'json').toLowerCase();
 
     if (fmt === 'html') {
-      const html = buildHtmlExport(bundle);
+      /**
+       * The service's formatter, not the one that used to live in this file.
+       *
+       * There were TWO HTML builders. formatExportAsHtml in users.service
+       * reads bundle.profile, handles the deliveries object, covers payments,
+       * store drop-offs, handovers and SOS alerts, and is styled in the SEIRS
+       * navy with proper headings and a disclaimer. It was DEAD CODE, used
+       * nowhere. The one wired in here read bundle.user, treated deliveries
+       * as an array, and rendered browser-default HTML, so what people
+       * actually received was an unstyled page with an empty profile and no
+       * records. The good one had been sitting beside it the whole time.
+       */
+      const html = this.usersService.formatExportAsHtml(bundle);
       res.setHeader('Content-Type',        'text/html; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="seirs-export-${user.id}.html"`);
       return html;
@@ -220,8 +232,24 @@ function ngn(v: any): string {
  * person's data is.
  */
 function buildTextExport(bundle: any): string {
-  const user = bundle?.user ?? {};
-  const deliveries: any[] = Array.isArray(bundle?.deliveries) ? bundle.deliveries : [];
+  /**
+   * bundle.PROFILE, not bundle.user, and deliveries is an OBJECT.
+   *
+   * exportUserData returns { profile, deliveries: { asCustomer, asDriver } }.
+   * The HTML builder below read bundle.user and treated deliveries as an
+   * array, so every profile field printed blank and the count printed zero,
+   * for everybody, since it was written. The founder opened his own export
+   * and found "Name:" with nothing after it.
+   *
+   * I copied both mistakes into this function this afternoon by reading the
+   * builder next to it instead of the thing that produces the data.
+   */
+  const user = bundle?.profile ?? {};
+  const d = bundle?.deliveries ?? {};
+  const deliveries: any[] = [
+    ...(Array.isArray(d.asCustomer) ? d.asCustomer : []),
+    ...(Array.isArray(d.asDriver)   ? d.asDriver   : []),
+  ];
   const line = (label: string, value: any) => `  ${label.padEnd(10)} ${value ?? '-'}`;
 
   const out: string[] = [
@@ -260,48 +288,19 @@ function buildTextExport(bundle: any): string {
   return out.join('\n');
 }
 
-function buildHtmlExport(bundle: any): string {
-  const user = bundle?.user ?? {};
-  const deliveries: any[] = Array.isArray(bundle?.deliveries) ? bundle.deliveries : [];
-  const rows = deliveries.slice(0, 500).map((d) => `
-    <tr>
-      <td>${escapeHtml(d.trackingCode)}</td>
-      <td>${escapeHtml(d.status)}</td>
-      <td>${escapeHtml(d.pickupAddress)}</td>
-      <td>${escapeHtml(d.dropoffAddress)}</td>
-      <td>&#8358;${Number(d.price ?? 0).toLocaleString('en-NG')}</td>
-      <td>${escapeHtml(new Date(d.createdAt).toISOString().slice(0, 10))}</td>
-    </tr>
-  `).join('');
-  return `<!doctype html>
-<html><head><meta charset="utf-8"><title>SEIRS NDPR data export</title>
-<style>
-  body { font-family: system-ui, sans-serif; padding: 24px; color: #111; max-width: 900px; margin: 0 auto; }
-  h1 { color: #0F2B4C; }
-  h2 { color: #0F2B4C; margin-top: 24px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 12px; }
-  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
-  th { background: #f5f5f0; }
-  .meta { color: #666; font-size: 12px; }
-</style></head>
-<body>
-  <h1>Your SEIRS data</h1>
-  <p class="meta">Generated on ${escapeHtml(new Date().toISOString())} for NDPR Article 24 (right to data portability).</p>
-  <h2>Profile</h2>
-  <ul>
-    <li><strong>Name:</strong> ${escapeHtml(user.name)}</li>
-    <li><strong>Email:</strong> ${escapeHtml(user.email)}</li>
-    <li><strong>Phone:</strong> ${escapeHtml(user.phone)}</li>
-    <li><strong>SEIRS ID:</strong> ${escapeHtml(user.accountId)}</li>
-    <li><strong>Joined:</strong> ${escapeHtml(user.createdAt)}</li>
-  </ul>
-  <h2>Deliveries (${deliveries.length} total, showing up to 500)</h2>
-  <table>
-    <thead><tr><th>Tracking</th><th>Status</th><th>Pickup</th><th>Dropoff</th><th>Price</th><th>Date</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-</body></html>`;
-}
+/**
+ * buildHtmlExport lived here and is DELETED (2026-09-04).
+ *
+ * It was a second, worse copy of users.service.formatExportAsHtml. It read
+ * bundle.user where the bundle has profile, and treated bundle.deliveries as
+ * an array where it is { asCustomer, asDriver }. So every export anyone ever
+ * received showed an empty profile and no deliveries, in unstyled
+ * browser-default HTML, while a correct and properly styled formatter sat
+ * unused in the service.
+ *
+ * Deleting it rather than fixing it, because two builders for one document is
+ * how they drift apart in the first place.
+ */
 
 function csvEscape(s: any): string {
   const str = String(s ?? '');
