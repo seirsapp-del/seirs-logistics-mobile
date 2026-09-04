@@ -1881,6 +1881,21 @@ export class BusinessService {
         { pickupStoreId:  store.id, status: In([DropoffStatus.AWAITING_DRIVER, DropoffStatus.AWAITING_COLLECTION, DropoffStatus.AT_DROPOFF_STORE]) },
         { dropoffStoreId: store.id, status: In([DropoffStatus.AWAITING_DRIVER, DropoffStatus.AWAITING_COLLECTION, DropoffStatus.AT_DROPOFF_STORE]) },
       ],
+      /**
+       * Two columns, because two columns is all this prints.
+       *
+       * StoreDropoff declares no relations, so there is no eager join to
+       * defend against here, but the row is wide: recipient names and
+       * phone numbers, photo URLs, the backup code that together with
+       * the drop code is what releases a parcel to whoever holds them.
+       * None of that belongs in a support ticket body, and the cheapest
+       * way to keep it out is not to load it.
+       *
+       * loadEagerRelations stays off regardless, so adding a relation to
+       * this entity later cannot quietly widen what a ticket prints.
+       */
+      select: ['id', 'dropCode'],
+      loadEagerRelations: false,
       take: 50,
     });
     if (!held.length) return;   // nothing at stake, nothing to read
