@@ -2,6 +2,7 @@ import { Logger, Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { SupportController } from './support.controller';
+import { FeesModule } from '../fees/fees.module';
 import { SupportService }    from './support.service';
 import { SupportTicket }     from './support-ticket.entity';
 import { ChatMessage }       from '../chat/chat-message.entity';
@@ -23,7 +24,12 @@ import { User }              from '../users/user.entity';
  * boots normally so the fallback SYNC_DB=true toggle still works.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([SupportTicket, ChatMessage, User])],
+  imports: [
+    TypeOrmModule.forFeature([SupportTicket, ChatMessage, User]),
+    // For the staleness threshold, read live rather than hard-coded.
+    // FeesModule pulls in only TypeOrm and Tracking, so there is no cycle.
+    FeesModule,
+  ],
   controllers: [SupportController],
   providers: [SupportService],
   exports: [SupportService],
@@ -92,6 +98,8 @@ export class SupportModule implements OnModuleInit {
       ['lastMessageAt',     'timestamptz NOT NULL DEFAULT NOW()'],
       ['createdAt',         'timestamptz NOT NULL DEFAULT NOW()'],
       ['updatedAt',         'timestamptz NOT NULL DEFAULT NOW()'],
+      // Alerts SEIRS files about somebody, hidden from that somebody.
+      ['internal',          'boolean NOT NULL DEFAULT false'],
     ];
     for (const [name, type] of columns) {
       await this.run(`add ${name}`, `

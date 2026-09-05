@@ -3,9 +3,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, LessThan } from 'typeorm';
+import { FeesService } from '../fees/fees.service';
 import { SupportTicket, TicketStatus, TicketTopic } from './support-ticket.entity';
 import { ChatMessage } from '../chat/chat-message.entity';
 import { User } from '../users/user.entity';
+import { rangeStart, rangeEnd } from '../common/utils/date-range';
 
 // Business hours (Africa/Lagos = UTC+1, no DST). Outside this window
 // a new ticket gets an auto-response system message so the user knows
@@ -47,6 +49,7 @@ export class SupportService {
     @InjectRepository(SupportTicket) private readonly tickets:  Repository<SupportTicket>,
     @InjectRepository(ChatMessage)   private readonly messages: Repository<ChatMessage>,
     @InjectRepository(User)          private readonly users:    Repository<User>,
+    private readonly feesService: FeesService,
   ) {}
 
   // ── User side ────────────────────────────────────────────────────────
@@ -143,7 +146,17 @@ export class SupportService {
    * both read readAt.
    */
   async listMine(userId: string, opts: { status?: TicketStatus; limit?: number } = {}) {
-    const where: any = { user: { id: userId } };
+    /**
+     * Internal alerts are excluded here, and this is the only place that
+     * decides what a person sees of their own support history.
+     *
+     * They are filed against the person so support can find them, and they
+     * are written for support: third person, with our follow-up
+     * instructions in them. Showing a shop a ticket that says "someone
+     * needs to check the parcels" reads as being caught talking about
+     * them.
+     */
+    const where: any = { user: { id: userId }, internal: false };
     if (opts.status) where.status = opts.status;
     const limit = Math.min(Math.max(opts.limit ?? 30, 1), 100);
     const tickets = await this.tickets.find({
@@ -246,6 +259,129 @@ export class SupportService {
   // ── Agent side ───────────────────────────────────────────────────────
 
   /** Support inbox. Agents only. Recent-active tickets first. */
+  /**
+   * The topics SEIRS raises about somebody, rather than ones a person typed.
+   *
+   * They are a different kind of object from a customer asking where their
+   * parcel is. A customer ticket needs a REPLY. One of these needs somebody
+   * to go and CHECK something, and often needs no reply at all. Mixed into
+   * one list the volume of the first buries the urgency of the second: a
+   * shop moving while holding eleven parcels should not have to compete for
+   * attention with a question about a receipt.
+   */
+  private static readonly SYSTEM_TOPICS = [
+    TicketTopic.HOURS, TicketTopic.MOVE, TicketTopic.NO_RIDER,
+  ];
+
+  /** Open, or replied to and waiting on us. The work, as opposed to the archive. */
+  private static readonly LIVE_STATUSES = [
+    TicketStatus.OPEN, TicketStatus.AWAITING_AGENT,
+  ];
+
+  /**
+   * A view is a JOB, not a filter setting.
+   *
+   * The queue used to open on status "New", which is a property of a ticket
+   * rather than a description of anything anybody intends to do. An agent
+   * starting a shift wants a pile of work: what needs us, what is mine,
+   * what has nobody picked up, what has been sitting too long. Those are
+   * the four questions actually asked of a support queue, and answering
+   * each of them previously meant knowing which combination of three
+   * dropdowns produced it.
+   *
+   * Applied in the QUERY, so a view decides which rows come back rather
+   * than rearranging rows chosen by something else. That distinction cost
+   * us a working sort earlier today.
+   */
+  private applyView(qb: any, view: string | undefined, requesterId: string, staleBefore: Date) {
+    switch (view) {
+      case 'needs_us':
+        /**
+         * Customer conversations only. System alerts have their own view.
+         *
+         * This is the separation stage 4 is for. Both need us, so the
+         * obvious reading is to show both here, and that is exactly what
+         * buries them: a shop moving while holding eleven parcels ends up
+         * queued behind thirty questions about receipts, and the alert
+         * that arrives BEFORE the parcels strand loses to the ones that
+         * arrive after.
+         *
+         * They are different work as well as different urgency. These need
+         * a reply. Those need somebody to go and check something, and
+         * often need no reply at all.
+         */
+        qb.andWhere('t.status IN (:...live)', { live: SupportService.LIVE_STATUSES })
+          .andWhere('t.topic NOT IN (:...sys)', { sys: SupportService.SYSTEM_TOPICS });
+        break;
+      case 'mine':
+        qb.andWhere('t."assignedAgentId" = :me', { me: requesterId });
+        break;
+      case 'unassigned':
+        qb.andWhere('t."assignedAgentId" IS NULL')
+          .andWhere('t.status IN (:...live)', { live: SupportService.LIVE_STATUSES });
+        break;
+      case 'stale':
+        // Waiting on us, and untouched for longer than the agreed limit.
+        qb.andWhere('t.status IN (:...live)', { live: SupportService.LIVE_STATUSES })
+          .andWhere('t.lastMessageAt < :staleBefore', { staleBefore });
+        break;
+      case 'system':
+        qb.andWhere('t.topic IN (:...sys)', { sys: SupportService.SYSTEM_TOPICS });
+        break;
+      // 'all' and anything unrecognised narrow nothing, deliberately: an
+      // unknown view must show too much rather than an empty queue, which
+      // on a support inbox reads as "nothing to do".
+      default:
+        break;
+    }
+  }
+
+  /**
+   * How long a ticket may sit with us before it counts as going stale.
+   *
+   * Read from the Fee Catalogue at call time, never seeded here. Production
+   * may already hold a number somebody chose deliberately, and a value
+   * written into the code would then disagree with the running system while
+   * looking authoritative. That exact trap was found tonight on a different
+   * key, sitting at four hours when nothing in the repo said so.
+   */
+  private async staleAfterHours(): Promise<number> {
+    try {
+      const n = Number(await this.feesService.getValueOr('support_stale_after_hours', 24));
+      return Number.isFinite(n) && n > 0 ? n : 24;
+    } catch {
+      // A catalogue read failing must not break the queue. 24 is the
+      // fallback, not a seeded row: nothing here writes the key, so if
+      // production already holds a number somebody chose, that number wins.
+      return 24;
+    }
+  }
+
+  /**
+   * How much work is sitting in each view.
+   *
+   * Counted in the database rather than by fetching and measuring, because
+   * the whole point is to show where the work IS without opening it, and a
+   * count derived from one page of rows would report the page rather than
+   * the pile.
+   */
+  async queueCounts(requester: User) {
+    if (!(await this.isAgent(requester))) {
+      throw new ForbiddenException('Support agent role required');
+    }
+    const hours = await this.staleAfterHours();
+    const staleBefore = new Date(Date.now() - hours * 3_600_000);
+
+    const views = ['needs_us', 'mine', 'unassigned', 'stale', 'system'];
+    const out: Record<string, number> = {};
+    for (const view of views) {
+      const qb = this.tickets.createQueryBuilder('t');
+      this.applyView(qb, view, requester.id, staleBefore);
+      out[view] = await qb.getCount().catch(() => 0);
+    }
+    return { counts: out, staleAfterHours: hours };
+  }
+
   async listQueue(requester: User, opts: {
     status?:     TicketStatus;
     topic?:      TicketTopic;
@@ -266,6 +402,11 @@ export class SupportService {
     from?:       string;
     /** Opened on or before this date, inclusive of the whole day. */
     to?:         string;
+    /**
+     * A named job rather than a filter setting: needs_us, mine,
+     * unassigned, stale, system, or all.
+     */
+    view?:       string;
   } = {}) {
     if (!(await this.isAgent(requester))) {
       throw new ForbiddenException('Support agent role required');
@@ -351,6 +492,16 @@ export class SupportService {
     if (opts.unassigned) qb.andWhere('t."assignedAgentId" IS NULL');
 
     /**
+     * The view narrows on top of everything else rather than replacing it,
+     * so an agent can sit in "nobody has this" and still ask it about a
+     * date or a search term.
+     */
+    if (opts.view && opts.view !== 'all') {
+      const hours = await this.staleAfterHours();
+      this.applyView(qb, opts.view, requester.id, new Date(Date.now() - hours * 3_600_000));
+    }
+
+    /**
      * Date range over when the ticket was OPENED, not last touched.
      *
      * "What came in over the weekend" is a question about arrival. Ranging
@@ -362,8 +513,10 @@ export class SupportService {
      * stopped at midnight would silently exclude everything raised ON the
      * 5th, which is the commonest way a date filter lies.
      */
-    if (opts.from) qb.andWhere('t."createdAt" >= :from', { from: new Date(`${opts.from}T00:00:00Z`) });
-    if (opts.to)   qb.andWhere('t."createdAt" <  :to',   { to:   new Date(new Date(`${opts.to}T00:00:00Z`).getTime() + 86_400_000) });
+    const openedFrom = rangeStart(opts.from);
+    const openedTo   = rangeEnd(opts.to);
+    if (openedFrom) qb.andWhere('t."createdAt" >= :from', { from: openedFrom });
+    if (openedTo)   qb.andWhere('t."createdAt" <  :to',   { to:   openedTo });
 
     /**
      * Real pages, and a total.
@@ -708,6 +861,14 @@ export class SupportService {
         linkedDeliveryId: null,
         assignedAgentId:  null,
         lastMessageAt:    now,
+        /**
+         * Filed against the person it concerns, and hidden from them.
+         *
+         * The body is written for our ops team and speaks about them in
+         * the third person. Before this they could read it in their own
+         * inbox, with an unread badge over it.
+         */
+        internal:         true,
       }));
       await this.appendSystemMessage(ticket, opts.systemType, opts.body);
       return ticket;

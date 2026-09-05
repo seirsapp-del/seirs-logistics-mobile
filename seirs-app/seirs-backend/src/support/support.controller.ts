@@ -73,13 +73,26 @@ export class SupportController {
     @Query('unassigned') unassigned?: string,
     @Query('from')       from?: string,
     @Query('to')         to?: string,
+    @Query('view')       view?: string,
   ) {
     return this.svc.listQueue(user, {
-      status, topic, accountType, limit, sort, page, q,
+      status, topic, accountType, limit, sort, page, q, view,
       // Query strings carry text, so "false" would be truthy as a value.
       unassigned: unassigned === 'true' || unassigned === '1',
       from, to,
     });
+  }
+
+  /**
+   * GET /api/v1/support/queue/counts
+   *
+   * How much work sits in each view, counted in the database. Lets the
+   * queue show where the work is without an agent opening five filters to
+   * find out.
+   */
+  @Get('queue/counts')
+  queueCounts(@CurrentUser() user: User) {
+    return this.svc.queueCounts(user);
   }
 
   // POST /api/v1/support/tickets/:id/agent-reply

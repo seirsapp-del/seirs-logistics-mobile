@@ -111,6 +111,26 @@ const QUEUE_LIMIT = 100;
 /** Statuses where a human is waiting on SEIRS to say something. */
 const WAITING_ON_US = new Set(['open', 'awaiting_agent']);
 
+/**
+ * The five questions actually asked of a support queue.
+ *
+ * Not filter settings. Each one is a job somebody sits down to do, and
+ * before this every one of them had to be assembled by hand out of three
+ * dropdowns whose combination was not obvious.
+ *
+ * "Raised by SEIRS" is last and deliberately separate: those tickets need
+ * somebody to go and CHECK something rather than reply, and mixed into the
+ * same list the volume of ordinary questions buries them.
+ */
+const VIEWS: Array<{ key: string; label: string; hint: string }> = [
+  { key: 'needs_us',   label: 'Needs us',       hint: 'Open, or they have replied and are waiting on an answer. Oldest first is usually the right order here.' },
+  { key: 'mine',       label: 'Mine',           hint: 'Assigned to you.' },
+  { key: 'unassigned', label: 'Nobody has this', hint: 'Live and unowned. The pile that grows quietly, because an unowned ticket looks exactly like an owned one.' },
+  { key: 'stale',      label: 'Going stale',    hint: 'Waiting on us for longer than the agreed limit.' },
+  { key: 'system',     label: 'Raised by SEIRS', hint: 'Hours changed, shop moving, no rider found. Alerts rather than conversations: somebody has to go and check something.' },
+  { key: 'all',        label: 'Everything',     hint: 'No narrowing at all, including resolved and closed.' },
+];
+
 function formatRelative(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   if (diff < 60_000)                 return 'just now';
@@ -129,7 +149,19 @@ export default function SupportInboxPage() {
   const [sending,      setSending]      = useState(false);
   const [error,        setError]        = useState<string | null>(null);
 
-  const [statusFilter,      setStatusFilter]      = useState<string>('open');
+  /**
+   * The view an agent is working, which is a JOB rather than a status.
+   *
+   * Defaults to "needs us". The queue used to open on status "New", which
+   * is a property of a ticket and not a description of anything anybody
+   * intends to do, so an agent starting a shift had to know which
+   * combination of three dropdowns produced their actual pile.
+   */
+  const [view, setView] = useState<string>('needs_us');
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [staleHours, setStaleHours] = useState<number | null>(null);
+
+  const [statusFilter,      setStatusFilter]      = useState<string>('');
   const [topicFilter,       setTopicFilter]       = useState<string>('');
   const [accountTypeFilter, setAccountTypeFilter] = useState<string>('');
 
@@ -179,6 +211,7 @@ export default function SupportInboxPage() {
         limit:       QUEUE_LIMIT,
         sort,
         page,
+        view,
         q:           query || undefined,
         unassigned:  unassignedOnly || undefined,
         from:        from || undefined,
@@ -200,7 +233,7 @@ export default function SupportInboxPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, topicFilter, accountTypeFilter, sort, page, query, unassignedOnly, from, to]);
+  }, [statusFilter, topicFilter, accountTypeFilter, sort, page, query, unassignedOnly, from, to, view]);
 
   useEffect(() => { loadQueue(); }, [loadQueue]);
 
@@ -481,7 +514,19 @@ export default function SupportInboxPage() {
    * a support inbox reads as "nothing to do" rather than "wrong page".
    */
   useEffect(() => { setPage(1); },
-    [statusFilter, topicFilter, accountTypeFilter, sort, query, unassignedOnly, from, to]);
+    [statusFilter, topicFilter, accountTypeFilter, sort, query, unassignedOnly, from, to, view]);
+
+  /**
+   * Counts refresh whenever the queue does, so a view's number cannot
+   * disagree with the list it opens. They are counted in the database, not
+   * derived from the page, or they would report the page rather than the
+   * pile.
+   */
+  useEffect(() => {
+    adminApi.support.queueCounts()
+      .then(r => { setCounts(r?.counts ?? {}); setStaleHours(r?.staleAfterHours ?? null); })
+      .catch(() => { setCounts({}); setStaleHours(null); });
+  }, [tickets]);
 
   const filtersActive = Boolean(statusFilter || topicFilter || accountTypeFilter);
   const clearFilters  = () => {
@@ -636,6 +681,38 @@ export default function SupportInboxPage() {
           the list is standing on the server's ceiling the only honest
           thing to do is say the older ones are not on this screen.
         */}
+        {/* The pile, before the filters.
+
+            Counts come from the server rather than from the rows on
+            screen, or a view would report its page rather than its pile.
+            They refresh with the queue so a number cannot disagree with
+            the list it opens. */}
+        <div className="mb-3 flex flex-wrap gap-2">
+          {VIEWS.map(v => {
+            const n = counts[v.key];
+            const active = view === v.key;
+            return (
+              <button
+                key={v.key}
+                onClick={() => setView(v.key)}
+                title={v.key === 'stale' && staleHours ? `${v.hint} Currently ${staleHours} hours.` : v.hint}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  active
+                    ? 'border-[#3A7BD5] bg-[#3A7BD5] text-white'
+                    : 'border-gray-200 bg-white text-[#0F2B4C]/60 hover:border-[#0F2B4C]/25'
+                }`}
+              >
+                {v.label}
+                {typeof n === 'number' && n > 0 && (
+                  <span className={`ml-1.5 tabular-nums ${active ? 'text-white/80' : 'text-[#0F2B4C]/40'}`}>
+                    {n}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
           {/* The real total, from the server.
 
@@ -817,6 +894,26 @@ export default function SupportInboxPage() {
             <div className="flex flex-1 items-center justify-center text-sm text-gray-500">Loading the conversation…</div>
           ) : thread && t ? (
             <>
+              {/* An alert SEIRS filed, which the person cannot see.
+
+                  It is filed against them so it can be found later, and it
+                  is written for us: third person, with our follow-up
+                  instructions in it. They are excluded from their own
+                  inbox, so an agent replying here expecting to be read
+                  would be writing into a void. Said plainly, above the
+                  thread, before anyone types. */}
+              {(t as any)?.internal && (
+                <div className="border-b border-amber-200 bg-amber-50 px-5 py-2.5">
+                  <p className="text-xs font-semibold text-amber-900">
+                    Our own record. {t.user?.name ?? 'This person'} cannot see this thread.
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-amber-800">
+                    SEIRS raised it about them, not with them. To say something to them, open a
+                    normal ticket or send a document.
+                  </p>
+                </div>
+              )}
+
               {/* Thread header */}
               <div className="flex items-start justify-between gap-3 border-b border-gray-200 bg-white px-5 py-3">
                 <div className="min-w-0">

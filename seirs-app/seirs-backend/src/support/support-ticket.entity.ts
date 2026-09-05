@@ -121,6 +121,31 @@ export class SupportTicket {
   @Column({ type: 'varchar', length: 200 })
   subject: string;
 
+  /**
+   * A record ABOUT somebody, which that somebody must not read.
+   *
+   * raiseSystemTicket files an alert against the person it concerns,
+   * because that is how support finds it later: a shop changing its hours
+   * belongs to that shop. But the body is written for our ops team, in the
+   * third person, and it carries instructions to them:
+   *
+   *   "THEY ARE HOLDING 6 PARCELS RIGHT NOW."
+   *   "Someone needs to check that the parcels below can still be collected."
+   *
+   * listMine filters on the user and nothing else, so the shop could open
+   * its own support inbox and read all of that, with an unread badge over
+   * it, written about them in the third person. Not a data leak, since it
+   * is their own information, but it reads as though we were caught
+   * talking about them, and it hands a partner our internal follow-up
+   * procedure.
+   *
+   * Internal tickets stay visible to agents and disappear from the
+   * person's own inbox. The agent thread says so plainly, because an agent
+   * who replies to one expecting to be read would be writing into a void.
+   */
+  @Column({ type: 'boolean', default: false })
+  internal: boolean;
+
   // Optional link to a specific delivery this ticket is about. Kept as
   // a plain uuid column (not FK) so a delivery being deleted does NOT
   // orphan-cascade the support conversation.
