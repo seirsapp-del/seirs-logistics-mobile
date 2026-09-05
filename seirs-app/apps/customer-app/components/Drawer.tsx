@@ -49,8 +49,6 @@ export function Drawer({ visible, onClose }: Props) {
   const items: DrawerItem[] = [
     { icon: 'QrCode',     label: t('drawer.seirsId',       { defaultValue: 'My SEIRS ID' }),     onPress: () => navigate('/(customer)/seirs-id'),
       section: t('drawer.sectionYou', { defaultValue: 'You' }) },
-    { icon: 'Map',        label: t('drawer.travelBuddy',   { defaultValue: 'Travel Buddy (intercity)' }), onPress: () => navigate('/(customer)/travel-buddy'),
-      section: t('drawer.sectionSend', { defaultValue: 'Send & travel' }) },
     /*
      * "Send Multiple" is GONE (founder 2026-09-05). It pointed at
      * /(customer)/send, which is the same screen the home card already
@@ -89,6 +87,14 @@ export function Drawer({ visible, onClose }: Props) {
       onPress: () => navigate('/(customer)/referral'),
       section: t('drawer.sectionYou', { defaultValue: 'You' }) },
 
+    /*
+     * Rows sharing a section must sit together: the shared drawer prints a
+     * header every time the section changes, and on 6 September the screen
+     * read YOU, SEND & TRAVEL, YOU, SEND & TRAVEL because Travel Buddy was
+     * parked between two You rows.
+     */
+    { icon: 'Map',        label: t('drawer.travelBuddy',   { defaultValue: 'Travel Buddy (intercity)' }), onPress: () => navigate('/(customer)/travel-buddy'),
+      section: t('drawer.sectionSend', { defaultValue: 'Send & travel' }) },
     { icon: 'Truck',      label: t('drawer.specialRequest', { defaultValue: 'Special delivery' }),
       onPress: () => navigate('/(customer)/special-request'),
       section: t('drawer.sectionSend', { defaultValue: 'Send & travel' }) },
