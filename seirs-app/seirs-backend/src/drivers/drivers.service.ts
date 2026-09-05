@@ -972,7 +972,7 @@ export class DriversService {
     const stopsByTrip = new Map<string, string[]>();
     if (trips.length > 0) {
       const rows: Array<any> = await this.tripStopsRepo.manager.query(
-        `SELECT "trip_id" AS "tripId", "city", "address", "order"
+        `SELECT "trip_id" AS "tripId", "city", "address", "latitude", "longitude", "order"
            FROM "trip_stops"
           WHERE "trip_id" = ANY($1)
           ORDER BY "trip_id", "order" ASC`,
@@ -980,7 +980,7 @@ export class DriversService {
       ).catch(() => []);
       for (const r of rows) {
         // The town the address names, not the state the geocoder returned.
-        const label = stopLabel(r.city, r.address);
+        const label = stopLabel(r.city, r.address, r.latitude, r.longitude);
         if (!label) continue;
         const list = stopsByTrip.get(r.tripId) ?? [];
         list.push(label);
