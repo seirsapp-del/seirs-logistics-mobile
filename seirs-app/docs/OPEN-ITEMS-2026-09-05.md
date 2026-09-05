@@ -167,3 +167,55 @@ measuring anything.
 The practical rule that falls out of it: **when something reports success,
 ask what it would have said had the thing been broken.** If the answer is
 "the same", it is not a check.
+
+---
+
+## F. RAISED ON THE PHONE, 5 SEPTEMBER MORNING
+
+Found by the founder driving the apps. Logged before investigating so
+none of it depends on anybody's memory.
+
+### F1. Abandoned Send drafts persist forever, with the photos
+**Both apps. Confirmed in code.**
+
+The draft is deliberately persisted to AsyncStorage (16 August: a trader
+part-way through a booking should not lose it). But `resetDraft()` and
+`clearDraft()` are called ONLY on successful submission. Abandon a send
+half-way and the draft, photographs included, survives every app restart
+with **no user-facing way to clear it**. The founder's words: "they will
+have to delete all the input manually".
+
+- Business: `store/businessStore.ts` `resetDraft`, called at
+  `send-package.tsx:959` and `:1011` only.
+- Customer: `store/useSendDraftStore.ts` `clearDraft`, called at
+  `send.tsx:1380` and `:1459` only.
+- **Fix:** a "Start over" action on the send screen, and probably an
+  offer to resume-or-discard when a stale draft is found on entry.
+
+### F2. Promotions: is it actually live end to end?
+Founder asks whether promotions works across all three apps AND the admin
+dashboard, or whether parts of it are scaffolding. **Not yet
+investigated.** Note the customer profile already renders "0 active
+promos", which proves the read path but says nothing about creating one
+in admin and it reaching a booking.
+
+### F3. Rewards: does Redeem actually work? Does Earn more?
+Same question, same status: **not yet investigated**. The redemption
+cards have a `live` flag in the code, which suggests some are
+deliberately inert, and that needs confirming rather than assuming.
+
+### F4. Rewards has dead space, and dark mode is flat
+Both the customer Rewards screen and the business Wallet. The founder
+wants the empty area below the fold used, and dark mode to feel less
+lifeless. This is design work, not a defect.
+
+### F5. The customer drawer is thinner than the other two
+The driver and business hamburgers carry more destinations, so a customer
+has to hunt through the app for things the other two reach in one tap.
+Worth auditing all three side by side and levelling up the customer.
+
+### F6. The nav bar in the business partner drawer
+Still the outstanding native item. Note that the CUSTOMER app in dark
+mode showed a correctly dark navigation bar on an APK that does NOT carry
+the contrast plugin, so this may be drawer-specific rather than global.
+Check before assuming the plugin is what fixes it.
