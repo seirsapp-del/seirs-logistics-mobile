@@ -1045,7 +1045,44 @@ export class PricingService implements OnModuleInit {
     return Math.max(km, round2(straight * factor));
   }
 
+  /**
+   * Categories the rate card MUST NOT price.
+   *
+   * A special request is a generator, a church pew, a cold-chain box: jobs
+   * with no fare until somebody looks at the photographs and works out what
+   * they actually take.
+   *
+   * The dangerous outcome here is not an error, it is a PLAUSIBLE NUMBER.
+   * Asked about a generator, the card happily returns something computed
+   * from distance and weight. It looks exactly like a quote. A sender pays
+   * it, and SEIRS is committed to a job at a price nobody who understood it
+   * ever agreed to. Falling through to the card is worse than failing.
+   *
+   * So this throws, loudly, and the special-requests queue is the only path
+   * to a price for these.
+   */
+  private static readonly UNPRICEABLE = new Set([
+    'special', 'special_request', 'oversized', 'heavy', 'hazardous',
+    'cold_chain', 'livestock', 'relocation',
+  ]);
+
   async computePrice(input: PricingInput): Promise<PriceBreakdown> {
+    /**
+     * REFUSED BEFORE ANYTHING ELSE, including the zone checks.
+     *
+     * Placed first deliberately: every other guard below produces a
+     * different failure for a different reason, and any of them passing
+     * would leave this one to be reached by luck. A job the card cannot
+     * price must never get as far as arithmetic.
+     */
+    if (PricingService.UNPRICEABLE.has(String((input as any)?.categoryCode ?? ''))) {
+      throw new BadRequestException(
+        'SPECIAL_REQUEST_REQUIRED: this kind of job has no standard price. '
+        + 'Send it as a special request and our team will quote it. '
+        + 'Nothing here is chargeable until they do.',
+      );
+    }
+
     /**
      * ZONES FIRST, before the card, the category or a single naira.
      *
