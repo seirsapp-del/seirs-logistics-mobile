@@ -38,6 +38,7 @@ import { deliveriesApi, mapsApi } from '@/services/api';
 import { derivePlace } from '@seirs/shared/models/cities';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 import { CitySearchField } from '@/components/CitySearchField';
+import { Calendar as RNCalendar } from 'react-native-calendars';
 
 /**
  * The corridors a trader is most likely to want, so the common case is
@@ -118,6 +119,7 @@ export default function CargoSpaceScreen() {
    * untouched.
    */
   const [dayISO,  setDayISO]  = useState<string | null>(null);
+  const [calOpen, setCalOpen] = useState(false);
   const [loadKg,  setLoadKg]  = useState('');
   const [alerted, setAlerted] = useState(false);
 
@@ -183,28 +185,6 @@ export default function CargoSpaceScreen() {
     return null;
   };
 
-  /**
-   * A month of days, not a fortnight (founder 2026-09-05).
-   *
-   * Two weeks is the wrong horizon for intercity travel here: people
-   * book around a wedding, a burial, a school run or a market day that
-   * is three or four weeks out, and a strip that stops before the date
-   * they have in mind reads as "we do not go then".
-   */
-  const DAY_STRIP = (() => {
-    const out: Array<{ iso: string; top: string; bottom: string }> = [];
-    const now = new Date();
-    for (let i = 0; i < 30; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      out.push({
-        iso,
-        top:    i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-GB', { weekday: 'short' }),
-        bottom: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-      });
-    }
-    return out;
-  })();
 
   const visibleTrips = (() => {
     const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -387,31 +367,51 @@ export default function CargoSpaceScreen() {
             </View>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.dayStrip}
+          {/*
+            A month grid, not a strip of chips (founder 2026-09-05: "the calendar").
+            Travel Buddy on the customer side already opens a calendar from one
+            field; this screen still scrolled a row of thirty day chips, which is
+            the thing he asked to replace. Same control, same behaviour: tap the
+            field, pick a day, or clear back to Any date.
+          */}
+          <Pressable
+            onPress={() => setCalOpen(v => !v)}
+            style={[styles.dayField, { backgroundColor: theme.surface, borderColor: calOpen ? theme.primary : theme.border }]}
           >
-            {[{ iso: null as string | null, top: 'Any', bottom: 'date' },
-              ...DAY_STRIP.map(d => ({ iso: d.iso as string | null, top: d.top, bottom: d.bottom }))
-            ].map(d => {
-              const on = dayISO === d.iso;
-              return (
-                <Pressable
-                  key={d.iso ?? 'any'}
-                  onPress={() => setDayISO(d.iso)}
-                  style={[styles.dayChip, {
-                    borderColor:     on ? theme.primary : theme.border,
-                    backgroundColor: on ? theme.primary : theme.surface,
-                  }]}
-                >
-                  <Text style={[styles.dayTop,    { color: on ? '#fff' : theme.text }]}>{d.top}</Text>
-                  <Text style={[styles.dayBottom, { color: on ? '#fff' : theme.textThird }]}>{d.bottom}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+            <Text style={[styles.dayFieldText, { color: dayISO ? theme.text : theme.textThird }]}>
+              {dayISO
+                ? new Date(`${dayISO}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+                : 'Any date'}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {!!dayISO && (
+                <Text onPress={() => { setDayISO(null); setCalOpen(false); }} style={[styles.dayClear, { color: theme.primary }]}>
+                  Any date
+                </Text>
+              )}
+              <Icon name="Calendar" size={18} color={theme.textSecond} />
+            </View>
+          </Pressable>
+
+          {calOpen && (
+            <View style={[styles.calWrap, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+              <RNCalendar
+                current={dayISO || undefined}
+                minDate={new Date().toISOString().slice(0, 10)}
+                onDayPress={(d: any) => { setDayISO(d.dateString); setCalOpen(false); }}
+                markedDates={dayISO ? { [dayISO]: { selected: true, selectedColor: theme.primary } } : {}}
+                theme={{
+                  calendarBackground:   theme.surface,
+                  dayTextColor:         theme.text,
+                  monthTextColor:       theme.text,
+                  textDisabledColor:    theme.textThird,
+                  arrowColor:           theme.primary,
+                  todayTextColor:       theme.primary,
+                  selectedDayTextColor: '#FFFFFF',
+                }}
+              />
+            </View>
+          )}
         </View>
 
         <Pressable
@@ -663,6 +663,10 @@ const styles = StyleSheet.create({
   alertDone:    { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1,
                   borderRadius: 12, padding: 12, marginTop: 14 },
   alertDoneTxt: { fontSize: 13, flex: 1, lineHeight: 19 },
+  dayField:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13 },
+  dayFieldText: { fontSize: 15, fontWeight: '600' },
+  dayClear:     { fontSize: 13, fontWeight: '700' },
+  calWrap:      { borderWidth: 1, borderRadius: 12, overflow: 'hidden', marginTop: 8 },
   searchBtn:   { paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
   searchTxt:   { color: '#fff', fontSize: 15, fontWeight: '700' },
   error:       { fontSize: 13 },

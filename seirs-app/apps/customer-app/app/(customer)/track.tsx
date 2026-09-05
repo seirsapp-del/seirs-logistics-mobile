@@ -57,6 +57,24 @@ const RIDE_LABELS: Record<string, string> = {
   cancelled:        'Ride cancelled',
 };
 
+/**
+ * A SEAT on a declared trip is a ride with a tripId. It is not dispatched:
+ * the driver was chosen when the passenger asked, and the trip leaves at
+ * its own time. The generic ride words (Finding your driver) and the
+ * package words (Picked Up, Delivered) were both wrong for it, and the
+ * founder saw the package set on a seat booking on 2026-09-05.
+ */
+const SEAT_LABELS: Record<string, string> = {
+  awaiting_payment: 'Pay to hold your seat',
+  pending:          'Seat held',
+  assigned:         'Driver confirmed',
+  picked_up:        'On board',
+  in_transit:       'On the trip',
+  delivered:        'Trip completed',
+  failed:           'Trip did not happen',
+  cancelled:        'Seat cancelled',
+};
+
 /** The states where a package is actually in motion. */
 const IN_FLIGHT = ['assigned', 'picked_up', 'in_transit'];
 
@@ -127,11 +145,21 @@ function custodyOf(d: any, driverName?: string | null) {
   }
   if (status === 'pending') {
     if (d?.awaitingPayment) {
+      if (d?.tripId) {
+        return {
+          who:    'Pay to hold your seat',
+          detail: 'The driver has accepted. The seat is yours once payment lands.',
+          where:  null,
+        };
+      }
       return {
         who:    'Waiting for payment',
         detail: 'We start finding a driver the moment payment lands',
         where:  null,
       };
+    }
+    if (d?.tripId) {
+      return { who: 'Seat held', detail: 'Your driver leaves at the declared time', where: null };
     }
     return { who: 'Looking for a driver', detail: 'Nobody is carrying it yet', where: null };
   }
@@ -497,7 +525,7 @@ export default function TrackScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.statusBarLabel, { color: theme.text }]}>
                   {(deliveryData as any)?.kind === 'ride'
-                    ? (RIDE_LABELS[String(currentStatus)] ?? (statusInfo ? t(statusInfo.labelKey) : t('common.loading')))
+                    ? (((deliveryData as any)?.tripId ? SEAT_LABELS : RIDE_LABELS)[String(currentStatus)] ?? (statusInfo ? t(statusInfo.labelKey) : t('common.loading')))
                     : (statusInfo ? t(statusInfo.labelKey) : t('common.loading'))}
                 </Text>
                 <Text style={[styles.statusBarCode, { color: theme.textSecond }]}>

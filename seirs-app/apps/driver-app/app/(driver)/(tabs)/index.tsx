@@ -590,7 +590,7 @@ export default function DriverHomeScreen() {
               shipped and nothing in this app called either, so a driver
               declared a trip and never learned that anybody wanted to
               ride. */}
-          <Pressable style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/seat-requests' as any)}>
+          <Pressable style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/parcel-requests' as any)}>
             <View style={styles.widgetIcon}>
               <Users size={18} color={seatReqs > 0 ? theme.primary : theme.textThird} strokeWidth={1.75} />
             </View>

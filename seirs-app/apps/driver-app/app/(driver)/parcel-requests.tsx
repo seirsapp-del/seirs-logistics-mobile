@@ -14,6 +14,15 @@
  * and the sender agrees to the new number, not the old one. Neither of
  * you is bound to anything until they do.
  */
+/*
+ * ONE inbox for seats and parcels (2026-09-05).
+ *
+ * Seat requests and parcel requests lived on two screens, so a rider who
+ * declared one trip had to check two lists to see who wanted to ride on it.
+ * The founder, looking at the empty seat inbox: "shouldn't the driver see
+ * the seat request here on this screen as well as the parcel, to be able
+ * to accept or reject". Same trip, same question, same screen.
+ */
 import { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator,
@@ -21,7 +30,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { ArrowLeft, Package, MapPin, Navigation, Weight } from 'lucide-react-native';
+import { ArrowLeft, Package, MapPin, Navigation, Weight, Users, Luggage } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi, deliveriesApi, mapsApi } from '@/services/api';
@@ -42,6 +51,18 @@ type Req = {
   counterQuotedNgn: number | string | null;
 };
 
+type SeatReq = {
+  id: string;
+  seats: number;
+  luggage: string | null;
+  note: string | null;
+  boardName: string | null;
+  alightName: string | null;
+  fareNgn: number | null;
+  earnNgn: number | null;
+  passenger: string | null;
+};
+
 export default function ParcelRequestsScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
@@ -49,6 +70,8 @@ export default function ParcelRequestsScreen() {
 
   const [trips, setTrips]     = useState<any[]>([]);
   const [reqs, setReqs]       = useState<Record<string, Req[]>>({});
+  // Seat requests, keyed by trip like the parcels above them.
+  const [seatReqs, setSeatReqs] = useState<Record<string, SeatReq[]>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy]       = useState<string | null>(null);
 
@@ -63,13 +86,36 @@ export default function ParcelRequestsScreen() {
     setLoading(true);
     try {
       const mine = await driversApi.myInterstateTrips().catch(() => []);
-      const active = (mine ?? []).filter((t: any) => t?.acceptsPackages);
+      // Any trip that takes either kind of request belongs on this screen.
+      const active = (mine ?? []).filter((t: any) => t?.acceptsPackages || t?.acceptsPassengers);
       setTrips(active);
       const pairs = await Promise.all(active.map(async (t: any) => {
-        const rows = await deliveriesApi.parcelRequestInbox(t.id).catch(() => []);
+        const rows = t?.acceptsPackages
+          ? await deliveriesApi.parcelRequestInbox(t.id).catch(() => [])
+          : [];
         return [t.id, (rows ?? []) as Req[]] as const;
       }));
       setReqs(Object.fromEntries(pairs));
+
+      const seatPairs = await Promise.all(active.map(async (t: any) => {
+        if (!t?.acceptsPassengers) return [t.id, [] as SeatReq[]] as const;
+        const bookings = await driversApi.tripBookings(t.id).catch(() => []);
+        const open = (bookings ?? [])
+          .filter((b: any) => String(b?.status) === 'requested')
+          .map((b: any) => ({
+            id:         b.id,
+            seats:      Number(b.seats ?? 1),
+            luggage:    b.luggage ?? null,
+            note:       b.passengerNote ?? b.note ?? null,
+            boardName:  b.board?.city ?? null,
+            alightName: b.alight?.city ?? null,
+            fareNgn:    b.priceNgn != null ? Number(b.priceNgn) : null,
+            earnNgn:    b.driverEarningsNgn != null ? Number(b.driverEarningsNgn) : null,
+            passenger:  b.passenger?.name ?? b.passengerName ?? null,
+          }) as SeatReq);
+        return [t.id, open] as const;
+      }));
+      setSeatReqs(Object.fromEntries(seatPairs));
     } finally {
       setLoading(false);
     }
@@ -92,6 +138,22 @@ export default function ParcelRequestsScreen() {
       await load();
     } catch (e: any) {
       alertDialog('Could not do that', e?.message ?? 'Try again in a moment.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const answerSeat = async (r: SeatReq, yes: boolean) => {
+    setBusy(r.id);
+    try {
+      if (yes) await driversApi.acceptSeat(r.id);
+      else     await driversApi.declineSeat(r.id);
+      if (yes) {
+        alertDialog('Accepted', 'The passenger pays now to hold the seat. It shows up in your jobs once the payment lands.');
+      }
+      await load();
+    } catch (e: any) {
+      alertDialog(yes ? 'Could not accept' : 'Could not decline', e?.message ?? 'Try again in a moment.');
     } finally {
       setBusy(null);
     }
@@ -140,7 +202,9 @@ export default function ParcelRequestsScreen() {
     }
   };
 
-  const total = Object.values(reqs).reduce((n, list) => n + list.length, 0);
+  const total =
+    Object.values(reqs).reduce((n, list) => n + list.length, 0) +
+    Object.values(seatReqs).reduce((n, list) => n + list.length, 0);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
@@ -149,7 +213,7 @@ export default function ParcelRequestsScreen() {
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Parcel requests</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Requests</Text>
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
             {total === 0 ? 'Nothing waiting' : `${total} waiting on you`}
           </Text>
@@ -167,10 +231,10 @@ export default function ParcelRequestsScreen() {
         {!loading && trips.length === 0 && (
           <View style={styles.empty}>
             <Package size={40} color={theme.textThird} strokeWidth={1.5} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips carrying packages</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips taking requests</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Declare an intercity trip and switch packages on, and senders going
-              your way can ask you to carry theirs.
+              Declare an intercity trip with seats or packages on, and people going
+              your way can ask to ride or to have theirs carried.
             </Text>
           </View>
         )}
@@ -180,20 +244,69 @@ export default function ParcelRequestsScreen() {
             <Package size={40} color={theme.textThird} strokeWidth={1.5} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>Nobody has asked yet</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Requests show up here. Nothing is charged to the sender until you
+              Seat and parcel requests show up here. Nothing is charged until you
               accept, so you can say no without costing anybody money.
             </Text>
           </View>
         )}
 
         {trips.map((t) => {
-          const list = reqs[t.id] ?? [];
-          if (!list.length) return null;
+          const list  = reqs[t.id] ?? [];
+          const seats = seatReqs[t.id] ?? [];
+          if (!list.length && !seats.length) return null;
           return (
             <View key={t.id} style={{ gap: Spacing.sm }}>
               <Text style={[styles.tripLabel, { color: theme.textSecond }]}>
                 {String(t.fromCity).toUpperCase()} TO {String(t.toCity).toUpperCase()}
               </Text>
+
+              {seats.map((r) => (
+                <View key={r.id} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                  <View style={styles.row}>
+                    <Users size={14} color={theme.primary} strokeWidth={2} />
+                    <Text style={[styles.addr, { color: theme.text, fontWeight: '600' }]}>
+                      {r.seats} seat{r.seats === 1 ? '' : 's'}{r.passenger ? ` for ${r.passenger}` : ''}
+                    </Text>
+                  </View>
+                  {(r.boardName || r.alightName) && (
+                    <View style={styles.row}>
+                      <MapPin size={13} color={theme.textThird} strokeWidth={2} />
+                      <Text style={[styles.fact, { color: theme.textSecond }]} numberOfLines={2}>
+                        {r.boardName ?? 'your start'} to {r.alightName ?? 'your destination'}
+                      </Text>
+                    </View>
+                  )}
+                  {!!r.luggage && r.luggage !== 'none' && (
+                    <View style={styles.row}>
+                      <Luggage size={13} color={theme.textThird} strokeWidth={2} />
+                      <Text style={[styles.fact, { color: theme.textSecond }]}>{r.luggage} luggage</Text>
+                    </View>
+                  )}
+                  {!!r.note && (
+                    <View style={[styles.instr, { backgroundColor: theme.surfaceSecond }]}>
+                      <Text style={[styles.instrTxt, { color: theme.text }]}>{r.note}</Text>
+                    </View>
+                  )}
+                  <View style={styles.factRow}>
+                    <Text style={[styles.fact, { color: theme.textSecond }]}>
+                      {r.earnNgn != null ? `You earn ${naira(r.earnNgn)}` : ''}
+                    </Text>
+                    {r.fareNgn != null && (
+                      <Text style={[styles.fare, { color: theme.primary }]}>{naira(r.fareNgn)}</Text>
+                    )}
+                  </View>
+                  <View style={styles.actions}>
+                    <Pressable disabled={busy === r.id} onPress={() => answerSeat(r, false)} style={[styles.declineBtn, { borderColor: theme.border }]}>
+                      <Text style={[styles.declineTxt, { color: theme.textSecond }]}>Decline</Text>
+                    </Pressable>
+                    <Pressable disabled={busy === r.id} onPress={() => answerSeat(r, true)} style={[styles.acceptBtn, { backgroundColor: theme.primary }]}>
+                      {busy === r.id
+                        ? <ActivityIndicator color="#fff" size="small" />
+                        : <Text style={styles.acceptTxt}>Accept</Text>}
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
 
               {list.map((r) => {
                 const countered = r.status === 'countered';

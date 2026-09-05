@@ -47,7 +47,7 @@ export function Drawer({ visible, onClose }: Props) {
     /* Parcel requests on your declared trips. A request charges the
        sender nothing until you accept, so a decline here costs them
        nothing and leaves no refund to chase. */
-    { icon: 'Package',    label: t('drawer.parcelRequests',{ defaultValue: 'Parcel Requests' }),      onPress: () => navigate('/(driver)/parcel-requests') },
+    { icon: 'Package',    label: t('drawer.parcelRequests',{ defaultValue: 'Requests' }),      onPress: () => navigate('/(driver)/parcel-requests') },
     { icon: 'Moon',       label: t('drawer.lastOrder',     { defaultValue: 'Wind Down (Last Order)' }),onPress: () => navigate('/(driver)/last-order') },
     { icon: 'FileText',   label: t('drawer.documents',     { defaultValue: 'Documents' }),             onPress: () => navigate('/(driver)/documents') },
     { icon: 'Globe',      label: t('drawer.language',      { defaultValue: 'Language' }),              onPress: () => navigate('/(driver)/language') },
