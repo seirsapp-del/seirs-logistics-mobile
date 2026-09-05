@@ -1610,7 +1610,7 @@ export default function InterstateScreen() {
               (2026-08-23 sweep, D-6.9, paired with D-1.5). Seat bookings on
               the trip DO have a real decline; packages you simply skip. */}
           <Text style={[styles.footnote, { color: theme.textThird }]}>
-            Packages running your declared route are ranked towards you around your departure. Nothing is forced on you: skip any package that does not suit the run. A seat booking is different, it is a paid offer made to you alone, so accept or decline it and it expires if you leave it unanswered.
+            Packages running your declared route are ranked towards you around your departure. Nothing is forced on you: skip any package that does not suit the run. A seat request is different: it is made to you alone and nothing is charged until you accept it. Say yes or no, and it expires if you leave it unanswered.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
