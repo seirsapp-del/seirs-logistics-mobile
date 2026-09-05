@@ -124,6 +124,17 @@ export default function StoreHandoffScreen() {
     workingHours: Record<string, { enabled: boolean; start: string; end: string }> | null;
     openTime: string | null; closeTime: string | null;
     isOpenNow: boolean; acceptingNew: boolean;
+    /**
+     * The shopfront, so a rider can recognise the place (2026-09-05).
+     *
+     * SEIRS makes every partner submit and re-submit this photo for
+     * approval, and then showed it to nobody. A rider looking for a
+     * counter on a busy street has a name and an address and no idea
+     * what to look for. Optional here on purpose: counterDetails narrows
+     * its select and does not return it yet, so this renders the moment
+     * the field is added server-side and costs nothing until then.
+     */
+    storefrontPhotoUrl?: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -295,6 +306,15 @@ export default function StoreHandoffScreen() {
           <Text style={[styles.headerSub, { color: theme.textSecond }]} numberOfLines={1}>
             {storeName}{storeAddress ? ` · ${storeAddress}` : ''}
           </Text>
+          {/* What the shop looks like. See the type above for why this is
+              optional and why it is worth drawing at all. */}
+          {counter?.storefrontPhotoUrl ? (
+            <Image
+              source={{ uri: counter.storefrontPhotoUrl }}
+              style={styles.shopfront}
+              resizeMode="cover"
+            />
+          ) : null}
           {/* Shut, and a number to ring about it. Only drawn once the counter
               has actually been looked up, so it never guesses. */}
           {counter && (
@@ -558,6 +578,9 @@ const styles = StyleSheet.create({
   legal:     { fontSize: 10, lineHeight: 15 },
 
   photoRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.sm, borderRadius: Radius.xl, borderWidth: 1 },
+  // Wide rather than square: a shopfront is a strip of street, and a
+  // square crop of one is mostly shutter.
+  shopfront:  { width: '100%', height: 96, borderRadius: 10, marginTop: 10, marginBottom: 4 },
   photoThumb: { width: 52, height: 52, borderRadius: Radius.md },
   photoEmpty: { borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
   photoTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
