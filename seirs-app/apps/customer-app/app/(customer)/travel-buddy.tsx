@@ -15,7 +15,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import * as Location from 'expo-location';
-import { deliveriesApi, mapsApi } from '@/services/api';
+import { deliveriesApi, mapsApi, travelBuddyApi } from '@/services/api';
 import { derivePlace } from '@seirs/shared/models/cities';
 import { showDialog, type DialogAction } from '@/components/SeirsDialog';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
@@ -403,31 +403,45 @@ export default function TravelBuddyScreen() {
       // their plate to anyone who taps Book would hand it out for the
       // price of a tap. It is promised instead, and delivered on
       // acceptance, before any money actually moves.
-      message: `${trip.seatsLeft} available on this trip.\n\nThe plate, colour and photo of the vehicle are shown as soon as the driver accepts, so you can pick it out before you board.`,
+      message: `${trip.seatsLeft} available on this trip.\n\nThis sends a request to the driver. Nothing is charged until they accept, and the plate is shown once you pay to hold the seat.`,
       actions: [...seats, { text: 'Cancel', style: 'cancel' }],
     });
   };
 
+  /*
+   * A seat is REQUESTED, not bought (2026-09-05).
+   *
+   * This called /deliveries/travel-buddy/trips/:id/book, which minted a
+   * delivery and pushed the payment screen before the driver had seen a
+   * thing. Found on device: the driver inbox filters on status "requested"
+   * and so stayed empty, the passenger paid for a seat nobody had agreed to
+   * carry, and both apps promised the opposite in their own copy. The
+   * accept-then-pay flow was already on the server; this is the client
+   * finally calling it. Payment happens from Your trip requests once the
+   * driver says yes.
+   */
   const doBook = async (trip: any, seats: number, luggage: string) => {
     setBooking(trip.id);
     try {
-      // Book the leg they searched for, not the whole trip.
-      const created = await deliveriesApi.bookTripSeats(
-        trip.id, seats, luggage,
-        trip.segment
+      await travelBuddyApi.requestSeat(trip.id, {
+        seats,
+        luggage: (luggage === 'small' || luggage === 'large') ? luggage : 'none',
+        // The leg they searched for. With no segment the server takes the
+        // whole route, first stop to last.
+        ...(trip.segment
           ? { boardStopId: trip.segment.boardStopId, alightStopId: trip.segment.alightStopId }
-          : null,
-      );
-      router.push({
-        pathname: '/(customer)/payment/[deliveryId]',
-        params: {
-          deliveryId:   created.id,
-          price:        String(Number(created.price ?? 0)),
-          trackingCode: created.trackingCode ?? '',
-        },
-      } as any);
+          : {}),
+      });
+      showDialog({
+        title: 'Request sent',
+        message: `${trip.driver?.name ?? 'The driver'} has your request. Nothing is charged until they accept. You can watch it under Your trip requests.`,
+        actions: [
+          { text: 'View requests', onPress: () => router.push('/(customer)/parcel-requests' as any) },
+          { text: 'Done', style: 'cancel' },
+        ],
+      });
     } catch (e: any) {
-      showDialog({ title: 'Could not book', message: e?.message ?? 'Try again.' });
+      showDialog({ title: 'Could not send request', message: e?.message ?? 'Try again.' });
     } finally {
       setBooking(null);
     }

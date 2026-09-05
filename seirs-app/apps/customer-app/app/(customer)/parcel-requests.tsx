@@ -19,10 +19,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { ArrowLeft, Package, MapPin, Navigation, Clock } from 'lucide-react-native';
+import { ArrowLeft, Package, MapPin, Navigation, Clock, Armchair } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { deliveriesApi } from '@/services/api';
+import { deliveriesApi, travelBuddyApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { naira } from '@/utils/money';
 
@@ -53,20 +53,60 @@ const STATE_COPY: Record<string, { label: string; tone: 'wait' | 'act' | 'done' 
   expired:   { label: 'No answer in time',            tone: 'dead' },
 };
 
+/**
+ * Seat requests live on this screen too (2026-09-05).
+ *
+ * A seat is asked for, accepted by the driver, and only THEN paid, the same
+ * shape as a parcel request. Until tonight the customer app booked seats
+ * through a different path that charged first, so the driver never saw a
+ * request and the passenger paid for a seat nobody had agreed to carry.
+ * One screen for both kinds of ask, because the passenger is asking the
+ * same question either way: will you carry this.
+ */
+type SeatReq = {
+  id: string;
+  status: string;
+  seats: number;
+  segmentKm: number;
+  priceNgn: number;
+  luggage: string | null;
+  board:  { city: string | null };
+  alight: { city: string | null };
+  deliveryId: string | null;
+  paymentDueAt: string | null;
+  driver: { name: string; rating: number | null; vehicleType?: string | null; vehiclePlate?: string | null };
+};
+
+const SEAT_COPY: Record<string, { label: string; tone: 'wait' | 'act' | 'done' | 'dead' }> = {
+  requested:       { label: 'Waiting for the driver',      tone: 'wait' },
+  accepted:        { label: 'Driver said yes, pay to hold', tone: 'act'  },
+  pending_payment: { label: 'Driver said yes, pay to hold', tone: 'act'  },
+  booked:          { label: 'Seat held',                    tone: 'done' },
+  boarded:         { label: 'On board',                     tone: 'done' },
+  dropped:         { label: 'Completed',                    tone: 'done' },
+  cancelled:       { label: 'Cancelled',                    tone: 'dead' },
+  no_show:         { label: 'Marked as no-show',            tone: 'dead' },
+};
+
 export default function ParcelRequestsScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
 
   const [rows, setRows]       = useState<Req[]>([]);
+  const [seats, setSeats]     = useState<SeatReq[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy]       = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await deliveriesApi.myParcelRequests().catch(() => []);
+      const [list, mine] = await Promise.all([
+        deliveriesApi.myParcelRequests().catch(() => []),
+        travelBuddyApi.mySeatBookings().catch(() => []),
+      ]);
       setRows((list ?? []) as Req[]);
+      setSeats((mine ?? []) as SeatReq[]);
     } finally {
       setLoading(false);
     }
@@ -120,6 +160,38 @@ export default function ParcelRequestsScreen() {
     } as any);
   };
 
+  /*
+   * Paying for a seat mints the delivery the fare is charged against, then
+   * hands off to the ordinary payment screen. The server refuses unless the
+   * driver has accepted, so this button only appears in that state.
+   */
+  const paySeat = async (b: SeatReq) => {
+    setBusy(b.id);
+    try {
+      const res = await travelBuddyApi.paySeat(b.id);
+      router.push({
+        pathname: '/(customer)/payment/[deliveryId]',
+        params: { deliveryId: res.deliveryId, price: String(Number(res.amountNgn ?? 0)) },
+      } as any);
+    } catch (e: any) {
+      showDialog({ title: 'Could not start payment', message: e?.message ?? 'Try again in a moment.' });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const withdrawSeat = async (b: SeatReq) => {
+    setBusy(b.id);
+    try {
+      await travelBuddyApi.cancelSeat(b.id);
+      await load();
+    } catch (e: any) {
+      showDialog({ title: 'Could not withdraw', message: e?.message ?? 'Try again in a moment.' });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const toneColor = (tone: string) =>
     tone === 'act'  ? '#B45309'
     : tone === 'done' ? '#16A34A'
@@ -145,17 +217,73 @@ export default function ParcelRequestsScreen() {
           <ActivityIndicator color={theme.primary} style={{ marginTop: 40 }} />
         )}
 
-        {!loading && rows.length === 0 && (
+        {!loading && rows.length === 0 && seats.length === 0 && (
           <View style={styles.empty}>
             <Package size={40} color={theme.textThird} strokeWidth={1.5} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>Nothing asked yet</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Find a driver already going your way under Travel Buddy and ask
-              them to carry your parcel. Nothing is charged until they agree.
+              Find a driver already going your way under Travel Buddy and ask for
+              a seat or for them to carry your parcel. Nothing is charged until they agree.
             </Text>
           </View>
         )}
 
+        {seats.length > 0 && <Text style={[styles.section, { color: theme.textThird }]}>SEATS</Text>}
+        {seats.map((b) => {
+          const meta = SEAT_COPY[b.status] ?? { label: b.status, tone: 'wait' as const };
+          const canPay = b.status === 'pending_payment' || b.status === 'accepted';
+          const open   = b.status === 'requested';
+          return (
+            <View key={b.id} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+              <Text style={[styles.state, { color: toneColor(meta.tone) }]}>{meta.label.toUpperCase()}</Text>
+              <View style={styles.row}>
+                <Armchair size={13} color={theme.primary} strokeWidth={2} />
+                <Text style={[styles.addr, { color: theme.text }]} numberOfLines={1}>
+                  {b.board?.city ?? 'Start'} to {b.alight?.city ?? 'End'}
+                </Text>
+              </View>
+              <View style={styles.factRow}>
+                <Text style={[styles.fact, { color: theme.textSecond }]}>
+                  {b.seats} seat{b.seats === 1 ? '' : 's'} · {Number(b.segmentKm)} km · {b.driver?.name}
+                  {b.driver?.rating ? ` · ★ ${Number(b.driver.rating).toFixed(1)}` : ''}
+                </Text>
+                <Text style={[styles.fare, { color: theme.text }]}>{naira(Number(b.priceNgn))}</Text>
+              </View>
+              {open && (
+                <View style={styles.row}>
+                  <Clock size={12} color={theme.textThird} strokeWidth={2} />
+                  <Text style={[styles.fact, { color: theme.textThird }]}>Nothing is charged while you wait.</Text>
+                </View>
+              )}
+              {canPay && (
+                <Text style={[styles.fact, { color: theme.textSecond }]}>
+                  The plate and vehicle photo are on the booking once paid. Pay to hold the seat.
+                </Text>
+              )}
+              <View style={styles.actions}>
+                {open && (
+                  <Pressable disabled={busy === b.id} onPress={() => withdrawSeat(b)} style={[styles.ghostBtn, { borderColor: theme.border }]}>
+                    <Text style={[styles.ghostTxt, { color: theme.textSecond }]}>Withdraw</Text>
+                  </Pressable>
+                )}
+                {canPay && (
+                  <Pressable disabled={busy === b.id} onPress={() => paySeat(b)} style={[styles.primaryBtn, { backgroundColor: theme.primary }]}>
+                    {busy === b.id
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={styles.primaryTxt}>Pay {naira(Number(b.priceNgn))}</Text>}
+                  </Pressable>
+                )}
+                {b.deliveryId && (b.status === 'booked' || b.status === 'boarded') && (
+                  <Pressable onPress={() => router.push({ pathname: '/(customer)/trip/[id]', params: { id: b.deliveryId } } as any)} style={[styles.ghostBtn, { borderColor: theme.border }]}>
+                    <Text style={[styles.ghostTxt, { color: theme.textSecond }]}>Track</Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          );
+        })}
+
+        {rows.length > 0 && seats.length > 0 && <Text style={[styles.section, { color: theme.textThird }]}>PARCELS</Text>}
         {rows.map((r) => {
           const meta = STATE_COPY[r.status] ?? { label: r.status, tone: 'wait' as const };
           const open = r.status === 'requested' || r.status === 'countered';
@@ -258,6 +386,7 @@ const styles = StyleSheet.create({
   backBtn:     { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold as any },
 
+  section: { fontSize: 10.5, fontWeight: '800', letterSpacing: 0.8, marginTop: 2, marginBottom: -6 },
   card:  { borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 7 },
   state: { fontSize: 10.5, fontWeight: '800', letterSpacing: 0.6 },
   row:   { flexDirection: 'row', alignItems: 'center', gap: 6 },

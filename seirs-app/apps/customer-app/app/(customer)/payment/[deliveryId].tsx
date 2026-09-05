@@ -297,10 +297,21 @@ export default function PaymentScreen() {
               const afford = points >= r.cost;
               const busy   = redeeming === r.type;
               return (
-                <View key={r.type} style={[styles.sumRow, { alignItems: 'center', paddingVertical: 8 }]}>
+                /*
+                 * Its own row styles, not the order summary's.
+                 *
+                 * sumValue carries textAlign right and flex 1 because it is the
+                 * right-hand column of a label/value row. Reused here it threw the
+                 * reward name to the right margin and left "89 points to go"
+                 * stranded on the left, with the points cost not showing at all.
+                 */
+                <View key={r.type} style={styles.useRow}>
+                  <Text style={[styles.useCost, { color: afford ? theme.primary : theme.textThird }]}>
+                    {r.cost.toLocaleString()}
+                  </Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.sumValue, { color: theme.text }]}>{r.label}</Text>
-                    <Text style={[styles.sumLabel, { color: theme.textThird, marginTop: 2 }]}>
+                    <Text style={[styles.useLabel, { color: theme.text }]}>{r.label}</Text>
+                    <Text style={[styles.useNote, { color: theme.textThird }]}>
                       {afford ? r.note : (r.cost - points).toLocaleString() + ' points to go'}
                     </Text>
                   </View>
@@ -442,6 +453,10 @@ const styles = StyleSheet.create({
   sumCard:      { marginHorizontal: Spacing.xl, borderRadius: Radius.md, borderWidth: 1, padding: Spacing.md, marginBottom: Spacing.md },
   sumTitle:     { fontSize: 17, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
   sumRow:       { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
+  useRow:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
+  useCost:      { fontSize: 15, fontWeight: '800', minWidth: 44 },
+  useLabel:     { fontSize: 14, fontWeight: '600' },
+  useNote:      { fontSize: 12, marginTop: 2 },
   useBtn:       { paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.lg, borderWidth: 1.5, minWidth: 84, alignItems: 'center' },
   useBtnText:   { fontSize: 13, fontWeight: '700' },
   sumLabel:     { fontSize: 13 },

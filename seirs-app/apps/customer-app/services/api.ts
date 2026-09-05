@@ -23,6 +23,7 @@ export {
   configApi,
   pricingApi,
   loyaltyApi,
+  travelBuddyApi,
   promotionsApi,
   suggestionsApi,
   // The quote-first lane (2026-09-05). Whitelisted here deliberately:

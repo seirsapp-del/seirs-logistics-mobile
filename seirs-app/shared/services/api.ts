@@ -1516,6 +1516,42 @@ export const notificationsApi = {
     request<{ ok: boolean }>('POST', '/notifications/register-token', { token }),
 };
 
+// ─── Travel Buddy, passenger side ────────────────────────────────────────────
+/**
+ * Seats are REQUESTED, then accepted, then paid. Not paid first.
+ *
+ * The customer app booked seats through /deliveries/travel-buddy/trips/:id/book,
+ * which minted a delivery and pushed the payment screen before the driver had
+ * seen anything. Two consequences, both found on device on 2026-09-05: the
+ * driver's Seat requests inbox filters on status "requested" and so never showed
+ * the booking, and the passenger was charged for a seat nobody had agreed to
+ * carry, which is a refund waiting to happen. The accept-then-pay flow below has
+ * existed on the server the whole time; nothing on the client called it.
+ */
+export const travelBuddyApi = {
+  /** Ask for seats. Nothing is charged. Omit the stop ids to ask for the whole route. */
+  requestSeat: (tripId: string, body: {
+    seats: number; luggage?: 'none' | 'small' | 'large'; note?: string;
+    boardStopId?: string; alightStopId?: string;
+  }) => request<any>('POST', `/travel-buddy/trips/${tripId}/requests`, body),
+
+  /** Every seat request this passenger has made, newest first. */
+  mySeatBookings: () => request<any[]>('GET', '/travel-buddy/bookings/me'),
+
+  /** One booking, with the driver identity revealed once accepted. */
+  seatBooking: (id: string) => request<any>('GET', `/travel-buddy/bookings/${id}`),
+
+  /**
+   * After the driver accepts: mint the delivery the fare is charged against.
+   * Returns the deliveryId the ordinary payment screen then charges.
+   */
+  paySeat: (bookingId: string) =>
+    request<{ bookingId: string; deliveryId: string; amountNgn: number }>('POST', `/travel-buddy/bookings/${bookingId}/pay`),
+
+  cancelSeat: (bookingId: string, reason?: string) =>
+    request<any>('POST', `/travel-buddy/bookings/${bookingId}/cancel`, reason ? { reason } : {}),
+};
+
 // ─── Business Sender / Partner Auth ──────────────────────────────────────────
 export const businessAuthApi = {
   login: (email: string, password: string) =>

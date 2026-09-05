@@ -556,8 +556,25 @@ export class TravelBuddyService {
       throw new BadRequestException('That trip does not take passengers.');
     }
 
-    const board  = await this.stopsRepo.findOne({ where: { id: body.boardStopId, tripId } as any });
-    const alight = await this.stopsRepo.findOne({ where: { id: body.alightStopId, tripId } as any });
+    /*
+     * No stop ids means the whole route (2026-09-05).
+     *
+     * The browse card only carries stop ids when the search matched a
+     * SEGMENT. A passenger who searched the endpoints, Ile-Ife to Lagos on
+     * an Ile-Ife to Lagos trip, has none to send, and this refused them for
+     * it, which is why the customer app was booking through the deliveries
+     * module instead and charging before the driver had said yes. Default
+     * to the first and last declared stop, which is exactly what they asked for.
+     */
+    let board: any, alight: any;
+    if (body.boardStopId && body.alightStopId) {
+      board  = await this.stopsRepo.findOne({ where: { id: body.boardStopId, tripId } as any });
+      alight = await this.stopsRepo.findOne({ where: { id: body.alightStopId, tripId } as any });
+    } else {
+      const all = await this.stopsRepo.find({ where: { tripId } as any, order: { sequence: 'ASC' } as any });
+      board  = all[0] ?? null;
+      alight = all.length > 1 ? all[all.length - 1] : null;
+    }
     if (!board || !alight) {
       throw new BadRequestException('Pick your boarding and drop-off points from the stops this driver declared.');
     }

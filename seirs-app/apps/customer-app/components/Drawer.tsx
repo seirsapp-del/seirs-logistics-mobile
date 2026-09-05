@@ -98,7 +98,7 @@ export function Drawer({ visible, onClose }: Props) {
      * same thing is a second door to a room the tab bar already opens,
      * which is exactly what "Send Multiple" was.
      */
-    { icon: 'Package',    label: t('drawer.parcelRequests', { defaultValue: 'Parcel requests' }),
+    { icon: 'Package',    label: t('drawer.parcelRequests', { defaultValue: 'Trip requests' }),
       onPress: () => navigate('/(customer)/parcel-requests'),
       section: t('drawer.sectionSend', { defaultValue: 'Send & travel' }) },
     /*

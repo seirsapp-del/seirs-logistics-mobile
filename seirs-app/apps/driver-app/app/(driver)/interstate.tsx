@@ -1239,7 +1239,19 @@ export default function InterstateScreen() {
               <MapView
                 provider={PROVIDER_GOOGLE}
                 style={{ height: 180, width: '100%' }}
+                /*
+                 * pointerEvents alone does not stop the Android map from taking
+                 * the gesture: a vertical swipe over it panned the route out to
+                 * sea instead of scrolling the form (founder watching, 2026-09-05).
+                 * The map is a picture here, not a control, so its own gestures
+                 * are switched off and the ScrollView keeps the finger.
+                 */
                 pointerEvents="none"
+                scrollEnabled={false}
+                zoomEnabled={false}
+                rotateEnabled={false}
+                pitchEnabled={false}
+                toolbarEnabled={false}
                 region={region}
               >
                 {placedStops.map((s, i) => {
