@@ -14,6 +14,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
+import { savePdf } from '@seirs/shared/utils/dataExport';
+import { documentToHtml } from '@seirs/shared/utils/documentPdf';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { documentsApi, type UserDocumentDTO } from '@/services/api';
@@ -35,6 +37,7 @@ export default function CustomerDocumentsScreen() {
 
   const [docs,       setDocs]       = useState<UserDocumentDTO[]>([]);
   const [viewing,    setViewing]    = useState<UserDocumentDTO | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -130,9 +133,39 @@ export default function CustomerDocumentsScreen() {
             <View style={styles.modalBtns}>
               <Pressable
                 style={[styles.modalBtn, { backgroundColor: theme.surfaceSecond }]}
-                onPress={() => { if (viewing) Share.share({ title: viewing.title, message: `${viewing.title}\n\n${viewing.body ?? ''}` }).catch(() => {}); }}
+                disabled={pdfBusy}
+                onPress={async () => {
+                  if (!viewing) return;
+                  setPdfBusy(true);
+                  const html = documentToHtml(
+                    {
+                      title:      viewing.title,
+                      category:   viewing.category,
+                      sentByName: (viewing as any).sentByName ?? null,
+                      createdAt:  viewing.createdAt,
+                    },
+                    viewing.body ?? '',
+                  );
+                  const out = await savePdf(html, viewing.title);
+                  setPdfBusy(false);
+                  if (!out.ok) {
+                    // Falling back to a text share beats a dead button: the
+                    // person still leaves with their document.
+                    Share.share({ title: viewing.title, message: `${viewing.title}\n\n${viewing.body ?? ''}` }).catch(() => {});
+                  }
+                }}
               >
-                <Text style={{ color: theme.text, fontWeight: '600' }}>Share</Text>
+                {/*
+                  A document should BE a document (founder 2026-09-05,
+                  looking at his own data export rendered as text in a
+                  modal). Built on the phone, not the server, so it covers
+                  EVERY document on this shelf, which is where SEIRS sends
+                  people things, and so a person's full record never
+                  becomes a forwardable URL.
+                */}
+                <Text style={{ color: theme.text, fontWeight: '600' }}>
+                  {pdfBusy ? 'Making PDF...' : 'Save as PDF'}
+                </Text>
               </Pressable>
               <Pressable style={[styles.modalBtn, { backgroundColor: theme.primary }]} onPress={() => setViewing(null)}>
                 <Text style={{ color: '#fff', fontWeight: '700' }}>Close</Text>

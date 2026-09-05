@@ -11,6 +11,8 @@ import {
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { savePdf } from '@seirs/shared/utils/dataExport';
+import { documentToHtml } from '@seirs/shared/utils/documentPdf';
 import { documentsApi, type UserDocumentDTO } from '@/services/api';
 
 // Icon per document category (admin-sent official docs).
@@ -47,6 +49,7 @@ export default function TaxDocsScreen() {
 
   const [received,  setReceived]  = useState<UserDocumentDTO[]>([]);
   const [viewing,   setViewing]   = useState<UserDocumentDTO | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [loading,   setLoading]   = useState(true);
 
   /* taxSummary used to be fetched here and its years and months stored in
@@ -162,9 +165,30 @@ export default function TaxDocsScreen() {
             <View style={styles.docModalBtns}>
               <Pressable
                 style={[styles.docModalBtn, { backgroundColor: theme.surfaceSecond }]}
-                onPress={() => { if (viewing) Share.share({ title: viewing.title, message: `${viewing.title}\n\n${viewing.body ?? ''}` }).catch(() => {}); }}
+                disabled={pdfBusy}
+                onPress={async () => {
+                  if (!viewing) return;
+                  setPdfBusy(true);
+                  const html = documentToHtml(
+                    {
+                      title:      viewing.title,
+                      category:   viewing.category,
+                      sentByName: (viewing as any).sentByName ?? null,
+                      createdAt:  viewing.createdAt,
+                    },
+                    viewing.body ?? '',
+                  );
+                  const out = await savePdf(html, viewing.title);
+                  setPdfBusy(false);
+                  // A text share beats a dead button: they still leave with it.
+                  if (!out.ok) Share.share({ title: viewing.title, message: `${viewing.title}\n\n${viewing.body ?? ''}` }).catch(() => {});
+                }}
               >
-                <Text style={{ color: theme.text, fontWeight: FontWeight.semibold }}>Share</Text>
+                {/* A document should BE a document. Built on the phone so it
+                    covers every document SEIRS sends, not just the export. */}
+                <Text style={{ color: theme.text, fontWeight: FontWeight.semibold }}>
+                  {pdfBusy ? 'Making PDF...' : 'Save as PDF'}
+                </Text>
               </Pressable>
               <Pressable style={[styles.docModalBtn, { backgroundColor: theme.primary }]} onPress={() => setViewing(null)}>
                 <Text style={{ color: '#fff', fontWeight: FontWeight.bold }}>Close</Text>
