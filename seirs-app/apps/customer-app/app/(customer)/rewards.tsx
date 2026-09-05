@@ -261,7 +261,20 @@ export default function RewardsScreen() {
 
         {/* Points hero card */}
         <LinearGradient
-          colors={isDark ? ['#0F2B4C', '#0A0A0A'] : ['#0F2B4C', '#1A3A63']}
+          /*
+           * Dark mode used to fade navy into #0A0A0A, pure black and not a
+           * brand colour at all, so the one coloured surface on the screen
+           * drained to nothing and the whole thing read as dead (founder
+           * 2026-09-05: "the dark mode could be a little alive"). Light
+           * mode never had the problem because it goes navy to a LIGHTER
+           * navy.
+           *
+           * Now both directions keep the hue and only change where they
+           * sit on it: dark goes deep navy to a lifted navy, so the card
+           * still reads as SEIRS blue against a near-black screen instead
+           * of dissolving into it.
+           */
+          colors={isDark ? ['#0A1F38', '#16406E'] : ['#0F2B4C', '#1A3A63']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroCard}

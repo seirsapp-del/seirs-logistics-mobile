@@ -20,7 +20,7 @@ import { Icon } from '@/components/Icon';
 import { Drawer } from '@/components/Drawer';
 import { businessApi, paymentsApi, partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
-import { useColors } from '@/context/ThemeContext';
+import { useColors, useTheme } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
 
 
@@ -30,6 +30,7 @@ export default function WalletScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const { isDark } = useTheme();
   const { user } = useAuth();
   const canPartner = !!(user as any)?.capabilities?.canPartner;
 
@@ -125,7 +126,15 @@ export default function WalletScreen() {
       <Drawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <ScrollView showsVerticalScrollIndicator={false}>
         <LinearGradient
-          colors={['#0F2B4C', '#1a3a5c']}
+          /*
+           * One gradient served both themes, so the hero sat at the same
+           * lightness whether the screen behind it was cloud or near-black
+           * (founder 2026-09-05, asking for dark mode to feel less dead on
+           * both apps). Dark now lifts INTO the hue rather than away from
+           * it, matching the customer Rewards hero exactly so the two
+           * money screens read as one product.
+           */
+          colors={isDark ? ['#0A1F38', '#16406E'] : ['#0F2B4C', '#1a3a5c']}
           style={[styles.hero, { paddingTop: insets.top + 16 }]}
         >
           <View style={styles.heroTop}>
