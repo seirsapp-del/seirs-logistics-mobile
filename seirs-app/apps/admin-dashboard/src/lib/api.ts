@@ -273,6 +273,41 @@ export const adminApi = {
    * Calls made to a shop before approving it. Text only, no recording:
    * the reviewer's judgement is the artefact, not the footage.
    */
+  /**
+   * Jobs the rate card refuses to price: a generator, a church pew, a
+   * cold-chain box. Ops read the photographs and write a number.
+   */
+  specialRequests: {
+    queue: (status?: string, from?: string, to?: string) => {
+      const qs = new URLSearchParams();
+      if (status) qs.set('status', status);
+      if (from)   qs.set('from', from);
+      if (to)     qs.set('to', to);
+      const q = qs.toString();
+      return req<any[]>(`/admin/special-requests${q ? `?${q}` : ''}`);
+    },
+    detail: (id: string) => req<any>(`/admin/special-requests/${id}`),
+    /** Itemised. A bare total is refused by the server, deliberately. */
+    quote: (id: string, body: {
+      lines: Array<{ kind: string; label: string; qty: number; unitNgn: number; amountNgn: number }>;
+      note?: string; expiresInHours?: number;
+    }) => req<any>(`/admin/special-requests/${id}/quote`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+    decline: (id: string, reason: string) =>
+      req<any>(`/admin/special-requests/${id}/decline`, {
+        method: 'POST', body: JSON.stringify({ reason }),
+      }),
+    escalate: (id: string, note: string, toAdminId?: string) =>
+      req<any>(`/admin/special-requests/${id}/escalate`, {
+        method: 'POST', body: JSON.stringify({ note, toAdminId }),
+      }),
+    logCall: (id: string, body: { connected?: boolean; spokeTo?: string; notes?: string }) =>
+      req<any>(`/admin/special-requests/${id}/calls`, {
+        method: 'POST', body: JSON.stringify(body),
+      }),
+  },
+
   partnerCalls: {
     list: (storeId: string) => req<any[]>(`/admin/partner-calls/${storeId}`),
     log:  (storeId: string, body: {
