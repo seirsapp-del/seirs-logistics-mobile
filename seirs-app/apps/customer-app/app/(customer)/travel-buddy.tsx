@@ -750,6 +750,13 @@ export default function TravelBuddyScreen() {
             </View>
 
             <View style={[styles.driverRow, { borderTopColor: theme.border }]}>
+              {/* A face, because the passenger has to recognise somebody at
+                  the roadside in the dark (founder call, 2026-09-05). */}
+              {trip.driver?.profilePhoto
+                ? <Image source={{ uri: trip.driver.profilePhoto }} style={styles.driverPhoto} />
+                : <View style={[styles.driverPhoto, styles.driverPhotoEmpty, { backgroundColor: theme.primary + "15" }]}>
+                    <Ionicons name="person" size={20} color={theme.primary} />
+                  </View>}
               <View style={{ flex: 1 }}>
                 <Text style={[styles.driverName, { color: theme.text }]}>{trip.driver?.name}</Text>
                 <Text style={[styles.tripMeta, { color: theme.textSecond }]}>
@@ -800,10 +807,12 @@ export default function TravelBuddyScreen() {
               <Ionicons name="lock-closed-outline" size={15} color={theme.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.vehicleDesc, { color: theme.text }]}>
-                  {VEHICLE_LABEL[trip.driver?.vehicleType] ?? 'Vehicle'}
+                  {[trip.driver?.vehicleColor, trip.driver?.vehicleMake, trip.driver?.vehicleModel]
+                    .filter(Boolean)
+                    .join(' ') || VEHICLE_LABEL[trip.driver?.vehicleType] || 'Vehicle'}
                 </Text>
                 <Text style={[styles.tripMeta, { color: theme.textThird }]}>
-                  Plate, colour and photo are shown once the driver accepts you
+                  The plate is shown once the driver accepts you
                 </Text>
               </View>
             </View>
@@ -957,6 +966,8 @@ const styles = StyleSheet.create({
   actionBtn:     { flex: 1, minHeight: 44, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   actionBtnGhost:{ backgroundColor: 'transparent', borderWidth: 1.5 },
   actionBtnText: { color: '#fff', fontSize: FontSize.sm, fontWeight: '700' },
+  driverPhoto:      { width: 44, height: 44, borderRadius: 22, marginRight: 12 },
+  driverPhotoEmpty: { alignItems: 'center', justifyContent: 'center' },
   tripFoot:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
   seatsLeft: { fontSize: FontSize.sm, fontWeight: '700' },
   bookBtn:   { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999 },

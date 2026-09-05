@@ -893,9 +893,9 @@ export class DriversService {
        * a column that never leaves the database cannot be leaked by a
        * future edit to the mapping below.
        */
-      .addSelect(['d.id', 'd.rating', 'd.vehicleType'])
+      .addSelect(['d.id', 'd.rating', 'd.vehicleType', 'd.vehicleDetails', 'd.totalDeliveries'])
       .leftJoin('d.user', 'u')
-      .addSelect(['u.id', 'u.name'])
+      .addSelect(['u.id', 'u.name', 'u.profilePhoto'])
       .where('t.status = :status', { status: DriverTripStatus.ACTIVE })
       .andWhere('t.departAt > NOW()')
       .andWhere(

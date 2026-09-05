@@ -131,18 +131,39 @@ export function vehicleIdentityForPassenger(dr: any) {
  * have actually agreed to meet.
  */
 export function driverForBrowsing(dr: any) {
-  const full = String(dr?.user?.name ?? '').trim();
-  // A first name is enough to greet somebody. A full name is enough to
-  // find them.
-  const first = full ? full.split(/\s+/)[0] : 'Driver';
+  /*
+   * REVERSED by the founder, 2026-09-05: "I think we should actually
+   * show it, for the safety of the customer and the business, the
+   * profile picture and the full detail, that is what the driver signed
+   * up to."
+   *
+   * The reasoning above still stands about ONE pairing, and only one:
+   * a plate plus an exact address plus an exact minute is a stakeout.
+   * Everything else on this list is what a passenger needs in order to
+   * decide whether to get into a stranger's car at night, and what a
+   * shop needs before handing over goods. Withholding a face made the
+   * driver safer and the customer blinder, and the customer is the one
+   * standing at the roadside.
+   *
+   * So: a full name, a photograph, a rating, a delivery count and the
+   * make, model and colour of the car. The PLATE still waits for the
+   * acceptance, and so does the exact boarding spot, because those two
+   * are what turn a listing into a place to lie in wait.
+   */
+  const v = dr?.vehicleDetails ?? {};
   return {
-    name:        first,
-    rating:      dr?.rating ?? null,
-    vehicleType: dr?.vehicleType ?? null,
+    name:            dr?.user?.name ?? 'Driver',
+    profilePhoto:    dr?.user?.profilePhoto ?? null,
+    rating:          dr?.rating ?? null,
+    totalDeliveries: dr?.totalDeliveries ?? 0,
+    vehicleType:     dr?.vehicleType ?? null,
+    vehicleMake:     v.make  ?? null,
+    vehicleModel:    v.model ?? null,
+    vehicleColor:    v.color ?? null,
     /**
-     * Say WHY the rest is missing. Without this the app renders the
-     * "this driver has not listed a plate, ask before you board" line,
-     * which is a different and alarming claim.
+     * The plate, and only the plate, is still to come. The card uses
+     * this to say so plainly rather than rendering "no plate listed",
+     * which reads as a driver who has not done their paperwork.
      */
     identityRevealed: false as const,
   };
