@@ -238,6 +238,98 @@ export const authApi = {
     request<{ message: string }>('POST', '/auth/reset-password', { token, newPassword }, false),
 };
 
+/**
+ * Special requests: the quote-first lane, for jobs the price engine must
+ * REFUSE to price rather than guess at (founder 2026-09-04, built
+ * 2026-09-05). His examples were a transformer and an organ between
+ * hospitals.
+ *
+ * Nothing here has a fare until ops write one. The server throws rather
+ * than falling back to the rate card, because a plausible-looking wrong
+ * number on a transformer is worse than an error.
+ *
+ * Note there is no `quoteId` on accept. Accepting takes the CURRENT
+ * quote and the server refuses once it has expired, so a screen cannot
+ * bind us to a stale price by holding an old id.
+ */
+export interface SpecialQuoteLine {
+  kind:      'vehicle' | 'labour' | 'waiting' | 'permit' | 'escort' | 'insurance' | 'other';
+  label:     string;
+  qty:       number;
+  unitNgn:   number;
+  amountNgn: number;
+}
+
+export interface SpecialRequestDraft {
+  description:           string;
+  category?:             string | null;
+  weightKg?:             number | null;
+  lengthCm?:             number | null;
+  widthCm?:              number | null;
+  heightCm?:             number | null;
+  liftingHands?:         number | null;
+  fragile:               boolean;
+  hazardous:             boolean;
+  temperatureControlled: boolean;
+  /** What they TOLD us about timing. Never a commitment: see the app screens. */
+  timeCriticality?:      string | null;
+  accessPickup?:         string | null;
+  accessDropoff?:        string | null;
+  pickupAddress:         string;
+  pickupLat:             number;
+  pickupLng:             number;
+  pickupContactName?:    string | null;
+  pickupContactPhone?:   string | null;
+  dropoffAddress:        string;
+  dropoffLat:            number;
+  dropoffLng:            number;
+  dropoffContactName?:   string | null;
+  dropoffContactPhone?:  string | null;
+  photos?:               string[];
+  /**
+   * Recorded at SUBMISSION, not at accept. The terms are about what is
+   * in the crate, which the sender knows only while describing it, and
+   * asking again beside a price turns a declaration into a hurdle in
+   * front of a number they already want.
+   */
+  acceptedLiability:     boolean;
+}
+
+export const specialRequestsApi = {
+  create: (body: SpecialRequestDraft) =>
+    request<{ id: string; status: string }>('POST', '/special-requests', body),
+
+  mine: () => request<any[]>('GET', '/special-requests/mine'),
+
+  /**
+   * The SENDER's view, redacted by the server. Staff read a different
+   * route entirely rather than a branch inside this one: on this feature
+   * the row carries our cost basis, the margin on the quote, the
+   * escalation trail and the call log, and one route with a branch is
+   * how both of tonight's leaks happened.
+   */
+  detail: (id: string) => request<any>('GET', `/special-requests/${id}`),
+
+  withdraw: (id: string, reason?: string) =>
+    request<{ ok: true }>('POST', `/special-requests/${id}/withdraw`, reason ? { reason } : {}),
+
+  /**
+   * Accepts the CURRENT quote. The server refuses an expired one, with a
+   * message beginning "That price has expired", and flips the request to
+   * expired in the same call.
+   *
+   * deliveryId is NULLABLE and is null today: accepting records the
+   * agreement, and turning it into a Delivery has to go through the real
+   * booking path so payment, matching, tracking and chat all behave.
+   * Until that lands, the screen shows "we are assigning" rather than
+   * sending anybody to a payment route that does not exist.
+   */
+  accept: (id: string) =>
+    request<{ ok: true; deliveryId: string | null; priceNgn: number }>(
+      'POST', `/special-requests/${id}/accept`, {}),
+};
+
+
 // ─── Deliveries ───────────────────────────────────────────────────────────────
 // ─── Users (profile + account management) ──────────────────────────────────
 export const usersApi = {

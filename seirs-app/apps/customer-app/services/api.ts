@@ -25,6 +25,10 @@ export {
   loyaltyApi,
   promotionsApi,
   suggestionsApi,
+  // The quote-first lane (2026-09-05). Whitelisted here deliberately:
+  // an export missing from this barrel resolves to undefined at runtime
+  // instead of failing the build.
+  specialRequestsApi,
   // Wave 16B additions
   addressesApi,
   supportApi,

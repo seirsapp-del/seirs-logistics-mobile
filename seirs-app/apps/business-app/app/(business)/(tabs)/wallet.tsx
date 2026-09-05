@@ -40,6 +40,52 @@ export default function WalletScreen() {
   const [loading,  setLoading]  = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  /**
+   * The last seven days, the way the driver's earnings screen shows them
+   * (founder 2026-09-05, same request as the customer Rewards screen).
+   *
+   * This screen said what you HAVE and offered no sense of whether you
+   * are earning at all. A number is a state; a week of bars is a habit,
+   * and habit is the thing a rewards screen is trying to build.
+   *
+   * Both segments read the same shape from different ledgers: points for
+   * a sender, naira for a partner counter. Derived from rows already
+   * fetched, so it costs no request and cannot fail separately from the
+   * screen around it.
+   */
+  const week = (() => {
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const today = startOfDay(new Date());
+    const DAY   = 24 * 60 * 60 * 1000;
+
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const at = today - (6 - i) * DAY;
+      return {
+        at,
+        label: new Date(at).toLocaleDateString('en-GB', { weekday: 'narrow' }),
+        value: 0,
+      };
+    });
+
+    const rows: any[] = segment === 'rewards' ? txns : payouts;
+    for (const r of rows) {
+      const raw = r?.createdAt ?? r?.date ?? r?.paidAt;
+      const t = raw ? new Date(raw).getTime() : NaN;
+      if (!Number.isFinite(t)) continue;       // an unreadable date must not invent a day
+      const slot = days.find(d => d.at === startOfDay(new Date(t)));
+      if (!slot) continue;
+      const v = segment === 'rewards'
+        ? Number(r?.pointsEarned ?? r?.points ?? 0)
+        : Number(r?.amount ?? r?.amountNgn ?? 0);
+      if (v > 0) slot.value += v;
+    }
+
+    const total = days.reduce((sum, d) => sum + d.value, 0);
+    // Floor at 1 so a flat week is a flat row, not a full-height one.
+    const peak  = Math.max(1, ...days.map(d => d.value));
+    return { days, total, peak };
+  })();
+
   useEffect(() => {
     const loads: Promise<any>[] = [
       // Points come from payments that actually settled, not from the
@@ -160,6 +206,41 @@ export default function WalletScreen() {
               </Pressable>
             )}
 
+            {/* The week, as bars. See `week` above for why it reads rows
+                already in hand rather than asking the server again. */}
+            <View style={[styles.weekCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.weekHead}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Last 7 days</Text>
+                <Text style={[styles.weekTotal, { color: colors.primary }]}>
+                  {week.total > 0
+                    ? (segment === 'rewards' ? `+${week.total.toLocaleString()} pts` : naira(week.total))
+                    : 'Nothing yet'}
+                </Text>
+              </View>
+              <View style={styles.weekBars}>
+                {week.days.map((d) => (
+                  <View key={d.at} style={styles.weekCol}>
+                    <View style={styles.weekTrack}>
+                      <View style={[styles.weekBar, {
+                        height: `${Math.round((d.value / week.peak) * 100)}%` as any,
+                        backgroundColor: d.value > 0 ? colors.primary : colors.border,
+                      }]} />
+                    </View>
+                    <Text style={[styles.weekLabel, { color: colors.textThird }]}>{d.label}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={[styles.weekFoot, { color: colors.textSecond }]}>
+                {week.total > 0
+                  ? (segment === 'rewards'
+                      ? 'Every delivery you book adds to this.'
+                      : 'Paid out to your business bank account weekly.')
+                  : (segment === 'rewards'
+                      ? 'Book a delivery and your points will show up here.'
+                      : 'Payouts will show up here once packages move through your counter.')}
+              </Text>
+            </View>
+
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Activity</Text>
               {loading ? (
@@ -267,6 +348,21 @@ const styles = StyleSheet.create({
   },
   teaserTitle: { fontSize: 15, fontWeight: '700' },
   teaserSub:   { fontSize: 13, marginTop: 2, lineHeight: 16 },
+  // Last 7 days. Same shape as the driver's earnings card and the
+  // customer's Rewards card, deliberately: one question, three ledgers.
+  weekCard:  { borderWidth: 1, borderRadius: 14, padding: 16, marginHorizontal: 16,
+               marginBottom: 16, gap: 14 },
+  weekHead:  { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  weekTotal: { fontSize: 13, fontWeight: '700' },
+  weekBars:  { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+               height: 86, gap: 6 },
+  weekCol:   { flex: 1, alignItems: 'center', gap: 6 },
+  // Full-height track so every bar shares one baseline and a short bar
+  // does not float in the middle of the row.
+  weekTrack: { flex: 1, width: '100%', justifyContent: 'flex-end' },
+  weekBar:   { width: '100%', borderRadius: 4, minHeight: 3 },
+  weekLabel: { fontSize: 11, fontWeight: '600' },
+  weekFoot:  { fontSize: 13, lineHeight: 18 },
   section:      { padding: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 14 },
   empty:        { alignItems: 'center', paddingVertical: 40, gap: 12, paddingHorizontal: 24 },

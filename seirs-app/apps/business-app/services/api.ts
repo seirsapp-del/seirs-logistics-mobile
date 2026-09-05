@@ -68,6 +68,8 @@ export type {
 } from '@seirs/shared/services/api';
 
 import { businessAuthApi, authApi as sharedAuthApi } from '@seirs/shared/services/api';
+export { specialRequestsApi } from '@seirs/shared/services/api';
+export type { SpecialRequestDraft, SpecialQuoteLine } from '@seirs/shared/services/api';
 
 /**
  * Business-app authApi. business endpoints for login/register/verify-otp
