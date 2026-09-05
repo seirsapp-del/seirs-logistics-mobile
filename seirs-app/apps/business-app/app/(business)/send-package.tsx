@@ -663,6 +663,16 @@ export default function SendPackageScreen() {
   // A price that never arrives must SAY so: an endless "..." is the same
   // class of silent failure as a blank screen.
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  /**
+   * The engine REFUSED to price this rather than failing to (2026-09-05).
+   *
+   * computePrice throws SPECIAL_REQUEST_REQUIRED for special, oversized,
+   * heavy, hazardous, cold_chain, livestock and relocation. Uncaught it
+   * reads as a broken app, which is the opposite of what happened, and it
+   * hides the quote lane from the trader who most needs it: the one with
+   * a generator on a pallet.
+   */
+  const [needsQuote, setNeedsQuote] = useState(false);
   const [quoteReloadKey, setQuoteReloadKey] = useState(0);
   // Review: which package's summary is open, and the consent gate,
   // matching the customer app's hybrid review (founder 2026-08-21).
@@ -677,6 +687,7 @@ export default function SendPackageScreen() {
     const totalWeight = packages.reduce((sum, p) => sum + p.weightKg, 0);
     setQuote(null);
     setQuoteError(null);
+    setNeedsQuote(false);
     pricingApi.quote({
       vehicleType: draft.vehicleType,
       categoryCode: packages[0]?.categoryCode ?? 'standard_parcel',
@@ -707,7 +718,12 @@ export default function SendPackageScreen() {
       scheduledAt: scheduledAtIso,
     } as any)
       .then(setQuote)
-      .catch((e: any) => setQuoteError(e?.message ?? 'Could not price this run.'));
+      .catch((e: any) => {
+        // A refusal is not a failure. Offer the lane instead of apologising.
+        const refused = /SPECIAL_REQUEST_REQUIRED/i.test(String(e?.message ?? e?.code ?? ''));
+        setNeedsQuote(refused);
+        setQuoteError(refused ? null : (e?.message ?? 'Could not price this run.'));
+      });
   }, [step, routeKm, draft.stops, draft.vehicleType, scheduledAtIso, quoteReloadKey]);
 
   // Per-package attribution preview: identical math to the backend
@@ -1834,6 +1850,28 @@ export default function SendPackageScreen() {
                     <Text style={styles.quoteErrTxt}>{quoteError} Tap to try again.</Text>
                   </Pressable>
                 )}
+                {/* Refused, not failed. Shown where the price would be, so a
+                    trader learns it while reviewing rather than at the pay
+                    button, and lands in the lane built for exactly this. */}
+                {needsQuote && (
+                  <Pressable
+                    onPress={() => router.push('/(business)/special-request' as any)}
+                    style={[styles.needsQuote, { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
+                  >
+                    <Icon name="Truck" size={20} color={colors.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.needsQuoteTitle, { color: colors.text }]}>
+                        This load needs a quote from us
+                      </Text>
+                      <Text style={[styles.needsQuoteBody, { color: colors.textSecond }]}>
+                        A generator, a transformer, anything needing lifting hands: priced
+                        by a person, not automatically, so we do not guess at it. Tell us
+                        about it and we will call you with a full breakdown.
+                      </Text>
+                    </View>
+                    <Icon name="ChevronRight" size={18} color={colors.primary} />
+                  </Pressable>
+                )}
                 {Number(quote?.customer?.partnerHandling ?? 0) > 0 && (
                   <View style={styles.lineRow}>
                     <View style={{ flex: 1 }}>
@@ -2271,6 +2309,11 @@ const styles = StyleSheet.create({
   lineName:  { fontSize: 15, fontWeight: '700' },
   lineSub:   { fontSize: 13, marginTop: 1 },
   linePrice: { fontSize: 14, fontWeight: '700' },
+  // The pricing refusal, shown where the price would be.
+  needsQuote:      { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1,
+                     borderRadius: 14, padding: 14, marginTop: 10 },
+  needsQuoteTitle: { fontSize: 15, fontWeight: '700' },
+  needsQuoteBody:  { fontSize: 13, lineHeight: 18, marginTop: 3 },
   quoteErrBox: { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 10, marginTop: 8 },
   quoteErrTxt: { color: '#DC2626', fontSize: 13, fontWeight: '600' },
   totalRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 10, marginTop: 6 },

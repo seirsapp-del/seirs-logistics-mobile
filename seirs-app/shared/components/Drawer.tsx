@@ -5,6 +5,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
+import {
+  MARK_SW, MARK_WHEEL_R, MARK_HUB_R, MARK_HEAD_R, MARK_HEAD,
+  MARK_FRAME_D, MARK_WHEELS, MARK_LINES, MARK_VIEWBOX_ATTR, markHeightFor,
+} from '../brand/mark';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(300, SCREEN_WIDTH * 0.82);
@@ -338,26 +342,42 @@ const styles = StyleSheet.create({
 });
 
 // ── SEIRS brand lockup: mark + wordmark, shared across all 3 apps ────
-// Okada: monoline strokes, matches SeirsMarkBold in the customer-app.
-// Wordmark: "SEIRS" rendered in the device system font (One UI Sans on
-// Samsung, Roboto on Pixel, SF Pro on iOS): matches the splash #58
-// look the user chose. NOT a traced/bundled font.
+// Wordmark: "SEIRS" in the device system font (One UI Sans on Samsung,
+// Roboto on Pixel, SF Pro on iOS): matches the splash look the founder
+// chose. NOT a traced or bundled font.
+//
+// THE MARK WAS THE FIFTH COPY (found 2026-09-05, by the founder asking
+// whether anybody had checked the drawer). It drew its own okada at
+// stroke 3.5 with r6 wheels and the head at (28, 5), while the launcher
+// icon, the splash, the website and the three in-app marks had all moved
+// to the founder's locked A3 geometry. So the hamburger of every app
+// showed an okada that existed nowhere else.
+//
+// Its comment said "matches SeirsMarkBold in the customer-app", which was
+// true when written and false the moment that file changed. A comment
+// claiming two things match is not a mechanism that keeps them matching,
+// which is why the numbers now come from shared/brand/mark.ts, the same
+// file scripts/build-mark-assets.js cuts the PNGs from.
 
 function SeirsBrandLockup({ color, bgColor }: { color: string; bgColor: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      <Svg width={48} height={32} viewBox="0 0 48 32" fill="none">
-        <Path d="M 10 24 L 18 16 L 30 16 L 38 24"
-              stroke={color} strokeWidth={3.5} fill="none"
+      <Svg width={48} height={markHeightFor(48)} viewBox={MARK_VIEWBOX_ATTR} fill="none">
+        <Path d={MARK_FRAME_D}
+              stroke={color} strokeWidth={MARK_SW} fill="none"
               strokeLinecap="round" strokeLinejoin="round"/>
-        <Circle cx={10} cy={24} r={6} fill={color}/>
-        <Circle cx={10} cy={24} r={2} fill={bgColor}/>
-        <Circle cx={38} cy={24} r={6} fill={color}/>
-        <Circle cx={38} cy={24} r={2} fill={bgColor}/>
-        <Line x1={37} y1={12} x2={42} y2={9} stroke={color} strokeWidth={3.5} strokeLinecap="round"/>
-        <Line x1={24} y1={16} x2={28} y2={8}  stroke={color} strokeWidth={4} strokeLinecap="round"/>
-        <Circle cx={28} cy={5} r={3.5} fill={color}/>
-        <Line x1={27} y1={10} x2={37} y2={12} stroke={color} strokeWidth={3.5} strokeLinecap="round"/>
+        {MARK_WHEELS.map((w) => (
+          <Circle key={`w${w.x}`} cx={w.x} cy={w.y} r={MARK_WHEEL_R} fill={color}/>
+        ))}
+        {MARK_LINES.map((l, i) => (
+          <Line key={`l${i}`} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+                stroke={color} strokeWidth={MARK_SW} strokeLinecap="round"/>
+        ))}
+        <Circle cx={MARK_HEAD.x} cy={MARK_HEAD.y} r={MARK_HEAD_R} fill={color}/>
+        {/* Hubs last, so they punch through the frame path's round cap. */}
+        {MARK_WHEELS.map((w) => (
+          <Circle key={`h${w.x}`} cx={w.x} cy={w.y} r={MARK_HUB_R} fill={bgColor}/>
+        ))}
       </Svg>
       {/* Plain Text with natural letter-spacing: matches the home
           top-bar wordmark (which the user preferred over the old

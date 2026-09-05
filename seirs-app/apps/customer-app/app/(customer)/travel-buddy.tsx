@@ -20,6 +20,7 @@ import { derivePlace } from '@seirs/shared/models/cities';
 import { showDialog, type DialogAction } from '@/components/SeirsDialog';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 import { CitySearchField } from '@/components/CitySearchField';
+import { Calendar as RNCalendar } from 'react-native-calendars';
 
 
 /**
@@ -132,6 +133,7 @@ export default function TravelBuddyScreen() {
    * operations a list of corridors to go and recruit drivers onto.
    */
   const [alerted, setAlerted] = useState(false);
+  const [calOpen, setCalOpen] = useState(false);
 
   /**
    * Coordinates for each end, when we have any (founder 2026-09-04).
@@ -505,31 +507,64 @@ export default function TravelBuddyScreen() {
             </View>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.dayStrip}
+          {/*
+            A real month grid, not a strip (founder 2026-09-05: "thats what
+            i meant", pointing at the driver's declare screen).
+
+            The strip made you scroll a month sideways to find one Saturday.
+            Somebody travelling for a wedding, a burial or a market day
+            already knows the date; they should be able to touch it. Same
+            component and the same theming the driver already uses, so both
+            sides of the marketplace pick a day the same way.
+
+            minDate is today because nobody books a trip into the past, and
+            there is no maxDate: unlike the driver's declare screen the
+            server refuses nothing here, and a picker that greys a day it
+            would actually accept teaches the passenger that the screen
+            lies.
+          */}
+          <Pressable
+            onPress={() => setCalOpen(v => !v)}
+            style={[styles.dayField, { backgroundColor: theme.surface, borderColor: calOpen ? theme.primary : theme.border }]}
           >
-            {[{ iso: null as string | null, top: 'Any', bottom: 'date' },
-              ...DAY_STRIP.map(d => ({ iso: d.iso as string | null, top: d.top, bottom: d.bottom }))
-            ].map(d => {
-              const on = dayISO === d.iso;
-              return (
-                <Pressable
-                  key={d.iso ?? 'any'}
-                  onPress={() => setDayISO(d.iso)}
-                  style={[styles.dayChip, {
-                    borderColor:     on ? theme.primary : theme.border,
-                    backgroundColor: on ? theme.primary : theme.surface,
-                  }]}
+            <Text style={[styles.dayFieldText, { color: dayISO ? theme.text : theme.textThird }]}>
+              {dayISO
+                ? new Date(`${dayISO}T00:00:00`).toLocaleDateString('en-GB',
+                    { weekday: 'short', day: 'numeric', month: 'short' })
+                : 'Any date'}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {!!dayISO && (
+                <Text
+                  onPress={() => { setDayISO(null); setCalOpen(false); }}
+                  style={[styles.dayClear, { color: theme.primary }]}
                 >
-                  <Text style={[styles.dayTop,    { color: on ? '#fff' : theme.text }]}>{d.top}</Text>
-                  <Text style={[styles.dayBottom, { color: on ? '#fff' : theme.textThird }]}>{d.bottom}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+                  Any date
+                </Text>
+              )}
+              <Ionicons name={calOpen ? 'chevron-up' : 'calendar-outline'} size={18} color={theme.textSecond} />
+            </View>
+          </Pressable>
+
+          {calOpen && (
+            <View style={[styles.calWrap, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+              <RNCalendar
+                current={dayISO || undefined}
+                minDate={new Date().toISOString().slice(0, 10)}
+                onDayPress={(d: any) => { setDayISO(d.dateString); setCalOpen(false); }}
+                markedDates={dayISO ? { [dayISO]: { selected: true, selectedColor: theme.primary } } : {}}
+                theme={{
+                  calendarBackground:   theme.surface,
+                  dayTextColor:         theme.text,
+                  monthTextColor:       theme.text,
+                  textDisabledColor:    theme.textThird,
+                  arrowColor:           theme.primary,
+                  todayTextColor:       theme.primary,
+                  selectedDayTextColor: '#FFFFFF',
+                }}
+              />
+            </View>
+          )}
         </View>
 
         <Pressable style={[styles.searchBtn, { backgroundColor: theme.primary }]} onPress={search} disabled={loading}>
@@ -846,6 +881,11 @@ const styles = StyleSheet.create({
   stepBtn:     { width: 30, alignItems: 'center', justifyContent: 'center' },
   stepMark:    { fontSize: 19, fontWeight: '600', lineHeight: 22 },
   stepVal:     { fontSize: FontSize.base, fontWeight: '700', minWidth: 18, textAlign: 'center' },
+  dayField:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                  borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 13 },
+  dayFieldText: { fontSize: FontSize.base, fontWeight: '600' },
+  dayClear:     { fontSize: FontSize.sm, fontWeight: '700' },
+  calWrap:      { borderWidth: 1, borderRadius: Radius.md, overflow: 'hidden' },
   dayStrip:    { gap: Spacing.sm, paddingRight: Spacing.md },
   dayChip:     { borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 8,
                  alignItems: 'center', minWidth: 62 },

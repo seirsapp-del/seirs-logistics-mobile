@@ -831,6 +831,17 @@ export default function SendScreen() {
   // Bumped when the server refuses an expired quote pin: re-prices and re-shows.
   const [quoteNonce, setQuoteNonce] = useState(0);
   const [runQuoteError, setRunQuoteError] = useState<string | null>(null);
+  /**
+   * The engine REFUSED to price this, rather than failing to (2026-09-05).
+   *
+   * computePrice throws SPECIAL_REQUEST_REQUIRED for special, oversized,
+   * heavy, hazardous, cold_chain, livestock and relocation, because a
+   * plausible wrong number on a transformer is worse than no number. Left
+   * uncaught it reads as "the app is broken", which is the opposite of
+   * what happened and hides the quote lane behind a dead end: the sender
+   * cannot find a feature they were never told exists.
+   */
+  const [needsQuote, setNeedsQuote] = useState(false);
   // Review: which package's own summary is open, and the consent gate.
   const [expandedPkg, setExpandedPkg] = useState<number | null>(null);
   const [tcAgreed, setTcAgreed] = useState(false);
@@ -849,6 +860,7 @@ export default function SendScreen() {
     let cancelled = false;
     setRunQuote(null);
     setRunQuoteError(null);
+    setNeedsQuote(false);
     pricingApi.quote({
       vehicleType:  vehicleId,
       categoryCode: pkgs[0]?.categoryCode ?? 'standard_parcel',
@@ -885,7 +897,13 @@ export default function SendScreen() {
         : undefined,
     } as any)
       .then((q: any) => { if (!cancelled) setRunQuote(q); })
-      .catch((e: any) => { if (!cancelled) setRunQuoteError(e?.message ?? 'Could not price this booking.'); });
+      .catch((e: any) => {
+        if (cancelled) return;
+        // A refusal is not a failure. Route them instead of apologising.
+        const refused = /SPECIAL_REQUEST_REQUIRED/i.test(String(e?.message ?? e?.code ?? ''));
+        setNeedsQuote(refused);
+        setRunQuoteError(refused ? null : (e?.message ?? 'Could not price this booking.'));
+      });
     return () => { cancelled = true; };
   }, [packages, vehicleId, distKmRoute, pickup, scheduleNow, scheduledDate, scheduledHour, quoteNonce]);
 
@@ -1295,6 +1313,12 @@ export default function SendScreen() {
     // arrived, or it failed, refuse to book rather than charge a total
     // the customer never saw. This is what "shown and charged can never
     // drift" costs: a moment of waiting instead of a silent lie.
+    // Refused, not failed: this load needs a person to price it, so send
+    // them there rather than telling them the app could not manage.
+    if (needsQuote) {
+      router.push('/(customer)/special-request' as any);
+      return;
+    }
     if (!(runTotal > 0)) {
       setError(runQuoteError ?? t('send.errRunNotPriced', {
         defaultValue: 'Still working out the price for this run. Give it a moment and try again.',
@@ -2618,6 +2642,29 @@ export default function SendScreen() {
                     </View>
                   );
                 })}
+                {/* The engine REFUSED to price this rather than failing to.
+                    Shown here, where the price would have been, so the
+                    sender learns it before tapping Book rather than after. */}
+                {needsQuote && (
+                  <Pressable
+                    onPress={() => router.push('/(customer)/special-request' as any)}
+                    style={[styles.needsQuote, { borderColor: theme.accent, backgroundColor: theme.accent + '10' }]}
+                  >
+                    <Ionicons name="construct-outline" size={20} color={theme.accent} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.needsQuoteTitle, { color: theme.text }]}>
+                        This one needs a quote from us
+                      </Text>
+                      <Text style={[styles.needsQuoteBody, { color: theme.textSecond }]}>
+                        A load like this is priced by a person, not automatically, so we
+                        do not guess at it. Tell us about it and we will call you with a
+                        full breakdown. Nothing is charged until you accept.
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={theme.accent} />
+                  </Pressable>
+                )}
+
                 <View style={styles.fareTotalRow}>
                   <Text style={[styles.fareTotalLabel, { color: theme.text }]}>
                     {t('send.totalOnePayment', { defaultValue: 'Total · one payment' })}
@@ -2894,6 +2941,11 @@ const styles = StyleSheet.create({
   fareRow:       { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   fareLabel:     { fontSize: FontSize.sm },
   fareAmt:       { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, maxWidth: '55%', textAlign: 'right' },
+  // The pricing refusal, shown where the price would be.
+  needsQuote:      { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1,
+                     borderRadius: 14, padding: 14, marginBottom: 12 },
+  needsQuoteTitle: { fontSize: 15, fontWeight: '700' },
+  needsQuoteBody:  { fontSize: 13, lineHeight: 18, marginTop: 3 },
   fareTotalRow:  { flexDirection: 'row', justifyContent: 'space-between', paddingTop: Spacing.md },
   fareTotalLabel:{ fontSize: FontSize.md, fontWeight: FontWeight.bold },
   fareTotalAmt:  { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
