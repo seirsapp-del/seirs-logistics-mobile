@@ -51,17 +51,73 @@ export function Drawer({ visible, onClose }: Props) {
       section: t('drawer.sectionYou', { defaultValue: 'You' }) },
     { icon: 'Map',        label: t('drawer.travelBuddy',   { defaultValue: 'Travel Buddy (intercity)' }), onPress: () => navigate('/(customer)/travel-buddy'),
       section: t('drawer.sectionSend', { defaultValue: 'Send & travel' }) },
-    // Ride Pool Preferences pulled from the drawer on the 2026-08-23
-    // sweep: the screen saved to AsyncStorage that no backend reads, and
-    // promised "a pool discount applied automatically" that no pricing
-    // path can produce. The screen file stays for when pooling ships.
-    // Send Multiple pointed at /(customer)/business, which has never
-    // existed: one of six drawer items was a 404. send.tsx IS the
-    // multi-package flow (add-another-package), so it goes there.
-    { icon: 'Send',       label: t('drawer.sendMultiple',  { defaultValue: 'Send Multiple' }),   onPress: () => navigate('/(customer)/send'),
-      section: t('drawer.sectionSend', { defaultValue: 'Send & travel' }) },
+    /*
+     * "Send Multiple" is GONE (founder 2026-09-05). It pointed at
+     * /(customer)/send, which is the same screen the home card already
+     * opens, so the drawer's job was to offer a second door to a room you
+     * were already standing in. Its history is worth keeping though: it
+     * used to point at /(customer)/business, a route that never existed,
+     * so one of six drawer rows was a 404 until 2026-08-23.
+     *
+     * Ride Pool Preferences went in that same sweep: the screen wrote to
+     * AsyncStorage nothing reads and promised a pool discount no pricing
+     * path can produce. The file stays for when pooling ships.
+     */
     // Straight to a NEW ticket (founder 2026-08-10: the old path bounced
     // through the Messages tab first).
+    /*
+     * WIDENED AGAIN 2026-09-05, and this reverses the trim above rather
+     * than ignoring it. The founder, comparing the three drawers: the
+     * customer's had 5 rows against the driver's 9 and the business's 20,
+     * so a customer had to hunt through the app for things the other two
+     * reach in one tap.
+     *
+     * The 10 August principle is kept, because it was the right one:
+     * account management (addresses, cards, password, delete account)
+     * stays in Profile. Everything added below is a TOOL, something you
+     * go to the drawer to DO.
+     *
+     * Get a quote is the most important of them. The special-request lane
+     * exists now, and until this row it was reachable only from a failed
+     * price inside Send: a feature you could only find if you already knew
+     * it was there.
+     */
+    { icon: 'Gift',       label: t('drawer.rewards', { defaultValue: 'Rewards' }),
+      onPress: () => navigate('/(customer)/rewards'),
+      section: t('drawer.sectionYou', { defaultValue: 'You' }) },
+    { icon: 'Share2',     label: t('drawer.referral', { defaultValue: 'Invite a friend' }),
+      onPress: () => navigate('/(customer)/referral'),
+      section: t('drawer.sectionYou', { defaultValue: 'You' }) },
+
+    { icon: 'Truck',      label: t('drawer.specialRequest', { defaultValue: 'Special delivery' }),
+      onPress: () => navigate('/(customer)/special-request'),
+      section: t('drawer.sectionSend', { defaultValue: 'Send & travel' }) },
+    /*
+     * NOT "Track by code". The Bookings tab already tracks bookings, and
+     * puts them at the top (founder 2026-09-05). A drawer row for the
+     * same thing is a second door to a room the tab bar already opens,
+     * which is exactly what "Send Multiple" was.
+     */
+    { icon: 'Package',    label: t('drawer.parcelRequests', { defaultValue: 'Parcel requests' }),
+      onPress: () => navigate('/(customer)/parcel-requests'),
+      section: t('drawer.sectionSend', { defaultValue: 'Send & travel' }) },
+    /*
+     * NOT drop-at-store. It looks like a destination and is actually a
+     * STEP of the send flow (founder 2026-09-05, immediately). Opening it
+     * from the drawer drops somebody into the middle of a booking that
+     * does not exist, with no package to drop and no pickup filled in.
+     * A row that leads somewhere unusable is worse than no row.
+     */
+
+    { icon: 'FileText',   label: t('drawer.documents', { defaultValue: 'Documents' }),
+      onPress: () => navigate('/(customer)/documents'),
+      section: t('drawer.sectionHelp', { defaultValue: 'Help' }) },
+    { icon: 'Globe',      label: t('drawer.language', { defaultValue: 'Language' }),
+      onPress: () => navigate('/(customer)/language'),
+      section: t('drawer.sectionHelp', { defaultValue: 'Help' }) },
+    { icon: 'HelpCircle', label: t('drawer.help', { defaultValue: 'Help & FAQ' }),
+      onPress: () => navigate('/(customer)/help'),
+      section: t('drawer.sectionHelp', { defaultValue: 'Help' }) },
     { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }),
       onPress: () => navigate('/(customer)/support/new'),
       section: t('drawer.sectionHelp', { defaultValue: 'Help' }) },
