@@ -948,18 +948,18 @@ export default function InterstateScreen() {
             only words, and words cannot settle where you actually waited.
           </Text>
         )}
-        {stop.cityGuessed && !!stop.city && (
-          {/*
-            The wording covers BOTH reasons this fires (2026-09-05).
+        {/*
+          The wording covers BOTH reasons this fires (2026-09-05).
 
-            It used to say "because the map lookup did not answer", which
-            was the only cause when it was written. Since derivePlace
-            landed there is a second: the lookup answered, but with a name
-            we do not recognise as a town, which happens for any place not
-            in our list. Claiming the lookup failed would be a false
-            explanation in that case, so the notice now says what it
-            actually knows and why it matters.
-          */}
+          It used to say "because the map lookup did not answer", which was
+          the only cause when it was written. Since derivePlace landed there
+          is a second: the lookup answers fine, but with a name we do not
+          recognise as a town, which happens for any place not in our list.
+          Claiming the lookup failed would be a false explanation of a true
+          warning, so the notice now says what it actually knows and why it
+          matters.
+        */}
+        {stop.cityGuessed && !!stop.city && (
           <Text style={[styles.warn, { color: '#D97706' }]}>
             We read {stop.city} off the address, and we are not certain of it.
             Check it before you declare: passengers find this trip by searching
