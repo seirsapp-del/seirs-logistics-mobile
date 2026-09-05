@@ -115,6 +115,55 @@ export default function RewardsScreen() {
     .filter((h: any) => (h.delta ?? 0) > 0 && h.expiresAt && new Date(h.expiresAt).getTime() < Date.now() + 30 * 24 * 60 * 60 * 1000)
     .reduce((s: number, h: any) => s + (h.delta ?? 0), 0);
 
+  /**
+   * The last seven days, the way the driver's earnings screen shows them
+   * (founder 2026-09-05: "something more informative like the drivers app").
+   *
+   * The screen already said what you HAVE and what you can spend it on,
+   * and nothing at all about whether you are earning. A balance is a
+   * number; a week of bars is a habit, and the driver's screen has had
+   * exactly this since it was built.
+   *
+   * Read off the ledger already in hand, so it costs no request and
+   * cannot fail separately from the screen around it. Earned and spent
+   * are kept apart deliberately: netting them would hide a good week
+   * spent down to nothing, which is the week most worth showing.
+   */
+  const week = (() => {
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const today = startOfDay(new Date());
+    const DAY   = 24 * 60 * 60 * 1000;
+
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const at = today - (6 - i) * DAY;
+      return {
+        at,
+        label:  new Date(at).toLocaleDateString('en-GB', { weekday: 'narrow' }),
+        earned: 0,
+        spent:  0,
+      };
+    });
+
+    for (const h of history as any[]) {
+      const raw = h?.createdAt ?? h?.date;
+      const t = raw ? new Date(raw).getTime() : NaN;
+      if (!Number.isFinite(t)) continue;                 // an unreadable date is not a reason to lie about the week
+      const day = startOfDay(new Date(t));
+      const slot = days.find(d => d.at === day);
+      if (!slot) continue;
+      const delta = Number(h?.delta ?? 0);
+      if (delta > 0) slot.earned += delta;
+      else           slot.spent  += Math.abs(delta);
+    }
+
+    const earned = days.reduce((s, d) => s + d.earned, 0);
+    const spent  = days.reduce((s, d) => s + d.spent, 0);
+    // The tallest bar sets the scale. A flat week must not render as a
+    // full-height row of bars, so the floor is 1 rather than 0.
+    const peak = Math.max(1, ...days.map(d => d.earned));
+    return { days, earned, spent, peak };
+  })();
+
   const handleRedeem = async (r: Redemption) => {
     if (points < r.cost) return;
     if (!r.live) return;   // see Redemption.live
@@ -252,6 +301,42 @@ export default function RewardsScreen() {
             </Text>
           </View>
         )}
+
+        {/* The week, as bars. See `week` above for why earned and spent
+            are kept apart rather than netted. */}
+        <View style={[styles.weekCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+          <View style={styles.weekHead}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Last 7 days</Text>
+            <Text style={[styles.weekEarned, { color: theme.primary }]}>
+              {week.earned > 0 ? `+${week.earned.toLocaleString()} pts` : 'No points yet'}
+            </Text>
+          </View>
+
+          <View style={styles.weekBars}>
+            {week.days.map((d) => (
+              <View key={d.at} style={styles.weekCol}>
+                <View style={styles.weekTrack}>
+                  <View
+                    style={[
+                      styles.weekBar,
+                      {
+                        height: `${Math.round((d.earned / week.peak) * 100)}%`,
+                        backgroundColor: d.earned > 0 ? theme.primary : theme.border,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.weekLabel, { color: theme.textThird }]}>{d.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={[styles.weekFoot, { color: theme.textSecond }]}>
+            {week.earned === 0 && week.spent === 0
+              ? 'Book a delivery and your points will show up here.'
+              : `Earned ${week.earned.toLocaleString()}, redeemed ${week.spent.toLocaleString()} this week.`}
+          </Text>
+        </View>
 
         {/* Redeem rewards: sorted cheapest first so users see something achievable */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Redeem your points</Text>
@@ -439,6 +524,21 @@ const styles = StyleSheet.create({
   progressFill:    { height: '100%', borderRadius: 3 },
 
   expiryCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1 },
+
+  // Last 7 days. Same shape as the driver's earnings card, deliberately:
+  // it is the same question asked of a different ledger.
+  weekCard:   { borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: Spacing.md },
+  weekHead:   { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  cardTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  weekEarned: { fontSize: FontSize.sm, fontWeight: '700' },
+  weekBars:   { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 86, gap: 6 },
+  weekCol:    { flex: 1, alignItems: 'center', gap: 6 },
+  // The track is the full height so every bar shares one baseline; the
+  // bar grows inside it. Without the track a short bar would float.
+  weekTrack:  { flex: 1, width: '100%', justifyContent: 'flex-end' },
+  weekBar:    { width: '100%', borderRadius: 4, minHeight: 3 },
+  weekLabel:  { fontSize: FontSize.xs, fontWeight: '600' },
+  weekFoot:   { fontSize: FontSize.sm, lineHeight: 18 },
   expiryText: { flex: 1, fontSize: FontSize.xs, lineHeight: 17 },
 
   sectionTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold, marginTop: Spacing.sm },

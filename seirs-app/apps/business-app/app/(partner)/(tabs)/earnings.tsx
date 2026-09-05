@@ -118,6 +118,35 @@ export default function EarningsScreen() {
             </View>
           </View>
 
+          {/*
+            Where the money actually goes (founder 2026-09-05).
+
+            The card above says an amount and a day and stops there, so a
+            shop reading "Next Transfer: Monday" had no way to see which
+            account it lands in, and no way to correct it if the account
+            was wrong. payout-account.tsx has existed for a while and was
+            reachable only from the drawer, which is the wrong place to
+            put it: the question is always asked here, looking at money
+            that is about to move.
+          */}
+          <Pressable
+            onPress={() => router.push('/(partner)/payout-account' as any)}
+            style={({ pressed }) => [
+              styles.destRow,
+              { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Icon name="Banknote" size={18} color={colors.textSecond} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.destLabel, { color: colors.textSecond }]}>PAID INTO</Text>
+              <Text style={[styles.destValue, { color: colors.text }]}>
+                {(data as any)?.payoutAccountLabel ?? 'Your payout account'}
+              </Text>
+            </View>
+            <Text style={[styles.destAction, { color: colors.primary }]}>Change</Text>
+            <Icon name="ChevronRight" size={16} color={colors.textThird} />
+          </Pressable>
+
           {days.length > 0 && (
             <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.chartTitle, { color: colors.text }]}>Daily Earnings</Text>
@@ -225,6 +254,13 @@ const styles = StyleSheet.create({
   payoutDateLabel: { fontSize: 11, marginBottom: 2 },
   payoutDate:      { fontSize: 14, fontWeight: '700' },
 
+  // Where the payout lands, sitting directly under the amount and the day
+  // rather than buried in the drawer.
+  destRow:         { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14,
+                     borderWidth: 1, padding: 14, marginHorizontal: 16, marginBottom: 16 },
+  destLabel:       { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+  destValue:       { fontSize: 14, fontWeight: '600', marginTop: 2 },
+  destAction:      { fontSize: 13, fontWeight: '700' },
   chartCard:       { borderRadius: 14, margin: 16, marginTop: 0, padding: 16, borderWidth: 1 },
   chartTitle:      { fontSize: 14, fontWeight: '700', marginBottom: 16 },
   chart:           { flexDirection: 'row', alignItems: 'flex-end', height: 120, gap: 6 },
