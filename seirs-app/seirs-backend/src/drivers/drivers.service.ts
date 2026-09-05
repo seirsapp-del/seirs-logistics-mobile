@@ -972,10 +972,10 @@ export class DriversService {
     const stopsByTrip = new Map<string, string[]>();
     if (trips.length > 0) {
       const rows: Array<any> = await this.tripStopsRepo.manager.query(
-        `SELECT "trip_id" AS "tripId", "city", "address", "latitude", "longitude", "order"
+        `SELECT "trip_id" AS "tripId", "city", "address", "latitude", "longitude", "sequence"
            FROM "trip_stops"
           WHERE "trip_id" = ANY($1)
-          ORDER BY "trip_id", "order" ASC`,
+          ORDER BY "trip_id", "sequence" ASC`,
         [trips.map((t: any) => t.id)],
       ).catch(() => []);
       for (const r of rows) {
