@@ -26,8 +26,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
-  ActivityIndicator, StatusBar, Keyboard,
-} from 'react-native';
+  ActivityIndicator, StatusBar, Keyboard, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
@@ -589,10 +588,27 @@ export default function CargoSpaceScreen() {
                 in before they ask; the address belongs to the driver
                 until they have accepted the load.
               */}
+              {/* The person, as on the customer card (founder call 2026-09-05):
+                  a trader handing over goods is choosing who carries them. */}
+              <View style={[styles.tripFacts, { marginTop: 6 }]}>
+                {trip.driver?.profilePhoto
+                  ? <Image source={{ uri: trip.driver.profilePhoto }} style={styles.driverPhoto} />
+                  : <View style={[styles.driverPhoto, { backgroundColor: `${theme.primary}15`, alignItems: 'center', justifyContent: 'center' }]}>
+                      <Icon name="Users" size={16} color={theme.primary} />
+                    </View>}
+                <Text style={[styles.tripMeta, { color: theme.text, fontWeight: '600', flex: 1 }]} numberOfLines={1}>
+                  {trip.driver?.name ?? 'Driver'}
+                </Text>
+              </View>
               <Text style={[styles.tripMeta, { color: theme.textSecond, marginTop: 2 }]}>
-                {trip.pickupMode === 'fixed' && trip.pickupArea
-                  ? `Loads in ${trip.pickupArea} (exact spot once the driver accepts)`
-                  : 'Loads along the route (agree the spot in chat)'}
+                {trip.segment
+                  ? `Loads in ${trip.segment.boardCity}, unloads at ${trip.segment.alightCity}`
+                  : trip.pickupMode === 'fixed' && trip.pickupArea
+                    ? `Loads in ${trip.pickupArea}, unloads at ${trip.toCity}`
+                    : `Loads along the route, unloads at ${trip.toCity}`}
+              </Text>
+              <Text style={[styles.tripMeta, { color: theme.textThird }]}>
+                Exact spot once the driver accepts your load
               </Text>
 
               <View style={styles.tripFacts}>
@@ -691,6 +707,7 @@ const styles = StyleSheet.create({
   tripRoute: { fontSize: 15, fontWeight: '700' },
   tripMeta:  { fontSize: 13, marginTop: 2 },
   tripFacts: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  driverPhoto: { width: 30, height: 30, borderRadius: 15, marginRight: 8 },
   spare:     { fontSize: 13, fontWeight: '700' },
   sendBtn:   { paddingVertical: 11, borderRadius: 10, alignItems: 'center' },
   sendTxt:   { color: '#fff', fontSize: 14, fontWeight: '700' },
