@@ -138,6 +138,14 @@ function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): nu
  * Nigeria") and can land on the state for a bare city pick. It is
  * flagged to the rider when it fires, because a guessed city is exactly
  * the drift the derived field exists to prevent.
+ *
+ * LAST RESORT ONLY since 2026-09-05. derivePlace runs first and reads
+ * the address against the 774-LGA geography, which is what catches the
+ * cases this function gets wrong: it would have answered "Oyo", the
+ * state, for "Olorunda Aba Market, Ibadan, Oyo, Nigeria", because a bare
+ * state name does not match the "X State" pattern it strips. Kept
+ * because a rider with no network and no recognised town still needs
+ * something in the box.
  */
 function cityFromDescription(description: string): string {
   const parts = String(description ?? '')
@@ -941,9 +949,21 @@ export default function InterstateScreen() {
           </Text>
         )}
         {stop.cityGuessed && !!stop.city && (
+          {/*
+            The wording covers BOTH reasons this fires (2026-09-05).
+
+            It used to say "because the map lookup did not answer", which
+            was the only cause when it was written. Since derivePlace
+            landed there is a second: the lookup answered, but with a name
+            we do not recognise as a town, which happens for any place not
+            in our list. Claiming the lookup failed would be a false
+            explanation in that case, so the notice now says what it
+            actually knows and why it matters.
+          */}
           <Text style={[styles.warn, { color: '#D97706' }]}>
-            We read {stop.city} off the address text because the map lookup did not
-            answer. Check that reads right before you declare.
+            We read {stop.city} off the address, and we are not certain of it.
+            Check it before you declare: passengers find this trip by searching
+            that name.
           </Text>
         )}
 
