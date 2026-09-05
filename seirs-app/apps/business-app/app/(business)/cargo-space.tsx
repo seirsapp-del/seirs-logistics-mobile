@@ -554,6 +554,15 @@ export default function CargoSpaceScreen() {
                   <Text style={[styles.tripRoute, { color: theme.text }]}>
                     {trip.fromCity} to {trip.toCity}
                   </Text>
+                  {/* The stops in between. A trader could not tell whether a
+                      lorry running Ile-Ife to Lagos passes their town, which
+                      is the entire question they are asking. Same line, same
+                      wording as the customer card. */}
+                  {trip.stopCities?.length > 2 && (
+                    <Text style={[styles.tripMeta, { color: theme.textSecond }]} numberOfLines={2}>
+                      via {trip.stopCities.slice(1, -1).join(' · ')}
+                    </Text>
+                  )}
                   <Text style={[styles.tripMeta, { color: theme.textSecond }]}>
                     Leaves {prettyDepart(trip.departAt)}
                   </Text>

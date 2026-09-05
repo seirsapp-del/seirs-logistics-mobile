@@ -2195,30 +2195,20 @@ export default function SendScreen() {
                   )}
 
                   {/*
-                    The way into the walk-in flow (2026-08-31).
+                    The counter drop-off link is GONE (founder 2026-09-05).
 
-                    Choosing a counter HERE books a run now: a rider comes
-                    to collect from that counter on this booking. The
-                    walk-in flow is the other thing, and the only place a
-                    customer gets it: schedule a drop, carry it in whenever
-                    suits, hand over a QR, and it can end at a second
-                    counter for the receiver to collect.
-
-                    It used to be reached from the destination picker,
-                    which is now handled inline, so without this link the
-                    screen would be orphaned and counter-to-counter would
-                    become unreachable for customers.
+                    It existed to keep drop-at-store reachable, on the
+                    reasoning that counter-to-counter would otherwise be
+                    unreachable. That reasoning had already expired: this
+                    screen handles BOTH ends inline, pickupMode door-or-store
+                    with its own picker and validation, and destMode
+                    address-or-store. So the link offered a second, longer
+                    road to a choice already on this page, and the flow it
+                    led to asked for a store before it knew there was a
+                    package. His words: "it doesnt need its own special
+                    field since it already in the send flow, and they
+                    decide there".
                   */}
-                  <Pressable
-                    style={{ paddingVertical: Spacing.sm }}
-                    onPress={() => router.push('/(customer)/drop-at-store' as any)}
-                  >
-                    <Text style={[styles.scheduleDesc, { color: theme.accent }]}>
-                      {t('send.walkInLink', {
-                        defaultValue: 'Rather drop it off in your own time? Schedule a counter drop-off instead.',
-                      })}
-                    </Text>
-                  </Pressable>
                 </View>
               )}
 

@@ -38,6 +38,7 @@ export {
   deliveriesApi,
   documentsApi,
   paymentsApi,
+  loyaltyApi,
   statementsApi,
 } from '@seirs/shared/services/api';
 

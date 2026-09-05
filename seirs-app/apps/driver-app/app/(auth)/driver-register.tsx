@@ -131,14 +131,14 @@ export default function DriverRegisterScreen() {
     setLoading(true);
     try {
       const trimmedRef = referralCode.trim().toUpperCase();
-      await authApi.register({
+      // driver-register, not register: the server sets the role now.
+      await authApi.registerDriver({
         name: fullName,
         email,
         // D-10.3: normalise before building E.164. Posting the raw field
         // registered "+2348012345678" as "+234+2348012345678".
         phone: toE164Ng(phone),
         password,
-        role: 'driver',
         vehicleType: vehicle!,
         // Required for drivers. Same jsonb shape the profile screen edits later.
         homeAddress: {

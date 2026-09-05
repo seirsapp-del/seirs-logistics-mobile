@@ -110,8 +110,8 @@ export default function EarningsScreen() {
   const rollingTotal   = dayTotals.reduce((s, n) => s + n, 0);
   const weekTotal      = Number(dashboard?.week?.earned  ?? rollingTotal);
   const todayTotal     = Number(dashboard?.today?.earned ?? dayTotals[6] ?? 0);
-  const totalEarned    = Number(dashboard?.allTime?.earned ?? dashboard?.totalEarnings ?? 0);
-  const totalTrips     = Number(dashboard?.allTime?.deliveries ?? dashboard?.totalTrips ?? 0);
+  // All-time earnings and trips are deliberately NOT read here any more:
+  // this screen resets monthly. They still live on the Profile tab.
   // Withdrawable = cleared ledger balance. The old field names
   // (pendingBalance/balance) don't exist on the earnings dashboard, so
   // this permanently displayed ₦0.
@@ -129,6 +129,7 @@ export default function EarningsScreen() {
   // finding 2026-08-09: the Month tab was silently showing all-time).
   // All-time stays visible in the stats grid as "Total Earned".
   const monthTotal    = Number(dashboard?.month?.earned ?? 0);
+  const monthTrips    = Number(dashboard?.month?.deliveries ?? 0);
   const displayAmount = period === 'today' ? todayTotal : period === 'week' ? weekTotal : monthTotal;
   const displayLabel  = period === 'today' ? "Today's Earnings" : period === 'week' ? 'This Week' : 'This Month';
 
@@ -138,12 +139,32 @@ export default function EarningsScreen() {
     { id: 'month', label: 'Month' },
   ];
 
+  /*
+   * The grid resets every month (founder 2026-09-05, looking at his own
+   * screen: "it worse imaging someome seen their life time earning it
+   * should be able to reset each month").
+   *
+   * It used to end on Total Trips and Total Earned, both all-time. For a
+   * driver a few weeks in, a lifetime figure is a small number that only
+   * ever grows slowly, sat under a control offering Today, Week and
+   * Month: three windows that reset, and two tiles that never do. A month
+   * that starts again is the number a rider can actually move, and it
+   * matches how they are paid and how they think about a good month.
+   *
+   * Avg / Trip moves to the month for the same reason: an average over a
+   * lifetime stops responding to this week's work almost immediately,
+   * which is the opposite of what an average is for here.
+   *
+   * Nothing is lost. All-time earnings and trips still exist on the
+   * Profile tab and in the tax statement, which is where a total that
+   * spans years belongs.
+   */
   const STATS = [
-    { label: 'This Week',    value: naira(weekTotal),                                                                 Icon: Calendar,   color: theme.primary },
-    { label: 'Avg / Trip',   value: naira(totalEarned / Math.max(totalTrips, 1)),                                     Icon: TrendingUp, color: '#16A34A' },
+    { label: 'This Week',       value: naira(weekTotal),                                    Icon: Calendar,   color: theme.primary },
+    { label: 'Avg / Trip',      value: naira(monthTotal / Math.max(monthTrips, 1)),         Icon: TrendingUp, color: '#16A34A' },
     // Trips are a count, not money: they stay whole.
-    { label: 'Total Trips',  value: totalTrips.toLocaleString(),                                                      Icon: Receipt,    color: '#0F2B4C' },
-    { label: 'Total Earned', value: nairaShort(totalEarned),                                                          Icon: Ribbon,     color: '#FFBE0B' },
+    { label: 'Trips This Month', value: monthTrips.toLocaleString(),                        Icon: Receipt,    color: '#0F2B4C' },
+    { label: 'This Month',      value: nairaShort(monthTotal),                              Icon: Ribbon,     color: '#FFBE0B' },
   ];
 
   return (

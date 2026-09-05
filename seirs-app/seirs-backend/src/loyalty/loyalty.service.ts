@@ -398,6 +398,35 @@ export class LoyaltyService {
     return { awarded, reason: 'ok', flaggedForReview: flagged };
   }
 
+  /**
+   * Points for a business booking, written to the ledger.
+   *
+   * Business points were a bare integer on business_accounts, incremented
+   * by a raw UPDATE in the payment handler. The number was right and it is
+   * unchanged here, but an integer has no history: the business Rewards
+   * screen could show a balance and nothing else, so its activity list read
+   * payment rows as a stand-in and its chart read a field that did not
+   * exist. A ledger entry per award fixes all three at once, and gives
+   * business accounts the same 30-day series the customer screen uses.
+   *
+   * Deliberately NOT awardDeliveryPoints: that applies the customer tier
+   * multiplier, and this must keep paying exactly what the raw UPDATE paid
+   * (pointsForSpend, the platform rate) or every business balance changes
+   * the day it ships.
+   */
+  async awardBusinessDeliveryPoints(params: {
+    userId:     string;
+    deliveryId: string;
+    naira:      number;
+  }): Promise<LoyaltyPoint> {
+    return this.recordEntry({
+      userId:            params.userId,
+      delta:             await this.pointsForSpend(params.naira),
+      reason:            'delivery_complete',
+      relatedDeliveryId: params.deliveryId,
+    });
+  }
+
   async awardRateDriver(userId: string, deliveryId: string): Promise<LoyaltyPoint> {
     return this.recordEntry({
       userId,
@@ -652,6 +681,66 @@ export class LoyaltyService {
 
     const earned = Number(sum);
     return TIER_THRESHOLDS.find(t => earned >= t.min)?.tier ?? 'bronze';
+  }
+
+  /**
+   * Points per day for the last `days` days, earned and spent kept apart.
+   *
+   * The Rewards chart used to derive this from the history array, which is
+   * capped at 20 entries: an active customer's "last 7 days" silently lost
+   * every day older than their twentieth most recent ledger row, and the
+   * quiet days it invented were the ones most worth showing. Aggregating in
+   * SQL means the chart is exact whether somebody has three entries or
+   * three thousand, and it stays one query no matter how long the range.
+   *
+   * Returns a dense array: days with no activity come back as zeroes rather
+   * than gaps, so the caller can render bars without filling holes itself.
+   */
+  async getDailySeries(userId: string, days = 30): Promise<Array<{ date: string; earned: number; spent: number }>> {
+    if (!userId) throw new BadRequestException('Missing user id.');
+    const span = Math.min(Math.max(Math.round(days), 1), 90);
+
+    /*
+     * Days are Lagos days, on both sides of the query.
+     *
+     * The server runs UTC and the customers do not. Bucketing on the raw
+     * timestamp puts points earned after 11pm WAT on the previous day's
+     * bar, so a late booking shows up as yesterday and today reads empty.
+     * West Africa Time has no daylight saving, so the offset is a flat
+     * hour and can simply be added.
+     */
+    const WAT_MS = 60 * 60 * 1000;
+    const lagosNow = new Date(Date.now() + WAT_MS);
+    const startUtcMs = Date.UTC(
+      lagosNow.getUTCFullYear(), lagosNow.getUTCMonth(), lagosNow.getUTCDate(),
+    ) - WAT_MS;                            // midnight Lagos today, as a real instant
+    const since = new Date(startUtcMs - (span - 1) * 24 * 60 * 60 * 1000);
+
+    const DAY_EXPR = `to_char(p.createdAt AT TIME ZONE 'Africa/Lagos', 'YYYY-MM-DD')`;
+    const rows = await this.repo
+      .createQueryBuilder('p')
+      .select(DAY_EXPR, 'date')
+      .addSelect('SUM(GREATEST(p.delta, 0))', 'earned')
+      .addSelect('SUM(GREATEST(-p.delta, 0))', 'spent')
+      .where('p.userId = :userId', { userId })
+      .andWhere('p.createdAt >= :since', { since })
+      .groupBy(DAY_EXPR)
+      .getRawMany();
+
+    const byDate = new Map(rows.map((r: any) => [r.date, r]));
+    const out: Array<{ date: string; earned: number; spent: number }> = [];
+    for (let i = 0; i < span; i++) {
+      // Read back in Lagos terms so the key matches the to_char above.
+      const d = new Date(since.getTime() + i * 24 * 60 * 60 * 1000 + WAT_MS);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+      const hit = byDate.get(key) as any;
+      out.push({
+        date:   key,
+        earned: Number(hit?.earned ?? 0),
+        spent:  Number(hit?.spent ?? 0),
+      });
+    }
+    return out;
   }
 
   async getHistory(userId: string, limit = 50): Promise<LoyaltyPoint[]> {

@@ -725,6 +725,18 @@ export default function TravelBuddyScreen() {
                     ? `${trip.segment.boardCity} → ${trip.segment.alightCity}`
                     : `${trip.fromCity} → ${trip.toCity}`}
                 </Text>
+                {/*
+                  The stops in between, which is the whole point of a
+                  declared trip and was the one thing the card never said.
+                  A passenger searching Ile-Ife to Ibadan saw "Ile-Ife →
+                  Lagos" and had to guess whether the run served them
+                  (founder, 2026-09-05, watching it happen).
+                */}
+                {trip.stopCities?.length > 2 && (
+                  <Text style={[styles.tripMeta, { color: theme.textSecond }]} numberOfLines={2}>
+                    via {trip.stopCities.slice(1, -1).join(' · ')}
+                  </Text>
+                )}
                 {trip.segment && (
                   <Text style={[styles.tripMeta, { color: theme.textThird }]}>
                     part of {trip.fromCity} → {trip.toCity}
@@ -749,10 +761,13 @@ export default function TravelBuddyScreen() {
                     send them to the wrong city. */}
                 <Text style={[styles.tripMeta, { color: theme.textThird }]}>
                   {trip.segment
-                    ? `Board at ${trip.segment.boardCity} (exact spot once the driver accepts)`
+                    ? `Get on at ${trip.segment.boardCity}, off at ${trip.segment.alightCity}`
                     : trip.pickupMode === 'fixed' && trip.pickupArea
-                      ? `Boards in ${trip.pickupArea}`
+                      ? `Gets you on at ${trip.pickupArea}, off at ${trip.toCity}`
                       : 'Pickup along the route (agree in chat)'}
+                </Text>
+                <Text style={[styles.tripMeta, { color: theme.textThird }]}>
+                  Exact spot once the driver accepts you
                 </Text>
               </View>
             </View>
@@ -793,26 +808,37 @@ export default function TravelBuddyScreen() {
               </View>
             </View>
 
+            {/*
+              The foot had three jobs on one row: how many seats are left,
+              a filled pill, and a long text link that ended up as heavy as
+              the pill. On a narrow phone it wrapped, and the founder's word
+              for it was "jam packed" (2026-09-05).
+
+              Seats are INFORMATION, so they move up out of the way. The two
+              things a passenger can do become two buttons of equal width:
+              filled for the seat, outlined for the parcel. Same shape, same
+              height, one obviously primary.
+            */}
+            <Text style={[styles.seatsLine, { color: theme.textSecond }]}>
+              {trip.acceptsPassengers && trip.seatsLeft > 0
+                ? `${trip.seatsLeft} seat${trip.seatsLeft === 1 ? '' : 's'} left`
+                : trip.acceptsPassengers
+                  ? 'Trip is full'
+                  : 'Packages only on this trip'}
+              {trip.spareCapacityKg > 0 ? ` · ${trip.spareCapacityKg} kg spare` : ''}
+            </Text>
+
             <View style={styles.tripFoot}>
-              {trip.acceptsPassengers && trip.seatsLeft > 0 ? (
-                <>
-                  <Text style={[styles.seatsLeft, { color: theme.text }]}>
-                    {trip.seatsLeft} seat{trip.seatsLeft === 1 ? '' : 's'} left
-                  </Text>
-                  <Pressable
-                    style={[styles.bookBtn, { backgroundColor: theme.primary }, booking === trip.id && { opacity: 0.6 }]}
-                    disabled={booking === trip.id}
-                    onPress={() => bookSeat(trip)}
-                  >
-                    {booking === trip.id
-                      ? <ActivityIndicator color="#fff" size="small" />
-                      : <Text style={styles.bookBtnText}>Book a seat</Text>}
-                  </Pressable>
-                </>
-              ) : trip.acceptsPassengers ? (
-                <Text style={[styles.seatsLeft, { color: theme.textThird }]}>Trip is full</Text>
-              ) : (
-                <Text style={[styles.seatsLeft, { color: theme.textThird }]}>Packages only on this trip</Text>
+              {trip.acceptsPassengers && trip.seatsLeft > 0 && (
+                <Pressable
+                  style={[styles.actionBtn, { backgroundColor: theme.primary }, booking === trip.id && { opacity: 0.6 }]}
+                  disabled={booking === trip.id}
+                  onPress={() => bookSeat(trip)}
+                >
+                  {booking === trip.id
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.actionBtnText}>Book a seat</Text>}
+                </Pressable>
               )}
               {/*
                 This read "Send a package →" beside a specific rider's
@@ -835,6 +861,7 @@ export default function TravelBuddyScreen() {
               */}
               {trip.acceptsPackages && (
                 <Pressable
+                  style={[styles.actionBtn, styles.actionBtnGhost, { borderColor: theme.primary }]}
                   onPress={() => router.push({
                     pathname: '/(customer)/send',
                     params: {
@@ -843,9 +870,7 @@ export default function TravelBuddyScreen() {
                     },
                   } as any)}
                 >
-                  <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: '600' }}>
-                    Send a parcel on this trip →
-                  </Text>
+                  <Text style={[styles.actionBtnText, { color: theme.primary }]}>Send a parcel</Text>
                 </Pressable>
               )}
             </View>
@@ -928,7 +953,11 @@ const styles = StyleSheet.create({
   vehicleDesc: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   // Plates are read at a distance, so they get the letter spacing.
   vehiclePlate:{ fontSize: FontSize.base, fontWeight: '700', letterSpacing: 1, marginTop: 1 },
-  tripFoot:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  seatsLine:     { fontSize: FontSize.xs, fontWeight: '600', marginTop: 10 },
+  actionBtn:     { flex: 1, minHeight: 44, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  actionBtnGhost:{ backgroundColor: 'transparent', borderWidth: 1.5 },
+  actionBtnText: { color: '#fff', fontSize: FontSize.sm, fontWeight: '700' },
+  tripFoot:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
   seatsLeft: { fontSize: FontSize.sm, fontWeight: '700' },
   bookBtn:   { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999 },
   bookBtnText: { color: '#fff', fontSize: FontSize.sm, fontWeight: '700' },

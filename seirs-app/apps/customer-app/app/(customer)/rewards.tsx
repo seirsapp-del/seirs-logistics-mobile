@@ -32,6 +32,13 @@ const TIERS: Array<{
 
 // Redemption catalogue MUST mirror loyalty.controller.ts REDEMPTION_COSTS.
 // If the backend changes, this list changes.
+/*
+ * 'priority' is GONE from the catalogue (founder 2026-09-05: "okay delete
+ * it to make it less complicated"). It was never redeemable, and worse it
+ * advertised something the tier policy says we will not do: tiers unlock
+ * the earning multiplier and nothing else. The type keeps the value so the
+ * backend contract and any historical ledger row still parse.
+ */
 type RedemptionType = 'discount_500' | 'free_delivery' | 'priority' | 'insurance';
 
 interface Redemption {
@@ -58,7 +65,6 @@ interface Redemption {
 
 const REDEMPTIONS: Redemption[] = [
   { type: 'insurance',    label: '₦500 insurance cover',  desc: 'Insure a single delivery up to ₦50,000',            cost: 200,  icon: 'shield-checkmark-outline', live: false },
-  { type: 'priority',     label: 'Priority dispatch',      desc: 'Skip the queue on your next booking',              cost: 300,  icon: 'flash-outline', live: false },
   { type: 'discount_500', label: '₦500 off',              desc: '₦500 discount on your next delivery',              cost: 500,  icon: 'pricetag-outline', live: true },
   { type: 'free_delivery',label: 'Free delivery',          desc: 'One free delivery up to ₦2,000',                   cost: 1000, icon: 'gift-outline', live: true },
 ];
@@ -317,6 +323,18 @@ export default function RewardsScreen() {
 
         {/* The week, as bars. See `week` above for why earned and spent
             are kept apart rather than netted. */}
+        {/*
+          ALWAYS shown (founder 2026-09-05: "i also like the calender that
+          shows them the points they earn this week... if its real i want
+          it back"). It is real: it reads the loyalty ledger, and a blank
+          week means a blank week rather than a stub.
+          
+          I had briefly collapsed it to a line when empty, to kill the dead
+          space he had complained about. Wrong trade: hiding the chart on a
+          quiet week removes exactly the nudge a quiet week needs. The dead
+          space is fixed inside the card instead, by saying what the empty
+          bars mean and how far the next tier is.
+        */}
         <View style={[styles.weekCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <View style={styles.weekHead}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Last 7 days</Text>
@@ -346,7 +364,9 @@ export default function RewardsScreen() {
 
           <Text style={[styles.weekFoot, { color: theme.textSecond }]}>
             {week.earned === 0 && week.spent === 0
-              ? 'Book a delivery and your points will show up here.'
+              ? (nextTier
+                  ? `Nothing yet this week. Every delivery earns, and you are ${(nextTier.min - points).toLocaleString()} points from ${nextTier.name}.`
+                  : 'Nothing yet this week. Every delivery you book earns points.')
               : `Earned ${week.earned.toLocaleString()}, redeemed ${week.spent.toLocaleString()} this week.`}
           </Text>
         </View>
@@ -391,11 +411,19 @@ export default function RewardsScreen() {
                 <View style={[styles.redeemBtn, { backgroundColor: theme.primary }]}>
                   <Text style={styles.redeemBtnText}>Redeem</Text>
                 </View>
-              ) : (
+              ) : points < r.cost ? (
                 <Text style={[styles.needMore, { color: theme.textThird }]}>
                   {(r.cost - points).toLocaleString()} more
                 </Text>
-              )}
+              ) : null}
+              {/*
+                This printed `cost - points` in EVERY non-redeemable case,
+                so a reward you could easily afford but which is not live
+                yet read "-211 more" (founder 2026-09-05, 411 points
+                against a 200 point reward). Negative points needed is not
+                a thing. The row already says "Not available yet", which is
+                the actual reason, so nothing more belongs here.
+              */}
             </Pressable>
           );
         })}
@@ -438,8 +466,22 @@ export default function RewardsScreen() {
           })}
         </View>
 
-        {/* Recent activity from the ledger. Empty state when no activity yet. */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent activity</Text>
+        {/*
+          Capped at 8 rows, and now it SAYS so (founder 2026-09-05: "if the
+          user have 1000 orders and earn points every time that will be a
+          long scrolling"). The cap already existed; what did not exist was
+          any way for a person to know they were looking at a window rather
+          than the whole ledger. Eight silent rows and a thousand
+          deliveries look identical.
+        */}
+        <View style={styles.activityHead}>
+          <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>Recent activity</Text>
+          {history.length > 8 && (
+            <Text style={[styles.activityCount, { color: theme.textThird }]}>
+              Last 8 of {history.length.toLocaleString()}
+            </Text>
+          )}
+        </View>
         {loading ? (
           <ActivityIndicator color={theme.primary} style={{ marginTop: Spacing.md }} />
         ) : history.length === 0 ? (
@@ -470,17 +512,31 @@ export default function RewardsScreen() {
         )}
 
         {/* How to earn: numbers match backend loyalty.service.ts exactly */}
-        <View style={[styles.earnCard, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
+        {/*
+          Plain surface, not a blue plate (founder 2026-09-05: "the bottom
+          has the blue that makes it look somehow"). #001020 is a blue-black
+          that sits a few percent off the near-black page behind it, so it
+          read as a muddy smudge rather than a card. It now uses the same
+          surface and border every other card on this screen uses, which is
+          the business app's restraint applied here.
+
+          And the leading pictograms are gone. Five different objects, a
+          car, a card, two people, a star and a trophy, all in accent blue
+          at 16px, read as emoji rather than as a list: the eye sorts them
+          as pictures and the text becomes the caption. The points figure
+          IS the information, so it leads each line instead.
+        */}
+        <View style={[styles.earnCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.earnTitle, { color: theme.text }]}>How to earn</Text>
           {[
-            { icon: 'car-outline',    text: '10 pts per ₦1,000 spent on a delivery' },
-            { icon: 'card-outline',   text: '+5 bonus pts when you pay by bank transfer' },
-            { icon: 'people-outline', text: '200 pts per friend who signs up + completes a delivery' },
-            { icon: 'star-outline',   text: '5 pts for rating a driver' },
-            { icon: 'trophy-outline', text: '50 pts bonus on your 5th delivery each month' },
+            { pts: '10 pts',  text: 'per ₦1,000 spent on a delivery' },
+            { pts: '+5 pts',  text: 'bonus when you pay by bank transfer' },
+            { pts: '200 pts', text: 'per friend who signs up and completes a delivery' },
+            { pts: '5 pts',   text: 'for rating a driver' },
+            { pts: '50 pts',  text: 'bonus on your 5th delivery each month' },
           ].map(item => (
             <View key={item.text} style={styles.earnRow}>
-              <Ionicons name={item.icon as any} size={16} color={theme.primary} />
+              <Text style={[styles.earnPts, { color: theme.primary }]}>{item.pts}</Text>
               <Text style={[styles.earnText, { color: theme.textSecond }]}>{item.text}</Text>
             </View>
           ))}
@@ -544,7 +600,7 @@ const styles = StyleSheet.create({
   weekHead:   { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   cardTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   weekEarned: { fontSize: FontSize.sm, fontWeight: '700' },
-  weekBars:   { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 86, gap: 6 },
+  weekBars:   { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 72, gap: 6 },
   weekCol:    { flex: 1, alignItems: 'center', gap: 6 },
   // The track is the full height so every bar shares one baseline; the
   // bar grows inside it. Without the track a short bar would float.
@@ -578,6 +634,9 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   emptySub:   { fontSize: FontSize.xs, textAlign: 'center' },
 
+  activityHead:  { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
+                   marginBottom: Spacing.sm },
+  activityCount: { fontSize: FontSize.xs, fontWeight: '600' },
   activityRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1 },
   activityIcon:  { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   activityReason:{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
@@ -587,6 +646,10 @@ const styles = StyleSheet.create({
   earnCard:  { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: 8, marginTop: Spacing.sm },
   earnTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   earnRow:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // Fixed width so five different figures share one left edge and the
+  // sentences after them line up. Tabular figures for the same reason.
+  earnPts:   { width: 62, fontSize: FontSize.sm, fontWeight: '800',
+               fontVariant: ['tabular-nums'] },
   earnText:  { flex: 1, fontSize: FontSize.sm, lineHeight: 19 },
   earnFine:  { fontSize: FontSize.xs, marginTop: 4, lineHeight: 15 },
 });

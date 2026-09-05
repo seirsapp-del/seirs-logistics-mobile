@@ -1,10 +1,13 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { BusinessOnlyGuard } from './business-only.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { DevPlatformService } from './dev-platform.service';
 
-@UseGuards(JwtAuthGuard)
+// JwtAuthGuard proves who you are; BusinessOnlyGuard proves you are
+// allowed to be here at all. See business-only.guard.ts.
+@UseGuards(JwtAuthGuard, BusinessOnlyGuard)
 @Controller('dev-platform')
 export class DevPlatformController {
   constructor(private readonly svc: DevPlatformService) {}

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Ip, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Ip, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -20,9 +20,25 @@ export class AuthController {
   // under the loose global default is a brute-force target, and the
   // resend and reset routes are free email cannons.
   @Throttle({ default: { ttl: 60000, limit: 5 } })
+  /**
+   * Customer signup. The DRIVER app uses /auth/driver-register.
+   *
+   * `role` used to be taken straight from the request body, so anyone
+   * could POST role: 'driver' here and mint a driver account without ever
+   * opening the driver app. The Play Store button on the customer
+   * onboarding was the only thing steering people, and a button is not a
+   * gate. Contained rather than severe (a new driver lands PENDING and
+   * setOnline refuses anyone not APPROVED) but it let accounts skip
+   * everything the driver signup collects.
+   */
   @Post('register')
   register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+    if (dto.role && String(dto.role) !== 'customer') {
+      // Refused rather than quietly coerced: a driver signup that silently
+      // produced a customer account would be a worse surprise than an error.
+      throw new BadRequestException('Use the SEIRS Driver app to create a driver account.');
+    }
+    return this.authService.register({ ...dto, role: 'customer' } as RegisterDto);
   }
 
   // Stricter limit: 10 login attempts per minute per IP before lockout
@@ -32,7 +48,26 @@ export class AuthController {
     // The user-agent is the only thing distinguishing one sign-in from
     // another, so it has to reach the service for the new-device alert
     // to have anything to compare against.
-    return this.authService.login(dto, { userAgent });
+    return this.authService.login(dto, { userAgent }, 'customer');
+  }
+
+  /**
+   * The driver app signs in here, not on /auth/login.
+   *
+   * Same throttle as the other two: this endpoint takes a password, so it
+   * is a guessing surface like any other.
+   */
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Post('driver-register')
+  driverRegister(@Body() dto: RegisterDto) {
+    // The role is set here, not read from the body.
+    return this.authService.register({ ...dto, role: 'driver' } as RegisterDto);
+  }
+
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @Post('driver-login')
+  driverLogin(@Body() dto: LoginDto, @Headers('user-agent') userAgent?: string) {
+    return this.authService.login(dto, { userAgent }, 'driver');
   }
 
   @Throttle({ default: { ttl: 60000, limit: 10 } })
@@ -159,6 +194,8 @@ export class AuthController {
   // admin is actively using the dashboard. Non-admin callers get the
   // platform default (7d) so it's effectively a no-op for them.
   @UseGuards(JwtAuthGuard)
+  // The only auth route that carried no throttle (audit 2026-09-05).
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
   @Post('refresh')
   refresh(@CurrentUser() user: User) {
     return this.authService.refreshToken(user.id);

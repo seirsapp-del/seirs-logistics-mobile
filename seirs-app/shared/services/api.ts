@@ -192,6 +192,32 @@ export const authApi = {
     ...(body.vehicleType ? { vehicleType: VEHICLE_ALIASES[body.vehicleType] ?? body.vehicleType } : {}),
   }, false),
 
+  /**
+   * Driver sign-in. Refuses a non-driver account.
+   *
+   * The driver app used `login` above, which is the customer endpoint and
+   * checked no role at all, so either app accepted either account.
+   */
+  /**
+   * Driver signup. Hits /auth/driver-register, which sets the role server
+   * side. /auth/register now refuses role: driver outright.
+   */
+  registerDriver: (body: {
+    name: string; email: string; phone: string; password: string;
+    vehicleType?: string;
+    ageConfirmed?: boolean; termsAcceptedAt?: string; referralCode?: string;
+    homeAddress?: {
+      label: string; street: string; city: string; state: string;
+      coords?: { lat: number; lng: number } | null;
+    };
+  }) => request<{ message: string; requiresOtp: boolean }>('POST', '/auth/driver-register', {
+    ...body,
+    ...(body.vehicleType ? { vehicleType: VEHICLE_ALIASES[body.vehicleType] ?? body.vehicleType } : {}),
+  }, false),
+
+  loginDriver: (email: string, password: string) =>
+    request<{ token: string; user: any }>('POST', '/auth/driver-login', { email, password }, false),
+
   verifyOtp: (email: string, otp: string) =>
     request<{ token: string; user: any }>('POST', '/auth/verify-otp', { email, otp }, false),
 

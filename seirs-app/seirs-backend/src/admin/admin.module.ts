@@ -117,7 +117,11 @@ export class AdminModule implements OnModuleInit {
       await this.usersRepo.query(`
         ALTER TABLE "users"
           ADD COLUMN IF NOT EXISTS "totpSecret"  varchar(64) NULL,
-          ADD COLUMN IF NOT EXISTS "totpEnabled" boolean NOT NULL DEFAULT false
+          ADD COLUMN IF NOT EXISTS "totpEnabled" boolean NOT NULL DEFAULT false,
+          -- OTP guessing counter (audit 2026-09-05). The route throttle is
+          -- per IP, so a distributed attacker had unlimited tries at a six
+          -- digit code, and verify-otp hands back a session.
+          ADD COLUMN IF NOT EXISTS "emailOtpAttempts" int NOT NULL DEFAULT 0
       `);
     } catch (e: any) {
       console.error(`totp columns self-heal failed: ${e?.message ?? e}`);

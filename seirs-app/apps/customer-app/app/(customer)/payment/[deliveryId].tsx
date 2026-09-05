@@ -8,7 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ShieldCheck } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { paymentsApi, deliveriesApi } from '@/services/api';
+import { paymentsApi, deliveriesApi, loyaltyApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 
@@ -24,6 +24,30 @@ import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 // the protection copy promises only what the failed-delivery policy
 // actually does.
 
+
+/*
+ * What points can be spent on, here, at the moment of paying.
+ *
+ * Redeeming has always worked, but only from the Rewards screen and only
+ * on a booking that already exists, so the real sequence was: book, leave
+ * the flow, open Rewards, find this delivery in a list, redeem, come back,
+ * pay. Nobody was ever going to do that, which is why the founder asked
+ * (2026-09-05) whether points could be used at checkout. They could not.
+ *
+ * Only the two redemptions the server will actually honour. Priority and
+ * parcel cover are refused by loyalty.service with the points untouched,
+ * because neither is a real product yet, so offering them here would be
+ * a button whose only outcome is an error.
+ *
+ * The saving for a free delivery is deliberately not computed here: the
+ * server caps it with loyalty_free_delivery_max_ngn and refuses outright
+ * above the cap, so a figure guessed client-side would be a promise this
+ * screen cannot keep.
+ */
+const POINT_REWARDS = [
+  { type: 'discount_500' as const,  cost: 500,  label: '₦500 off',      note: 'Comes off this booking.' },
+  { type: 'free_delivery' as const, cost: 1000, label: 'Free delivery', note: 'Covers this booking up to the reward cap.' },
+];
 
 export default function PaymentScreen() {
   const { deliveryId, price, trackingCode } = useLocalSearchParams<{
@@ -71,6 +95,53 @@ export default function PaymentScreen() {
       })
       .catch(() => { /* no cards, hosted checkout only */ });
   }, []);
+
+  /*
+   * Points, and spending them without leaving this screen.
+   *
+   * The delivery is re-fetched after a redemption rather than the price
+   * being adjusted locally: the server decides what a reward is worth, and
+   * the number on the pay button has to be the number that gets charged.
+   */
+  const [points,     setPoints]     = useState<number | null>(null);
+  const [redeeming,  setRedeeming]  = useState<string | null>(null);
+  const [pointsMsg,  setPointsMsg]  = useState('');
+  const [pointsErr,  setPointsErr]  = useState('');
+
+  useEffect(() => {
+    loyaltyApi.balance()
+      .then((b: any) => setPoints(Number(b?.balance ?? 0)))
+      .catch(() => { /* points are a bonus here, never a blocker on paying */ });
+  }, []);
+
+  // Rewards attach to a booking that has not been paid for or dispatched.
+  // Anything else and the server refuses, so the card does not appear.
+  const canUsePoints =
+    !!delivery &&
+    !delivery?.paymentHeldAt &&
+    ['pending', 'assigned'].includes(String(delivery?.status ?? ''));
+
+  const usePoints = async (type: 'discount_500' | 'free_delivery', cost: number) => {
+    setPointsErr('');
+    setRedeeming(type);
+    try {
+      await loyaltyApi.redeem(type, String(deliveryId));
+      // Both numbers move together: the balance and the amount due.
+      const [fresh, bal] = await Promise.all([
+        deliveriesApi.get(String(deliveryId)).catch(() => null),
+        loyaltyApi.balance().catch(() => null),
+      ]);
+      if (fresh) setDelivery(fresh);
+      if (bal)   setPoints(Number((bal as any)?.balance ?? 0));
+      setPointsMsg('Reward applied. ' + cost.toLocaleString() + ' points used.');
+    } catch (e: any) {
+      // The server's refusals are written for the customer ("your points
+      // have not been touched"), so they are shown as they are.
+      setPointsErr(e?.message ?? 'Could not apply that reward. Your points have not been touched.');
+    } finally {
+      setRedeeming(null);
+    }
+  };
 
   const handlePayWithSavedCard = async () => {
     if (!savedCard) return;
@@ -213,6 +284,52 @@ export default function PaymentScreen() {
           </View>
         )}
 
+        {canUsePoints && points !== null && (
+          <View style={[styles.sumCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={styles.sumRow}>
+              <Text style={[styles.sumTotal, { color: theme.text }]}>Use your points</Text>
+              <Text style={[styles.sumValue, { color: theme.textSecond }]}>
+                {points.toLocaleString()} points
+              </Text>
+            </View>
+
+            {POINT_REWARDS.map((r) => {
+              const afford = points >= r.cost;
+              const busy   = redeeming === r.type;
+              return (
+                <View key={r.type} style={[styles.sumRow, { alignItems: 'center', paddingVertical: 8 }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.sumValue, { color: theme.text }]}>{r.label}</Text>
+                    <Text style={[styles.sumLabel, { color: theme.textThird, marginTop: 2 }]}>
+                      {afford ? r.note : (r.cost - points).toLocaleString() + ' points to go'}
+                    </Text>
+                  </View>
+                  {afford && (
+                    <Pressable
+                      disabled={!!redeeming}
+                      onPress={() => usePoints(r.type, r.cost)}
+                      style={[styles.useBtn, { borderColor: theme.primary }, !!redeeming && { opacity: 0.6 }]}
+                    >
+                      {busy
+                        ? <ActivityIndicator size="small" color={theme.primary} />
+                        : <Text style={[styles.useBtnText, { color: theme.primary }]}>
+                            Use {r.cost.toLocaleString()}
+                          </Text>}
+                    </Pressable>
+                  )}
+                </View>
+              );
+            })}
+
+            {!!pointsMsg && (
+              <Text style={[styles.sumLabel, { color: '#16A34A', fontWeight: '700' }]}>{pointsMsg}</Text>
+            )}
+            {!!pointsErr && (
+              <Text style={[styles.sumLabel, { color: '#DC2626' }]}>{pointsErr}</Text>
+            )}
+          </View>
+        )}
+
         {alreadyPaid ? (
           <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
@@ -325,6 +442,8 @@ const styles = StyleSheet.create({
   sumCard:      { marginHorizontal: Spacing.xl, borderRadius: Radius.md, borderWidth: 1, padding: Spacing.md, marginBottom: Spacing.md },
   sumTitle:     { fontSize: 17, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
   sumRow:       { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
+  useBtn:       { paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.lg, borderWidth: 1.5, minWidth: 84, alignItems: 'center' },
+  useBtnText:   { fontSize: 13, fontWeight: '700' },
   sumLabel:     { fontSize: 13 },
   sumValue:     { fontSize: 13, flex: 1, textAlign: 'right' },
   sumTotal:     { fontSize: 17, fontWeight: FontWeight.bold },

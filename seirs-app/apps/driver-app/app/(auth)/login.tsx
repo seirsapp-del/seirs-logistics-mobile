@@ -54,7 +54,9 @@ export default function LoginScreen() {
     setError('');
     setLoading(true);
     try {
-      const res = await authApi.login(email, password);
+      // driver-login, not login: the customer endpoint accepts any account
+      // and this app has nothing to show somebody without a driver profile.
+      const res = await authApi.loginDriver(email, password);
       await login({ ...res.user, token: res.token }, rememberMe);
     } catch (e: any) {
       const msg: string = e.message ?? '';

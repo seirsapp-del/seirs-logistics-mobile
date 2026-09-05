@@ -26,6 +26,7 @@ import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { collectUrl } from '@/constants/config';
 import { statusTint } from '@/constants/tint';
+import { loyaltyApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import DeliveryTrackMap from '@/components/DeliveryTrackMap';
 import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
@@ -40,6 +41,16 @@ import { Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
  */
 
 
+
+/*
+ * What points buy on a business booking. Only the two the server will
+ * honour: priority and parcel cover are refused with the points left
+ * untouched, because neither is a real product yet.
+ */
+const POINT_REWARDS = [
+  { type: 'discount_500' as const,  cost: 500,  label: '₦500 off' },
+  { type: 'free_delivery' as const, cost: 1000, label: 'Free delivery' },
+];
 
 export default function DeliveryDetailScreen() {
   // Themed dialogs, not the Android system AlertDialog (work order
@@ -104,6 +115,32 @@ export default function DeliveryDetailScreen() {
       .catch(() => setD(null))
       .finally(() => setLoading(false));
   }, [id]);
+
+
+  /*
+   * Points, declared with the other hooks and ABOVE the loading and
+   * not-found early returns further down.
+   *
+   * They were first written beside isUnpaid, which sits after those
+   * returns, so the component ran four hooks once the delivery had loaded
+   * and none while it was still loading. React counts hooks per render:
+   * the count changed between the two passes and the screen died with
+   * "Rendered more hooks than during the previous render" the moment the
+   * data arrived.
+   */
+  const [points,    setPoints]    = useState<number | null>(null);
+  const [redeeming, setRedeeming] = useState<string | null>(null);
+  const [pointsMsg, setPointsMsg] = useState('');
+  const [pointsErr, setPointsErr] = useState('');
+
+  // Reads d directly: isUnpaid is derived below, past those early returns.
+  const unpaidForPoints = !!d && String(d.status) === 'pending' && !d.paymentHeldAt;
+  useEffect(() => {
+    if (!unpaidForPoints) return;
+    loyaltyApi.balance()
+      .then((b: any) => setPoints(Number(b?.balance ?? 0)))
+      .catch(() => { /* points are a bonus here, never a blocker on paying */ });
+  }, [unpaidForPoints]);
 
   const copyCode = async (code: string) => {
     try {
@@ -208,6 +245,25 @@ export default function DeliveryDetailScreen() {
    * had the correct rule all along.
    */
   const isUnpaid = String(d.status) === 'pending' && !d.paymentHeldAt;
+
+
+  const usePoints = async (type: 'discount_500' | 'free_delivery', cost: number) => {
+    setPointsErr('');
+    setRedeeming(type);
+    try {
+      await loyaltyApi.redeem(type, String(id));
+      const bal = await loyaltyApi.balance().catch(() => null);
+      if (bal) setPoints(Number((bal as any)?.balance ?? 0));
+      setPointsMsg('Reward applied. ' + cost.toLocaleString() + ' points used.');
+      const fresh = await businessApi.delivery(String(id)).catch(() => null);
+      if (fresh) setD(fresh);
+    } catch (e: any) {
+      // The server writes its refusals for the sender, so they are shown as they are.
+      setPointsErr(e?.message ?? 'Could not apply that reward. Your points have not been touched.');
+    } finally {
+      setRedeeming(null);
+    }
+  };
 
   /**
    * Settle what is owed on a package that ended up at a counter.
@@ -381,6 +437,52 @@ export default function DeliveryDetailScreen() {
               <Text style={{ color: colors.textSecond, fontSize: FontSize.xs, marginTop: 6, lineHeight: 17 }}>
                 This booking is saved but not paid for. A driver is matched once payment goes through.
               </Text>
+
+              {/*
+                Points, spent here, where the money is.
+
+                Business points had no redemption path at all until the
+                ledger landed: they accumulated on an account and could
+                never be taken. They are ordinary ledger points now, so the
+                same server call the customer app uses works on a business
+                booking, and this is the only screen where a sender is
+                looking at an unpaid one.
+
+                The delivery is re-read afterwards rather than the price
+                being adjusted here: the server decides what a reward is
+                worth, and the Pay button must say what will be charged.
+              */}
+              {points !== null && points >= 500 && (
+                <View style={[styles.divider, { backgroundColor: colors.border, marginTop: 12 }]} />
+              )}
+              {points !== null && points >= 500 && (
+                <View style={{ gap: 8, marginTop: 10 }}>
+                  <View style={styles.rowBetween}>
+                    <Text style={[styles.cardLabel, { color: colors.textThird }]}>USE YOUR POINTS</Text>
+                    <Text style={[styles.cardLabel, { color: colors.textSecond }]}>
+                      {points.toLocaleString()} points
+                    </Text>
+                  </View>
+                  {POINT_REWARDS.filter(r => points >= r.cost).map(r => (
+                    <Pressable
+                      key={r.type}
+                      disabled={!!redeeming}
+                      onPress={() => usePoints(r.type, r.cost)}
+                      style={[styles.redeemBtn, { borderColor: colors.primary }, !!redeeming && { opacity: 0.6 }]}
+                    >
+                      <Text style={[styles.redeemText, { color: colors.primary }]}>
+                        {redeeming === r.type ? 'Applying…' : `${r.label} for ${r.cost.toLocaleString()} pts`}
+                      </Text>
+                    </Pressable>
+                  ))}
+                  {!!pointsMsg && (
+                    <Text style={{ color: '#16A34A', fontSize: FontSize.xs, fontWeight: '700' }}>{pointsMsg}</Text>
+                  )}
+                  {!!pointsErr && (
+                    <Text style={{ color: '#DC2626', fontSize: FontSize.xs }}>{pointsErr}</Text>
+                  )}
+                </View>
+              )}
               <Pressable
                 onPress={openCheckout}
                 disabled={paying}
@@ -705,6 +807,8 @@ const styles = StyleSheet.create({
   card:     { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 12, gap: 6 },
   cardLabel:{ fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
   cardValue:{ fontSize: 15, fontWeight: '600' },
+  redeemBtn:  { paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
+  redeemText: { fontSize: 13, fontWeight: '700' },
   divider:  { height: 1, marginVertical: 8 },
   rowBetween:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   sectionTitle:{ fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 8, marginTop: 6 },

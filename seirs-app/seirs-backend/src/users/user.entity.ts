@@ -232,6 +232,16 @@ export class User {
   @Column({ type: 'boolean', default: false })
   totpEnabled: boolean;
 
+  /**
+   * Wrong email-OTP guesses against the CURRENT code.
+   *
+   * Reset to 0 whenever a code is issued or accepted. The code is burned
+   * once this passes the limit, so a six digit secret cannot be ground
+   * down by an attacker rotating IP addresses past the route throttle.
+   */
+  @Column({ type: 'int', default: 0 })
+  emailOtpAttempts: number;
+
   @Column({ nullable: true })
   businessAccountId: string;
 

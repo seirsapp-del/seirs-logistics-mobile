@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
 import * as appleSignin from 'apple-signin-auth';
@@ -262,8 +263,12 @@ export class AuthService {
     }
     const otpMatch = await bcrypt.compare(dto.otp, user.emailVerificationOtp);
     if (!otpMatch) {
+      // Count it. The check above burns the code once this passes the limit.
+      await this.usersRepo.increment({ id: user.id }, 'emailOtpAttempts', 1);
       throw new BadRequestException('Invalid verification code.');
     }
+    // A correct code clears the counter for whatever is issued next.
+    await this.usersRepo.update(user.id, { emailOtpAttempts: 0 } as any);
 
     if (!user.emailVerificationExpiry || user.emailVerificationExpiry < new Date()) {
       throw new BadRequestException('Verification code has expired. Please request a new one.');
@@ -375,7 +380,25 @@ export class AuthService {
       .catch(e => this.logger.warn(`lockout notice failed for ${userId}: ${e?.message ?? e}`));
   }
 
-  async login(dto: LoginDto, ctx?: SignInContext) {
+  /**
+   * Sign in, for a named app.
+   *
+   * `expect` is the role the app doing the asking is for. Without it this
+   * method checked the password and nothing else, and BOTH the customer
+   * and the driver app called it: a customer could sign into the driver
+   * app and a driver into the customer app. Nothing leaked, because the
+   * driver routes carry JwtAuthGuard and a customer has no driver profile
+   * to read, so every call simply 404d "Driver profile not found" and the
+   * person sat in a shell that did nothing.
+   *
+   * Business already got this right through businessLogin, which refuses
+   * anyone without a businessRole. This is the same idea for the other two.
+   *
+   * The refusal deliberately reuses the credentials message: telling
+   * somebody "this is a driver account" confirms which app an email is
+   * registered on, to anybody who can type an address.
+   */
+  async login(dto: LoginDto, ctx?: SignInContext, expect?: 'customer' | 'driver') {
     const user = await this.usersRepo
       .createQueryBuilder('u')
       .addSelect('u.password')
@@ -387,6 +410,14 @@ export class AuthService {
       .getOne();
 
     if (!user) throw new UnauthorizedException('Invalid email or password.');
+
+    // Wrong app for this account. Business accounts are not checked here:
+    // they carry role CUSTOMER plus a businessRole and sign in through
+    // businessLogin, so whether a business owner may also use the customer
+    // app is a separate decision, not one to make silently in a guard.
+    if (expect && user.role !== expect) {
+      throw new UnauthorizedException('Invalid email or password.');
+    }
 
     // New soft-delete flow leaves isActive=true during the grace window;
     // the presence of deletionScheduledAt is what signals pending deletion.
@@ -448,6 +479,18 @@ export class AuthService {
       throw new UnauthorizedException('Invalid Google token.');
     }
 
+    /*
+     * Google says whether it has verified this address. We never asked.
+     *
+     * The account below is matched by email and then LINKED to this Google
+     * identity, with emailVerified set true. Doing that on an address
+     * Google itself has not verified is how a social button becomes an
+     * account takeover. Always true for gmail.com, not guaranteed for a
+     * Workspace domain, which is exactly the case worth refusing.
+     */
+    if ((payload as any).email_verified === false) {
+      throw new UnauthorizedException('That Google address is not verified. Verify it with Google first.');
+    }
     const email = AuthService.canonicalEmail(payload.email);
 
     let user = await this.usersRepo.findOne({ where: [{ googleId: payload.sub }, { email }] });
@@ -507,6 +550,10 @@ export class AuthService {
       if (!payload.email) {
         throw new BadRequestException('Email is required for first-time Apple sign-in.');
       }
+      // Same reasoning as the Google path. Apple sends this as a string.
+      if (String((payload as any).email_verified) === 'false') {
+        throw new UnauthorizedException('That Apple address is not verified.');
+      }
       const email     = AuthService.canonicalEmail(payload.email);
       const existing  = await this.usersRepo.findOne({ where: { email } });
       this.assertSocialRole(dto.role, existing, 'Apple');
@@ -552,6 +599,22 @@ export class AuthService {
     return { user };
   }
 
+  /**
+   * Reset tokens are stored hashed, never in the clear.
+   *
+   * The raw uuid goes in the email and nowhere else. A database dump used
+   * to hand over working reset tokens for anybody with a request in
+   * flight; now it hands over hashes, which are useless for the 15 minutes
+   * they would have been good for (audit 2026-09-05).
+   *
+   * sha256, not bcrypt: the value has to be LOOKED UP by the incoming
+   * token, so the hash must be deterministic. A uuid has full entropy
+   * already, so there is nothing for a salt to defend against.
+   */
+  private static hashResetToken(raw: string): string {
+    return createHash('sha256').update(raw).digest('hex');
+  }
+
   async forgotPassword(email: string) {
     if (!email) throw new BadRequestException('Email is required.');
     const user = await this.usersRepo.findOne({
@@ -569,7 +632,7 @@ export class AuthService {
     const expiry = new Date(Date.now() + 15 * 60 * 1000);
 
     await this.usersRepo.update(user.id, {
-      passwordResetToken:  token,
+      passwordResetToken:  AuthService.hashResetToken(token),
       passwordResetExpiry: expiry,
     });
 
@@ -636,7 +699,7 @@ export class AuthService {
       .createQueryBuilder('u')
       .addSelect('u.passwordResetToken')
       .addSelect('u.passwordResetExpiry')
-      .where('u.passwordResetToken = :token', { token })
+      .where('u.passwordResetToken = :token', { token: AuthService.hashResetToken(token) })
       .getOne();
 
     if (!user) throw new BadRequestException('Invalid or expired reset token.');
@@ -905,7 +968,28 @@ export class AuthService {
     user: { role?: UserRole; businessRole?: string | null } | null,
     provider: string,
   ): void {
-    if (!role || role === 'customer') return;
+    if (!role || role === 'customer') {
+      /*
+       * The customer app used to return here unconditionally, so its Google
+       * and Apple buttons let a DRIVER account straight in: the password
+       * door has a role check now and this one did not.
+       *
+       * A missing user is fine and must stay fine, because customer social
+       * sign-in is also customer SIGNUP: it creates the account. Only an
+       * existing account belonging to another app is refused.
+       *
+       * Business accounts are deliberately not refused here. They carry role
+       * CUSTOMER plus a businessRole, and whether a business owner may also
+       * use the customer app is a product decision, not one to make quietly
+       * inside a guard.
+       */
+      if (user?.role === UserRole.DRIVER) {
+        throw new UnauthorizedException(
+          'That address is registered on another SEIRS app. Sign in there instead.',
+        );
+      }
+      return;
+    }
 
     const kind = role === 'driver' ? 'driver' : 'business';
     const matches =
@@ -1092,6 +1176,23 @@ export class AuthService {
 
     if (!user) throw new NotFoundException('No account found with this email.');
     if (user.emailVerified) throw new BadRequestException('Email already verified.');
+
+    /*
+     * Five wrong guesses burn the code.
+     *
+     * Without this the only limit was the route throttle, which counts per
+     * IP address, and a six digit code is a million guesses: cheap for
+     * anyone with a handful of addresses. Burning the code rather than
+     * locking the account keeps the cost on the attacker, since the owner
+     * can simply request another one.
+     */
+    const MAX_OTP_ATTEMPTS = 5;
+    if ((user.emailOtpAttempts ?? 0) >= MAX_OTP_ATTEMPTS) {
+      await this.usersRepo.update(user.id, {
+        emailVerificationOtp: null, emailVerificationExpiry: null, emailOtpAttempts: 0,
+      } as any);
+      throw new BadRequestException('Too many incorrect codes. Request a new one.');
+    }
 
     if (!user.emailVerificationOtp) throw new BadRequestException('Invalid verification code.');
     const otpMatch = await bcrypt.compare(otp, user.emailVerificationOtp);

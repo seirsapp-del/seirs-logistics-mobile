@@ -5973,6 +5973,33 @@ export class DeliveriesService {
 
     await this.repo.update(id, { customerRating: rating, customerComment: comment });
 
+    /*
+     * The 5 points the Rewards screen has always promised (2026-09-05).
+     *
+     * "How to earn" has listed a bonus for rating a driver since that card
+     * shipped, and awardRateDriver() was written to pay it, but nothing
+     * ever called it. The only 'rate_driver' rows in anybody's ledger came
+     * from the demo seeder, which writes 10, which is why a test account
+     * showed "+10 pts" under a card promising 5. One number was fiction
+     * and the other was seed data; neither was ever earned.
+     *
+     * The amount is read from the Fee Catalogue (loyalty_rate_driver_bonus)
+     * inside awardRateDriver, so the card and the award cannot drift apart
+     * again without somebody changing the catalogue on purpose.
+     *
+     * The "already rated" guard above makes this idempotent for free: a
+     * delivery can only be rated once, so it can only pay once. Not
+     * awaited and never fatal, because a loyalty write failing must not
+     * cost the driver the rating they earned.
+     */
+    if (this.loyaltyService) {
+      this.loyaltyService
+        .awardRateDriver(customerId, id)
+        .catch((e: any) =>
+          this.logger.warn(`rate_driver points failed for delivery ${id}: ${e?.message ?? e}`),
+        );
+    }
+
     // Recalculate driver's average rating with a single AVG() query (no N+1)
     if (delivery.driver?.id) {
       const result = await this.repo

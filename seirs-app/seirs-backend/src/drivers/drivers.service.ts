@@ -961,6 +961,30 @@ export class DriversService {
      * returned so the screen can say where this passenger gets on and
      * off, and how far that is.
      */
+    /*
+     * Every stop on each trip, by city, in order.
+     *
+     * One query for the whole page rather than a join on the trip query,
+     * which would multiply the rows and fight the DISTINCT the segment
+     * lookup below depends on.
+     */
+    const stopsByTrip = new Map<string, string[]>();
+    if (trips.length > 0) {
+      const rows: Array<any> = await this.tripStopsRepo.manager.query(
+        `SELECT "trip_id" AS "tripId", "city", "order"
+           FROM "trip_stops"
+          WHERE "trip_id" = ANY($1)
+          ORDER BY "trip_id", "order" ASC`,
+        [trips.map((t: any) => t.id)],
+      ).catch(() => []);
+      for (const r of rows) {
+        if (!r.city) continue;
+        const list = stopsByTrip.get(r.tripId) ?? [];
+        list.push(r.city);
+        stopsByTrip.set(r.tripId, list);
+      }
+    }
+
     const segByTrip = new Map<string, {
       boardStopId: string; alightStopId: string;
       boardCity: string; alightCity: string; segmentKm: number | null;
@@ -1018,6 +1042,19 @@ export class DriversService {
        * the address arrives with the acceptance.
        */
       pickupArea: t.fromCity ?? null,
+      /*
+       * The stops, by CITY only.
+       *
+       * A passenger searching Ile-Ife to Ibadan was shown "Ile-Ife to Lagos"
+       * and had to guess whether the run served them. The route is the
+       * whole product here: the point of a declared trip is the places it
+       * passes through, and the card never said them.
+       *
+       * Cities, never the addresses. The exact spot a driver stands is
+       * withheld until they accept somebody, for the same reason the plate
+       * and photograph are.
+       */
+      stopCities: stopsByTrip.get(t.id) ?? [],
       routeKm: t.routeKm != null ? Number(t.routeKm) : null,
       acceptsPassengers: !!t.acceptsPassengers,
       acceptsPackages: !!t.acceptsPackages,

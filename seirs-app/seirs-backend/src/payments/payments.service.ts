@@ -1035,12 +1035,27 @@ export class PaymentsService {
         // ledgers surface in different apps and double-awarding the same
         // naira would double the liability.
         try {
+          /*
+           * The ledger is the record; the integer column is a mirror.
+           *
+           * This was only the UPDATE, so a business account accumulated a
+           * number with no entries behind it: no dates, no reasons, nothing
+           * for a Recent points list or a chart to read. Writing the entry
+           * first means the business Rewards screen can show the same
+           * history the customer screen shows.
+           *
+           * The column stays in step because several dashboards still read
+           * it, and the amount is unchanged: awardBusinessDeliveryPoints
+           * uses the same pointsForSpend this UPDATE used.
+           */
+          const awarded = await this.loyaltyService.awardBusinessDeliveryPoints({
+            userId:     payment.customer.id,
+            deliveryId: payment.delivery!.id,
+            naira:      toNaira(payment.amountKobo),
+          });
           await this.dataSource.query(
             `UPDATE business_accounts SET "loyaltyPoints" = "loyaltyPoints" + $2 WHERE "ownerId" = $1`,
-            // Through the loyalty service, so the earn rate follows the
-            // Fee Catalogue row rather than a hardcoded 1-per-100 that
-            // only matches it at today's value (audit, 2026-08-28).
-            [payment.customer.id, await this.loyaltyService.pointsForSpend(toNaira(payment.amountKobo))],
+            [payment.customer.id, awarded.delta],
           );
         } catch (e: any) {
           this.logger.warn(`Business loyalty award failed for ${txRef}: ${e.message}`);

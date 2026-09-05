@@ -19,12 +19,22 @@ export class LoyaltyController {
   @Get('balance')
   async balance(@Req() req: any) {
     const userId = req.user?.id ?? req.user?.sub ?? req.user?.userId;
-    const [balance, tier, history] = await Promise.all([
+    /*
+     * `series` is 30 days of points per day, aggregated in SQL.
+     *
+     * The Rewards chart used to build its bars out of `history`, which is
+     * capped at 20 rows: an active customer's chart quietly lost every day
+     * older than their twentieth most recent entry and drew those days as
+     * empty. Sending the aggregate means the chart is exact at any volume,
+     * and it rides on a request both Rewards screens already make.
+     */
+    const [balance, tier, history, series] = await Promise.all([
       this.loyalty.getBalance(userId),
       this.loyalty.getTier(userId),
       this.loyalty.getHistory(userId, 20),
+      this.loyalty.getDailySeries(userId, 30),
     ]);
-    return { balance, tier, history };
+    return { balance, tier, history, series };
   }
 
   // GET /loyalty/my-referrals
