@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { In, Not, MoreThan, Repository, DataSource } from 'typeorm';
+import { In, Not, MoreThan, Repository, DataSource, Between, MoreThanOrEqual, LessThan } from 'typeorm';
 import { KycDocumentsService } from '../kyc/kyc-documents.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -28,6 +28,7 @@ import { LoyaltyPoint } from '../loyalty/loyalty-point.entity';
 import { IdentityVerification } from '../user-verification/user-verification.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 import { AccountIdPrefix, generateUuidAccountId } from '../common/utils/auth-codes';
+import { rangeStart, rangeEnd } from '../common/utils/date-range';
 
 const PRICING_SINGLETON_ID = 'singleton';
 
@@ -1669,7 +1670,14 @@ export class AdminService {
     };
   }
 
-  async getUsers(page: number, limit: number, role?: string, search?: string, caller?: any) {
+  async getUsers(page: number, limit: number, role?: string, search?: string, caller?: any,
+    /**
+     * Signed up between, as YYYY-MM-DD. Matches the column this list is
+     * ordered by and the one the Joined column already renders.
+     */
+    from?: string,
+    to?: string,
+  ) {
     /**
      * A page is a page. The founder's question, 2 September: "is the all
      * account safe, what if someone greps all account?"
@@ -1777,6 +1785,25 @@ export class AdminService {
           OR CAST(u.id AS text) = :exact
         )`, { like, exact: q });
     }
+
+    /**
+     * andWhere, and placed HERE deliberately.
+     *
+     * The role branches above call .where(), which REPLACES the whole
+     * clause in TypeORM rather than adding to it. A date range written
+     * before them, or written as .where(), would be silently discarded
+     * whenever a role was selected: the query would run, return 200, and
+     * quietly ignore the filter. There is already a comment thirty lines
+     * up warning about exactly this, put there by whoever lost time to it.
+     *
+     * Ranged on u.createdAt, which is the column this list orders by and
+     * the one the Joined column already renders, so the window, the sort
+     * and what a reader sees all agree.
+     */
+    const dFromV = rangeStart(from);
+    if (dFromV) qb.andWhere('u.createdAt >= :dFrom', { dFrom: dFromV });
+    const dToV = rangeEnd(to);
+    if (dToV) qb.andWhere('u.createdAt <  :dTo',   { dTo: dToV });
 
     const [users, total] = await qb.getManyAndCount();
     return { users, total, page, limit };
@@ -2319,7 +2346,18 @@ export class AdminService {
    * separation is the whole point. Reviewing somebody's identity papers
    * should mean opening their file, not listing a page.
    */
-  async getDrivers(page: number, limit: number, status?: string, search?: string) {
+  async getDrivers(
+    page: number, limit: number, status?: string, search?: string,
+    /**
+     * Joined between, as YYYY-MM-DD.
+     *
+     * Serves two boards from one change: the drivers list and the tab list
+     * on the KYC page, which calls this same method with status pinned.
+     * The review queue at the top of that page is a different query living
+     * in another session's lane and is deliberately untouched.
+     */
+    from?: string, to?: string,
+  ) {
     // Same cap as getUsers: an admin list must not be a bulk export.
     ({ page, limit } = this.clampPage(page, limit));
     /**
@@ -2349,6 +2387,19 @@ export class AdminService {
       .take(limit);
 
     if (status) qb.andWhere('d.status = :status', { status });
+
+    /**
+     * The half-open range, on the SAME column the list orders by.
+     *
+     * `to` runs to the END of its day. A range ending on the 5th that
+     * stopped at midnight would drop everything from the 5th, and the
+     * result still looks like a plausible list, which is why that bug
+     * survives review.
+     */
+    const fromV = rangeStart(from);
+    if (fromV) qb.andWhere('d.createdAt >= :from', { from: fromV });
+    const toV = rangeEnd(to);
+    if (toV) qb.andWhere('d.createdAt <  :to',   { to: toV });
 
     /**
      * SEARCH, which the dashboard has been sending since it was written
@@ -2400,7 +2451,18 @@ export class AdminService {
    * them. The strike count is shown because a pattern is meaningful; it
    * is not an instruction.
    */
-  async getAgreementBreaches(reviewed = false, limit = 50) {
+  async getAgreementBreaches(reviewed = false, limit = 50, from?: string, to?: string) {
+    /**
+     * Raised between, on the column the list orders by.
+     *
+     * Placeholders are numbered rather than interpolated: the limit is
+     * always $1, so the optional bounds take $2 and $3 only when present.
+     * Building the clause and the argument array from the same two
+     * variables is what keeps those in step.
+     */
+    const bFrom = rangeStart(from);
+    const bTo   = rangeEnd(to);
+
     const rows = await this.driversRepo.manager.query(
       `SELECT b."id", b."driverId", b."deliveryId", b."parcelRequestId",
               b."agreedAt", b."stage", b."reason", b."note", b."fareNgn",
@@ -2417,9 +2479,15 @@ export class AdminService {
          LEFT JOIN "deliveries" dl ON dl."id" = b."deliveryId"
          LEFT JOIN "parcel_requests" pr ON pr."id" = b."parcelRequestId"
         WHERE ${reviewed ? 'b."reviewedAt" IS NOT NULL' : 'b."reviewedAt" IS NULL'}
+          ${bFrom ? 'AND b."createdAt" >= $2' : ''}
+          ${bTo   ? `AND b."createdAt" <  $${bFrom ? 3 : 2}` : ''}
         ORDER BY b."createdAt" DESC
         LIMIT $1`,
-      [Math.min(200, Math.max(1, Number(limit) || 50))],
+      [
+        Math.min(200, Math.max(1, Number(limit) || 50)),
+        ...(bFrom ? [bFrom] : []),
+        ...(bTo   ? [bTo]   : []),
+      ],
     ).catch(() => []);
     return { items: rows ?? [] };
   }
@@ -2850,8 +2918,10 @@ export class AdminService {
      * which is both the commonest date-filter bug and the one nobody
      * notices, because the result still looks like a plausible list.
      */
-    if (from) qb.andWhere('d.createdAt >= :from', { from: new Date(`${from}T00:00:00Z`) });
-    if (to)   qb.andWhere('d.createdAt <  :to',   { to: new Date(new Date(`${to}T00:00:00Z`).getTime() + 86_400_000) });
+    const fromV = rangeStart(from);
+    if (fromV) qb.andWhere('d.createdAt >= :from', { from: fromV });
+    const toV = rangeEnd(to);
+    if (toV) qb.andWhere('d.createdAt <  :to',   { to: toV });
 
     const q = (search ?? '').trim();
     if (q) {
@@ -4148,8 +4218,10 @@ export class AdminService {
      * asks what happened on the 3rd, ranges the 3rd to the 3rd, and is
      * shown an empty page that reads as "nothing happened".
      */
-    if (from) qb.andWhere('a.createdAt >= :from', { from: new Date(`${from}T00:00:00Z`) });
-    if (to)   qb.andWhere('a.createdAt <  :to',   { to: new Date(new Date(`${to}T00:00:00Z`).getTime() + 86_400_000) });
+    const fromV = rangeStart(from);
+    if (fromV) qb.andWhere('a.createdAt >= :from', { from: fromV });
+    const toV = rangeEnd(to);
+    if (toV) qb.andWhere('a.createdAt <  :to',   { to: toV });
 
     const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit, hasMore: page * limit < total };
@@ -4715,12 +4787,30 @@ export class AdminService {
 
   // ── Referrals (admin view) ──────────────────────────────────────────────
 
-  async listReferrals(limit = 100) {
+  async listReferrals(limit = 100, from?: string, to?: string) {
     // Pair each user that signed up via a referredByCode with the user
     // whose accountId matches that code. Status is derived from the
     // referrer's existence (=credited if found, otherwise pending).
+    /**
+     * Signed up between. Ranged on createdAt, which this list orders by.
+     *
+     * A referral programme is judged over a period, so "how many came in
+     * last month" is the question the board exists to answer and it could
+     * not be asked.
+     */
+    const rFrom = rangeStart(from);
+    const rTo   = rangeEnd(to);
+    const createdWindow =
+      rFrom && rTo ? Between(rFrom, rTo)
+      : rFrom      ? MoreThanOrEqual(rFrom)
+      : rTo        ? LessThan(rTo)
+      : undefined;
+
     const referred = await this.usersRepo.find({
-      where:  { referredByCode: Not(undefined) },
+      where:  {
+        referredByCode: Not(undefined),
+        ...(createdWindow ? { createdAt: createdWindow } : {}),
+      },
       select: ['id', 'name', 'email', 'referredByCode', 'createdAt'],
       order:  { createdAt: 'DESC' },
       take:   limit,

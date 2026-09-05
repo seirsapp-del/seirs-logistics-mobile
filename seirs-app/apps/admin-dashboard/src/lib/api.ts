@@ -252,8 +252,15 @@ export const adminApi = {
   },
   partnerStores: {
     get: (id: string) => req<any>(`/admin/partner-stores/${id}`),
-    list: (status?: string) =>
-      req<any[]>(`/admin/partner-stores${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+    /** from/to are YYYY-MM-DD and range on when the shop APPLIED. */
+    list: (status?: string, from?: string, to?: string) => {
+      const qs = new URLSearchParams();
+      if (status) qs.set('status', status);
+      if (from)   qs.set('from', from);
+      if (to)     qs.set('to', to);
+      const q = qs.toString();
+      return req<any[]>(`/admin/partner-stores${q ? `?${q}` : ''}`);
+    },
   },
 
   /**
@@ -314,8 +321,9 @@ export const adminApi = {
       }),
   },
 
-  users:      (page = 1, role?: string, search?: string) =>
-    req<any>(`/admin/users?page=${page}${role ? `&role=${role}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+  /** from/to are YYYY-MM-DD and range on when the account SIGNED UP. */
+  users:      (page = 1, role?: string, search?: string, from?: string, to?: string) =>
+    req<any>(`/admin/users?page=${page}${role ? `&role=${role}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`),
   user:       (id: string) => req<any>(`/admin/users/${id}`),
   updateUser: (id: string, data: any) =>
     req<any>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -378,8 +386,13 @@ export const adminApi = {
       }),
   },
 
-  drivers:       (page = 1, status?: string, search?: string) =>
-    req<any>(`/admin/drivers?page=${page}${status ? `&status=${status}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+  /**
+   * from/to are YYYY-MM-DD and range on when the rider JOINED, which is
+   * also how this list is sorted. Serves the KYC page's tab list too: it
+   * calls this same endpoint with status pinned.
+   */
+  drivers:       (page = 1, status?: string, search?: string, from?: string, to?: string) =>
+    req<any>(`/admin/drivers?page=${page}${status ? `&status=${status}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`),
   driver:        (id: string) => req<any>(`/admin/drivers/${id}`),
   approveDriver: (id: string) => req<any>(`/admin/drivers/${id}/approve`, { method: 'PATCH' }),
   rejectDriver:  (id: string, reason?: string) =>
@@ -1253,6 +1266,9 @@ export const adminApi = {
   // Support toolkit (Chat 5). Rejected server-side if the admin is
   // not super_admin or support_agent.
   support: {
+    /** How much work sits in each view, counted in the database. */
+    queueCounts: () =>
+      req<{ counts: Record<string, number>; staleAfterHours: number }>('/support/queue/counts'),
     queue: (params: {
       status?:      'open' | 'awaiting_agent' | 'awaiting_user' | 'resolved' | 'closed';
       topic?:       'billing' | 'driver' | 'account' | 'delivery' | 'other';
@@ -1276,6 +1292,12 @@ export const adminApi = {
       from?:        string;
       /** Opened on or before, whole day included. */
       to?:          string;
+      /**
+       * A named job rather than a filter setting: needs_us, mine,
+       * unassigned, stale, system, all. Applied in the query, so it
+       * decides which rows come back.
+       */
+      view?:        string;
     } = {}) => {
       const qs = new URLSearchParams();
       if (params.status)      qs.set('status',      params.status);
@@ -1287,6 +1309,7 @@ export const adminApi = {
       if (params.unassigned)  qs.set('unassigned',  'true');
       if (params.from)        qs.set('from',        params.from);
       if (params.to)          qs.set('to',          params.to);
+      if (params.view)        qs.set('view',        params.view);
       qs.set('limit', String(params.limit ?? 30));
       return req<any>(`/support/queue?${qs.toString()}`);
     },

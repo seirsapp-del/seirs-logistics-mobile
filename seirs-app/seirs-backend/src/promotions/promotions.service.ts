@@ -1,8 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { LessThanOrEqual, MoreThanOrEqual, Repository, Between, LessThan } from 'typeorm';
 import { Promotion, PromoStatus, PromoType } from './promotion.entity';
 import { PromoRedemption } from './promo-redemption.entity';
+import { rangeStart, rangeEnd } from '../common/utils/date-range';
 
 @Injectable()
 export class PromotionsService {
@@ -17,8 +18,27 @@ export class PromotionsService {
    * created as a bare array with no total, so the screen could neither
    * page nor say how many there were.
    */
-  async list(opts: { status?: PromoStatus; page?: number; limit?: number } = {}) {
-    const where = opts.status ? { status: opts.status } : {};
+  async list(opts: {
+    status?: PromoStatus; page?: number; limit?: number;
+    /** Created between, as YYYY-MM-DD. */
+    from?: string; to?: string;
+  } = {}) {
+    /**
+     * Ranged on createdAt, the column this list already orders by, so the
+     * window and the paging through it agree.
+     */
+    const cFrom = rangeStart(opts.from);
+    const cTo   = rangeEnd(opts.to);
+    const created =
+      cFrom && cTo ? Between(cFrom, cTo)
+      : cFrom      ? MoreThanOrEqual(cFrom)
+      : cTo        ? LessThan(cTo)
+      : undefined;
+
+    const where: any = {
+      ...(opts.status ? { status: opts.status } : {}),
+      ...(created ? { createdAt: created } : {}),
+    };
     const take = Math.min(Math.max(Number(opts.limit) || 50, 1), 200);
     const skip = (Math.max(Number(opts.page) || 1, 1) - 1) * take;
     const [items, total] = await this.repo.findAndCount({

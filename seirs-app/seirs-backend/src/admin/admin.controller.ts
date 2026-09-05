@@ -46,10 +46,13 @@ export class AdminController {
   agreementBreaches(
     @Query('reviewed') reviewed?: string,
     @Query('limit') limit?: string,
+    @Query('from')  from?: string,
+    @Query('to')    to?: string,
   ) {
     return this.adminService.getAgreementBreaches(
       reviewed === '1' || reviewed === 'true',
       limit ? Number(limit) : 50,
+      from, to,
     );
   }
 
@@ -261,9 +264,14 @@ export class AdminController {
   @Get('users')
   getUsers(
     @CurrentUser() admin: any,
-    @Query() q: { page?: number; limit?: number; role?: string; search?: string },
+    @Query() q: {
+      page?: number; limit?: number; role?: string; search?: string;
+      from?: string; to?: string;
+    },
   ) {
-    return this.adminService.getUsers(q.page ?? 1, q.limit ?? 20, q.role, q.search, admin);
+    return this.adminService.getUsers(
+      q.page ?? 1, q.limit ?? 20, q.role, q.search, admin, q.from, q.to,
+    );
   }
 
   /**
@@ -468,8 +476,11 @@ export class AdminController {
 
   // GET /api/v1/admin/drivers?status=pending
   @Get('drivers')
-  getDrivers(@Query() q: { page?: number; limit?: number; status?: string; search?: string }) {
-    return this.adminService.getDrivers(q.page ?? 1, q.limit ?? 20, q.status, q.search);
+  getDrivers(@Query() q: {
+    page?: number; limit?: number; status?: string; search?: string;
+    from?: string; to?: string;
+  }) {
+    return this.adminService.getDrivers(q.page ?? 1, q.limit ?? 20, q.status, q.search, q.from, q.to);
   }
 
   // GET /api/v1/admin/driver-compliance
@@ -556,13 +567,20 @@ export class AdminController {
   // GET /api/v1/admin/partner-stores?status=approved|pending_review|suspended|rejected
   // Lists all partner stores across every status. Powers the /partners page.
   @Get('partner-stores')
-  listAllPartnerStores(@Query('status') status?: string) {
-    return this.partnerStoreService.adminListAllStores(status);
+  listAllPartnerStores(
+    @Query('status') status?: string,
+    @Query('from')   from?: string,
+    @Query('to')     to?: string,
+  ) {
+    return this.partnerStoreService.adminListAllStores(status, from, to);
   }
 
   @Get('partner-stores/applications')
-  listPartnerApplications() {
-    return this.partnerStoreService.adminListPendingApplications();
+  listPartnerApplications(
+    @Query('from') from?: string,
+    @Query('to')   to?: string,
+  ) {
+    return this.partnerStoreService.adminListPendingApplications(from, to);
   }
 
   // GET /api/v1/admin/partner-stores/:id. One store, its owner account,
@@ -1272,8 +1290,12 @@ export class AdminController {
   // ── Referrals ─────────────────────────────────────────────────────────────
 
   @Get('referrals')
-  listReferrals(@Query('limit') limit?: string) {
-    return this.adminService.listReferrals(Number(limit ?? 100));
+  listReferrals(
+    @Query('limit') limit?: string,
+    @Query('from')  from?: string,
+    @Query('to')    to?: string,
+  ) {
+    return this.adminService.listReferrals(Number(limit ?? 100), from, to);
   }
 
   @Get('referrals/summary')

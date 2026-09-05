@@ -52,18 +52,28 @@ export default function PartnersPage() {
   const [rows, setRows]       = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState<string>('');
+  /**
+   * Applied between, as YYYY-MM-DD.
+   *
+   * Passed to the loader as arguments rather than read from state inside
+   * it: a handler that sets state and loads in the same tick reads the
+   * previous value out of the closure and fetches one edit behind. The
+   * audit log already worked this way and it is not a style choice.
+   */
+  const [from, setFrom] = useState('');
+  const [to,   setTo]   = useState('');
   const [search, setSearch]   = useState('');
   const [error,  setError]    = useState<string | null>(null);
 
   // A swallowed failure looked exactly like "no partner stores yet".
-  const load = useCallback(() => {
+  const load = useCallback((f = from, t = to) => {
     setLoading(true);
     setError(null);
-    adminApi.partnerStores.list(filter || undefined)
+    adminApi.partnerStores.list(filter || undefined, f || undefined, t || undefined)
       .then(setRows)
       .catch((e: any) => { setRows([]); setError(e?.message ?? 'Could not load partner stores'); })
       .finally(() => setLoading(false));
-  }, [filter]);
+  }, [filter, from, to]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -182,6 +192,40 @@ export default function PartnersPage() {
               className="text-sm bg-transparent outline-none placeholder:text-gray-400 w-56"
               placeholder="Shop name, address or phone"
             />
+          </div>
+
+          {/* Applied between.
+
+              Ranged on the column this list is ordered by, so the window
+              and the paging through it agree. The end date covers its whole
+              day: a range ending on the 5th that stopped at midnight would
+              drop everything from the 5th, and the result still looks like
+              a plausible list, which is why that bug survives review. */}
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-[#0F2B4C]/50">Applied</span>
+            <input
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(e) => { setFrom(e.target.value); load(e.target.value, to); }}
+              className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+            />
+            <span className="text-[#0F2B4C]/40">to</span>
+            <input
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(e) => { setTo(e.target.value); load(from, e.target.value); }}
+              className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+            />
+            {(from || to) && (
+              <button
+                onClick={() => { setFrom(''); setTo(''); load('', ''); }}
+                className="font-semibold text-[#3A7BD5] hover:underline"
+              >
+                Clear dates
+              </button>
+            )}
           </div>
         </div>
 

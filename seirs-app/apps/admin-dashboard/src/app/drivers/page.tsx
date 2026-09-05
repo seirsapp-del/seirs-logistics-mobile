@@ -23,6 +23,16 @@ function DriversContent() {
   const statusFilter = searchParams.get('status') ?? '';
 
   const [data, setData]       = useState<any>(null);
+  /**
+   * Joined between, as YYYY-MM-DD.
+   *
+   * Passed to the loader as arguments rather than read from state inside
+   * it: a handler that sets state and loads in the same tick reads the
+   * previous value out of the closure and fetches one edit behind. The
+   * audit log already worked this way and it is not a style choice.
+   */
+  const [from, setFrom] = useState('');
+  const [to,   setTo]   = useState('');
   const [page, setPage]       = useState(1);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
@@ -38,10 +48,10 @@ function DriversContent() {
   const [search, setSearch]   = useState('');
   const confirm               = useConfirm();
 
-  const load = (p = 1, term = search) => {
+  const load = (p = 1, term = search, f = from, t = to) => {
     setLoading(true);
     setError(null);
-    adminApi.drivers(p, statusFilter || undefined, term.trim() || undefined)
+    adminApi.drivers(p, statusFilter || undefined, term.trim() || undefined, f || undefined, t || undefined)
       .then(setData)
       // A 403 or a cold backend used to render as an empty driver list.
       .catch((e: any) => setError(e?.message ?? 'Could not load drivers'))
@@ -126,6 +136,40 @@ function DriversContent() {
               placeholder="Search name, email, phone, SEIRS ID or vehicle plate"
               className="w-full rounded-lg border border-[#E5E7EB] bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-[#3A7BD5]"
             />
+          </div>
+
+          {/* Joined between.
+
+              Ranged on the column this list is ordered by, so the window
+              and the paging through it agree. The end date covers its whole
+              day: a range ending on the 5th that stopped at midnight would
+              drop everything from the 5th, and the result still looks like
+              a plausible list, which is why that bug survives review. */}
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-[#0F2B4C]/50">Joined</span>
+            <input
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(e) => { setFrom(e.target.value); load(1, search, e.target.value, to); }}
+              className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+            />
+            <span className="text-[#0F2B4C]/40">to</span>
+            <input
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(e) => { setTo(e.target.value); load(1, search, from, e.target.value); }}
+              className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 outline-none focus:border-[#3A7BD5]"
+            />
+            {(from || to) && (
+              <button
+                onClick={() => { setFrom(''); setTo(''); load(1, search, '', ''); }}
+                className="font-semibold text-[#3A7BD5] hover:underline"
+              >
+                Clear dates
+              </button>
+            )}
           </div>
           {search.trim() !== '' && (
             <span className="text-xs text-[#0F2B4C]/50">

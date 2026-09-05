@@ -2,13 +2,14 @@ import {
   BadRequestException, Injectable, Logger, NotFoundException, OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, Repository } from 'typeorm';
+import { LessThanOrEqual, Repository, Between, MoreThanOrEqual, LessThan } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebsiteContent, WebContentStatus, WebContentType } from './website-content.entity';
 import { ContactSubmission, ContactStatus, ContactSubject } from './contact-submission.entity';
 import { UploadService } from '../upload/upload.service';
 import { PlatformConfig } from '../admin/platform-config.entity';
 import { MailService } from '../mail/mail.service';
+import { rangeStart, rangeEnd } from '../common/utils/date-range';
 
 // Slugs are URL-safe identifiers - lowercase alphanumerics + hyphens,
 // 2-120 chars. Keep it strict to avoid Next.js dynamic route ambiguity.
@@ -116,10 +117,30 @@ export class WebsiteContentService implements OnModuleInit {
     );
   }
 
-  listContactSubmissions(opts: { status?: ContactStatus; page?: number } = {}) {
+  listContactSubmissions(opts: {
+    status?: ContactStatus; page?: number;
+    /** Sent between, as YYYY-MM-DD. */
+    from?: string; to?: string;
+  } = {}) {
     const page  = opts.page ?? 1;
     const take  = 50;
-    const where = opts.status ? { status: opts.status } : {};
+    /**
+     * Ranged on createdAt, which this list orders by. These arrive from a
+     * public form, so "what came in over the weekend" is the natural
+     * question and there was no way to ask it.
+     */
+    const sFrom = rangeStart(opts.from);
+    const sTo   = rangeEnd(opts.to);
+    const sent =
+      sFrom && sTo ? Between(sFrom, sTo)
+      : sFrom      ? MoreThanOrEqual(sFrom)
+      : sTo        ? LessThan(sTo)
+      : undefined;
+
+    const where: any = {
+      ...(opts.status ? { status: opts.status } : {}),
+      ...(sent ? { createdAt: sent } : {}),
+    };
     return this.contactRepo.findAndCount({
       where, order: { createdAt: 'DESC' }, take, skip: (page - 1) * take,
     }).then(([items, total]) => ({ items, total, page, take }));

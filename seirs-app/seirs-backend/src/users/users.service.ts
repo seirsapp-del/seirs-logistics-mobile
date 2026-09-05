@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Repository, IsNull, Not, LessThan, MoreThan } from 'typeorm';
+import { Repository, IsNull, Not, LessThan, MoreThan, Between, MoreThanOrEqual } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { User, UserRole } from './user.entity';
@@ -10,6 +10,7 @@ import { UserProfileAudit, ProfileFieldName } from './user-profile-audit.entity'
 import { AccountIdPrefix, generateAccountId } from '../common/utils/auth-codes';
 import { SavedAddress } from '../addresses/saved-address.entity';
 import { AccountSecurityService } from '../notifications/account-security.service';
+import { rangeStart, rangeEnd } from '../common/utils/date-range';
 
 const ARCHIVE_GRACE_DAYS = 30;
 
@@ -431,11 +432,29 @@ export class UsersService implements OnModuleInit {
    * more existed. The ASC order stays, so the accounts about to be
    * purged remain on page one.
    */
-  async listPendingDeletions(page = 1, limit = 50) {
+  async listPendingDeletions(page = 1, limit = 50, from?: string, to?: string) {
     const take = Math.min(Math.max(Number(limit) || 50, 1), 200);
     const skip = (Math.max(Number(page) || 1, 1) - 1) * take;
+
+    /**
+     * Ranged on deletionScheduledAt, which this list orders by, and NOT on
+     * when the account was created.
+     *
+     * The question here is "whose data is due to go, and when", so the
+     * scheduled date is both the sort and the filter. Ranging on signup
+     * would answer a different question entirely and would scatter the
+     * queue's own ordering.
+     */
+    const dFrom = rangeStart(from);
+    const dTo   = rangeEnd(to);
+    const due =
+      dFrom && dTo ? Between(dFrom, dTo)
+      : dFrom      ? MoreThanOrEqual(dFrom)
+      : dTo        ? LessThan(dTo)
+      : Not(IsNull());
+
     const [items, total] = await this.repo.findAndCount({
-      where: { deletionScheduledAt: Not(IsNull()) } as any,
+      where: { deletionScheduledAt: due } as any,
       order: { deletionScheduledAt: 'ASC' },
       take,
       skip,
@@ -641,6 +660,52 @@ export class UsersService implements OnModuleInit {
           arr.map(r => `<tr>${Object.keys(arr[0]).map(k => `<td>${esc(r[k])}</td>`).join('')}</tr>`).join('')
         }</tbody></table>`;
 
+    /**
+     * The okada, drawn rather than fetched.
+     *
+     * This document had no letterhead at all: a person's own data,
+     * requested under NDPR Article 24, arriving with nothing on it to say
+     * who issued it beyond the word SEIRS in the system font. It is the
+     * one document a person might hand to a bank or a lawyer.
+     *
+     * Inline SVG rather than an <img>, for three reasons that all point
+     * the same way. The backend ships NO logo binary it can read: the only
+     * real PNGs live in the marketing site, a separate deploy, so an <img>
+     * would be an external request. The apps convert this HTML to PDF on
+     * the PHONE via expo-print, so an external image is a network fetch
+     * during printing that can silently fail and leave a blank box. And
+     * the export is deliberately dependency-free and self-contained, a
+     * choice its own comment defends as avoiding PDF-library CVEs.
+     *
+     * Geometry is the founder's locked pick, identical to the statement
+     * PDF's drawOkada and to scripts/build-mark-assets.js: A3 weight, ink
+     * box 42 by 36.48 from x 3, y -5.48, run D at 15.94, head 13.3 degrees
+     * off vertical. Hubs are painted in the band colour because the band
+     * behind is solid, which is what the asset cutter achieves by punching
+     * alpha. One geometry, four renderers.
+     */
+    /**
+     * The document now says who it is FOR, not just when it was made.
+     *
+     * It read "Generated <date>" and nothing else. Somebody handing this
+     * to a bank or a lawyer needs it to identify itself: whose data, which
+     * account, and when it was taken. The SEIRS ID is the identifier the
+     * rest of the platform uses, so it is the one that belongs on it.
+     */
+    const MARK = `<svg width="34" height="30" viewBox="3 -5.48 42 36.48" fill="none"
+        stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"
+        aria-hidden="true" focusable="false">
+      <path d="M 10 24 L 18 16 L 30 16 L 38 24"/>
+      <circle cx="10" cy="24" r="7" fill="#FFFFFF" stroke="none"/>
+      <circle cx="38" cy="24" r="7" fill="#FFFFFF" stroke="none"/>
+      <path d="M 37 12 L 42 9"/>
+      <path d="M 24 16 L 31.13 1.74"/>
+      <circle cx="31.82" cy="-1.18" r="4.3" fill="#FFFFFF" stroke="none"/>
+      <path d="M 29.35 5.30 L 37 12"/>
+      <circle cx="10" cy="24" r="2.4" fill="#0F2B4C" stroke="none"/>
+      <circle cx="38" cy="24" r="2.4" fill="#0F2B4C" stroke="none"/>
+    </svg>`;
+
     return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <title>SEIRS data export - ${esc(p.name)}</title>
 <style>
@@ -657,11 +722,38 @@ export class UsersService implements OnModuleInit {
   .profile-grid dt { font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; padding-top: 3px; }
   .profile-grid dd { margin: 0; }
   .disclaimer { margin-top: 32px; padding: 12px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; font-size: 10px; color: #78350F; }
-  @media print { body { max-width: none; margin: 0; padding: 0; } }
+  /* The letterhead, matching the statement PDF rather than inventing a
+     second look: NAVY #0F2B4C, BLUE #3A7BD5, RULE #E5E7EB, and the same
+     92pt-equivalent band with the mark at 32pt and SEIRS letterspaced. */
+  .letterhead { background: #0F2B4C; color: #fff; padding: 18px 24px; display: flex;
+                align-items: center; gap: 14px; margin: -24px -24px 24px -24px; }
+  .letterhead .wordmark { font-size: 20px; font-weight: 700; letter-spacing: 0.28em; }
+  .letterhead .kind { margin-left: auto; text-align: right; font-size: 10px;
+                      letter-spacing: 0.12em; text-transform: uppercase; color: #9DB6D6; }
+  .issued { border-bottom: 2px solid #0F2B4C; padding-bottom: 10px; margin-bottom: 18px; }
+  @media print {
+    body { max-width: none; margin: 0; padding: 0; }
+    /* Without this the band prints as an outline on most engines, which is
+       worse than no letterhead: a document that looks like it failed. */
+    .letterhead { -webkit-print-color-adjust: exact; print-color-adjust: exact;
+                  margin: 0 0 24px 0; }
+  }
 </style>
 </head><body>
-<h1>SEIRS Data Export</h1>
-<p class="meta">Generated ${fmtDate(bundle.generatedAt)}. This is your data per NDPR Article 24.</p>
+<div class="letterhead">
+  ${MARK}
+  <span class="wordmark">SEIRS</span>
+  <span class="kind">Data export<br>NDPR Article 24</span>
+</div>
+
+<div class="issued">
+  <h1>Your SEIRS data</h1>
+  <p class="meta">
+    Prepared for ${esc(p.name)}${p.accountId ? ` &middot; SEIRS ID ${esc(p.accountId)}` : ''}<br>
+    Taken on ${fmtDate(bundle.generatedAt)}. Everything SEIRS holds about this account,
+    provided under Article 24 of the Nigeria Data Protection Regulation.
+  </p>
+</div>
 
 <h2>Profile</h2>
 <dl class="profile-grid">

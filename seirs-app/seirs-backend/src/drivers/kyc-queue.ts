@@ -26,6 +26,7 @@
  * become another way to read somebody's payout bank account.
  */
 import { DataSource } from 'typeorm';
+import { rangeStart, rangeEnd } from '../common/utils/date-range';
 
 export type KycNeed = 'account_approval' | 'documents' | 'vehicle_change';
 
@@ -64,7 +65,43 @@ export interface KycQueueRow {
 
 const DAY_MS = 86_400_000;
 
-export async function buildKycQueue(ds: DataSource): Promise<{ count: number; items: KycQueueRow[] }> {
+/**
+ * When this rider started waiting, in SQL.
+ *
+ * MUST stay identical to the `candidates` / Math.min block below, which
+ * derives the same value in JS for display and for the oldest-first sort.
+ * A range on any ONE of these three timestamps would hide rows whose wait
+ * is defined by a different one, and it would do it invisibly: the row
+ * simply would not appear, with nothing to say why.
+ *
+ * LEAST ignores NULLs in Postgres, which is exactly what .filter(Boolean)
+ * then Math.min does in the JS. The driver's own createdAt only counts
+ * while the account is still pending, matching the ternary below.
+ *
+ * If the two ever drift, the queue will sort by one rule and filter by
+ * another, which is the failure this file is one line away from at all
+ * times. Change both or neither.
+ */
+const WAITING_SINCE_SQL = `LEAST(
+  CASE WHEN d.status = 'pending' THEN d."createdAt" END,
+  dc.oldest_submitted,
+  pc."createdAt"
+)`;
+
+export async function buildKycQueue(
+  ds: DataSource,
+  /**
+   * Waiting since between, as YYYY-MM-DD.
+   *
+   * No default window here, unlike every other board. This queue is
+   * unpaginated by intent, so there is nothing to slide, and on a review
+   * queue an item nobody has looked at in six weeks is exactly the item
+   * that must not fall off the bottom.
+   */
+  opts: { from?: string; to?: string } = {},
+): Promise<{ count: number; items: KycQueueRow[] }> {
+  const waitFrom = rangeStart(opts.from);
+  const waitTo   = rangeEnd(opts.to);
   /**
    * Every rider who is waiting on ANY of the three, in one pass.
    *
@@ -127,10 +164,15 @@ export async function buildKycQueue(ds: DataSource): Promise<{ count: number; it
     JOIN users u              ON u.id = d."userId"
     LEFT JOIN doc_counts dc   ON dc.driver_id = d.id
     LEFT JOIN pending_change pc ON pc."driverId" = d.id
-    WHERE d.status = 'pending'
+    WHERE (d.status = 'pending'
        OR COALESCE(dc.submitted, 0) > 0
-       OR pc.id IS NOT NULL
-  `);
+       OR pc.id IS NOT NULL)
+      ${waitFrom ? `AND ${WAITING_SINCE_SQL} >= $${waitTo ? 1 : 1}` : ''}
+      ${waitTo   ? `AND ${WAITING_SINCE_SQL} <  $${waitFrom ? 2 : 1}` : ''}
+  `, [
+    ...(waitFrom ? [waitFrom] : []),
+    ...(waitTo   ? [waitTo]   : []),
+  ]);
 
   const now = Date.now();
   const items: KycQueueRow[] = rows.map((r: any) => {

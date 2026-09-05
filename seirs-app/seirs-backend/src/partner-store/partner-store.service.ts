@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { LessThanOrEqual, Repository, In, Not, IsNull } from 'typeorm';
+import { LessThanOrEqual, LessThan, Repository, In, Not, IsNull, Between, MoreThanOrEqual } from 'typeorm';
 import { StoreDropoff, DropoffMode, DropoffStatus } from './store-dropoff.entity';
 import { PartnerStore, PartnerStoreStatus } from '../business/partner-store.entity';
 import { PartnerSponsorship, SponsorshipStatus } from './partner-sponsorship.entity';
@@ -26,6 +26,7 @@ import { withinWorkingHours } from '../common/utils/working-hours';
 import { ParcelRecoveryService } from './parcel-recovery.service';
 import { RecoveryTrigger } from './parcel-recovery-task.entity';
 import { PartnerCallLog } from './partner-call-log.entity';
+import { rangeStart, rangeEnd } from '../common/utils/date-range';
 
 // "In store" means physically present at the pickup or dropoff location -
 // these statuses count against capacity, accrue storage fees, etc.
@@ -1446,6 +1447,18 @@ export class PartnerStoreService {
         id: true, storeName: true, storeAddress: true, phone: true,
         openTime: true, closeTime: true, operatingDays: true,
         workingHours: true as any, status: true, acceptingNew: true,
+        /**
+         * What the shop LOOKS like, for the rider standing outside it.
+         *
+         * We make every partner submit this photo, re-submit it when they
+         * move, and pass an on-site location check on it, and then showed
+         * it to nobody. A rider hunting a counter on a busy Lagos street
+         * had a name and an address and nothing to look for.
+         *
+         * The customer's drop-off card already renders it for exactly this
+         * reason. This is the rider's half of the same idea.
+         */
+        storefrontPhotoUrl: true as any,
       } as any,
     });
     if (!store) throw new NotFoundException('That counter was not found.');
@@ -1458,6 +1471,7 @@ export class PartnerStoreService {
       closeTime:     store.closeTime ?? null,
       operatingDays: store.operatingDays ?? [],
       workingHours:  store.workingHours ?? null,
+      storefrontPhotoUrl: (store as any).storefrontPhotoUrl ?? null,
       isOpenNow:     storeIsOpenNow(store as any),
       /** A rider should know before arriving that the shop has paused intake. */
       acceptingNew:  store.acceptingNew,
@@ -2662,9 +2676,26 @@ export class PartnerStoreService {
   }
 
   /** Admin lists all pending partner store applications for review. */
-  async adminListPendingApplications() {
+  async adminListPendingApplications(from?: string, to?: string) {
+    /**
+     * Applied between, on the column this queue orders by.
+     *
+     * Oldest first is deliberate here, so a range is how you reach a week
+     * that is not at the front of the pile.
+     */
+    const aFrom = rangeStart(from);
+    const aTo   = rangeEnd(to);
+    const applied =
+      aFrom && aTo ? Between(aFrom, aTo)
+      : aFrom      ? MoreThanOrEqual(aFrom)
+      : aTo        ? LessThan(aTo)
+      : undefined;
+
     return this.storeRepo.find({
-      where: { status: PartnerStoreStatus.PENDING_REVIEW },
+      where: {
+        status: PartnerStoreStatus.PENDING_REVIEW,
+        ...(applied ? { createdAt: applied } : {}),
+      },
       order: { createdAt: 'ASC' },
     });
   }
@@ -2838,11 +2869,40 @@ export class PartnerStoreService {
     };
   }
 
-  async adminListAllStores(status?: string) {
+  async adminListAllStores(
+    status?: string,
+    /** Applied between, as YYYY-MM-DD. */
+    from?: string,
+    to?: string,
+  ) {
     const qb = this.storeRepo
       .createQueryBuilder('s')
       .orderBy('s.updatedAt', 'DESC');
     if (status) qb.where('s.status = :status', { status });
+
+    /**
+     * Ranged on createdAt while the list is SORTED by updatedAt, which
+     * breaks the rule the other boards follow, deliberately.
+     *
+     * That rule exists because a window keyed on one column while the list
+     * pages by another gives paging that jumps about. This board is not
+     * paginated at all: it returns every matching shop in one go, so there
+     * is no window to slide and nothing to jump.
+     *
+     * With that constraint gone, the question a person actually asks wins.
+     * "Which partners came in last week" means when they APPLIED, not when
+     * somebody last touched their row. Ranging on updatedAt would answer a
+     * question nobody asked, and would quietly move a two-year-old shop
+     * into last week's results the moment an admin edited it.
+     *
+     * andWhere, and placed after the status clause, because that clause
+     * uses .where() and would replace anything written before it.
+     */
+    const fromV = rangeStart(from);
+    if (fromV) qb.andWhere('s.createdAt >= :from', { from: fromV });
+    const toV = rangeEnd(to);
+    if (toV) qb.andWhere('s.createdAt <  :to',   { to: toV });
+
     return qb.getMany();
   }
 }

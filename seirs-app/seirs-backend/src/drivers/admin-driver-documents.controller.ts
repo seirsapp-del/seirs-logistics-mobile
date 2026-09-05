@@ -40,8 +40,11 @@ export class AdminDriverDocumentsController {
   // or a vehicle change. Replaces three separate lists a reviewer had to
   // reconcile in their head.
   @Get('queue')
-  queue() {
-    return this.drivers.kycQueue();
+  queue(
+    @Query('from') from?: string,
+    @Query('to')   to?: string,
+  ) {
+    return this.drivers.kycQueue({ from, to });
   }
 
   // GET /api/v1/admin/driver-documents/vehicle-history/:driverId

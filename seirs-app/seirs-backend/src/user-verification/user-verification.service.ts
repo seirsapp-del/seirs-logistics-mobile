@@ -12,6 +12,7 @@ import { IdentityVerification, VerificationStatus } from './user-verification.en
 import { SubmitIdentityDto } from './dto/submit-verification.dto';
 import { User } from '../users/user.entity';
 import { AccountSecurityService } from '../notifications/account-security.service';
+import { rangeStart, rangeEnd } from '../common/utils/date-range';
 
 const SUBMIT_COOLDOWN_MS = 60 * 60 * 1000;   // 1 hour between submissions (anti-spam)
 
@@ -171,11 +172,18 @@ export class UserVerificationService {
          * everything submitted ON the end date, and on a review queue that
          * reads as "nobody applied that day".
          */
-        ...(from || to ? {
+        /**
+         * Parsed first, then guarded on the RESULT.
+         *
+         * Guarding on the raw string and asserting the parse would push a
+         * null into Between on a typo, which is exactly the failure the
+         * helper exists to prevent. An unreadable date is ignored, so the
+         * queue shows too much rather than nothing.
+         */
+        ...(rangeStart(from) || rangeEnd(to) ? {
           submittedAt: Between(
-            from ? new Date(`${from}T00:00:00Z`) : new Date(0),
-            to   ? new Date(new Date(`${to}T00:00:00Z`).getTime() + 86_400_000)
-                 : new Date(8.64e15),
+            rangeStart(from) ?? new Date(0),
+            rangeEnd(to)     ?? new Date(8.64e15),
           ),
         } : {}),
       },

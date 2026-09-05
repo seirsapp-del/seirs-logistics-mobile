@@ -3294,8 +3294,8 @@ export class DriversService {
     };
   }
 
-  async kycQueue() {
-    return buildKycQueue(this.repo.manager.connection);
+  async kycQueue(opts: { from?: string; to?: string } = {}) {
+    return buildKycQueue(this.repo.manager.connection, opts);
   }
 
   /**
