@@ -18,6 +18,7 @@ import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-tic
 import { SupportService } from '../support/support.service';
 import { DriverEarning } from '../earnings/driver-earning.entity';
 import { vehicleIdentityForPassenger, driverForBrowsing } from '../common/redact-driver';
+import { stopLabel } from '../common/ng-city-from-text';
 import { KycDocument, KycDocStatus } from '../kyc/kyc-document.entity';
 import { KycDocumentsService } from '../kyc/kyc-documents.service';
 import { buildKycQueue } from './kyc-queue';
@@ -971,16 +972,18 @@ export class DriversService {
     const stopsByTrip = new Map<string, string[]>();
     if (trips.length > 0) {
       const rows: Array<any> = await this.tripStopsRepo.manager.query(
-        `SELECT "trip_id" AS "tripId", "city", "order"
+        `SELECT "trip_id" AS "tripId", "city", "address", "order"
            FROM "trip_stops"
           WHERE "trip_id" = ANY($1)
           ORDER BY "trip_id", "order" ASC`,
         [trips.map((t: any) => t.id)],
       ).catch(() => []);
       for (const r of rows) {
-        if (!r.city) continue;
+        // The town the address names, not the state the geocoder returned.
+        const label = stopLabel(r.city, r.address);
+        if (!label) continue;
         const list = stopsByTrip.get(r.tripId) ?? [];
-        list.push(r.city);
+        list.push(label);
         stopsByTrip.set(r.tripId, list);
       }
     }
