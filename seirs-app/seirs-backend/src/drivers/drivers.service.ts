@@ -1007,8 +1007,17 @@ export class DriversService {
              ON s2."trip_id" = s1."trip_id"
             AND s2."sequence" > s1."sequence"
           WHERE s1."trip_id" = ANY($1)
-            AND s1."city" ILIKE $2
-            AND s2."city" ILIKE $3
+            -- The ADDRESS counts too, not only the stored city.
+            --
+            -- A stop saves whatever the geocoder called the area, so the
+            -- University of Ibadan first gate is filed under "Oyo". Matching
+            -- on city alone found no segment, the price fell back to the whole
+            -- route, and a passenger getting off at Ibadan was charged the
+            -- full 241 km to Lagos. That is an overcharge, not a label bug.
+            --
+            -- Same technique the trip search above already uses.
+            AND (s1."city" ILIKE $2 OR s1."address" ILIKE $2)
+            AND (s2."city" ILIKE $3 OR s2."address" ILIKE $3)
           ORDER BY s1."trip_id", s1."sequence" ASC, s2."sequence" DESC`,
         [trips.map(t => t.id), from, to],
       ).catch(() => []);
