@@ -1,5 +1,9 @@
 import { View } from 'react-native';
 import Svg, { Circle, Path, Rect, Line, Text as SvgText, G } from 'react-native-svg';
+import {
+  MARK_SW, MARK_WHEEL_R, MARK_HUB_R, MARK_HEAD_R, MARK_HEAD,
+  MARK_FRAME_D, MARK_WHEELS, MARK_LINES, MARK_VIEWBOX_ATTR, markHeightFor,
+} from '@seirs/shared/brand/mark';
 
 /**
  * SEIRS logo v2: refined for "ten-year-old brand on day one" feel.
@@ -42,46 +46,7 @@ export function SeirsMark({
   size  = 96,
   color = NAVY_REFINED,
 }: MarkProps) {
-  const VB_W = 48;
-  const VB_H = 32;
-  const aspect = VB_H / VB_W;
-
-  return (
-    <Svg width={size} height={size * aspect} viewBox={`0 0 ${VB_W} ${VB_H}`}>
-      {/* Frame: single 4-segment path: rear hub → saddle-left → saddle-right → front hub */}
-      <Path
-        d="M 10 24 L 18 16 L 30 16 L 38 24"
-        stroke={color}
-        strokeWidth={STROKE}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {/* Rear wheel: circle + 2-stroke axle cross */}
-      <Circle cx={10} cy={24} r={5} stroke={color} strokeWidth={STROKE} fill="none" />
-      <Line x1={6}  y1={24} x2={14} y2={24} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
-      <Line x1={10} y1={20} x2={10} y2={28} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
-
-      {/* Front wheel */}
-      <Circle cx={38} cy={24} r={5} stroke={color} strokeWidth={STROKE} fill="none" />
-      <Line x1={34} y1={24} x2={42} y2={24} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
-      <Line x1={38} y1={20} x2={38} y2={28} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
-
-      {/* Handlebar: short bar reaching forward from the rider's hand,
-          visibly ABOVE the front wheel so there's clear hand→wheel space */}
-      <Line x1={37} y1={12} x2={42} y2={9} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
-
-      {/* Rider torso: angled forward */}
-      <Line x1={24} y1={16} x2={28} y2={8} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
-
-      {/* Rider head: filled solid so it reads at favicon size */}
-      <Circle cx={28} cy={5} r={3} fill={color} />
-
-      {/* Arm to handlebar: ends at (37,12), above-left of wheel for breathing room */}
-      <Line x1={27} y1={10} x2={37} y2={12} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
-    </Svg>
-  );
+  return <SeirsMarkBold size={size} color={color} hubColor="transparent" />;
 }
 
 // ── 2. The wordmark ────────────────────────────────────────────────────
@@ -147,46 +112,46 @@ export function SeirsMarkBold({
   color    = NAVY_REFINED,
   hubColor = '#FFFFFF',
 }: BoldMarkProps) {
-  const VB_W = 48;
-  const VB_H = 32;
-  const aspect = VB_H / VB_W;
-  const STR = 3.5;
-
+  /**
+   * The one okada (2026-09-05).
+   *
+   * This drew its own geometry on a 48x32 box at stroke 3.5, and
+   * SeirsMark drew another at stroke 2 with outlined wheels and spokes.
+   * Neither was the mark the launcher icon and the splash are cut from,
+   * so the app showed a different okada from the one on the home screen.
+   * Both now read shared/brand/mark.ts, which is the same file
+   * scripts/build-mark-assets.js cuts the PNGs from.
+   *
+   * hubColor="transparent" gives the thin look the old SeirsMark had,
+   * without a second geometry to keep in step.
+   */
   return (
-    <Svg width={size} height={size * aspect} viewBox={`0 0 ${VB_W} ${VB_H}`}>
-      {/* Frame: bolder */}
+    <Svg width={size} height={markHeightFor(size)} viewBox={MARK_VIEWBOX_ATTR}>
       <Path
-        d="M 10 24 L 18 16 L 30 16 L 38 24"
+        d={MARK_FRAME_D}
         stroke={color}
-        strokeWidth={STR}
-        fill="none"
+        strokeWidth={MARK_SW}
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
-
-      {/* Rear wheel: SOLID filled, with hub hole showing through */}
-      <Circle cx={10} cy={24} r={6}   fill={color} />
-      <Circle cx={10} cy={24} r={2}   fill={hubColor} />
-
-      {/* Front wheel */}
-      <Circle cx={38} cy={24} r={6}   fill={color} />
-      <Circle cx={38} cy={24} r={2}   fill={hubColor} />
-
-      {/* Handlebar: reaches forward from the hand, sits ABOVE the wheel
-          for clear hand→wheel separation */}
-      <Line x1={37} y1={12} x2={42} y2={9}
-            stroke={color} strokeWidth={STR} strokeLinecap="round" />
-
-      {/* Rider torso: beefier */}
-      <Line x1={24} y1={16} x2={28} y2={8}
-            stroke={color} strokeWidth={4} strokeLinecap="round" />
-
-      {/* Head: bigger solid circle */}
-      <Circle cx={28} cy={5} r={3.5} fill={color} />
-
-      {/* Arm: ends at (37,12), above-left of wheel for visible gap */}
-      <Line x1={27} y1={10} x2={37} y2={12}
-            stroke={color} strokeWidth={STR} strokeLinecap="round" />
+      {MARK_WHEELS.map((w) => (
+        <Circle key={`w${w.x}`} cx={w.x} cy={w.y} r={MARK_WHEEL_R} fill={color} />
+      ))}
+      {MARK_LINES.map((l, i) => (
+        <Line
+          key={`l${i}`}
+          x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+          stroke={color}
+          strokeWidth={MARK_SW}
+          strokeLinecap="round"
+        />
+      ))}
+      <Circle cx={MARK_HEAD.x} cy={MARK_HEAD.y} r={MARK_HEAD_R} fill={color} />
+      {/* Hubs last, so they punch through the frame's round cap. */}
+      {MARK_WHEELS.map((w) => (
+        <Circle key={`h${w.x}`} cx={w.x} cy={w.y} r={MARK_HUB_R} fill={hubColor} />
+      ))}
     </Svg>
   );
 }

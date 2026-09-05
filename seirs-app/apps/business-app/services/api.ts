@@ -82,5 +82,15 @@ export const authApi = {
   // account up by email and deep-links back to the right app's scheme.
   forgotPassword: sharedAuthApi.forgotPassword,
   resetPassword:  sharedAuthApi.resetPassword,
+  /**
+   * Social sign-in (2026-09-05). Whitelisted here deliberately: this
+   * barrel is a NARROWED authApi, not a re-export, so a method missing
+   * from it is simply absent at the call site rather than a runtime
+   * undefined. The screen always passes role 'business', which makes the
+   * server refuse to create an account: business signup also creates a
+   * BusinessAccount, and a social button cannot.
+   */
+  googleLogin: sharedAuthApi.googleLogin,
+  appleLogin:  sharedAuthApi.appleLogin,
 };
 export type { FeaturedCardDTO, StoryDTO } from '@seirs/shared/services/api';

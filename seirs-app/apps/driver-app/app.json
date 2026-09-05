@@ -63,7 +63,8 @@
         }
       ],
       "@react-native-google-signin/google-signin",
-      "expo-document-picker"
+      "expo-document-picker",
+      "../../plugins/withNavBarContrast"
     ],
     "experiments": {
       "typedRoutes": true

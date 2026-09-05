@@ -212,11 +212,22 @@ export const authApi = {
    * SocialLoginDto's `idToken` requirement and came back 400, then 401.
    * The token now travels; the caller gets it from the native SDK.
    */
-  googleLogin: (idToken: string) =>
-    request<{ token: string; user: any }>('POST', '/auth/google', { idToken }, false),
+  /**
+   * `role` says WHICH APP is asking (2026-09-05).
+   *
+   * Omitted means the customer app, which is allowed to create an account
+   * from a social sign-in. 'driver' and 'business' mean sign-in only: the
+   * server refuses if no account of that kind already exists, because
+   * their signup also creates a Driver row or a BusinessAccount and a
+   * social button cannot produce either. Without this the driver app's
+   * Google button would quietly file a new person as a CUSTOMER and sign
+   * them into an app built around a vehicle they have not registered.
+   */
+  googleLogin: (idToken: string, role?: 'customer' | 'driver' | 'business') =>
+    request<{ token: string; user: any }>('POST', '/auth/google', { idToken, role }, false),
 
-  appleLogin: (idToken: string) =>
-    request<{ token: string; user: any }>('POST', '/auth/apple', { idToken }, false),
+  appleLogin: (idToken: string, role?: 'customer' | 'driver' | 'business') =>
+    request<{ token: string; user: any }>('POST', '/auth/apple', { idToken, role }, false),
 
   me: () => request<{ user: any; driver?: any }>('GET', '/auth/me'),
 

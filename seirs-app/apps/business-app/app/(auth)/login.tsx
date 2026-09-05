@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { PasswordInput } from '@/components/PasswordInput';
+import { SocialSignIn } from '@/components/SocialSignIn';
 import { authApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -188,6 +189,22 @@ export default function LoginScreen() {
             )}
           </Pressable>
         </View>
+
+        {/*
+          Standard Google and Apple buttons (founder 2026-09-05).
+
+          role={role} is the load-bearing prop: it tells the server which
+          app is asking, and the server refuses to CREATE an account for
+          the driver and business apps, because their signup also makes a
+          Driver row or a BusinessAccount that a social button cannot.
+        */}
+        <SocialSignIn
+          role="business"
+          theme={theme}
+          disabled={loading}
+          onError={setError}
+          onSignedIn={(res) => login({ ...res.user, token: res.token }, rememberMe)}
+        />
 
         {/* Footer */}
         <View style={styles.footer}>

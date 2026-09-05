@@ -452,6 +452,9 @@ export class AuthService {
 
     let user = await this.usersRepo.findOne({ where: [{ googleId: payload.sub }, { email }] });
 
+    // Sign-in only for the driver and business apps. See SocialLoginDto.
+    this.assertSocialRole(dto.role, user, 'Google');
+
     if (!user) {
       const accountId = await this.uniqueAccountId(AccountIdPrefix.CUSTOMER);
       user = this.usersRepo.create({
@@ -492,12 +495,21 @@ export class AuthService {
 
     let user = await this.usersRepo.findOne({ where: { appleId: payload.sub } });
 
+    /**
+     * Apple hides the address on every sign-in after the first, so an
+     * existing driver or business is found by appleId here. When it is a
+     * first sign-in we have an address and can look them up below; either
+     * way the same rule applies, which is why the check runs twice.
+     */
+    if (user) this.assertSocialRole(dto.role, user, 'Apple');
+
     if (!user) {
       if (!payload.email) {
         throw new BadRequestException('Email is required for first-time Apple sign-in.');
       }
       const email     = AuthService.canonicalEmail(payload.email);
       const existing  = await this.usersRepo.findOne({ where: { email } });
+      this.assertSocialRole(dto.role, existing, 'Apple');
       const accountId = await this.uniqueAccountId(AccountIdPrefix.CUSTOMER);
 
       if (existing) {
@@ -856,6 +868,158 @@ export class AuthService {
      * The sign-in is logged as totp_required rather than success, because
      * nobody is in yet.
      */
+    if ((user as any).totpEnabled) {
+      this.recordAdminSignIn({
+        userId: user.id, email, name: user.name,
+        adminRole: (user as any).adminRole, outcome: 'totp_required', ctx,
+      });
+      const tempToken = await this.jwtService.signAsync(
+        { sub: user.id, scope: 'totp_pending' },
+        { expiresIn: '5m' },
+      );
+      return { requiresTOTP: true, tempToken };
+    }
+
+    this.noteSignInSuccess(user.id, ctx);
+    this.recordAdminSignIn({
+      userId: user.id, email, name: user.name,
+      adminRole: (user as any).adminRole, outcome: 'success', ctx,
+    });
+    return this.buildAuthResponse(user);
+  }
+
+  /**
+   * The driver and business apps may SIGN IN with a social account, never
+   * register with one (founder 2026-09-05).
+   *
+   * Their signup does more than make a user: it creates a Driver row or a
+   * BusinessAccount. A social button that skipped that would leave
+   * somebody inside an app built entirely around a vehicle or a company
+   * they do not have, and the customer path would have filed them as a
+   * CUSTOMER on the way in.
+   *
+   * Silent for the customer app, which is allowed to create.
+   */
+  private assertSocialRole(
+    role: 'customer' | 'driver' | 'business' | undefined,
+    user: { role?: UserRole; businessRole?: string | null } | null,
+    provider: string,
+  ): void {
+    if (!role || role === 'customer') return;
+
+    const kind = role === 'driver' ? 'driver' : 'business';
+    const matches =
+      role === 'driver'
+        ? user?.role === UserRole.DRIVER
+        : !!user?.businessRole;
+
+    if (!user || !matches) {
+      // One sentence for both cases: which it was is what an attacker
+      // would like to learn, and the person's next step is the same.
+      throw new UnauthorizedException(
+        `No ${kind} account for that ${provider} address. Create one first, then you can sign in this way.`,
+      );
+    }
+  }
+
+  /**
+   * Sign a STAFF member in with Google or Apple (founder 2026-09-05).
+   *
+   * WHY THIS EXISTS RATHER THAN REUSING googleLogin. That method is the
+   * customer one, and it is right for customers: an unknown email becomes
+   * a brand new CUSTOMER account and is handed a session immediately.
+   * Pointed at the dashboard, those same two behaviours are a way in:
+   * anyone whose Google address happened to match a staff member's would
+   * receive an admin session, and it would arrive WITHOUT the second
+   * factor that /auth/admin-login has demanded since 2 September. A
+   * social button on an admin login is only ever as strong as the rules
+   * behind it, and the rules have to be the admin ones.
+   *
+   * So, three refusals that the customer path does not make:
+   *
+   *   1. It NEVER creates an account. Signing in as staff is something
+   *      you already are, not something a login can make you.
+   *   2. The account must already hold the admin role.
+   *   3. Suspension, lockout and TOTP are checked exactly as the password
+   *      path checks them, and the temp-token shape is identical, so the
+   *      dashboard's existing second-factor screen needs no special case.
+   *
+   * Every outcome lands on the same sign-in log as the password path, so
+   * an attempt through this door is as visible as one through the other.
+   */
+  async adminSocialLogin(
+    provider: 'google' | 'apple',
+    idToken: string,
+    ctx?: SignInContext,
+  ) {
+    let payload: { sub: string; email: string };
+    try {
+      if (provider === 'google') {
+        const ticket = await this.googleClient.verifyIdToken({
+          idToken,
+          audience: this.cfg.get<string>('GOOGLE_CLIENT_ID'),
+        });
+        const p = ticket.getPayload();
+        if (!p?.sub || !p?.email) throw new Error('Invalid payload');
+        payload = { sub: p.sub, email: p.email };
+      } else {
+        const r = await appleSignin.verifyIdToken(idToken, {
+          audience:         this.cfg.get<string>('APPLE_CLIENT_ID'),
+          ignoreExpiration: false,
+        });
+        /**
+         * Apple withholds the address on every sign-in after the first,
+         * which is fine for a customer we can find by appleId but useless
+         * here: staff are matched by their real work address, never by a
+         * relay we have not seen before.
+         */
+        if (!r?.sub || !r?.email) throw new Error('Invalid payload');
+        payload = { sub: r.sub, email: r.email };
+      }
+    } catch {
+      this.recordAdminSignIn({ email: '', outcome: `bad_${provider}_token`, ctx });
+      throw new UnauthorizedException(`Invalid ${provider === 'google' ? 'Google' : 'Apple'} token.`);
+    }
+
+    const email = AuthService.canonicalEmail(payload.email);
+    const user  = await this.usersRepo.findOne({ where: { email } });
+
+    if (!user || user.role !== UserRole.ADMIN) {
+      this.recordAdminSignIn({
+        email, outcome: user ? 'not_admin' : 'no_account',
+        userId: user?.id ?? null, name: user?.name ?? null, ctx,
+      });
+      // Deliberately the same sentence either way: which of the two it
+      // was is exactly what an attacker would like to learn.
+      throw new UnauthorizedException('That account cannot sign in here.');
+    }
+    if (!user.isActive) {
+      this.recordAdminSignIn({
+        userId: user.id, email, name: user.name,
+        adminRole: (user as any).adminRole, outcome: 'suspended', ctx,
+      });
+      throw new UnauthorizedException('Account suspended. Contact support.');
+    }
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      this.recordAdminSignIn({
+        userId: user.id, email, name: user.name,
+        adminRole: (user as any).adminRole, outcome: 'locked', ctx,
+      });
+      const retryAfter = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+      throw new HttpException(
+        `Too many failed attempts. Try again in ${retryAfter} minute${retryAfter === 1 ? '' : 's'}.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // Remember the provider id, so a later sign-in matches on it as well
+    // as the address. Never sets emailVerified: this proves the provider
+    // trusts the address, not that we asked its owner anything.
+    const idField = provider === 'google' ? 'googleId' : 'appleId';
+    if (!(user as any)[idField]) {
+      await this.usersRepo.update(user.id, { [idField]: payload.sub } as any);
+    }
+
     if ((user as any).totpEnabled) {
       this.recordAdminSignIn({
         userId: user.id, email, name: user.name,

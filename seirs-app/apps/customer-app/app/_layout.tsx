@@ -236,6 +236,24 @@ function SystemNavBar() {
      * What DOES need setting is the icon colour, or the three navigation
      * buttons are dark grey on a dark screen and effectively invisible.
      */
+    /**
+     * setStyle FIRST, setButtonStyleAsync as a fallback (2026-09-05).
+     *
+     * setButtonStyleAsync is the legacy call and is documented as
+     * unsupported with edge-to-edge, which is on in all three apps. It
+     * was the only thing being called, and because the rejection was
+     * swallowed below, the bar simply stayed as Android painted it while
+     * the code read as though it had been fixed. The founder found it
+     * twice: the business partner drawer, then the customer drawer.
+     *
+     * setStyle is the supported replacement, and it only takes effect
+     * when the navigation-bar contrast scrim is off, which is what
+     * plugins/withNavBarContrast.js turns off. Both are attempted so a
+     * phone still running an older APK is no worse off than before.
+     */
+    try {
+      (NavigationBar as any).setStyle?.(dark ? 'light' : 'dark');
+    } catch { /* older module, fall through to the legacy call */ }
     NavigationBar.setButtonStyleAsync(dark ? 'light' : 'dark').catch(() => {});
   }, [isDark]);
   return null;

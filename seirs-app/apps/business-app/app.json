@@ -71,7 +71,8 @@
           "color": "#0F2B4C"
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "../../plugins/withNavBarContrast"
     ],
     "experiments": {
       "typedRoutes": true

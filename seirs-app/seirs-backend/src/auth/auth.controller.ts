@@ -57,6 +57,38 @@ export class AuthController {
   }
 
   /**
+   * POST /api/v1/auth/admin-google  and  /auth/admin-apple
+   *
+   * The dashboard's social buttons. Deliberately NOT /auth/google: that
+   * one creates a customer account for an unknown address and issues a
+   * session with no second factor, which on an admin login would be a
+   * way around the TOTP the password path demands. See adminSocialLogin
+   * for the three refusals it makes instead.
+   *
+   * Throttled like admin-login, and for the same reason: a social token
+   * is still something an attacker can try repeatedly.
+   */
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Post('admin-google')
+  adminGoogleLogin(
+    @Body() body: { idToken: string },
+    @Headers('user-agent') userAgent?: string,
+    @Ip() ip?: string,
+  ) {
+    return this.authService.adminSocialLogin('google', body?.idToken ?? '', { userAgent, ip });
+  }
+
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Post('admin-apple')
+  adminAppleLogin(
+    @Body() body: { idToken: string },
+    @Headers('user-agent') userAgent?: string,
+    @Ip() ip?: string,
+  ) {
+    return this.authService.adminSocialLogin('apple', body?.idToken ?? '', { userAgent, ip });
+  }
+
+  /**
    * Finish an admin sign-in that stopped for a second factor.
    *
    * The dashboard has called this route since it was built. It did not

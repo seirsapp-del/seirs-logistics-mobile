@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+import { SocialSignIn } from '@/components/SocialSignIn';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 
 export default function LoginScreen() {
@@ -172,6 +173,22 @@ export default function LoginScreen() {
             )}
           </Pressable>
         </View>
+
+        {/*
+          Standard Google and Apple buttons (founder 2026-09-05).
+
+          role={role} is the load-bearing prop: it tells the server which
+          app is asking, and the server refuses to CREATE an account for
+          the driver and business apps, because their signup also makes a
+          Driver row or a BusinessAccount that a social button cannot.
+        */}
+        <SocialSignIn
+          role="driver"
+          theme={theme}
+          disabled={loading}
+          onError={setError}
+          onSignedIn={(res) => login({ ...res.user, token: res.token }, rememberMe)}
+        />
 
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecond }]}>Don't have an account?</Text>

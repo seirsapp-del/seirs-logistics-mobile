@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { getGoogleIdToken, isGoogleConfigured, GoogleCancelled } from '@/lib/googleAuth';
 import { PasswordInput } from '@/components/PasswordInput';
+import { SocialSignIn } from '@/components/SocialSignIn';
 import {
   ArrowLeft, Mail, ArrowRight, Truck,
 } from 'lucide-react-native';
@@ -201,30 +202,22 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
-        {/* Google sign-in, restored 2026-08-30 with the native module
-            actually linked this time. It renders only when a client id is
-            present, so an unconfigured build shows nothing rather than the
-            dead button that was here this morning. Apple stays out until
-            iOS exists; note that adding Google makes Sign in with Apple
-            mandatory on iOS under guideline 4.8. */}
-        {isGoogleConfigured() && (
-          <Pressable
-            onPress={handleGoogle}
-            disabled={googleBusy || loading}
-            style={({ pressed }) => [
-              styles.googleBtn,
-              {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-                opacity: pressed || googleBusy ? 0.7 : 1,
-              },
-            ]}
-          >
-            {googleBusy
-              ? <ActivityIndicator color={theme.text} />
-              : <Text style={[styles.googleText, { color: theme.text }]}>Continue with Google</Text>}
-          </Pressable>
-        )}
+        {/*
+          Standard Google and Apple buttons (founder 2026-09-05).
+
+          role={role} is the load-bearing prop: it tells the server which
+          app is asking, and the server refuses to CREATE an account for
+          the driver and business apps, because their signup also makes a
+          Driver row or a BusinessAccount that a social button cannot.
+        */}
+        <SocialSignIn
+          role="customer"
+          theme={theme}
+          disabled={loading}
+          onError={setError}
+          onSignedIn={(res) => login({ ...res.user, token: res.token, pendingDeletion: (res as any).pendingDeletion ?? null }, rememberMe)}
+        />
+
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecond }]}>Don't have an account?</Text>

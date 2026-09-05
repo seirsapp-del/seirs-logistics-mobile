@@ -31,43 +31,52 @@ export function SeirsMarkBold({
   color    = NAVY_REFINED,
   hubColor = '#FFFFFF',
 }: MarkProps) {
-  const VB_W = 48;
-  const VB_H = 32;
-  const STR  = 3.5;
+  /**
+   * The locked mark (2026-09-05).
+   *
+   * This drew stroke 3.5 on a 48x32 box, which is the pre-August okada.
+   * The apps drew a third one at stroke 2. The founder saw all three and
+   * asked for one mark everywhere.
+   *
+   * The numbers below are the founder's locked pick of 30 August with the
+   * two corrections of 3 September (torso 6.0 -> 5.5 so its round cap
+   * stops hanging below the frame rail; head to 31.82, -1.18 so the neck
+   * meets the skull at the same angle on both sides).
+   *
+   * SOURCE OF TRUTH is seirs-app/shared/brand/mark.ts, which
+   * scripts/build-mark-assets.js also cuts the PNG assets from. It is
+   * copied here rather than imported because this app has no
+   * @seirs/shared path alias, and adding one to change a logo would put
+   * the whole Next build at risk. If the mark ever moves again, this file
+   * and apps/seirs-website/src/components/SeirsLogo.tsx are the two
+   * copies that must move with it.
+   */
+  const SW = 5.5, WHEEL_R = 7.0, HUB_R = 2.4, HEAD_R = 4.3;
+  const HEAD = { x: 31.82, y: -1.18 };
+  const VB_X = 3.0, VB_Y = -5.48, VB_W = 42.0, VB_H = 36.48;
 
   return (
     <svg
       width={size}
       height={size * (VB_H / VB_W)}
-      viewBox={`0 0 ${VB_W} ${VB_H}`}
+      viewBox={`${VB_X} ${VB_Y} ${VB_W} ${VB_H}`}
       xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
+      fill="none"
     >
       <path
         d="M 10 24 L 18 16 L 30 16 L 38 24"
-        stroke={color}
-        strokeWidth={STR}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke={color} strokeWidth={SW} fill="none"
+        strokeLinecap="round" strokeLinejoin="round"
       />
-      {/* Rear wheel */}
-      <circle cx={10} cy={24} r={6} fill={color} />
-      <circle cx={10} cy={24} r={2} fill={hubColor} />
-      {/* Front wheel */}
-      <circle cx={38} cy={24} r={6} fill={color} />
-      <circle cx={38} cy={24} r={2} fill={hubColor} />
-      {/* Handlebar */}
-      <line x1={37} y1={12} x2={42} y2={9}
-            stroke={color} strokeWidth={STR} strokeLinecap="round" />
-      {/* Rider torso */}
-      <line x1={24} y1={16} x2={28} y2={8}
-            stroke={color} strokeWidth={4} strokeLinecap="round" />
-      {/* Head */}
-      <circle cx={28} cy={5} r={3.5} fill={color} />
-      {/* Arm */}
-      <line x1={27} y1={10} x2={37} y2={12}
-            stroke={color} strokeWidth={STR} strokeLinecap="round" />
+      <circle cx={10} cy={24} r={WHEEL_R} fill={color} />
+      <circle cx={38} cy={24} r={WHEEL_R} fill={color} />
+      <line x1={37} y1={12} x2={42} y2={9} stroke={color} strokeWidth={SW} strokeLinecap="round" />
+      <line x1={24} y1={16} x2={31.13} y2={1.74} stroke={color} strokeWidth={SW} strokeLinecap="round" />
+      <circle cx={HEAD.x} cy={HEAD.y} r={HEAD_R} fill={color} />
+      <line x1={29.35} y1={5.30} x2={37} y2={12} stroke={color} strokeWidth={SW} strokeLinecap="round" />
+      {/* Hubs last, so they punch through the frame path's round cap. */}
+      <circle cx={10} cy={24} r={HUB_R} fill={hubColor} />
+      <circle cx={38} cy={24} r={HUB_R} fill={hubColor} />
     </svg>
   );
 }
