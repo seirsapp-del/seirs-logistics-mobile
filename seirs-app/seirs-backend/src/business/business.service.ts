@@ -619,6 +619,36 @@ export class BusinessService {
       }
     });
 
+    /**
+     * The list redacts too. It did not, and the detail route beside it did.
+     *
+     * priceBreakdown is stored verbatim from the pricing engine, so the row
+     * carries seirsNet and trueCosts (contribution, belowFloor,
+     * marginFloorNgn, processorCost, failureProvision) plus the rider's
+     * cost basis. delivery.entity declares them as plain columns with no
+     * select:false and no @Exclude, this query names no columns, nothing
+     * global strips anything, and GET /business/deliveries is guarded only
+     * by BusinessAccountGuard. So an ordinary business sender received
+     * SEIRS's own margin on every booking they listed.
+     *
+     * The founder's rule is that our cut is shown to nobody, disclosed once
+     * in the Code of Conduct and nowhere else. The redactor was already
+     * imported in this file and applied on the detail route thirty lines
+     * away; the customer-side sibling list was patched; this was the
+     * equivalent nobody came back to.
+     *
+     * Scoping does not save it: a sender only sees their own bookings, but
+     * the leaked figures are OUR margin and the RIDER's cost basis, which
+     * are not the sender's data at any scope.
+     */
+    items.forEach(d => {
+      if ((d as any).priceBreakdown) {
+        (d as any).priceBreakdown = breakdownForCustomer((d as any).priceBreakdown);
+      }
+      // The rider's pay is not the sender's business either.
+      if ((d as any).driverEarnings !== undefined) delete (d as any).driverEarnings;
+    });
+
     return { items, total, page, hasMore: skip + items.length < total };
   }
 
@@ -1833,7 +1863,71 @@ export class BusinessService {
       [store.id],
     ).catch(() => [] as any[]);
 
-    return { ...store, approvedStorefrontPhotoUrl: row?.url ?? null };
+    /**
+     * Named fields, not the whole row.
+     *
+     * This returned `{ ...store }`, and getPartnerStore is a findOne with
+     * no select list, so TypeORM hydrated every mapped column and the
+     * spread put all of them on the wire: bankAccountNumber in plaintext,
+     * bankCode, bankAccountName, the three pending bank fields, cacRegUrl,
+     * ownerIdUrl, and reviewNote and reviewedBy.
+     *
+     * Two separate problems, and the second is the worse one.
+     *
+     * The bank number is the shop's own, so it is not a leak in the strict
+     * sense. But partner-payouts.service masks it to the last four for the
+     * SAME actor reading the SAME row, on the reasoning that a shop owner
+     * already knows their account and showing it in full costs everything
+     * if somebody is looking over their shoulder in a busy market. Two
+     * opposite treatments of one field for one person is not a policy.
+     *
+     * reviewNote and reviewedBy are OUR notes about their application,
+     * written by an admin for other admins. Handing those to the applicant
+     * is the same mistake as the internal support tickets fixed tonight:
+     * a record about somebody, readable by them, written as though it were
+     * not.
+     *
+     * The screen never rendered any of it, which is why it survived: this
+     * was over-delivery into a JSON body rather than anything on screen.
+     * That makes it invisible to everyone except whoever opens the network
+     * tab, and it is still a plaintext account number and a set of KYC
+     * document URLs sitting in a response a non-staff caller receives.
+     */
+    const mask = (n?: string | null) =>
+      n ? `${'*'.repeat(Math.max(0, n.length - 4))}${n.slice(-4)}` : null;
+
+    return {
+      id:            store.id,
+      storeCode:     (store as any).storeCode ?? null,
+      storeName:     store.storeName,
+      storeAddress:  store.storeAddress,
+      phone:         store.phone,
+      status:        store.status,
+      acceptingNew:  (store as any).acceptingNew,
+      maxCapacity:   store.maxCapacity,
+      storeLat:      (store as any).storeLat ?? null,
+      storeLng:      (store as any).storeLng ?? null,
+
+      // Opening hours, both shapes: the app still reads the legacy trio.
+      workingHours:  (store as any).workingHours ?? null,
+      operatingDays: (store as any).operatingDays ?? [],
+      openTime:      (store as any).openTime ?? null,
+      closeTime:     (store as any).closeTime ?? null,
+
+      notifyNewPackage: (store as any).notifyNewPackage,
+      notifyPickup:     (store as any).notifyPickup,
+      notifyPayout:     (store as any).notifyPayout,
+
+      // Where their money goes, masked exactly as the payouts screen does.
+      hasBankAccount:    !!(store as any).bankAccountNumber,
+      bankName:          (store as any).bankName ?? null,
+      bankAccountName:   (store as any).bankAccountName ?? null,
+      bankAccountNumber: mask((store as any).bankAccountNumber),
+
+      // The shop's own face, approved only.
+      storefrontPhotoUrl: (store as any).storefrontPhotoUrl ?? null,
+      approvedStorefrontPhotoUrl: row?.url ?? null,
+    };
   }
 
   async updateSettings(userId: string, data: any) {
