@@ -204,6 +204,56 @@ Same question, same status: **not yet investigated**. The redemption
 cards have a `live` flag in the code, which suggests some are
 deliberately inert, and that needs confirming rather than assuming.
 
+### F2 ANSWERED. Promotions is live everywhere except the charge
+
+Investigated 2026-09-05. Every part exists and one link is missing, and
+the missing one is the only one that costs money.
+
+- Admin can create, edit, list and delete promos. Four routes, dashboard
+  page present.
+- The customer sees active promos, enters a code, and it is validated
+  against the live list.
+- The code is stored on the Send draft and passed to
+  `deliveriesApi.create` as `promoCode`.
+- **`POST /deliveries` has no `promoCode` field**, so the global
+  validation whitelist STRIPS it. The code is accepted, carried, and
+  silently discarded. Nobody has ever been discounted.
+
+The backend `redeem()` is real: it computes `discountAppliedKobo` and
+enforces `perUserLimit` and campaign `usageLimit`. Its own comment names
+the caller as "a future delivery booking flow". That flow now exists and
+does not call it.
+
+**Context that explains the shape:** `/promo` used to call
+`redeem({ subtotalKobo: 0 })` merely to VALIDATE a code. That burned the
+customer's one allowed use against a zero subtotal, and let anybody drain
+a campaign's usage limit from that text box without booking anything
+(sweep C-1.3, 23 August). It was correctly made validate-only. The other
+half was never built.
+
+**The whole gap:** add `promoCode` to the delivery DTO, call `redeem()`
+once at booking against the real subtotal, subtract
+`discountAppliedKobo`. Two fields and one call.
+
+### F3 ANSWERED. Redeem works for two of the four rewards
+
+- **NGN 500 off** (`discount_500`, 500 pts): LIVE. Subtracts 500 from
+  `delivery.price` and writes the ledger entry.
+- **Free delivery** (`free_delivery`, 1000 pts): LIVE, capped by
+  `loyalty_free_delivery_max_ngn` (3000). The cap exists because it used
+  to set ANY delivery to zero and was buying a 40,000 naira interstate
+  run for 1,000 points. Refused rather than part-discounted, so "free"
+  keeps meaning free and the points are not spent.
+- **Priority dispatch** (300 pts): `live: false`, deliberately inert.
+  **Recommend DELETING it rather than greying it**: the tier policy says
+  tiers unlock the earning multiplier ONLY, no priority dispatch, so this
+  card advertises something we have decided not to do.
+- **NGN 500 insurance cover** (200 pts): `live: false`, deliberately
+  inert. Needs a decision, not code.
+
+Redemption also correctly REQUIRES a delivery to apply to, and refuses
+to deduct points with no user-visible benefit.
+
 ### F4. Rewards has dead space, and dark mode is flat
 Both the customer Rewards screen and the business Wallet. The founder
 wants the empty area below the fold used, and dark mode to feel less
