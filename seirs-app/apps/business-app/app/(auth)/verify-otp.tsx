@@ -124,7 +124,7 @@ export default function VerifyOtpScreen() {
           style={styles.backBtn}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={tx('auto.verifyOtp.back', 'Back')}
           onPress={() => router.back()}
         >
           <View style={[styles.backCircle, { backgroundColor: theme.surface }, Shadows.xs]}>

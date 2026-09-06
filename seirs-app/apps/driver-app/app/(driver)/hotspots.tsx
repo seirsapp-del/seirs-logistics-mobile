@@ -138,7 +138,7 @@ export default function HotspotsScreen() {
             }}
             showsUserLocation
           >
-            <Marker coordinate={{ latitude: me.lat, longitude: me.lng }} pinColor="#3A7BD5" title="You" />
+            <Marker coordinate={{ latitude: me.lat, longitude: me.lng }} pinColor="#3A7BD5" title={tx('auto.hotspots.you', 'You')} />
             {zones.map((z, i) => (
               <Circle
                 key={i}

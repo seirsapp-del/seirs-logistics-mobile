@@ -216,16 +216,16 @@ export default function EditProfileScreen() {
           )}
 
           {/* Email: read-only */}
-          <Section title="Account">
+          <Section title={tx('auto.editProfile.account', 'Account')}>
             <Field
-              label="Email"
+              label={tx('auto.editProfile.email', 'Email')}
               value={user?.email ?? ''}
               editable={false}
               icon={<Mail size={15} color={theme.textThird} />}
               theme={theme}
             />
             <Field
-              label="Phone"
+              label={tx('auto.editProfile.phone', 'Phone')}
               value={phone}
               onChange={setPhone}
               keyboardType="phone-pad"
@@ -237,9 +237,9 @@ export default function EditProfileScreen() {
           </Section>
 
           {/* Legal name split for privacy */}
-          <Section title="Legal name" subtitle="Shown on your ID during verification. Only your first name is shown to drivers.">
+          <Section title={tx('auto.editProfile.legalName', 'Legal name')} subtitle={tx('auto.editProfile.shownOnYourIdDuring', 'Shown on your ID during verification. Only your first name is shown to drivers.')}>
             <Field
-              label="First name"
+              label={tx('auto.editProfile.firstName', 'First name')}
               value={firstName}
               onChange={setFirstName}
               icon={<User size={15} color={theme.textThird} />}
@@ -248,7 +248,7 @@ export default function EditProfileScreen() {
               hint="30-day change limit"
             />
             <Field
-              label="Middle name (optional)"
+              label={tx('auto.editProfile.middleNameOptional', 'Middle name (optional)')}
               value={middleName}
               onChange={setMiddleName}
               icon={<User size={15} color={theme.textThird} />}
@@ -256,7 +256,7 @@ export default function EditProfileScreen() {
               error={errors.middleName}
             />
             <Field
-              label="Last name"
+              label={tx('auto.editProfile.lastName', 'Last name')}
               value={lastName}
               onChange={setLastName}
               icon={<User size={15} color={theme.textThird} />}
@@ -267,9 +267,9 @@ export default function EditProfileScreen() {
           </Section>
 
           {/* DOB */}
-          <Section title="Date of birth" subtitle={dobLocked ? 'Locked once set. Contact support to correct a typo.' : 'Used for identity verification and age-gated features. Locked once you save.'}>
+          <Section title={tx('auto.editProfile.dateOfBirth', 'Date of birth')} subtitle={dobLocked ? 'Locked once set. Contact support to correct a typo.' : 'Used for identity verification and age-gated features. Locked once you save.'}>
             <Field
-              label="YYYY-MM-DD"
+              label={tx('auto.editProfile.yyyyMmDd', 'YYYY-MM-DD')}
               value={dateOfBirth}
               onChange={setDateOfBirth}
               editable={!dobLocked}
@@ -284,18 +284,18 @@ export default function EditProfileScreen() {
           </Section>
 
           {/* Emergency contact */}
-          <Section title="Emergency contact" subtitle="Who should we call if something goes wrong during a delivery? No limit on how often you can update this.">
+          <Section title={tx('auto.editProfile.emergencyContact', 'Emergency contact')} subtitle={tx('auto.editProfile.whoShouldWeCallIf', 'Who should we call if something goes wrong during a delivery? No limit on how often you can update this.')}>
             <Field
-              label="Contact name"
+              label={tx('auto.editProfile.contactName', 'Contact name')}
               value={emergencyName}
               onChange={setEmergencyName}
               icon={<LifeBuoy size={15} color={theme.textThird} />}
               theme={theme}
               error={errors.emergencyName}
-              placeholder="e.g. Adaeze Okoro"
+              placeholder={tx('auto.editProfile.eGAdaezeOkoro', 'e.g. Adaeze Okoro')}
             />
             <Field
-              label="Contact phone"
+              label={tx('auto.editProfile.contactPhone', 'Contact phone')}
               value={emergencyPhone}
               onChange={setEmergencyPhone}
               keyboardType="phone-pad"
@@ -307,21 +307,21 @@ export default function EditProfileScreen() {
           </Section>
 
           {/* Home address */}
-          <Section title="Home address" subtitle="Default pickup for your deliveries. Tap 'Use my home' in the send flow to skip typing.">
+          <Section title={tx('auto.editProfile.homeAddress', 'Home address')} subtitle={tx('auto.editProfile.defaultPickupForYourDeliveries', 'Default pickup for your deliveries. Tap \'Use my home\' in the send flow to skip typing.')}>
             <Field
-              label="Street"
+              label={tx('auto.editProfile.street', 'Street')}
               value={homeStreet}
               onChange={setHomeStreet}
               icon={<MapPin size={15} color={theme.textThird} />}
               theme={theme}
-              placeholder="12 Adeola Odeku Street"
+              placeholder={tx('auto.editProfile.12AdeolaOdekuStreet', '12 Adeola Odeku Street')}
             />
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 2 }}>
-                <Field label="City" value={homeCity} onChange={setHomeCity} theme={theme} placeholder="Lagos" />
+                <Field label={tx('auto.editProfile.city', 'City')} value={homeCity} onChange={setHomeCity} theme={theme} placeholder={tx('auto.editProfile.lagos', 'Lagos')} />
               </View>
               <View style={{ flex: 1 }}>
-                <Field label="State" value={homeState} onChange={setHomeState} theme={theme} placeholder="LA" />
+                <Field label={tx('auto.editProfile.state', 'State')} value={homeState} onChange={setHomeState} theme={theme} placeholder="LA" />
               </View>
             </View>
           </Section>

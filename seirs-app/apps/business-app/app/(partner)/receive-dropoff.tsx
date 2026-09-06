@@ -489,7 +489,7 @@ export default function ReceiveDropoffScreen() {
             <TextInput
               value={staffName}
               onChangeText={setStaffName}
-              placeholder="Amaka Okonkwo"
+              placeholder={tx('auto.receiveDropoff.amakaOkonkwo', 'Amaka Okonkwo')}
               placeholderTextColor={colors.textThird}
               autoCapitalize="words"
               maxLength={80}

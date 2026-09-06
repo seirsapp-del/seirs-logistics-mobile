@@ -94,7 +94,7 @@ export default function BusinessNewTicketScreen() {
               value={subject}
               onChangeText={setSubject}
               maxLength={200}
-              placeholder="One-line summary"
+              placeholder={tx('auto.new.oneLineSummary', 'One-line summary')}
               placeholderTextColor={theme.textSecond}
               style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
             />
@@ -106,7 +106,7 @@ export default function BusinessNewTicketScreen() {
             <TextInput
               value={firstMessage}
               onChangeText={setFirstMessage}
-              placeholder="Include tracking codes, invoice numbers, or amounts when relevant."
+              placeholder={tx('auto.new.includeTrackingCodesInvoiceNumbers', 'Include tracking codes, invoice numbers, or amounts when relevant.')}
               placeholderTextColor={theme.textSecond}
               multiline numberOfLines={6}
               style={[styles.textarea, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}

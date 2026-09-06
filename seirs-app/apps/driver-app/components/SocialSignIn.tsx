@@ -138,7 +138,7 @@ export function SocialSignIn({ role, onSignedIn, onError, theme, disabled }: Pro
           onPress={handleGoogle}
           disabled={off}
           accessibilityRole="button"
-          accessibilityLabel="Continue with Google"
+          accessibilityLabel={tx('auto.SocialSignIn.continueWithGoogle', 'Continue with Google')}
           style={({ pressed }) => [
             styles.btn,
             styles.google,
@@ -161,7 +161,7 @@ export function SocialSignIn({ role, onSignedIn, onError, theme, disabled }: Pro
           onPress={handleApple}
           disabled={off}
           accessibilityRole="button"
-          accessibilityLabel="Sign in with Apple"
+          accessibilityLabel={tx('auto.SocialSignIn.signInWithApple', 'Sign in with Apple')}
           style={({ pressed }) => [
             styles.btn,
             styles.apple,

@@ -336,7 +336,7 @@ export default function BusinessSosScreen() {
             <TextInput
               value={noteText}
               onChangeText={setNoteText}
-              placeholder="e.g. Two men are trying to force the shop door"
+              placeholder={tx('auto.sos.eGTwoMenAre', 'e.g. Two men are trying to force the shop door')}
               placeholderTextColor="rgba(255,255,255,0.45)"
               style={styles.noteInput}
               multiline

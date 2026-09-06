@@ -556,8 +556,8 @@ export default function JobDetailScreen() {
                   });
                 }}
               >
-                {pick && <Marker coordinate={pick} title="Pickup"  description={job.pickupAddress}  pinColor="#22C55E" />}
-                {drop && <Marker coordinate={drop} title="Dropoff" description={job.dropoffAddress} pinColor="#EF4444" />}
+                {pick && <Marker coordinate={pick} title={tx('auto.id.pickup', 'Pickup')}  description={job.pickupAddress}  pinColor="#22C55E" />}
+                {drop && <Marker coordinate={drop} title={tx('auto.id.dropoff', 'Dropoff')} description={job.dropoffAddress} pinColor="#EF4444" />}
                 {pick && drop && (
                   <Polyline
                     coordinates={[pick, drop]}

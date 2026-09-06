@@ -24,6 +24,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 interface Point { lat: number; lng: number }
 
@@ -98,8 +99,8 @@ export default function DeliveryTrackMap({
         pitchEnabled={false}
         toolbarEnabled={false}
       >
-        {pick && <Marker coordinate={pick} pinColor="#22C55E" title="Pickup" />}
-        {drop && <Marker coordinate={drop} pinColor="#EF4444" title="Drop-off" />}
+        {pick && <Marker coordinate={pick} pinColor="#22C55E" title={tx('auto.DeliveryTrackMap.pickup', 'Pickup')} />}
+        {drop && <Marker coordinate={drop} pinColor="#EF4444" title={tx('auto.DeliveryTrackMap.dropOff', 'Drop-off')} />}
         {pick && drop && (
           <Polyline
             coordinates={[pick, drop]}
@@ -109,7 +110,7 @@ export default function DeliveryTrackMap({
           />
         )}
         {drv && (
-          <Marker coordinate={drv} title="Driver" anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker coordinate={drv} title={tx('auto.DeliveryTrackMap.driver', 'Driver')} anchor={{ x: 0.5, y: 0.5 }}>
             <View style={styles.driverPin}>
               <Ionicons name="navigate" size={13} color="#fff" />
             </View>

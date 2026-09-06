@@ -314,7 +314,7 @@ export default function WalletScreen() {
           <Pressable
             style={[styles.iconBtn, { backgroundColor: theme.surfaceSecond }]}
             onPress={() => router.push('/(customer)/seirs-id' as any)}
-            accessibilityLabel="SEIRS ID"
+            accessibilityLabel={tx('auto.wallet.seirsId', 'SEIRS ID')}
           >
             <QrCode size={20} color={theme.text} strokeWidth={1.75} />
           </Pressable>

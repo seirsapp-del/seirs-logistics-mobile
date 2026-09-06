@@ -127,7 +127,7 @@ export function CorridorCard({ driver, onChanged }: Props) {
         style={[styles.input, { backgroundColor: theme.surfaceSecond, color: theme.text, borderColor: theme.border }]}
         value={query}
         onChangeText={setQuery}
-        placeholder="Where are you heading? e.g. Yaba Market"
+        placeholder={tx('auto.CorridorCard.whereAreYouHeadingE', 'Where are you heading? e.g. Yaba Market')}
         placeholderTextColor={theme.textThird}
       />
       {options.map((opt, i) => (

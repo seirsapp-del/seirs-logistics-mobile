@@ -177,7 +177,7 @@ export default function DeleteBusinessAccountScreen() {
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Enter current password"
+                placeholder={tx('auto.deleteAccount.enterCurrentPassword', 'Enter current password')}
                 placeholderTextColor={colors.textThird}
                 secureTextEntry={!showPass}
                 autoCapitalize="none"

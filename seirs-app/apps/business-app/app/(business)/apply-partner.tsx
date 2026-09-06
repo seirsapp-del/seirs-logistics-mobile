@@ -294,14 +294,14 @@ export default function ApplyPartnerScreen() {
             style={[styles.input, { color: colors.text }]}
             value={form.storeName}
             onChangeText={(v) => setForm({ ...form, storeName: v })}
-            placeholder="Mama Ngozi Kiosk"
+            placeholder={tx('auto.applyPartner.mamaNgoziKiosk', 'Mama Ngozi Kiosk')}
             placeholderTextColor={colors.textThird}
           />
         </View>
 
         {/* Structured address (state + city + street autocomplete) */}
         <StatePicker
-          label="State"
+          label={tx('auto.applyPartner.state', 'State')}
           value={form.state}
           onChange={(s) => setForm({ ...form, state: s })}
         />
@@ -311,13 +311,13 @@ export default function ApplyPartnerScreen() {
             style={[styles.input, { color: colors.text }]}
             value={form.city}
             onChangeText={(v) => setForm({ ...form, city: v })}
-            placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi"
+            placeholder={tx('auto.applyPartner.eGIkejaSurulereLekki', 'e.g. Ikeja, Surulere, Lekki, Ikoyi')}
             placeholderTextColor={colors.textThird}
           />
         </View>
         <View style={{ marginBottom: 14 }}>
           <StreetAutocomplete
-            label="Street Address & Landmark"
+            label={tx('auto.applyPartner.streetAddressLandmark', 'Street Address & Landmark')}
             value={form.streetAddress}
             onChangeText={(v) => {
               setForm({ ...form, streetAddress: v });
@@ -327,7 +327,7 @@ export default function ApplyPartnerScreen() {
               if (coords) setCoords(null);
             }}
             state={form.state}
-            placeholder="Start typing a street or landmark…"
+            placeholder={tx('auto.applyPartner.startTypingAStreetOr', 'Start typing a street or landmark…')}
             onCoordsResolved={(lat, lng) => setCoords({ lat, lng })}
           />
         </View>
@@ -361,7 +361,7 @@ export default function ApplyPartnerScreen() {
         {/* Camera only. See captureStorefront for why the gallery is
             refused here and allowed for everything below it. */}
         <PhotoSlot
-          label="Storefront photo (required)"
+          label={tx('auto.applyPartner.storefrontPhotoRequired', 'Storefront photo (required)')}
           uri={storefrontPhoto}
           onPick={captureStorefront}
           hint={
@@ -371,13 +371,13 @@ export default function ApplyPartnerScreen() {
           }
         />
         <PhotoSlot
-          label="Owner ID (required)"
+          label={tx('auto.applyPartner.ownerIdRequired', 'Owner ID (required)')}
           uri={ownerId}
           onPick={() => pickImage(setOwnerId)}
           hint="National ID, driver's licence, or international passport"
         />
         <PhotoSlot
-          label="CAC registration (optional)"
+          label={tx('auto.applyPartner.cacRegistrationOptional', 'CAC registration (optional)')}
           uri={cacReg}
           onPick={() => pickImage(setCacReg)}
           hint="Speeds up review if you have a registered business"

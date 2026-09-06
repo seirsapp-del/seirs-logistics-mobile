@@ -16,6 +16,7 @@ import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcPackageFare, DEFAULT_MAP_REGION } 
 import { deliveriesApi , pricingApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // UI presentation for the rate-card package vehicles: keyed by the
 // canonical id calcPackageFare looks up. Keeping this here (not on the
@@ -238,8 +239,8 @@ export default function VehicleSelectScreen() {
           );
         }}
       >
-        {pickupLat  && <Marker coordinate={{ latitude: pickupLat,  longitude: pickupLng!  }} pinColor="#22C55E" title="Pickup"  description={params.pickup}  />}
-        {dropoffLat && <Marker coordinate={{ latitude: dropoffLat, longitude: dropoffLng! }} pinColor="#EF4444" title="Dropoff" description={params.dropoff} />}
+        {pickupLat  && <Marker coordinate={{ latitude: pickupLat,  longitude: pickupLng!  }} pinColor="#22C55E" title={tx('auto.vehicleSelect.pickup', 'Pickup')}  description={params.pickup}  />}
+        {dropoffLat && <Marker coordinate={{ latitude: dropoffLat, longitude: dropoffLng! }} pinColor="#EF4444" title={tx('auto.vehicleSelect.dropoff', 'Dropoff')} description={params.dropoff} />}
         {routeCoords.length > 1 && (
           <Polyline coordinates={routeCoords} strokeColor={theme.primary} strokeWidth={4} />
         )}

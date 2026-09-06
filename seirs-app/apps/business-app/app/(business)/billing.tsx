@@ -515,14 +515,14 @@ export default function BillingScreen() {
                   {fullDateTime(openLine.date)}
                 </Text>
 
-                <Detail label="Status" value="Settled" valueColor={colors.success} colors={colors} />
+                <Detail label={tx('auto.billing.status', 'Status')} value="Settled" valueColor={colors.success} colors={colors} />
                 {/* Shown only once it is known. A row nobody told us about
                     says nothing rather than inventing a rail. */}
-                {openLine.method && <Detail label="Paid by" value={openLine.method} colors={colors} />}
-                {openLine.trackingCode && <Detail label="Delivery" value={openLine.trackingCode} colors={colors} />}
-                <Detail label="Description" value={openLine.narrative} colors={colors} />
+                {openLine.method && <Detail label={tx('auto.billing.paidBy', 'Paid by')} value={openLine.method} colors={colors} />}
+                {openLine.trackingCode && <Detail label={tx('auto.billing.delivery', 'Delivery')} value={openLine.trackingCode} colors={colors} />}
+                <Detail label={tx('auto.billing.description', 'Description')} value={openLine.narrative} colors={colors} />
                 {openLine.stops != null && openLine.stops > 1 && (
-                  <Detail label="Stops" value={String(openLine.stops)} colors={colors} />
+                  <Detail label={tx('auto.billing.stops', 'Stops')} value={String(openLine.stops)} colors={colors} />
                 )}
 
                 <Pressable onPress={() => shareLine(openLine)} style={[styles.shareBtn, { backgroundColor: colors.primary }]}>
@@ -548,7 +548,7 @@ export default function BillingScreen() {
             </Text>
 
             <MonthStepper
-              label="From" date={custom.from} colors={colors}
+              label={tx('auto.billing.from', 'From')} date={custom.from} colors={colors}
               onBack={() => shiftCustom('from', -1)} onNext={() => shiftCustom('from', 1)}
             />
             <MonthStepper

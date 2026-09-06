@@ -342,7 +342,17 @@
       "privacyPolicy": "Privacy Policy",
       "createDriverAccount2": "Create Driver Account",
       "alreadyHaveAnAccount": "Already have an account?",
-      "signIn": "Sign In"
+      "signIn": "Sign In",
+      "first": "First",
+      "middleName": "Middle name",
+      "last": "Last",
+      "state": "State *",
+      "eGIkejaSurulereLekki": "e.g. Ikeja, Surulere, Lekki",
+      "streetAddressLandmark": "Street Address & Landmark *",
+      "15AdeolaOdekuStreetVictoria": "15 Adeola Odeku Street, Victoria Island",
+      "atLeast8Characters": "At least 8 characters",
+      "reEnterPassword": "Re-enter password",
+      "iConfirmIAm18": "I confirm I am 18 years of age or older"
     },
     "forgotPassword": {
       "checkYourInbox": "Check your inbox",
@@ -362,7 +372,8 @@
       "forgotPassword": "Forgot password?",
       "signIn": "Sign In",
       "donTHaveAnAccount": "Don't have an account?",
-      "signUp": "Sign Up"
+      "signUp": "Sign Up",
+      "yourPassword": "Your password"
     },
     "onboarding": {
       "becomeADriver": "Become a Driver"
@@ -434,7 +445,13 @@
       "progress": "Progress",
       "whoAcceptedIt": "Who accepted it?",
       "cancel": "Cancel",
-      "confirmDelivered": "Confirm Delivered"
+      "confirmDelivered": "Confirm Delivered",
+      "sosEmergency": "SOS: emergency",
+      "broadcastStatus": "Broadcast status",
+      "you": "You",
+      "expandMap": "Expand map",
+      "closeMap": "Close map",
+      "eGMusaTheGateman": "e.g. Musa, the gateman"
     },
     "addBank": {
       "payoutBankAccount": "Payout Bank Account",
@@ -442,11 +459,19 @@
       "changeUnderReview": "Change under review",
       "accountNumber": "Account Number",
       "accountName": "Account Name",
-      "selectBank": "Select Bank"
+      "selectBank": "Select Bank",
+      "10DigitNuban": "10-digit NUBAN",
+      "searchBanks": "Search banks…"
     },
     "changePassword": {
       "changePassword": "Change Password",
-      "changePassword2": "Change password"
+      "changePassword2": "Change password",
+      "currentPassword": "Current password",
+      "enterCurrent": "Enter current",
+      "newPassword": "New password",
+      "atLeast8CharsMixed": "At least 8 chars, mixed case, digit/symbol",
+      "confirmNewPassword": "Confirm new password",
+      "reEnterNewPassword": "Re-enter new password"
     },
     "codeOfConduct": {
       "driverCodeOfConduct": "Driver Code of Conduct"
@@ -457,7 +482,8 @@
       "readyToDelete": "Ready to delete",
       "noActiveDeliveriesWalletIs": "No active deliveries, wallet is empty.",
       "whatGetsDeleted": "What gets deleted",
-      "whatStays": "What stays"
+      "whatStays": "What stays",
+      "enterCurrentPassword": "Enter current password"
     },
     "id": {
       "optimised": "Optimised",
@@ -484,7 +510,13 @@
       "goBack2": "Go back",
       "transactionDetails": "Transaction Details",
       "deliveryEarnings": "Delivery earnings",
-      "viewTripDetails": "View Trip Details"
+      "viewTripDetails": "View Trip Details",
+      "broadcastStatus": "Broadcast status",
+      "baseFare": "Base fare",
+      "distanceLabour": "Distance labour",
+      "fuelReimbursement": "Fuel reimbursement",
+      "stopBonuses": "Stop bonuses",
+      "total": "Total"
     },
     "documents": {
       "documents": "Documents",
@@ -495,12 +527,28 @@
       "editProfile": "Edit Profile",
       "tapToChangePhoto": "Tap to change photo",
       "saveChanges": "Save changes",
-      "changePassword": "Change password"
+      "changePassword": "Change password",
+      "account": "Account",
+      "email": "Email",
+      "phone": "Phone",
+      "legalName": "Legal name",
+      "shownOnYourKycDocument": "Shown on your KYC document. Only your first name is shown to customers during a delivery.",
+      "firstName": "First name",
+      "middleNameOptional": "Middle name (optional)",
+      "lastName": "Last name",
+      "dateOfBirth": "Date of birth",
+      "yyyyMmDd": "YYYY-MM-DD",
+      "emergencyContact": "Emergency contact",
+      "criticalForDriverSafetyWho": "Critical for driver safety. Who should we call if something happens on the road? Update any time.",
+      "contactName": "Contact name",
+      "eGAdaezeOkoro": "e.g. Adaeze Okoro",
+      "contactPhone": "Contact phone"
     },
     "hotspots": {
       "demandHotspots": "Demand Hotspots",
       "noLocationYet": "No location yet",
-      "ordersInTheLastHours": "Orders in the last hours"
+      "ordersInTheLastHours": "Orders in the last hours",
+      "you": "You"
     },
     "interstate": {
       "declareIntercityTrip": "Declare Intercity Trip",
@@ -511,7 +559,10 @@
       "howMuchWeightCanYou": "How much weight can you take above your existing load.",
       "carryPackages": "Carry packages",
       "carryPassengers": "Carry passengers",
-      "declareTrip": "Declare trip"
+      "declareTrip": "Declare trip",
+      "exactAddress": "EXACT ADDRESS",
+      "eGTheFillingStation": "e.g. the filling station before the toll gate",
+      "noLimit": "No limit"
     },
     "lastOrder": {
       "lastOrderMode": "Last Order Mode",
@@ -528,7 +579,8 @@
       "notifications": "Notifications",
       "markAllRead": "Mark all read",
       "noNotifications": "No notifications",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "clearNotifications": "Clear notifications"
     },
     "parcelRequests": {
       "requests": "Requests",
@@ -539,7 +591,9 @@
       "offerAnotherSpot": "Offer another spot",
       "offerAnotherDropOff": "Offer another drop-off",
       "cancel": "Cancel",
-      "sendOffer": "Send offer"
+      "sendOffer": "Send offer",
+      "whereYouCanDropIt": "Where you can drop it, e.g. Challenge Park, Ibadan",
+      "whyInYourWordsOptional": "Why, in your words (optional)"
     },
     "ratings": {
       "myRatings": "My Ratings",
@@ -576,14 +630,18 @@
       "resendOtp": "Resend OTP",
       "handoffPhoto": "Handoff photo",
       "retake": "Retake",
-      "completeHandoff": "Complete handoff"
+      "completeHandoff": "Complete handoff",
+      "onDocument": "On document",
+      "custA7k2p9": "CUST-A7K2P9",
+      "asTheySpeakIt": "As they speak it"
     },
     "sos": {
       "sosEmergency": "SOS Emergency",
       "cancelSos": "Cancel SOS",
       "quickDial": "Quick Dial",
       "whatIsHappening": "What is happening?",
-      "sendToOps": "Send to ops"
+      "sendToOps": "Send to ops",
+      "eGPassengerIsThreatening": "e.g. Passenger is threatening me, I am parked at the filling station"
     },
     "statement": {
       "earningsStatement": "Earnings Statement",
@@ -597,7 +655,8 @@
       "rescan": "Rescan",
       "parcel": "Parcel",
       "signedBy": "Signed by",
-      "backToTheJob": "Back to the job"
+      "backToTheJob": "Back to the job",
+      "seirsId": "SEIRS ID"
     },
     "ticketId": {
       "tapToOpen": "Tap to open"
@@ -620,7 +679,8 @@
       "photosOfTheVehicle": "Photos of the vehicle",
       "papers": "Papers",
       "stillNeeded": "Still needed",
-      "submitForReview": "Submit for review"
+      "submitForReview": "Submit for review",
+      "eGSoldTheKeke": "e.g. Sold the keke and bought a Boxer"
     },
     "withdrawal": {
       "withdrawalSent": "Withdrawal Sent!",
@@ -643,11 +703,14 @@
       "setNewPassword": "Set new password",
       "newPassword": "New Password",
       "confirmPassword": "Confirm Password",
-      "resetPassword": "Reset Password"
+      "resetPassword": "Reset Password",
+      "atLeast8Characters": "At least 8 characters",
+      "repeatYourPassword": "Repeat your password"
     },
     "CorridorCard": {
       "onYourWay": "On your way",
-      "headingSomewhere": "Heading somewhere?"
+      "headingSomewhere": "Heading somewhere?",
+      "whereAreYouHeadingE": "Where are you heading? e.g. Yaba Market"
     },
     "IdentityDocuments": {
       "aboutYou": "About you",
@@ -665,12 +728,27 @@
       "signInWithApple": "Sign in with Apple"
     },
     "StatePicker": {
-      "selectState": "Select State"
+      "selectState": "Select State",
+      "searchState": "Search state…"
     },
     "VehicleOwnershipForm": {
       "whoOwnsThisVehicle": "Who owns this vehicle?",
       "ownerSignsHere": "Owner signs here",
-      "stillNeeded": "Still needed"
+      "stillNeeded": "Still needed",
+      "ownerSFullName": "Owner's full name",
+      "eGChukwuemekaNwosu": "e.g. Chukwuemeka Nwosu",
+      "ownerSPhoneNumber": "Owner's phone number",
+      "authorisationLetter": "Authorisation letter",
+      "ownerSIdPhoto": "Owner's ID photo",
+      "ownerTypesTheirFullName": "Owner types their full name"
+    },
+    "new": {
+      "oneLineSummary": "One-line summary",
+      "includeTrackingCodesTimesOr": "Include tracking codes, times, or delivery IDs when relevant."
+    },
+    "MessagesInbox": {
+      "openMenu": "Open menu",
+      "contactSeirsSupport": "Contact SEIRS support"
     }
   }
 }

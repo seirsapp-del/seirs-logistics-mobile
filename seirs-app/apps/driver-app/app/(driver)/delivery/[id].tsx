@@ -305,7 +305,7 @@ export default function DeliveryDetailScreen() {
         <Pressable
           style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]}
           onPress={() => router.push('/(driver)/status-broadcast' as any)}
-          accessibilityLabel="Broadcast status"
+          accessibilityLabel={tx('auto.id.broadcastStatus', 'Broadcast status')}
         >
           <Ionicons name="radio-outline" size={20} color={theme.text} />
         </Pressable>
@@ -535,11 +535,11 @@ export default function DeliveryDetailScreen() {
             <Text style={[styles.locationLabel, { color: theme.textSecond, marginBottom: Spacing.sm }]}>
               Earnings breakdown
             </Text>
-            <BreakdownLine theme={theme} label="Base fare"        value={delivery.priceBreakdown.driver.base} />
-            <BreakdownLine theme={theme} label="Distance labour"  value={delivery.priceBreakdown.driver.distanceLabour} />
-            <BreakdownLine theme={theme} label="Fuel reimbursement" value={delivery.priceBreakdown.driver.distanceFuel} />
+            <BreakdownLine theme={theme} label={tx('auto.id.baseFare', 'Base fare')}        value={delivery.priceBreakdown.driver.base} />
+            <BreakdownLine theme={theme} label={tx('auto.id.distanceLabour', 'Distance labour')}  value={delivery.priceBreakdown.driver.distanceLabour} />
+            <BreakdownLine theme={theme} label={tx('auto.id.fuelReimbursement', 'Fuel reimbursement')} value={delivery.priceBreakdown.driver.distanceFuel} />
             {delivery.priceBreakdown.driver.stopBonuses > 0 && (
-              <BreakdownLine theme={theme} label="Stop bonuses" value={delivery.priceBreakdown.driver.stopBonuses} />
+              <BreakdownLine theme={theme} label={tx('auto.id.stopBonuses', 'Stop bonuses')} value={delivery.priceBreakdown.driver.stopBonuses} />
             )}
             {delivery.priceBreakdown.driver.surchargeShare > 0 && (
               /**
@@ -564,7 +564,7 @@ export default function DeliveryDetailScreen() {
               />
             )}
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
-            <BreakdownLine theme={theme} label="Total" value={delivery.priceBreakdown.driver.total} bold />
+            <BreakdownLine theme={theme} label={tx('auto.id.total', 'Total')} value={delivery.priceBreakdown.driver.total} bold />
           </View>
         )}
 

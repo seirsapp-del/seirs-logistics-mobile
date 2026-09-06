@@ -23,6 +23,7 @@ import {
   chatApi, supportApi,
   type ChatConversationDTO, type SupportTicketDTO,
 } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 // Unified inbox row: delivery chat OR support ticket, merged + sorted
 // by recency so the tab shows one coherent conversation surface.
@@ -99,7 +100,7 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix, emptyBody
 
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         {onMenuPress && (
-          <Pressable onPress={onMenuPress} style={styles.menuBtn} accessibilityLabel="Open menu" hitSlop={8}>
+          <Pressable onPress={onMenuPress} style={styles.menuBtn} accessibilityLabel={tx('auto.MessagesInbox.openMenu', 'Open menu')} hitSlop={8}>
             <Icon name="AlignLeft" size={20} color={theme.text} />
           </Pressable>
         )}
@@ -114,7 +115,7 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix, emptyBody
         <Pressable
           onPress={() => router.push(`${supportRoutePrefix}/new` as any)}
           hitSlop={8}
-          accessibilityLabel="Contact SEIRS support"
+          accessibilityLabel={tx('auto.MessagesInbox.contactSeirsSupport', 'Contact SEIRS support')}
         >
           <Icon name="LifeBuoy" size={20} color={theme.textSecond} />
         </Pressable>

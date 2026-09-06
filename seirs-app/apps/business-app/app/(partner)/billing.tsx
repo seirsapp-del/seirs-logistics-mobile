@@ -172,11 +172,11 @@ export default function PartnerBillingScreen() {
       <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text style={[styles.statsTitle, { color: colors.text }]}>{tx('auto.billing.thisMonth', 'This Month')}</Text>
         <View style={[styles.statsRow, { backgroundColor: colors.surfaceSecond }]}>
-          <Stat label="Impressions"     value={IMPRESSIONS_TRACKED ? '0' : '-'} />
+          <Stat label={tx('auto.billing.impressions', 'Impressions')}     value={IMPRESSIONS_TRACKED ? '0' : '-'} />
           <View style={[styles.statsDivider, { backgroundColor: colors.border }]} />
-          <Stat label="Click-throughs"  value={IMPRESSIONS_TRACKED ? '0' : '-'} />
+          <Stat label={tx('auto.billing.clickThroughs', 'Click-throughs')}  value={IMPRESSIONS_TRACKED ? '0' : '-'} />
           <View style={[styles.statsDivider, { backgroundColor: colors.border }]} />
-          <Stat label="Spend"           value={naira(stats.monthSpend)} />
+          <Stat label={tx('auto.billing.spend', 'Spend')}           value={naira(stats.monthSpend)} />
         </View>
         {!IMPRESSIONS_TRACKED && (
           <Text style={[styles.statsHint, { color: colors.textThird }]}>

@@ -136,7 +136,7 @@ export default function BusinessNotificationsScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Back">
+        <Pressable onPress={() => router.back()} hitSlop={8} accessibilityLabel={tx('auto.notifications.back', 'Back')}>
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.notifications.notifications', 'Notifications')}</Text>
@@ -147,7 +147,7 @@ export default function BusinessNotificationsScreen() {
             </Pressable>
           )}
           {notifs.length > 0 && (
-            <Pressable onPress={clearAll} hitSlop={8} accessibilityLabel="Clear notifications">
+            <Pressable onPress={clearAll} hitSlop={8} accessibilityLabel={tx('auto.notifications.clearNotifications', 'Clear notifications')}>
               <Icon name="Trash2" size={18} color={theme.textSecond} />
             </Pressable>
           )}

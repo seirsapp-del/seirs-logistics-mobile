@@ -375,7 +375,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
             </View>
           )}
 
-          <Step n={1} title="Pick a past delivery to repeat" />
+          <Step n={1} title={tx('auto.recurring.pickAPastDeliveryTo', 'Pick a past delivery to repeat')} />
           {loading ? (
             <ActivityIndicator color={colors.accent} />
           ) : recents.length === 0 ? (
@@ -413,16 +413,16 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
             </View>
           )}
 
-          <Step n={2} title="Name it" />
+          <Step n={2} title={tx('auto.recurring.nameIt', 'Name it')} />
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="Monday warehouse refill"
+            placeholder={tx('auto.recurring.mondayWarehouseRefill', 'Monday warehouse refill')}
             placeholderTextColor={colors.textThird}
             style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
           />
 
-          <Step n={3} title="How often" />
+          <Step n={3} title={tx('auto.recurring.howOften', 'How often')} />
           <View style={{ flexDirection: 'row', gap: 6 }}>
             {(['daily', 'weekly', 'monthly'] as Cadence[]).map(c => {
               const on = cadence === c;
@@ -476,7 +476,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
             </View>
           )}
 
-          <Step n={4} title="Pickup time" />
+          <Step n={4} title={tx('auto.recurring.pickupTime', 'Pickup time')} />
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <TextInput
               value={String(hour)}

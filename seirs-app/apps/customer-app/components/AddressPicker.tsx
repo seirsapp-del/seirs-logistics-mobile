@@ -211,7 +211,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
             <Search size={18} color={theme.textSecond} strokeWidth={1.5} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search address…"
+              placeholder={tx('auto.AddressPicker.searchAddress', 'Search address…')}
               placeholderTextColor={theme.textSecond}
               value={query}
               onChangeText={handleQueryChange}

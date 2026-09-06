@@ -414,14 +414,14 @@ export default function ParcelRequestsScreen() {
             <TextInput
               value={counterAddr}
               onChangeText={setCounterAddr}
-              placeholder="Where you can drop it, e.g. Challenge Park, Ibadan"
+              placeholder={tx('auto.parcelRequests.whereYouCanDropIt', 'Where you can drop it, e.g. Challenge Park, Ibadan')}
               placeholderTextColor={theme.textThird}
               style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
             />
             <TextInput
               value={counterNote}
               onChangeText={setCounterNote}
-              placeholder="Why, in your words (optional)"
+              placeholder={tx('auto.parcelRequests.whyInYourWordsOptional', 'Why, in your words (optional)')}
               placeholderTextColor={theme.textThird}
               multiline
               style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background, minHeight: 64, textAlignVertical: 'top' }]}

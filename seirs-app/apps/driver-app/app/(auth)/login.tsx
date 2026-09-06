@@ -131,7 +131,7 @@ export default function LoginScreen() {
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.login.password', 'Password')}</Text>
             <PasswordInput
-              placeholder="Your password"
+              placeholder={tx('auto.login.yourPassword', 'Your password')}
               placeholderTextColor={theme.textThird}
               autoComplete="password"
               backgroundColor={theme.surfaceSecond}

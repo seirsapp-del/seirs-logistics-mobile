@@ -415,7 +415,7 @@ export default function ReleasePickupScreen() {
               <TextInput
                 value={idNumber}
                 onChangeText={setIdNumber}
-                placeholder="Enter ID number shown on document"
+                placeholder={tx('auto.releasePickup.enterIdNumberShownOn', 'Enter ID number shown on document')}
                 placeholderTextColor={colors.textThird}
                 autoCapitalize="characters"
                 style={styles.input}
@@ -457,7 +457,7 @@ export default function ReleasePickupScreen() {
                 value={seirsCode}
                 onChangeText={setSeirsCode}
                 onBlur={lookupSeirsId}
-                placeholder="CUST-A7K2P9"
+                placeholder={tx('auto.releasePickup.custA7k2p9', 'CUST-A7K2P9')}
                 placeholderTextColor={colors.textThird}
                 autoCapitalize="characters"
                 style={styles.input}
@@ -475,7 +475,7 @@ export default function ReleasePickupScreen() {
                   <TextInput
                     value={typedName}
                     onChangeText={setTypedName}
-                    placeholder="As they speak it"
+                    placeholder={tx('auto.releasePickup.asTheySpeakIt', 'As they speak it')}
                     placeholderTextColor={colors.textThird}
                     autoCapitalize="words"
                     style={styles.input}

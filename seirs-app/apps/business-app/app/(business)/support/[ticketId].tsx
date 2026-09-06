@@ -203,7 +203,7 @@ export default function BusinessSupportThreadScreen() {
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="Type a message…"
+                placeholder={tx('auto.ticketId.typeAMessage', 'Type a message…')}
                 placeholderTextColor={theme.textSecond}
                 value={input}
                 onChangeText={setInput}

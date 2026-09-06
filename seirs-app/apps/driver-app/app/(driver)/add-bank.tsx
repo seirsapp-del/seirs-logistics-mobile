@@ -237,7 +237,7 @@ export default function AddBankScreen() {
             <View style={[styles.inputRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="10-digit NUBAN"
+                placeholder={tx('auto.addBank.10DigitNuban', '10-digit NUBAN')}
                 placeholderTextColor={theme.textThird}
                 keyboardType="numeric"
                 maxLength={10}
@@ -304,7 +304,7 @@ export default function AddBankScreen() {
               <Ionicons name="search-outline" size={16} color={theme.textThird} />
               <TextInput
                 style={[styles.searchInput, { color: theme.text }]}
-                placeholder="Search banks…"
+                placeholder={tx('auto.addBank.searchBanks', 'Search banks…')}
                 placeholderTextColor={theme.textThird}
                 value={bankSearch}
                 onChangeText={setBankSearch}

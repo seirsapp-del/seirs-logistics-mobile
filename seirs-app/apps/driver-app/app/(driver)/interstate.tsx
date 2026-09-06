@@ -930,7 +930,7 @@ export default function InterstateScreen() {
 
           <View style={{ flex: 1 }}>
             <PlacePicker
-              label="EXACT ADDRESS"
+              label={tx('auto.interstate.exactAddress', 'EXACT ADDRESS')}
               onSuggestionsShown={liftBy}
               value={stop.query}
               onChangeText={(t) => patchStop(stop.key, {
@@ -976,7 +976,7 @@ export default function InterstateScreen() {
             value={stop.description}
             onChangeText={(t) => patchStop(stop.key, { description: t })}
             maxLength={300}
-            placeholder="e.g. the filling station before the toll gate"
+            placeholder={tx('auto.interstate.eGTheFillingStation', 'e.g. the filling station before the toll gate')}
             placeholderTextColor={theme.textThird}
             style={[styles.input, {
               color: theme.text, borderColor: theme.border, backgroundColor: theme.surfaceSecond,
@@ -1047,7 +1047,7 @@ export default function InterstateScreen() {
                   value={maxTripKm}
                   onChangeText={(v) => setMaxTripKm(v.replace(/[^0-9]/g, ''))}
                   keyboardType="number-pad"
-                  placeholder="No limit"
+                  placeholder={tx('auto.interstate.noLimit', 'No limit')}
                   placeholderTextColor={theme.textThird}
                   style={[styles.prefInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
                 />

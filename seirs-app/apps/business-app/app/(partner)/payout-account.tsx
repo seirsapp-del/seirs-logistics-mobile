@@ -193,7 +193,7 @@ export default function PayoutAccountScreen() {
                   <TextInput
                     value={query}
                     onChangeText={setQuery}
-                    placeholder="Start typing your bank"
+                    placeholder={tx('auto.payoutAccount.startTypingYourBank', 'Start typing your bank')}
                     placeholderTextColor={colors.textThird}
                     style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.background }]}
                   />
@@ -228,7 +228,7 @@ export default function PayoutAccountScreen() {
               <TextInput
                 value={number}
                 onChangeText={t => setNumber(t.replace(/\D/g, '').slice(0, 10))}
-                placeholder="10 digits"
+                placeholder={tx('auto.payoutAccount.10Digits', '10 digits')}
                 placeholderTextColor={colors.textThird}
                 keyboardType="number-pad"
                 style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.background }]}

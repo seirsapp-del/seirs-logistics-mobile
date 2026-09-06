@@ -343,13 +343,13 @@ export default function PartnerMoveScreen() {
                 style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                 value={city}
                 onChangeText={setCity}
-                placeholder="e.g. Ikeja, Surulere, Lekki"
+                placeholder={tx('auto.move.eGIkejaSurulereLekki', 'e.g. Ikeja, Surulere, Lekki')}
                 placeholderTextColor={colors.textThird}
               />
 
               <View style={{ marginTop: 12 }}>
                 <StreetAutocomplete
-                  label="Street address & landmark"
+                  label={tx('auto.move.streetAddressLandmark', 'Street address & landmark')}
                   value={street}
                   onChangeText={(v: string) => {
                     setStreet(v);
@@ -359,7 +359,7 @@ export default function PartnerMoveScreen() {
                     if (coords) setCoords(null);
                   }}
                   state={state}
-                  placeholder="Start typing the new street…"
+                  placeholder={tx('auto.move.startTypingTheNewStreet', 'Start typing the new street…')}
                   onCoordsResolved={(lat: number, lng: number) => setCoords({ lat, lng })}
                 />
               </View>
@@ -377,7 +377,7 @@ export default function PartnerMoveScreen() {
                 style={[styles.input, styles.multiline, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                 value={reason}
                 onChangeText={setReason}
-                placeholder="e.g. the landlord sold the building"
+                placeholder={tx('auto.move.eGTheLandlordSold', 'e.g. the landlord sold the building')}
                 placeholderTextColor={colors.textThird}
                 multiline
               />

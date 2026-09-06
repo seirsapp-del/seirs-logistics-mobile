@@ -642,7 +642,7 @@ export default function VehicleScreen() {
                   </Text>
                   <TextInput
                     style={[styles.reasonInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
-                    placeholder="e.g. Sold the keke and bought a Boxer"
+                    placeholder={tx('auto.vehicle.eGSoldTheKeke', 'e.g. Sold the keke and bought a Boxer')}
                     placeholderTextColor={theme.textThird}
                     value={reason}
                     onChangeText={setReason}

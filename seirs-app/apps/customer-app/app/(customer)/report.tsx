@@ -202,7 +202,7 @@ export default function ReportScreen() {
             style={[styles.detailInput, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
             value={detail}
             onChangeText={setDetail}
-            placeholder="Include times, names, or anything that helps us sort it out."
+            placeholder={tx('auto.report.includeTimesNamesOrAnything', 'Include times, names, or anything that helps us sort it out.')}
             placeholderTextColor={theme.textThird}
             multiline
             textAlignVertical="top"

@@ -300,7 +300,7 @@ export default function DeliveriesScreen() {
           style={[styles.searchInput, { color: colors.text }]}
           value={search}
           onChangeText={setSearch}
-          placeholder="Search by tracking number…"
+          placeholder={tx('auto.deliveries.searchByTrackingNumber', 'Search by tracking number…')}
           placeholderTextColor={colors.textThird}
           returnKeyType="search"
         />

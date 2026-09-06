@@ -100,9 +100,9 @@ export default function PartnerDashboard() {
           ) : (
             <>
               <View style={styles.statsRow}>
-                <StatCard label="In Store"        value={data?.packagesInStore ?? 0}  icon="Package"      color="#3A7BD5" />
-                <StatCard label="Collected Today"  value={data?.collectedToday ?? 0}  icon="CheckCircle2" color="#16A34A" />
-                <StatCard label="Awaiting Pickup"  value={data?.awaitingPickup ?? 0}  icon="Clock"        color="#D97706" />
+                <StatCard label={tx('auto.index.inStore', 'In Store')}        value={data?.packagesInStore ?? 0}  icon="Package"      color="#3A7BD5" />
+                <StatCard label={tx('auto.index.collectedToday', 'Collected Today')}  value={data?.collectedToday ?? 0}  icon="CheckCircle2" color="#16A34A" />
+                <StatCard label={tx('auto.index.awaitingPickup', 'Awaiting Pickup')}  value={data?.awaitingPickup ?? 0}  icon="Clock"        color="#D97706" />
               </View>
 
               {/* Earnings card stays navy: feature card */}

@@ -318,10 +318,10 @@ export default function CargoSpaceScreen() {
             screen (founder 2026-09-04). */}
         <View style={[styles.searchCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
           <CitySearchField
-            label="LOAD IS GOING FROM"
+            label={tx('auto.cargoSpace.loadIsGoingFrom', 'LOAD IS GOING FROM')}
             value={from}
             onChange={(v) => { setFrom(v); setFromCoords(null); }}
-            placeholder="Where it is picked up"
+            placeholder={tx('auto.cargoSpace.whereItIsPickedUp', 'Where it is picked up')}
             theme={theme}
             onLocate={() => useMyLocation('from')}
             locating={locating === 'from'}
@@ -341,10 +341,10 @@ export default function CargoSpaceScreen() {
           />
 
           <CitySearchField
-            label="GOING TO"
+            label={tx('auto.cargoSpace.goingTo', 'GOING TO')}
             value={to}
             onChange={(v) => { setTo(v); setToCoords(null); }}
-            placeholder="Where it is dropped"
+            placeholder={tx('auto.cargoSpace.whereItIsDropped', 'Where it is dropped')}
             theme={theme}
             onLocate={() => useMyLocation('to')}
             locating={locating === 'to'}
@@ -358,7 +358,7 @@ export default function CargoSpaceScreen() {
                 <TextInput
                   value={loadKg}
                   onChangeText={t => setLoadKg(t.replace(/[^0-9.]/g, ''))}
-                  placeholder="Any"
+                  placeholder={tx('auto.cargoSpace.any', 'Any')}
                   placeholderTextColor={theme.textThird}
                   keyboardType="numeric"
                   style={[styles.loadInput, { color: theme.text }]}

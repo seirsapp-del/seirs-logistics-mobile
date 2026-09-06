@@ -310,7 +310,7 @@ export default function NewSupportTicketScreen() {
                   value={subject}
                   onChangeText={setSubject}
                   maxLength={200}
-                  placeholder="A short summary of the issue"
+                  placeholder={tx('auto.new.aShortSummaryOfThe', 'A short summary of the issue')}
                   placeholderTextColor={theme.textThird}
                   style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
                 />
@@ -322,7 +322,7 @@ export default function NewSupportTicketScreen() {
                 <TextInput
                   value={firstMessage}
                   onChangeText={setFirstMessage}
-                  placeholder="Include tracking codes, times, or amounts when relevant. The more detail, the faster we can help."
+                  placeholder={tx('auto.new.includeTrackingCodesTimesOr', 'Include tracking codes, times, or amounts when relevant. The more detail, the faster we can help.')}
                   placeholderTextColor={theme.textThird}
                   multiline
                   numberOfLines={7}

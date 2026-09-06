@@ -230,7 +230,7 @@ export default function RegisterScreen() {
           style={styles.backBtn}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={tx('auto.register.back', 'Back')}
           onPress={() => router.back()}
         >
           <View style={[styles.backCircle, { backgroundColor: theme.surface }, Shadows.xs]}>
@@ -269,23 +269,23 @@ export default function RegisterScreen() {
               "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
               not see what they had typed (founder, 2026-09-01). */}
           <Field theme={theme}
-            label="First Name" required anchor="firstName" onAnchor={rememberY} icon="User" placeholder="Adebayo"
+            label={tx('auto.register.firstName', 'First Name')} required anchor="firstName" onAnchor={rememberY} icon="User" placeholder={tx('auto.register.adebayo', 'Adebayo')}
             autoComplete="given-name" autoCapitalize="words"
             value={form.firstName} onChangeText={(v) => set('firstName', v)}
           />
           <Field theme={theme}
-            label="Middle Name" optional icon="User" placeholder="Chinedu"
+            label={tx('auto.register.middleName', 'Middle Name')} optional icon="User" placeholder={tx('auto.register.chinedu', 'Chinedu')}
             autoCapitalize="words"
             value={form.middleName} onChangeText={(v) => set('middleName', v)}
           />
           <Field theme={theme}
-            label="Last Name" required anchor="lastName" onAnchor={rememberY} icon="User" placeholder="Yusuf"
+            label={tx('auto.register.lastName', 'Last Name')} required anchor="lastName" onAnchor={rememberY} icon="User" placeholder={tx('auto.register.yusuf', 'Yusuf')}
             autoComplete="family-name" autoCapitalize="words"
             value={form.lastName} onChangeText={(v) => set('lastName', v)}
           />
 
           <Field theme={theme}
-            label="Email Address" required anchor="email" onAnchor={rememberY} icon="Mail" placeholder="adebayo@company.ng"
+            label={tx('auto.register.emailAddress', 'Email Address')} required anchor="email" onAnchor={rememberY} icon="Mail" placeholder="adebayo@company.ng"
             keyboardType="email-address" autoCapitalize="none" autoComplete="email"
             value={form.email} onChangeText={(v) => set('email', v)}
           />
@@ -293,7 +293,7 @@ export default function RegisterScreen() {
           {/* Phone with a locked +234, matching customer: type the number the
               way it is written on a card (08012345678) and the prefix is
               added for you on submit. */}
-          <Field theme={theme} label="Phone Number" required anchor="phone" onAnchor={rememberY} icon="Phone" hint={NG_PHONE_HINT}>
+          <Field theme={theme} label={tx('auto.register.phoneNumber', 'Phone Number')} required anchor="phone" onAnchor={rememberY} icon="Phone" hint={NG_PHONE_HINT}>
             <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
               <Text style={[styles.prefix, { color: theme.text }]}>+234</Text>
             </View>
@@ -311,12 +311,12 @@ export default function RegisterScreen() {
 
           {/* The one business-only group. */}
           <Field theme={theme}
-            label="Company Name" required anchor="companyName" onAnchor={rememberY} icon="Building2" placeholder="Okafor Trading Ltd"
+            label={tx('auto.register.companyName', 'Company Name')} required anchor="companyName" onAnchor={rememberY} icon="Building2" placeholder={tx('auto.register.okaforTradingLtd', 'Okafor Trading Ltd')}
             autoCapitalize="words"
             value={form.companyName} onChangeText={(v) => set('companyName', v)}
           />
           <Field theme={theme}
-            label="RC Number" optional anchor="rcNumber" onAnchor={rememberY} icon="Hash" placeholder="RC-123456"
+            label={tx('auto.register.rcNumber', 'RC Number')} optional anchor="rcNumber" onAnchor={rememberY} icon="Hash" placeholder="RC-123456"
             autoCapitalize="characters"
             value={form.rcNumber}
             onChangeText={(v) => set('rcNumber', normaliseRc(v))}
@@ -333,19 +333,19 @@ export default function RegisterScreen() {
               customer, where the address is optional, business needs it:
               nothing can be priced or dispatched without a state. */}
           <View style={styles.field} onLayout={(e) => rememberY('state', e.nativeEvent.layout.y)}>
-            <StatePicker label="State *" value={form.state} onChange={(s) => set('state', s)} />
+            <StatePicker label={tx('auto.register.state', 'State *')} value={form.state} onChange={(s) => set('state', s)} />
           </View>
           <Field theme={theme}
-            label="City / LGA" required anchor="city" onAnchor={rememberY} placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi"
+            label={tx('auto.register.cityLga', 'City / LGA')} required anchor="city" onAnchor={rememberY} placeholder={tx('auto.register.eGIkejaSurulereLekki', 'e.g. Ikeja, Surulere, Lekki, Ikoyi')}
             value={form.city} onChangeText={(v) => set('city', v)}
           />
           <View style={styles.field} onLayout={(e) => rememberY('street', e.nativeEvent.layout.y)}>
             <StreetAutocomplete
-              label="Street Address & Landmark *"
+              label={tx('auto.register.streetAddressLandmark', 'Street Address & Landmark *')}
               value={form.streetAddress}
               onChangeText={(v) => set('streetAddress', v)}
               state={form.state}
-              placeholder="15 Adeola Odeku Street, Victoria Island"
+              placeholder={tx('auto.register.15AdeolaOdekuStreetVictoria', '15 Adeola Odeku Street, Victoria Island')}
             />
           </View>
 
@@ -353,7 +353,7 @@ export default function RegisterScreen() {
           <View style={styles.field} onLayout={(e) => rememberY('password', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.register.password', 'Password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
-              placeholder="At least 8 characters"
+              placeholder={tx('auto.register.atLeast8Characters', 'At least 8 characters')}
               placeholderTextColor={theme.textThird}
               autoComplete="new-password"
               backgroundColor={theme.surfaceSecond}
@@ -370,7 +370,7 @@ export default function RegisterScreen() {
           <View style={styles.field} onLayout={(e) => rememberY('confirm', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.register.confirmPassword', 'Confirm Password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
-              placeholder="Repeat password"
+              placeholder={tx('auto.register.repeatPassword', 'Repeat password')}
               placeholderTextColor={theme.textThird}
               autoComplete="new-password"
               backgroundColor={theme.surfaceSecond}
@@ -384,7 +384,7 @@ export default function RegisterScreen() {
           </View>
 
           <Field theme={theme}
-            label="Referral Code" optional icon="Gift" placeholder="e.g. BIZ-4K2P9X"
+            label={tx('auto.register.referralCode', 'Referral Code')} optional icon="Gift" placeholder={tx('auto.register.eGBiz4k2p9x', 'e.g. BIZ-4K2P9X')}
             autoCapitalize="characters"
             value={form.referralCode} onChangeText={(v) => set('referralCode', v.toUpperCase())}
             hint="Someone shared SEIRS with you? Their code goes here."
@@ -398,7 +398,7 @@ export default function RegisterScreen() {
             <Checkbox theme={theme}
               checked={ageOk}
               onToggle={() => setAgeOk((v) => !v)}
-              label="I confirm I am 18 years or older"
+              label={tx('auto.register.iConfirmIAm18', 'I confirm I am 18 years or older')}
             />
           </View>
 

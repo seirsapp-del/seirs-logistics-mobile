@@ -200,10 +200,10 @@ export default function EditProfileScreen() {
             </View>
           )}
 
-          <Section title="Account">
-            <Field label="Email" value={user?.email ?? ''} editable={false} icon={<Mail size={15} color={theme.textThird} />} theme={theme} />
+          <Section title={tx('auto.editProfile.account', 'Account')}>
+            <Field label={tx('auto.editProfile.email', 'Email')} value={user?.email ?? ''} editable={false} icon={<Mail size={15} color={theme.textThird} />} theme={theme} />
             <Field
-              label="Phone"
+              label={tx('auto.editProfile.phone', 'Phone')}
               value={phone}
               onChange={setPhone}
               keyboardType="phone-pad"
@@ -214,15 +214,15 @@ export default function EditProfileScreen() {
             />
           </Section>
 
-          <Section title="Legal name" subtitle="Shown on your KYC document. Only your first name is shown to customers during a delivery.">
-            <Field label="First name" value={firstName} onChange={setFirstName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.firstName} hint="30-day change limit" />
-            <Field label="Middle name (optional)" value={middleName} onChange={setMiddleName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.middleName} />
-            <Field label="Last name" value={lastName} onChange={setLastName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.lastName} hint="30-day change limit" />
+          <Section title={tx('auto.editProfile.legalName', 'Legal name')} subtitle={tx('auto.editProfile.shownOnYourKycDocument', 'Shown on your KYC document. Only your first name is shown to customers during a delivery.')}>
+            <Field label={tx('auto.editProfile.firstName', 'First name')} value={firstName} onChange={setFirstName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.firstName} hint="30-day change limit" />
+            <Field label={tx('auto.editProfile.middleNameOptional', 'Middle name (optional)')} value={middleName} onChange={setMiddleName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.middleName} />
+            <Field label={tx('auto.editProfile.lastName', 'Last name')} value={lastName} onChange={setLastName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.lastName} hint="30-day change limit" />
           </Section>
 
-          <Section title="Date of birth" subtitle={dobLocked ? 'Locked once set. Contact support to correct a typo.' : 'Must match your KYC document. Locked once you save.'}>
+          <Section title={tx('auto.editProfile.dateOfBirth', 'Date of birth')} subtitle={dobLocked ? 'Locked once set. Contact support to correct a typo.' : 'Must match your KYC document. Locked once you save.'}>
             <Field
-              label="YYYY-MM-DD"
+              label={tx('auto.editProfile.yyyyMmDd', 'YYYY-MM-DD')}
               value={dateOfBirth}
               onChange={setDateOfBirth}
               editable={!dobLocked}
@@ -236,18 +236,18 @@ export default function EditProfileScreen() {
             />
           </Section>
 
-          <Section title="Emergency contact" subtitle="Critical for driver safety. Who should we call if something happens on the road? Update any time.">
+          <Section title={tx('auto.editProfile.emergencyContact', 'Emergency contact')} subtitle={tx('auto.editProfile.criticalForDriverSafetyWho', 'Critical for driver safety. Who should we call if something happens on the road? Update any time.')}>
             <Field
-              label="Contact name"
+              label={tx('auto.editProfile.contactName', 'Contact name')}
               value={emergencyName}
               onChange={setEmergencyName}
               icon={<LifeBuoy size={15} color={theme.textThird} />}
               theme={theme}
               error={errors.emergencyName}
-              placeholder="e.g. Adaeze Okoro"
+              placeholder={tx('auto.editProfile.eGAdaezeOkoro', 'e.g. Adaeze Okoro')}
             />
             <Field
-              label="Contact phone"
+              label={tx('auto.editProfile.contactPhone', 'Contact phone')}
               value={emergencyPhone}
               onChange={setEmergencyPhone}
               keyboardType="phone-pad"

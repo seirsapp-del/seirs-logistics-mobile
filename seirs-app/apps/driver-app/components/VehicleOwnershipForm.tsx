@@ -221,15 +221,15 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
       {isThird && (
         <>
           <Field
-            label="Owner's full name"
-            placeholder="e.g. Chukwuemeka Nwosu"
+            label={tx('auto.VehicleOwnershipForm.ownerSFullName', 'Owner\'s full name')}
+            placeholder={tx('auto.VehicleOwnershipForm.eGChukwuemekaNwosu', 'e.g. Chukwuemeka Nwosu')}
             value={value.ownerName}
             onChangeText={t => set({ ownerName: t })}
             editable={!locked}
             theme={theme}
           />
           <Field
-            label="Owner's phone number"
+            label={tx('auto.VehicleOwnershipForm.ownerSPhoneNumber', 'Owner\'s phone number')}
             placeholder="e.g. 08012345678"
             value={value.ownerPhone}
             onChangeText={t => set({ ownerPhone: t })}
@@ -278,7 +278,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
             whole page.
           </Text>
           <DocUploadTile
-            label="Authorisation letter"
+            label={tx('auto.VehicleOwnershipForm.authorisationLetter', 'Authorisation letter')}
             url={value.ownerConsentUrl}
             busy={uploading === 'consent'}
             onPress={() => pick('consent')}
@@ -289,7 +289,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
             Owner's ID <Text style={{ color: theme.textThird }}>(optional, speeds up approval)</Text>
           </Text>
           <DocUploadTile
-            label="Owner's ID photo"
+            label={tx('auto.VehicleOwnershipForm.ownerSIdPhoto', 'Owner\'s ID photo')}
             url={value.ownerIdUrl}
             busy={uploading === 'ownerId'}
             onPress={() => pick('ownerId')}
@@ -311,7 +311,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
                 borderColor: theme.border,
                 backgroundColor: isDark ? theme.background : '#fff',
               }]}
-              placeholder="Owner types their full name"
+              placeholder={tx('auto.VehicleOwnershipForm.ownerTypesTheirFullName', 'Owner types their full name')}
               placeholderTextColor={theme.textThird}
               value={value.ownerSignatureName}
               onChangeText={t => set({ ownerSignatureName: t })}

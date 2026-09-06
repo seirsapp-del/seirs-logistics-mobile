@@ -1228,7 +1228,7 @@ export default function SendPackageScreen() {
                     value={s.packageDescription ?? ''}
                     onChangeText={(v) => updateStop(i, { packageDescription: v })}
                     onFocus={handleFieldFocus}
-                    placeholder="e.g. Two cartons of shoes"
+                    placeholder={tx('auto.sendPackage.eGTwoCartonsOf', 'e.g. Two cartons of shoes')}
                     placeholderTextColor={colors.textThird}
                   />
 
@@ -1245,7 +1245,7 @@ export default function SendPackageScreen() {
                           updateStop(i, { weightKg: Number.isFinite(n) && v !== '' ? n : undefined });
                         }}
                         onFocus={handleFieldFocus}
-                    placeholder="e.g. 3"
+                    placeholder={tx('auto.sendPackage.eG3', 'e.g. 3')}
                         placeholderTextColor={colors.textThird}
                         keyboardType="numeric"
                       />
@@ -1281,7 +1281,7 @@ export default function SendPackageScreen() {
                       value={s.receiverFirstName ?? ''}
                       onChangeText={(v) => updateStop(i, { receiverFirstName: v })}
                       onFocus={handleFieldFocus}
-                    placeholder="First name"
+                    placeholder={tx('auto.sendPackage.firstName', 'First name')}
                       placeholderTextColor={colors.textThird}
                     />
                     <TextInput
@@ -1289,7 +1289,7 @@ export default function SendPackageScreen() {
                       value={s.receiverLastName ?? ''}
                       onChangeText={(v) => updateStop(i, { receiverLastName: v })}
                       onFocus={handleFieldFocus}
-                    placeholder="Last name"
+                    placeholder={tx('auto.sendPackage.lastName', 'Last name')}
                       placeholderTextColor={colors.textThird}
                     />
                   </View>
@@ -1453,7 +1453,7 @@ export default function SendPackageScreen() {
                       value={s.fallbackNeighbourName ?? ''}
                       onChangeText={(v) => updateStop(i, { fallbackNeighbourName: v })}
                       onFocus={handleFieldFocus}
-                    placeholder="Neighbour or security's name"
+                    placeholder={tx('auto.sendPackage.neighbourOrSecuritySName', 'Neighbour or security\'s name')}
                       placeholderTextColor={colors.textThird}
                     />
                   )}
@@ -1481,7 +1481,7 @@ export default function SendPackageScreen() {
                     value={s.note ?? ''}
                     onChangeText={(v) => updateStop(i, { note: v })}
                     onFocus={handleFieldFocus}
-                    placeholder="e.g. Blue gate opposite Zenith Bank. Call when you reach."
+                    placeholder={tx('auto.sendPackage.eGBlueGateOpposite', 'e.g. Blue gate opposite Zenith Bank. Call when you reach.')}
                     placeholderTextColor={colors.textThird}
                   />
 
@@ -1825,7 +1825,7 @@ export default function SendPackageScreen() {
                     {/* Pickup is one green pin; every package gets its own
                         NUMBERED red pin so a five-drop run reads at a glance
                         (founder 2026-08-16). */}
-                    <Marker coordinate={pickupPoint} title="Pickup" anchor={{ x: 0.5, y: 0.5 }}>
+                    <Marker coordinate={pickupPoint} title={tx('auto.sendPackage.pickup', 'Pickup')} anchor={{ x: 0.5, y: 0.5 }}>
                       <View style={[styles.pinBase, { backgroundColor: '#22C55E' }]}>
                         <Text style={styles.pinTxt}>P</Text>
                       </View>
@@ -1850,7 +1850,7 @@ export default function SendPackageScreen() {
                   <Pressable
                     style={StyleSheet.absoluteFill}
                     onPress={() => setMapFull(true)}
-                    accessibilityLabel="Open the map full screen"
+                    accessibilityLabel={tx('auto.sendPackage.openTheMapFullScreen', 'Open the map full screen')}
                   />
                   <View style={[styles.expandChip, { backgroundColor: colors.surface }]}>
                     <Icon name="Maximize2" size={13} color={colors.text} />

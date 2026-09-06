@@ -427,7 +427,7 @@ export default function DriverSosScreen() {
               <TextInput
                 value={noteText}
                 onChangeText={setNoteText}
-                placeholder="e.g. Passenger is threatening me, I am parked at the filling station"
+                placeholder={tx('auto.sos.eGPassengerIsThreatening', 'e.g. Passenger is threatening me, I am parked at the filling station')}
                 placeholderTextColor="rgba(255,255,255,0.45)"
                 style={styles.noteInput}
                 multiline

@@ -487,7 +487,7 @@ export default function TrackScreen() {
             <Ionicons name="search-outline" size={18} color={theme.textThird} style={{ marginRight: Spacing.sm }} />
             <TextInput
               style={[styles.searchInput, { color: theme.text }]}
-              placeholder="e.g. SRS-AB12CD34"
+              placeholder={tx('auto.track.eGSrsAb12cd34', 'e.g. SRS-AB12CD34')}
               placeholderTextColor={theme.textThird}
               value={code}
               onChangeText={(t) => setCode(t.toUpperCase())}
@@ -1085,10 +1085,10 @@ export default function TrackScreen() {
 
             <View style={{ marginTop: 16 }}>
               <StreetAutocomplete
-                label="New delivery address"
+                label={tx('auto.track.newDeliveryAddress', 'New delivery address')}
                 value={addrText}
                 onChangeText={setAddrText}
-                placeholder="Start typing the address"
+                placeholder={tx('auto.track.startTypingTheAddress', 'Start typing the address')}
                 onCoordsResolved={(lat: number, lng: number) => setAddrCoords({ lat, lng })}
               />
             </View>

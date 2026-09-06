@@ -817,14 +817,14 @@ export default function ActiveDeliveryScreen() {
         <Pressable
           onPress={() => router.push({ pathname: '/(driver)/sos' as any, params: { deliveryId: id ?? '' } } as any)}
           style={[styles.backCircle, { backgroundColor: '#FEE2E2' }]}
-          accessibilityLabel="SOS: emergency"
+          accessibilityLabel={tx('auto.active.sosEmergency', 'SOS: emergency')}
         >
           <Ionicons name="warning" size={20} color="#DC2626" />
         </Pressable>
         <Pressable
           onPress={() => router.push('/(driver)/status-broadcast' as any)}
           style={[styles.backCircle, { backgroundColor: theme.surface, marginLeft: 8 }]}
-          accessibilityLabel="Broadcast status"
+          accessibilityLabel={tx('auto.active.broadcastStatus', 'Broadcast status')}
         >
           <Ionicons name="radio-outline" size={20} color={theme.text} />
         </Pressable>
@@ -940,20 +940,20 @@ export default function ActiveDeliveryScreen() {
             >
               <Marker
                 coordinate={{ latitude: Number(delivery.pickupLat), longitude: Number(delivery.pickupLng) }}
-                title="Pickup"
+                title={tx('auto.active.pickup', 'Pickup')}
                 description={delivery.pickupAddress}
                 pinColor="#22C55E"
               />
               <Marker
                 coordinate={{ latitude: Number(delivery.dropoffLat), longitude: Number(delivery.dropoffLng) }}
-                title="Dropoff"
+                title={tx('auto.active.dropoff', 'Dropoff')}
                 description={delivery.dropoffAddress}
                 pinColor="#EF4444"
               />
               {myPos && (
                 <Marker
                   coordinate={{ latitude: myPos.lat, longitude: myPos.lng }}
-                  title="You"
+                  title={tx('auto.active.you', 'You')}
                   pinColor="#3A7BD5"
                 />
               )}
@@ -980,7 +980,7 @@ export default function ActiveDeliveryScreen() {
             <Pressable
               style={({ pressed }) => [styles.expandBtn, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
               onPress={() => setMapExpanded(true)}
-              accessibilityLabel="Expand map"
+              accessibilityLabel={tx('auto.active.expandMap', 'Expand map')}
             >
               <Ionicons name="expand-outline" size={18} color={theme.text} />
             </Pressable>
@@ -1315,11 +1315,11 @@ export default function ActiveDeliveryScreen() {
             >
               <Marker
                 coordinate={{ latitude: Number(delivery.pickupLat), longitude: Number(delivery.pickupLng) }}
-                title="Pickup" description={delivery.pickupAddress} pinColor="#22C55E"
+                title={tx('auto.active.pickup', 'Pickup')} description={delivery.pickupAddress} pinColor="#22C55E"
               />
               <Marker
                 coordinate={{ latitude: Number(delivery.dropoffLat), longitude: Number(delivery.dropoffLng) }}
-                title="Dropoff" description={delivery.dropoffAddress} pinColor="#EF4444"
+                title={tx('auto.active.dropoff', 'Dropoff')} description={delivery.dropoffAddress} pinColor="#EF4444"
               />
               {routeCoords.length > 1 && (
                 <Polyline coordinates={routeCoords} strokeColor="#3A7BD5" strokeWidth={5} />
@@ -1329,7 +1329,7 @@ export default function ActiveDeliveryScreen() {
           <Pressable
             onPress={() => setMapExpanded(false)}
             style={[styles.mapCloseBtn, { top: insets.top + 12, backgroundColor: theme.surface }]}
-            accessibilityLabel="Close map"
+            accessibilityLabel={tx('auto.active.closeMap', 'Close map')}
           >
             <Ionicons name="close" size={24} color={theme.text} />
           </Pressable>
@@ -1419,7 +1419,7 @@ export default function ActiveDeliveryScreen() {
             <TextInput
               value={receiverName}
               onChangeText={setReceiverName}
-              placeholder="e.g. Musa, the gateman"
+              placeholder={tx('auto.active.eGMusaTheGateman', 'e.g. Musa, the gateman')}
               placeholderTextColor={theme.textThird}
               autoFocus
               style={[styles.receiverInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surfaceSecond }]}

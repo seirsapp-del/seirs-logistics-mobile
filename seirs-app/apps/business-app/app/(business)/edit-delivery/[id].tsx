@@ -153,11 +153,11 @@ export default function EditDelivery() {
           {!paid && (
             <>
               <StreetAutocomplete
-                label="Deliver to"
+                label={tx('auto.id.deliverTo', 'Deliver to')}
                 value={address}
                 onChangeText={(t: string) => { setAddress(t); setCoords(null); }}
                 onCoordsResolved={(lat: number, lng: number) => setCoords({ lat, lng })}
-                placeholder="Search the delivery address"
+                placeholder={tx('auto.id.searchTheDeliveryAddress', 'Search the delivery address')}
               />
 
               <View style={styles.field}>
@@ -165,7 +165,7 @@ export default function EditDelivery() {
                 <TextInput
                   value={name}
                   onChangeText={v => setName(onlyName(v))}
-                  placeholder="e.g. Chidinma Okafor"
+                  placeholder={tx('auto.id.eGChidinmaOkafor', 'e.g. Chidinma Okafor')}
                   placeholderTextColor={colors.textThird}
                   style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
                 />
@@ -190,7 +190,7 @@ export default function EditDelivery() {
             <TextInput
               value={instructions}
               onChangeText={setInstructions}
-              placeholder="e.g. Second gate, ask for the store manager"
+              placeholder={tx('auto.id.eGSecondGateAsk', 'e.g. Second gate, ask for the store manager')}
               placeholderTextColor={colors.textThird}
               multiline
               style={[styles.input, styles.multiline, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}

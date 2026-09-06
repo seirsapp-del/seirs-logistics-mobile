@@ -363,7 +363,8 @@
       "emailAddress": "Email address",
       "sendResetLink": "Send Reset Link",
       "rememberYourPassword": "Remember your password?",
-      "signIn": "Sign In"
+      "signIn": "Sign In",
+      "back": "Back"
     },
     "login": {
       "welcomeBack": "Welcome back",
@@ -373,7 +374,9 @@
       "rememberMe": "Remember me",
       "forgotPassword": "Forgot password?",
       "signIn": "Sign In",
-      "signUp": "Sign Up"
+      "signUp": "Sign Up",
+      "back": "Back",
+      "yourPassword": "Your password"
     },
     "onboarding": {
       "createAnAccount": "Create an Account"
@@ -385,16 +388,40 @@
       "passwordsDoNotMatch": "Passwords do not match",
       "createAccount": "Create Account",
       "alreadyHaveAnAccount": "Already have an account?",
-      "signIn": "Sign In"
+      "signIn": "Sign In",
+      "back": "Back",
+      "firstName": "First Name",
+      "adebayo": "Adebayo",
+      "middleName": "Middle Name",
+      "chinedu": "Chinedu",
+      "lastName": "Last Name",
+      "yusuf": "Yusuf",
+      "emailAddress": "Email Address",
+      "phoneNumber": "Phone Number",
+      "companyName": "Company Name",
+      "okaforTradingLtd": "Okafor Trading Ltd",
+      "rcNumber": "RC Number",
+      "state": "State *",
+      "cityLga": "City / LGA",
+      "eGIkejaSurulereLekki": "e.g. Ikeja, Surulere, Lekki, Ikoyi",
+      "streetAddressLandmark": "Street Address & Landmark *",
+      "15AdeolaOdekuStreetVictoria": "15 Adeola Odeku Street, Victoria Island",
+      "atLeast8Characters": "At least 8 characters",
+      "repeatPassword": "Repeat password",
+      "referralCode": "Referral Code",
+      "eGBiz4k2p9x": "e.g. BIZ-4K2P9X",
+      "iConfirmIAm18": "I confirm I am 18 years or older"
     },
     "verifyOtp": {
       "verifyYourEmail": "Verify your email",
       "codeExpiresIn15Minutes": "Code expires in 15 minutes.",
-      "verifyEmail": "Verify Email"
+      "verifyEmail": "Verify Email",
+      "back": "Back"
     },
     "deliveries": {
       "cancel": "Cancel",
-      "deliveries": "Deliveries"
+      "deliveries": "Deliveries",
+      "searchByTrackingNumber": "Search by tracking number…"
     },
     "index": {
       "stories": "Stories",
@@ -418,7 +445,13 @@
       "storageFees": "Storage Fees",
       "sponsored": "Sponsored",
       "recentPackages": "Recent Packages",
-      "noPackagesInStoreYet": "No packages in store yet"
+      "noPackagesInStoreYet": "No packages in store yet",
+      "sendAPackage": "Send a Package",
+      "specialCargo": "Special Cargo",
+      "cargoSpace": "Cargo Space",
+      "inStore": "In Store",
+      "collectedToday": "Collected Today",
+      "awaitingPickup": "Awaiting Pickup"
     },
     "wallet": {
       "totalRewards": "Total rewards",
@@ -439,7 +472,15 @@
       "maxPackageCapacity": "Max Package Capacity",
       "kycDocuments": "KYC Documents",
       "submitApplication": "Submit Application",
-      "tapToUpload": "Tap to upload"
+      "tapToUpload": "Tap to upload",
+      "mamaNgoziKiosk": "Mama Ngozi Kiosk",
+      "state": "State",
+      "eGIkejaSurulereLekki": "e.g. Ikeja, Surulere, Lekki, Ikoyi",
+      "streetAddressLandmark": "Street Address & Landmark",
+      "startTypingAStreetOr": "Start typing a street or landmark…",
+      "storefrontPhotoRequired": "Storefront photo (required)",
+      "ownerIdRequired": "Owner ID (required)",
+      "cacRegistrationOptional": "CAC registration (optional)"
     },
     "id": {
       "readThisOnTheSeirs": "Read this on the SEIRS website",
@@ -457,7 +498,11 @@
       "whatItIsMadeUp": "What it is made up of",
       "total": "Total",
       "acceptAndContinue": "Accept and continue",
-      "cancelThisRequest": "Cancel this request"
+      "cancelThisRequest": "Cancel this request",
+      "deliverTo": "Deliver to",
+      "searchTheDeliveryAddress": "Search the delivery address",
+      "eGChidinmaOkafor": "e.g. Chidinma Okafor",
+      "eGSecondGateAsk": "e.g. Second gate, ask for the store manager"
     },
     "billing": {
       "statement": "Statement",
@@ -470,36 +515,62 @@
       "sponsoredPlacement": "Sponsored Placement",
       "beTheFirstStoreCustomers": "Be the first store customers see",
       "priceUnavailable": "Price unavailable",
-      "thisMonth": "This Month"
+      "thisMonth": "This Month",
+      "status": "Status",
+      "paidBy": "Paid by",
+      "delivery": "Delivery",
+      "stops": "Stops",
+      "from": "From",
+      "impressions": "Impressions",
+      "clickThroughs": "Click-throughs",
+      "spend": "Spend"
     },
     "cargoSpace": {
       "cargoSpace": "Cargo Space",
       "findSpace": "Find space",
-      "sendALoadOnThis": "Send a load on this trip"
+      "sendALoadOnThis": "Send a load on this trip",
+      "loadIsGoingFrom": "LOAD IS GOING FROM",
+      "whereItIsPickedUp": "Where it is picked up",
+      "goingTo": "GOING TO",
+      "whereItIsDropped": "Where it is dropped",
+      "any": "Any"
     },
     "deleteAccount": {
       "deleteAccount": "Delete Account",
       "permanentAfter30Days": "Permanent after 30 days",
       "finishTheseFirst": "Finish these first",
       "whatGetsDeleted": "What gets deleted",
-      "whatWeKeep": "What we keep"
+      "whatWeKeep": "What we keep",
+      "enterCurrentPassword": "Enter current password"
     },
     "documents": {
       "documents": "Documents",
       "noDocumentsYet": "No documents yet",
-      "close": "Close"
+      "close": "Close",
+      "back": "Back"
     },
     "editProfile": {
       "editBusinessDetails": "Edit Business Details",
       "emergencyContact": "Emergency contact",
       "businessAccount": "Business Account",
-      "saveChanges": "Save changes"
+      "saveChanges": "Save changes",
+      "adebayo": "Adebayo",
+      "ogunlana": "Ogunlana",
+      "eGChinyereOkafor": "e.g. Chinyere Okafor",
+      "acmeLogisticsLtd": "Acme Logistics Ltd",
+      "streetAddress": "STREET ADDRESS",
+      "15AdeolaOdeku": "15 Adeola Odeku",
+      "lekki": "Lekki",
+      "state": "STATE",
+      "selectState": "Select state"
     },
     "notifications": {
       "notifications": "Notifications",
       "markAllRead": "Mark all read",
       "noNotifications": "No notifications",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "back": "Back",
+      "clearNotifications": "Clear notifications"
     },
     "packageQr": {
       "packageQr": "Package QR",
@@ -514,7 +585,12 @@
       "newScheduleFromAPast": "New schedule from a past delivery",
       "newSchedule": "New schedule",
       "readThem": "Read them",
-      "saveSchedule": "Save schedule"
+      "saveSchedule": "Save schedule",
+      "pickAPastDeliveryTo": "Pick a past delivery to repeat",
+      "nameIt": "Name it",
+      "mondayWarehouseRefill": "Monday warehouse refill",
+      "howOften": "How often",
+      "pickupTime": "Pickup time"
     },
     "referral": {
       "referEarn": "Refer & Earn",
@@ -529,7 +605,8 @@
       "reportAnIssue": "Report an issue",
       "allOrders": "All orders",
       "notAboutOneSpecificDelivery": "Not about one specific delivery",
-      "sendReport": "Send report"
+      "sendReport": "Send report",
+      "includeTrackingCodesTimesOr": "Include tracking codes, times, or delivery IDs when relevant."
     },
     "rewards": {
       "rewards": "Rewards",
@@ -565,29 +642,54 @@
       "orderSummary": "Order Summary",
       "openingHours": "Opening hours",
       "counterPhone": "Counter phone",
-      "distance": "Distance"
+      "distance": "Distance",
+      "eGTwoCartonsOf": "e.g. Two cartons of shoes",
+      "eG3": "e.g. 3",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "neighbourOrSecuritySName": "Neighbour or security's name",
+      "eGBlueGateOpposite": "e.g. Blue gate opposite Zenith Bank. Call when you reach.",
+      "pickup": "Pickup",
+      "openTheMapFullScreen": "Open the map full screen"
     },
     "sos": {
       "sosEmergency": "SOS Emergency",
       "quickDial": "Quick Dial",
       "whatIsHappening": "What is happening?",
-      "sendToSupport": "Send to support"
+      "sendToSupport": "Send to support",
+      "eGTwoMenAre": "e.g. Two men are trying to force the shop door"
     },
     "specialRequest": {
       "getAQuote": "Get a quote",
-      "sendForAQuote": "Send for a quote"
+      "sendForAQuote": "Send for a quote",
+      "describeItPlainlyWhatIt": "Describe it plainly. What it is, roughly how big, anything unusual.",
+      "weightKg": "Weight kg",
+      "handsToLift": "Hands to lift",
+      "lengthCm": "Length cm",
+      "widthCm": "Width cm",
+      "heightCm": "Height cm",
+      "whereDoesItStart": "Where does it start?",
+      "gettingItOutStairsLift": "Getting it out: stairs, lift, loading bay, gate width?",
+      "contactName": "Contact name",
+      "phone": "Phone",
+      "whereDoesItEndUp": "Where does it end up?",
+      "gettingItInStairsLift": "Getting it in: stairs, lift, loading bay, gate width?",
+      "tellUsWhatSuitsYou": "Tell us what suits you and we will say what is possible."
     },
     "stories": {
       "readTheStory": "Read the story"
     },
     "new": {
       "newSupportTicket": "New support ticket",
-      "openTicket": "Open ticket"
+      "openTicket": "Open ticket",
+      "oneLineSummary": "One-line summary",
+      "includeTrackingCodesInvoiceNumbers": "Include tracking codes, invoice numbers, or amounts when relevant."
     },
     "ticketId": {
       "thisThreadIsEmpty": "This thread is empty.",
       "tapToOpen": "Tap to open",
-      "thisTicketIsClosedOpen": "This ticket is closed. Open a new one if you still need help."
+      "thisTicketIsClosedOpen": "This ticket is closed. Open a new one if you still need help.",
+      "typeAMessage": "Type a message…"
     },
     "tripRequests": {
       "tripRequests": "Trip requests",
@@ -611,7 +713,8 @@
     "inventory": {
       "markCollected": "Mark Collected",
       "packageInventory": "Package Inventory",
-      "noPackagesFound": "No packages found"
+      "noPackagesFound": "No packages found",
+      "searchByTrackingOrRecipient": "Search by tracking or recipient…"
     },
     "scan": {
       "cameraAccessRequired": "Camera Access Required",
@@ -647,7 +750,9 @@
       "language": "Language",
       "saveChanges": "Save Changes",
       "signOut": "Sign Out",
-      "closeThisStore": "Close This Store"
+      "closeThisStore": "Close This Store",
+      "myPartnerStore": "My Partner Store",
+      "eGTheBusinessWas": "e.g. the business was renamed"
     },
     "capacity": {
       "storeCapacity": "Store Capacity",
@@ -663,12 +768,18 @@
       "neededBeforeWeCanApprove": "Needed before we can approve",
       "cancelThisMoveRequest": "Cancel this move request",
       "yourLastMoveWasNot": "Your last move was not approved",
-      "sendMoveRequest": "Send move request"
+      "sendMoveRequest": "Send move request",
+      "eGIkejaSurulereLekki": "e.g. Ikeja, Surulere, Lekki",
+      "streetAddressLandmark": "Street address & landmark",
+      "startTypingTheNewStreet": "Start typing the new street…",
+      "eGTheLandlordSold": "e.g. the landlord sold the building"
     },
     "payoutAccount": {
       "payoutAccount": "Payout account",
       "yourBank": "Your bank",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "startTypingYourBank": "Start typing your bank",
+      "10Digits": "10 digits"
     },
     "receiveDropoff": {
       "cameraAccessRequired": "Camera Access Required",
@@ -689,7 +800,8 @@
       "tapToTakeAPhoto": "Tap to take a photo of the package on your counter",
       "continue": "Continue",
       "verifySender": "Verify Sender",
-      "confirmReceipt": "Confirm receipt"
+      "confirmReceipt": "Confirm receipt",
+      "amakaOkonkwo": "Amaka Okonkwo"
     },
     "releasePickup": {
       "cameraAccessRequired": "Camera Access Required",
@@ -715,7 +827,10 @@
       "askTheRecipientToSpeak": "Ask the recipient to speak their full name. Type EXACTLY what they say below.",
       "collectionPhoto": "Collection photo",
       "retakePhoto": "Retake photo",
-      "releasePackage2": "Release package"
+      "releasePackage2": "Release package",
+      "enterIdNumberShownOn": "Enter ID number shown on document",
+      "custA7k2p9": "CUST-A7K2P9",
+      "asTheySpeakIt": "As they speak it"
     },
     "statement": {
       "statement": "Statement",
@@ -738,14 +853,25 @@
       "chooseANewPassword": "Choose a new password",
       "newPassword": "New password",
       "confirmPassword": "Confirm password",
-      "updatePassword": "Update Password"
+      "updatePassword": "Update Password",
+      "repeatNewPassword": "Repeat new password"
     },
     "SocialSignIn": {
       "continueWithGoogle": "Continue with Google",
       "signInWithApple": "Sign in with Apple"
     },
     "StatePicker": {
-      "selectState": "Select State"
+      "selectState": "Select State",
+      "searchState": "Search state…"
+    },
+    "MessagesInbox": {
+      "openMenu": "Open menu",
+      "contactSeirsSupport": "Contact SEIRS support"
+    },
+    "DeliveryTrackMap": {
+      "pickup": "Pickup",
+      "dropOff": "Drop-off",
+      "driver": "Driver"
     }
   }
 }

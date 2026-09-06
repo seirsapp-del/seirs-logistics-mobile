@@ -61,7 +61,7 @@ export default function CustomerDocumentsScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Back">
+        <Pressable onPress={() => router.back()} hitSlop={8} accessibilityLabel={tx('auto.documents.back', 'Back')}>
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.documents.documents', 'Documents')}</Text>

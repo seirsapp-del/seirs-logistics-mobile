@@ -165,18 +165,18 @@ export default function SpecialRequestScreen() {
           </Text>
         </View>
 
-        <Field label="WHAT ARE WE MOVING?">
+        <Field label={tx('auto.specialRequest.whatAreWeMoving', 'WHAT ARE WE MOVING?')}>
           <TextInput
             value={description}
             onChangeText={setDescription}
-            placeholder="Describe it plainly. What it is, roughly how big, anything unusual about it."
+            placeholder={tx('auto.specialRequest.describeItPlainlyWhatIt', 'Describe it plainly. What it is, roughly how big, anything unusual about it.')}
             placeholderTextColor={theme.textThird}
             multiline
             style={[...input, { minHeight: 96, textAlignVertical: 'top' }]}
           />
         </Field>
 
-        <Field label="WHAT KIND OF THING IS IT?">
+        <Field label={tx('auto.specialRequest.whatKindOfThingIs', 'WHAT KIND OF THING IS IT?')}>
           <View style={styles.chips}>
             {CATEGORIES.map(c => {
               const on = category === c;
@@ -205,20 +205,20 @@ export default function SpecialRequestScreen() {
           )}
         </Field>
 
-        <Field label="WEIGHT AND SIZE (OPTIONAL, BUT IT DECIDES THE VEHICLE)">
+        <Field label={tx('auto.specialRequest.weightAndSizeOptionalBut', 'WEIGHT AND SIZE (OPTIONAL, BUT IT DECIDES THE VEHICLE)')}>
           <View style={styles.row}>
             <TextInput value={weightKg} onChangeText={setWeightKg} keyboardType="numeric"
-              placeholder="Weight kg" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.weightKg', 'Weight kg')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
             <TextInput value={hands} onChangeText={setHands} keyboardType="numeric"
-              placeholder="Hands to lift" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.handsToLift', 'Hands to lift')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
           </View>
           <View style={styles.row}>
             <TextInput value={lengthCm} onChangeText={setLengthCm} keyboardType="numeric"
-              placeholder="Length cm" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.lengthCm', 'Length cm')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
             <TextInput value={widthCm} onChangeText={setWidthCm} keyboardType="numeric"
-              placeholder="Width cm" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.widthCm', 'Width cm')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
             <TextInput value={heightCm} onChangeText={setHeightCm} keyboardType="numeric"
-              placeholder="Height cm" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.heightCm', 'Height cm')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
           </View>
         </Field>
 
@@ -238,49 +238,49 @@ export default function SpecialRequestScreen() {
           ))}
         </View>
 
-        <Field label="PICKING UP FROM">
+        <Field label={tx('auto.specialRequest.pickingUpFrom', 'PICKING UP FROM')}>
           <InlineAddressPicker
-            label="Pickup"
+            label={tx('auto.specialRequest.pickup', 'Pickup')}
             dotColor="#16A34A"
             value={pickup?.address ?? ''}
             onSelect={(p: PickedAddress) => setPickup(p)}
             onClear={() => setPickup(null)}
           />
           <TextInput value={accessUp} onChangeText={setAccessUp}
-            placeholder="Getting it out: stairs, lift, loading bay, gate width?"
+            placeholder={tx('auto.specialRequest.gettingItOutStairsLift', 'Getting it out: stairs, lift, loading bay, gate width?')}
             placeholderTextColor={theme.textThird} style={input as any} />
           <View style={styles.row}>
-            <TextInput value={upName} onChangeText={setUpName} placeholder="Contact name"
+            <TextInput value={upName} onChangeText={setUpName} placeholder={tx('auto.specialRequest.contactName', 'Contact name')}
               placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
             <TextInput value={upPhone} onChangeText={setUpPhone} keyboardType="phone-pad"
-              placeholder="Phone" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.phone', 'Phone')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
           </View>
         </Field>
 
-        <Field label="TAKING IT TO">
+        <Field label={tx('auto.specialRequest.takingItTo', 'TAKING IT TO')}>
           <InlineAddressPicker
-            label="Drop-off"
+            label={tx('auto.specialRequest.dropOff', 'Drop-off')}
             dotColor="#DC2626"
             value={dropoff?.address ?? ''}
             onSelect={(p: PickedAddress) => setDropoff(p)}
             onClear={() => setDropoff(null)}
           />
           <TextInput value={accessDown} onChangeText={setAccessDown}
-            placeholder="Getting it in: stairs, lift, loading bay, gate width?"
+            placeholder={tx('auto.specialRequest.gettingItInStairsLift', 'Getting it in: stairs, lift, loading bay, gate width?')}
             placeholderTextColor={theme.textThird} style={input as any} />
           <View style={styles.row}>
-            <TextInput value={dnName} onChangeText={setDnName} placeholder="Contact name"
+            <TextInput value={dnName} onChangeText={setDnName} placeholder={tx('auto.specialRequest.contactName', 'Contact name')}
               placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
             <TextInput value={dnPhone} onChangeText={setDnPhone} keyboardType="phone-pad"
-              placeholder="Phone" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.phone', 'Phone')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
           </View>
         </Field>
 
-        <Field label="WHEN WOULD YOU LIKE IT MOVED?">
+        <Field label={tx('auto.specialRequest.whenWouldYouLikeIt', 'WHEN WOULD YOU LIKE IT MOVED?')}>
           <TextInput
             value={timing}
             onChangeText={setTiming}
-            placeholder="Tell us what suits you and we will say what is possible."
+            placeholder={tx('auto.specialRequest.tellUsWhatSuitsYou', 'Tell us what suits you and we will say what is possible.')}
             placeholderTextColor={theme.textThird}
             style={input as any}
           />

@@ -474,10 +474,10 @@ export default function TravelBuddyScreen() {
             seat picker, three taps in (founder 2026-09-04). */}
         <View style={[styles.searchCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
           <CitySearchField
-            label="FROM"
+            label={tx('auto.travelBuddy.from', 'FROM')}
             value={from}
             onChange={(v) => { setFrom(v); setFromCoords(null); }}
-            placeholder="Where you are leaving"
+            placeholder={tx('auto.travelBuddy.whereYouAreLeaving', 'Where you are leaving')}
             theme={theme}
             onLocate={() => useMyLocation('from')}
             locating={locating === 'from'}
@@ -500,7 +500,7 @@ export default function TravelBuddyScreen() {
             label="TO"
             value={to}
             onChange={(v) => { setTo(v); setToCoords(null); }}
-            placeholder="Where you are going"
+            placeholder={tx('auto.travelBuddy.whereYouAreGoing', 'Where you are going')}
             theme={theme}
             onLocate={() => useMyLocation('to')}
             locating={locating === 'to'}

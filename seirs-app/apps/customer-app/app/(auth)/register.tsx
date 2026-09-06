@@ -199,7 +199,7 @@ export default function RegisterScreen() {
               <User size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="Adebayo"
+                placeholder={tx('auto.register.adebayo', 'Adebayo')}
                 placeholderTextColor={theme.textThird}
                 autoComplete="given-name"
                 autoCapitalize="words"
@@ -217,7 +217,7 @@ export default function RegisterScreen() {
               <User size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="Chinedu"
+                placeholder={tx('auto.register.chinedu', 'Chinedu')}
                 placeholderTextColor={theme.textThird}
                 autoCapitalize="words"
                 value={middleName}
@@ -231,7 +231,7 @@ export default function RegisterScreen() {
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="Yusuf"
+                placeholder={tx('auto.register.yusuf', 'Yusuf')}
                 placeholderTextColor={theme.textThird}
                 autoComplete="family-name"
                 autoCapitalize="words"
@@ -302,7 +302,7 @@ export default function RegisterScreen() {
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="e.g. Ikeja, Surulere, Lekki"
+                placeholder={tx('auto.register.eGIkejaSurulereLekki', 'e.g. Ikeja, Surulere, Lekki')}
                 placeholderTextColor={theme.textThird}
                 value={addrCity}
                 onChangeText={setAddrCity}
@@ -315,7 +315,7 @@ export default function RegisterScreen() {
               value={addrStreet}
               onChangeText={setAddrStreet}
               state={addrState}
-              placeholder="15 Adeola Odeku Street, Victoria Island"
+              placeholder={tx('auto.register.15AdeolaOdekuStreetVictoria', '15 Adeola Odeku Street, Victoria Island')}
             />
             <Text style={[styles.fieldHint, { color: theme.textThird }]}>
               {t('auth.addressHint', { defaultValue: 'Saves you typing it on your first booking. You can add it later instead.' })}
@@ -326,7 +326,7 @@ export default function RegisterScreen() {
           <View style={styles.field} onLayout={(e) => rememberY('password', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
-              placeholder="At least 8 characters"
+              placeholder={tx('auto.register.atLeast8Characters', 'At least 8 characters')}
               placeholderTextColor={theme.textThird}
               autoComplete="new-password"
               backgroundColor={theme.surfaceSecond}

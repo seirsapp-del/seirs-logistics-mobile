@@ -62,6 +62,7 @@ import { getActiveRateCard } from '@/hooks/use-rate-card';
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { TERMS_URL } from '@/constants/config';
+import { tx } from '@/i18n/tx';
 
 const VEHICLES = PACKAGE_VEHICLES;
 // Business Vehicle step, ported verbatim (founder 2026-08-21: exactly).
@@ -2581,7 +2582,7 @@ export default function SendScreen() {
                     }}
                     ref={mapRef}
                   >
-                    <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor="#22C55E" title="Pickup" />
+                    <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor="#22C55E" title={tx('auto.send.pickup', 'Pickup')} />
                     {packages.filter(pk => pk.dropoff).map((pk, i) => (
                       <Marker key={i} coordinate={{ latitude: pk.dropoff!.lat, longitude: pk.dropoff!.lng }} pinColor="#EF4444" />
                     ))}
@@ -2610,7 +2611,7 @@ export default function SendScreen() {
                       initialRegion={{ latitude: pickup.lat, longitude: pickup.lng, latitudeDelta: 0.08, longitudeDelta: 0.08 }}
                       onMapReady={() => { /* pins declare the route; pinch to explore */ }}
                     >
-                      <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor="#22C55E" title="Pickup" />
+                      <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor="#22C55E" title={tx('auto.send.pickup', 'Pickup')} />
                       {packages.filter(pk => pk.dropoff).map((pk, i) => (
                         <Marker key={i} coordinate={{ latitude: pk.dropoff!.lat, longitude: pk.dropoff!.lng }} pinColor="#EF4444" />
                       ))}

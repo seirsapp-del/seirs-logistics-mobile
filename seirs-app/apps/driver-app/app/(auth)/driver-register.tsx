@@ -227,7 +227,7 @@ export default function DriverRegisterScreen() {
               <User size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="First"
+                placeholder={tx('auto.driverRegister.first', 'First')}
                 placeholderTextColor={theme.textThird}
                 autoCapitalize="words"
                 value={firstName}
@@ -243,7 +243,7 @@ export default function DriverRegisterScreen() {
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.input, { color: theme.text, paddingLeft: Spacing.sm }]}
-                placeholder="Middle name"
+                placeholder={tx('auto.driverRegister.middleName', 'Middle name')}
                 placeholderTextColor={theme.textThird}
                 autoCapitalize="words"
                 value={middleName}
@@ -257,7 +257,7 @@ export default function DriverRegisterScreen() {
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="Last"
+                placeholder={tx('auto.driverRegister.last', 'Last')}
                 placeholderTextColor={theme.textThird}
                 autoCapitalize="words"
                 value={lastName}
@@ -303,7 +303,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field} onLayout={(e) => rememberY('state', e.nativeEvent.layout.y)}>
-            <StatePicker label="State *" value={addrState} onChange={setAddrState} />
+            <StatePicker label={tx('auto.driverRegister.state', 'State *')} value={addrState} onChange={setAddrState} />
           </View>
 
           <View style={styles.field} onLayout={(e) => rememberY('city', e.nativeEvent.layout.y)}>
@@ -311,7 +311,7 @@ export default function DriverRegisterScreen() {
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="e.g. Ikeja, Surulere, Lekki"
+                placeholder={tx('auto.driverRegister.eGIkejaSurulereLekki', 'e.g. Ikeja, Surulere, Lekki')}
                 placeholderTextColor={theme.textThird}
                 autoCapitalize="words"
                 value={addrCity}
@@ -322,18 +322,18 @@ export default function DriverRegisterScreen() {
 
           <View style={styles.field} onLayout={(e) => rememberY('street', e.nativeEvent.layout.y)}>
             <StreetAutocomplete
-              label="Street Address & Landmark *"
+              label={tx('auto.driverRegister.streetAddressLandmark', 'Street Address & Landmark *')}
               value={addrStreet}
               onChangeText={setAddrStreet}
               state={addrState}
-              placeholder="15 Adeola Odeku Street, Victoria Island"
+              placeholder={tx('auto.driverRegister.15AdeolaOdekuStreetVictoria', '15 Adeola Odeku Street, Victoria Island')}
             />
           </View>
 
           <View style={styles.field} onLayout={(e) => rememberY('password', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.driverRegister.password', 'Password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
-              placeholder="At least 8 characters"
+              placeholder={tx('auto.driverRegister.atLeast8Characters', 'At least 8 characters')}
               placeholderTextColor={theme.textThird}
               backgroundColor={theme.surfaceSecond}
               borderColor={theme.border}
@@ -345,7 +345,7 @@ export default function DriverRegisterScreen() {
           <View style={styles.field} onLayout={(e) => rememberY('confirm', e.nativeEvent.layout.y)}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.driverRegister.confirmPassword', 'Confirm password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
-              placeholder="Re-enter password"
+              placeholder={tx('auto.driverRegister.reEnterPassword', 'Re-enter password')}
               placeholderTextColor={theme.textThird}
               backgroundColor={theme.surfaceSecond}
               borderColor={theme.border}
@@ -388,7 +388,7 @@ export default function DriverRegisterScreen() {
           <Checkbox
             value={ageConfirmed}
             onToggle={() => setAgeConfirmed(v => !v)}
-            label="I confirm I am 18 years of age or older"
+            label={tx('auto.driverRegister.iConfirmIAm18', 'I confirm I am 18 years of age or older')}
           />
           <Checkbox
             value={termsConfirmed}

@@ -117,7 +117,7 @@ export default function ResetPasswordScreen() {
           style={[styles.input, { color: theme.text }]}
           value={newPassword}
           onChangeText={setNewPassword}
-          placeholder="New password"
+          placeholder={tx('auto.resetPassword.newPassword', 'New password')}
           placeholderTextColor={theme.textThird}
           secureTextEntry={!showPass}
           autoComplete="new-password"
@@ -134,7 +134,7 @@ export default function ResetPasswordScreen() {
           style={[styles.input, { color: theme.text }]}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
-          placeholder="Repeat new password"
+          placeholder={tx('auto.resetPassword.repeatNewPassword', 'Repeat new password')}
           placeholderTextColor={theme.textThird}
           secureTextEntry={!showPass}
           autoComplete="new-password"

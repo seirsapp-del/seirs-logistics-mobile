@@ -352,7 +352,7 @@ export default function HistoryScreen() {
           style={[styles.searchInput, { color: theme.text }]}
           value={search}
           onChangeText={setSearch}
-          placeholder="Search by tracking number…"
+          placeholder={tx('auto.history.searchByTrackingNumber', 'Search by tracking number…')}
           placeholderTextColor={theme.textThird}
           returnKeyType="search"
         />

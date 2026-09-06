@@ -220,7 +220,7 @@ export default function PartnerSettingsScreen() {
             style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             value={settings.storeName}
             onChangeText={(v) => set('storeName', v)}
-            placeholder="My Partner Store"
+            placeholder={tx('auto.settings.myPartnerStore', 'My Partner Store')}
             placeholderTextColor={colors.textThird}
             {...({ editable: false } as any)}
           />
@@ -437,7 +437,7 @@ export default function PartnerSettingsScreen() {
                 style={[styles.input, styles.multiline, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                 value={whyName}
                 onChangeText={setWhyName}
-                placeholder="e.g. the business was renamed"
+                placeholder={tx('auto.settings.eGTheBusinessWas', 'e.g. the business was renamed')}
                 placeholderTextColor={colors.textThird}
                 multiline
               />

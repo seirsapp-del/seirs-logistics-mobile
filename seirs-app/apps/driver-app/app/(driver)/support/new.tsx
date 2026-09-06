@@ -23,6 +23,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { supportApi, type TicketTopic } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 const TOPICS: { key: TicketTopic; label: string; icon: any }[] = [
   { key: 'delivery', label: 'Delivery issue', icon: 'cube-outline' },
@@ -99,7 +100,7 @@ export default function DriverNewSupportTicketScreen() {
               value={subject}
               onChangeText={setSubject}
               maxLength={200}
-              placeholder="One-line summary"
+              placeholder={tx('auto.new.oneLineSummary', 'One-line summary')}
               placeholderTextColor={theme.textThird}
               style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
             />
@@ -111,7 +112,7 @@ export default function DriverNewSupportTicketScreen() {
             <TextInput
               value={firstMessage}
               onChangeText={setFirstMessage}
-              placeholder="Include tracking codes, times, or delivery IDs when relevant."
+              placeholder={tx('auto.new.includeTrackingCodesTimesOr', 'Include tracking codes, times, or delivery IDs when relevant.')}
               placeholderTextColor={theme.textThird}
               multiline
               numberOfLines={6}

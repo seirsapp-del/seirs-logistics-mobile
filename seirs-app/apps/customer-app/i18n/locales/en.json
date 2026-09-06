@@ -1058,11 +1058,18 @@
     },
     "register": {
       "termsOfService": "Terms of Service",
-      "privacyPolicy": "Privacy Policy"
+      "privacyPolicy": "Privacy Policy",
+      "adebayo": "Adebayo",
+      "chinedu": "Chinedu",
+      "yusuf": "Yusuf",
+      "eGIkejaSurulereLekki": "e.g. Ikeja, Surulere, Lekki",
+      "15AdeolaOdekuStreetVictoria": "15 Adeola Odeku Street, Victoria Island",
+      "atLeast8Characters": "At least 8 characters"
     },
     "history": {
       "trackLive": "Track live",
-      "rateThisTrip": "Rate this trip"
+      "rateThisTrip": "Rate this trip",
+      "searchByTrackingNumber": "Search by tracking number…"
     },
     "profile": {
       "verified": "Verified",
@@ -1080,7 +1087,8 @@
       "whatYourPointsAreFor": "What your points are for",
       "redeemPoints": "Redeem points",
       "startEarning": "Start earning",
-      "bookADelivery": "Book a delivery"
+      "bookADelivery": "Book a delivery",
+      "seirsId": "SEIRS ID"
     },
     "id": {
       "readThisOnTheSeirs": "Read this on the SEIRS website",
@@ -1104,22 +1112,48 @@
       "bookAgain": "Book again"
     },
     "confirmRide": {
-      "orderSummary": "Order Summary"
+      "orderSummary": "Order Summary",
+      "pickup": "Pickup",
+      "destination": "Destination"
     },
     "deleteAccount": {
       "deleteAccount": "Delete Account",
       "permanentAfter30Days": "Permanent after 30 days",
       "whatGetsDeleted": "What gets deleted",
-      "whatStays": "What stays"
+      "whatStays": "What stays",
+      "enterCurrentPassword": "Enter current password"
     },
     "documents": {
       "documents": "Documents",
       "noDocumentsYet": "No documents yet",
-      "close": "Close"
+      "close": "Close",
+      "back": "Back"
     },
     "editProfile": {
       "saveChanges": "Save changes",
-      "changePassword": "Change password"
+      "changePassword": "Change password",
+      "account": "Account",
+      "email": "Email",
+      "phone": "Phone",
+      "legalName": "Legal name",
+      "shownOnYourIdDuring": "Shown on your ID during verification. Only your first name is shown to drivers.",
+      "firstName": "First name",
+      "middleNameOptional": "Middle name (optional)",
+      "lastName": "Last name",
+      "dateOfBirth": "Date of birth",
+      "yyyyMmDd": "YYYY-MM-DD",
+      "emergencyContact": "Emergency contact",
+      "whoShouldWeCallIf": "Who should we call if something goes wrong during a delivery? No limit on how often you can update this.",
+      "contactName": "Contact name",
+      "eGAdaezeOkoro": "e.g. Adaeze Okoro",
+      "contactPhone": "Contact phone",
+      "homeAddress": "Home address",
+      "defaultPickupForYourDeliveries": "Default pickup for your deliveries. Tap 'Use my home' in the send flow to skip typing.",
+      "street": "Street",
+      "12AdeolaOdekuStreet": "12 Adeola Odeku Street",
+      "city": "City",
+      "lagos": "Lagos",
+      "state": "State"
     },
     "help": {
       "noResultsFound": "No results found",
@@ -1130,7 +1164,9 @@
       "notifications": "Notifications",
       "markAllRead": "Mark all read",
       "noNotifications": "No notifications",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "back": "Back",
+      "clearNotifications": "Clear notifications"
     },
     "packageQr": {
       "packageQr": "Package QR",
@@ -1161,7 +1197,10 @@
       "codeSavedItGoesWith": "Code saved. It goes with your next booking.",
       "availablePromos": "Available Promos",
       "noActivePromos": "No active promos",
-      "checkBackSoonNewOffers": "Check back soon: new offers go live regularly."
+      "checkBackSoonNewOffers": "Check back soon: new offers go live regularly.",
+      "enterPromoCode": "Enter promo code",
+      "removeCode": "Remove code",
+      "saveCode": "Save Code"
     },
     "promotions": {
       "applyCode": "Apply Code"
@@ -1181,7 +1220,8 @@
       "reportAnIssue": "Report an issue",
       "allOrders": "All orders",
       "notAboutOneSpecificDelivery": "Not about one specific delivery",
-      "sendReport": "Send report"
+      "sendReport": "Send report",
+      "includeTimesNamesOrAnything": "Include times, names, or anything that helps us sort it out."
     },
     "rewards": {
       "yourPoints": "Your points",
@@ -1205,7 +1245,26 @@
     },
     "specialRequest": {
       "getAQuote": "Get a quote",
-      "sendForAQuote": "Send for a quote"
+      "sendForAQuote": "Send for a quote",
+      "whatAreWeMoving": "WHAT ARE WE MOVING?",
+      "describeItPlainlyWhatIt": "Describe it plainly. What it is, roughly how big, anything unusual about it.",
+      "whatKindOfThingIs": "WHAT KIND OF THING IS IT?",
+      "weightAndSizeOptionalBut": "WEIGHT AND SIZE (OPTIONAL, BUT IT DECIDES THE VEHICLE)",
+      "weightKg": "Weight kg",
+      "handsToLift": "Hands to lift",
+      "lengthCm": "Length cm",
+      "widthCm": "Width cm",
+      "heightCm": "Height cm",
+      "pickingUpFrom": "PICKING UP FROM",
+      "pickup": "Pickup",
+      "gettingItOutStairsLift": "Getting it out: stairs, lift, loading bay, gate width?",
+      "contactName": "Contact name",
+      "phone": "Phone",
+      "takingItTo": "TAKING IT TO",
+      "dropOff": "Drop-off",
+      "gettingItInStairsLift": "Getting it in: stairs, lift, loading bay, gate width?",
+      "whenWouldYouLikeIt": "WHEN WOULD YOU LIKE IT MOVED?",
+      "tellUsWhatSuitsYou": "Tell us what suits you and we will say what is possible."
     },
     "statement": {
       "spendingStatement": "Spending Statement",
@@ -1223,7 +1282,9 @@
       "attachADelivery": "Attach a delivery",
       "subject": "Subject",
       "describeWhatHappened": "Describe what happened",
-      "sendToSupport": "Send to support"
+      "sendToSupport": "Send to support",
+      "aShortSummaryOfThe": "A short summary of the issue",
+      "includeTrackingCodesTimesOr": "Include tracking codes, times, or amounts when relevant. The more detail, the faster we can help."
     },
     "ticketId": {
       "tapToOpen": "Tap to open"
@@ -1244,13 +1305,19 @@
       "dropoff": "Dropoff",
       "trackYourDelivery": "Track your delivery",
       "redirectToAPartnerStore": "Redirect to a partner store",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "eGSrsAb12cd34": "e.g. SRS-AB12CD34",
+      "newDeliveryAddress": "New delivery address",
+      "startTypingTheAddress": "Start typing the address"
     },
     "travelBuddy": {
       "travelBuddy": "Travel Buddy",
       "findTrips": "Find trips",
       "bookASeat": "Book a seat",
-      "sendAParcel": "Send a parcel"
+      "sendAParcel": "Send a parcel",
+      "from": "FROM",
+      "whereYouAreLeaving": "Where you are leaving",
+      "whereYouAreGoing": "Where you are going"
     },
     "verifyIdentity": {
       "verifyIdentity": "Verify Identity",
@@ -1262,7 +1329,8 @@
       "youReVerified": "You’re verified",
       "underReview": "Under review",
       "pdfAttached": "PDF attached",
-      "replace": "Replace"
+      "replace": "Replace",
+      "yyyyMmDd": "YYYY-MM-DD"
     },
     "NotFound": {
       "screenNotFound": "Screen not found",
@@ -1276,23 +1344,48 @@
       "setNewPassword": "Set new password",
       "newPassword": "New Password",
       "confirmPassword": "Confirm Password",
-      "resetPassword": "Reset Password"
+      "resetPassword": "Reset Password",
+      "atLeast8Characters": "At least 8 characters",
+      "repeatYourPassword": "Repeat your password"
     },
     "AddressPicker": {
       "cancel": "Cancel",
       "useMyCurrentLocation": "Use my current location",
       "searchAboveOrTapThe": "Search above or tap the map to pin a location",
-      "confirmLocation": "Confirm Location"
+      "confirmLocation": "Confirm Location",
+      "searchAddress": "Search address…"
     },
     "InlineAddressPicker": {
-      "useMyCurrentLocation": "Use my current location"
+      "useMyCurrentLocation": "Use my current location",
+      "tapToSearchAddress": "Tap to search address…"
     },
     "SocialSignIn": {
       "continueWithGoogle": "Continue with Google",
       "signInWithApple": "Sign in with Apple"
     },
     "StatePicker": {
-      "selectState": "Select State"
+      "selectState": "Select State",
+      "searchState": "Search state…"
+    },
+    "request": {
+      "pickup": "Pickup",
+      "dropoff": "Dropoff"
+    },
+    "send": {
+      "pickup": "Pickup"
+    },
+    "vehicleSelect": {
+      "pickup": "Pickup",
+      "dropoff": "Dropoff"
+    },
+    "MessagesInbox": {
+      "openMenu": "Open menu",
+      "contactSeirsSupport": "Contact SEIRS support"
+    },
+    "DeliveryTrackMap": {
+      "pickup": "Pickup",
+      "dropOff": "Drop-off",
+      "driver": "Driver"
     }
   }
 }

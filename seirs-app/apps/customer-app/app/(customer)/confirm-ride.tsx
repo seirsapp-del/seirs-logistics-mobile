@@ -170,8 +170,8 @@ export default function ConfirmRideScreen() {
           );
         }}
       >
-        {pickupLat  && <Marker coordinate={{ latitude: pickupLat,  longitude: pickupLng!  }} pinColor="#22C55E" title="Pickup" />}
-        {dropoffLat && <Marker coordinate={{ latitude: dropoffLat, longitude: dropoffLng! }} pinColor="#EF4444" title="Destination" />}
+        {pickupLat  && <Marker coordinate={{ latitude: pickupLat,  longitude: pickupLng!  }} pinColor="#22C55E" title={tx('auto.confirmRide.pickup', 'Pickup')} />}
+        {dropoffLat && <Marker coordinate={{ latitude: dropoffLat, longitude: dropoffLng! }} pinColor="#EF4444" title={tx('auto.confirmRide.destination', 'Destination')} />}
         {routeCoords.length > 1 && (
           <Polyline coordinates={routeCoords} strokeColor={theme.primary} strokeWidth={4} />
         )}

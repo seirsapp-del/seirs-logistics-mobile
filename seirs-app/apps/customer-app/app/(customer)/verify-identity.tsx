@@ -355,7 +355,7 @@ export default function VerifyIdentityScreen() {
                       <TextInput
                         value={docExpiryDate}
                         onChangeText={(v) => { setDocExpiryDate(v); if (expiryError) setExpiryError(null); }}
-                        placeholder="YYYY-MM-DD"
+                        placeholder={tx('auto.verifyIdentity.yyyyMmDd', 'YYYY-MM-DD')}
                         placeholderTextColor={theme.textThird}
                         autoCapitalize="none"
                         autoCorrect={false}

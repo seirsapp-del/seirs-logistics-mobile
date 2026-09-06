@@ -199,7 +199,7 @@ export default function BusinessReportScreen() {
             style={[styles.detailInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             value={detail}
             onChangeText={setDetail}
-            placeholder="Include tracking codes, times, or delivery IDs when relevant."
+            placeholder={tx('auto.report.includeTrackingCodesTimesOr', 'Include tracking codes, times, or delivery IDs when relevant.')}
             placeholderTextColor={colors.textThird}
             multiline
             textAlignVertical="top"

@@ -218,7 +218,7 @@ export default function DeleteAccountScreen() {
 
           <View style={{ marginTop: Spacing.lg, gap: 6 }}>
             <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>CONFIRM YOUR PASSWORD</Text>
-            <PasswordInput value={password} onChangeText={setPassword} placeholder="Enter current password" />
+            <PasswordInput value={password} onChangeText={setPassword} placeholder={tx('auto.deleteAccount.enterCurrentPassword', 'Enter current password')} />
           </View>
 
           <View style={{ marginTop: Spacing.md, gap: 6 }}>

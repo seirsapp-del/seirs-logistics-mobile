@@ -456,7 +456,7 @@ export default function StoreHandoffScreen() {
                     backgroundColor: isDark ? theme.background : '#fff',
                     letterSpacing: 1.5,
                   }]}
-                  placeholder="SEIRS ID"
+                  placeholder={tx('auto.storeHandoff.seirsId', 'SEIRS ID')}
                   placeholderTextColor={theme.textThird}
                   value={staffSeirsId}
                   onChangeText={setStaffSeirsId}

@@ -117,7 +117,7 @@ export default function BusinessDashboard() {
             <>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.index.quickActions', 'Quick Actions')}</Text>
               <View style={styles.actions}>
-                <ActionCard icon="Package"         label="Send a Package" sub="One or many packages, one payment"
+                <ActionCard icon="Package"         label={tx('auto.index.sendAPackage', 'Send a Package')} sub="One or many packages, one payment"
                   onPress={() => router.push('/(business)/send-package' as any)} primary />
                 {/* Special Cargo is the quote-first lane, the same thing the
                     customer app calls Special delivery (founder 2026-09-06).
@@ -126,7 +126,7 @@ export default function BusinessDashboard() {
                     A generator, a transformer or a shop's worth of fittings
                     is not a rate-card job: a person prices it, so the card
                     opens the request form and never the rate card. */}
-                <ActionCard icon="Truck"           label="Special Cargo" sub="Heavy or unusual loads, quoted by a person"
+                <ActionCard icon="Truck"           label={tx('auto.index.specialCargo', 'Special Cargo')} sub="Heavy or unusual loads, quoted by a person"
                   onPress={() => router.push('/(business)/special-request' as any)} />
                 {/*
                   * Cargo Space was reachable from the drawer only, while the
@@ -140,7 +140,7 @@ export default function BusinessDashboard() {
                   * in the line because nobody could tell what it was for
                   * (founder 2026-09-06).
                   */}
-                <ActionCard icon="Route"           label="Cargo Space" sub="Interstate trips: room on a run already being made"
+                <ActionCard icon="Route"           label={tx('auto.index.cargoSpace', 'Cargo Space')} sub="Interstate trips: room on a run already being made"
                   onPress={() => router.push('/(business)/cargo-space' as any)} />
               </View>
 

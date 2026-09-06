@@ -120,7 +120,7 @@ export default function ResetPasswordScreen() {
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.resetPassword.newPassword', 'New Password')}</Text>
             <PasswordInput
-              placeholder="At least 8 characters"
+              placeholder={tx('auto.resetPassword.atLeast8Characters', 'At least 8 characters')}
               placeholderTextColor={theme.textSecond}
               backgroundColor={theme.surface}
               borderColor={theme.border}
@@ -132,7 +132,7 @@ export default function ResetPasswordScreen() {
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.resetPassword.confirmPassword', 'Confirm Password')}</Text>
             <PasswordInput
-              placeholder="Repeat your password"
+              placeholder={tx('auto.resetPassword.repeatYourPassword', 'Repeat your password')}
               placeholderTextColor={theme.textSecond}
               backgroundColor={theme.surface}
               borderColor={theme.border}

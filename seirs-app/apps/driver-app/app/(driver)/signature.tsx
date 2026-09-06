@@ -202,7 +202,7 @@ export default function DriverSignatureScreen() {
               <TextInput
                 value={idNumber}
                 onChangeText={setIdNumber}
-                placeholder="On document"
+                placeholder={tx('auto.signature.onDocument', 'On document')}
                 placeholderTextColor={theme.textThird}
                 autoCapitalize="characters"
                 style={[styles.input, { color: theme.text, borderColor: theme.border }]}
@@ -238,7 +238,7 @@ export default function DriverSignatureScreen() {
                 value={seirsCode}
                 onChangeText={setSeirsCode}
                 onBlur={lookupSeirsId}
-                placeholder="CUST-A7K2P9"
+                placeholder={tx('auto.signature.custA7k2p9', 'CUST-A7K2P9')}
                 placeholderTextColor={theme.textThird}
                 autoCapitalize="characters"
                 style={[styles.input, { color: theme.text, borderColor: theme.border }]}
@@ -254,7 +254,7 @@ export default function DriverSignatureScreen() {
                   <TextInput
                     value={typedName}
                     onChangeText={setTypedName}
-                    placeholder="As they speak it"
+                    placeholder={tx('auto.signature.asTheySpeakIt', 'As they speak it')}
                     placeholderTextColor={theme.textThird}
                     autoCapitalize="words"
                     style={[styles.input, { color: theme.text, borderColor: theme.border, marginTop: 8 }]}

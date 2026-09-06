@@ -139,7 +139,7 @@ export default function InventoryScreen() {
           style={[styles.searchInput, { color: colors.text }]}
           value={search}
           onChangeText={setSearch}
-          placeholder="Search by tracking or recipient…"
+          placeholder={tx('auto.inventory.searchByTrackingOrRecipient', 'Search by tracking or recipient…')}
           placeholderTextColor={colors.textThird}
         />
         {search.length > 0 && (

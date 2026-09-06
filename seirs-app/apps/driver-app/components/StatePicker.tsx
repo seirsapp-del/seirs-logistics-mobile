@@ -82,7 +82,7 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
               style={[styles.searchInput, { color: colors.text }]}
               value={search}
               onChangeText={setSearch}
-              placeholder="Search state…"
+              placeholder={tx('auto.StatePicker.searchState', 'Search state…')}
               placeholderTextColor={colors.textThird}
               autoFocus
             />

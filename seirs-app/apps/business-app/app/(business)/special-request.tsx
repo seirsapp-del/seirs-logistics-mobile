@@ -169,7 +169,7 @@ export default function BusinessSpecialRequest() {
           <TextInput
             value={description}
             onChangeText={setDescription}
-            placeholder="Describe it plainly. What it is, roughly how big, anything unusual."
+            placeholder={tx('auto.specialRequest.describeItPlainlyWhatIt', 'Describe it plainly. What it is, roughly how big, anything unusual.')}
             placeholderTextColor={theme.textThird}
             multiline
             style={[...input, { minHeight: 96, textAlignVertical: 'top' }]}
@@ -210,17 +210,17 @@ export default function BusinessSpecialRequest() {
           <Label>WEIGHT AND SIZE (IT DECIDES THE VEHICLE)</Label>
           <View style={styles.row}>
             <TextInput value={weightKg} onChangeText={setWeightKg} keyboardType="numeric"
-              placeholder="Weight kg" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.weightKg', 'Weight kg')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
             <TextInput value={hands} onChangeText={setHands} keyboardType="numeric"
-              placeholder="Hands to lift" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.handsToLift', 'Hands to lift')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
           </View>
           <View style={styles.row}>
             <TextInput value={lengthCm} onChangeText={setLengthCm} keyboardType="numeric"
-              placeholder="Length cm" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.lengthCm', 'Length cm')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
             <TextInput value={widthCm} onChangeText={setWidthCm} keyboardType="numeric"
-              placeholder="Width cm" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.widthCm', 'Width cm')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
             <TextInput value={heightCm} onChangeText={setHeightCm} keyboardType="numeric"
-              placeholder="Height cm" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.heightCm', 'Height cm')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
           </View>
         </View>
 
@@ -245,17 +245,17 @@ export default function BusinessSpecialRequest() {
           <StreetAutocomplete
             value={upAddr}
             onChangeText={setUpAddr}
-            placeholder="Where does it start?"
+            placeholder={tx('auto.specialRequest.whereDoesItStart', 'Where does it start?')}
             onCoordsResolved={(lat: number, lng: number) => setUpPin({ lat, lng })}
           />
           <TextInput value={accessUp} onChangeText={setAccessUp}
-            placeholder="Getting it out: stairs, lift, loading bay, gate width?"
+            placeholder={tx('auto.specialRequest.gettingItOutStairsLift', 'Getting it out: stairs, lift, loading bay, gate width?')}
             placeholderTextColor={theme.textThird} style={input as any} />
           <View style={styles.row}>
-            <TextInput value={upName} onChangeText={setUpName} placeholder="Contact name"
+            <TextInput value={upName} onChangeText={setUpName} placeholder={tx('auto.specialRequest.contactName', 'Contact name')}
               placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
             <TextInput value={upPhone} onChangeText={setUpPhone} keyboardType="phone-pad"
-              placeholder="Phone" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.phone', 'Phone')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
           </View>
         </View>
 
@@ -264,24 +264,24 @@ export default function BusinessSpecialRequest() {
           <StreetAutocomplete
             value={dnAddr}
             onChangeText={setDnAddr}
-            placeholder="Where does it end up?"
+            placeholder={tx('auto.specialRequest.whereDoesItEndUp', 'Where does it end up?')}
             onCoordsResolved={(lat: number, lng: number) => setDnPin({ lat, lng })}
           />
           <TextInput value={accessDown} onChangeText={setAccessDown}
-            placeholder="Getting it in: stairs, lift, loading bay, gate width?"
+            placeholder={tx('auto.specialRequest.gettingItInStairsLift', 'Getting it in: stairs, lift, loading bay, gate width?')}
             placeholderTextColor={theme.textThird} style={input as any} />
           <View style={styles.row}>
-            <TextInput value={dnName} onChangeText={setDnName} placeholder="Contact name"
+            <TextInput value={dnName} onChangeText={setDnName} placeholder={tx('auto.specialRequest.contactName', 'Contact name')}
               placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
             <TextInput value={dnPhone} onChangeText={setDnPhone} keyboardType="phone-pad"
-              placeholder="Phone" placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
+              placeholder={tx('auto.specialRequest.phone', 'Phone')} placeholderTextColor={theme.textThird} style={[...input, { flex: 1 }]} />
           </View>
         </View>
 
         <View style={{ gap: 6 }}>
           <Label>WHEN WOULD YOU LIKE IT MOVED?</Label>
           <TextInput value={timing} onChangeText={setTiming}
-            placeholder="Tell us what suits you and we will say what is possible."
+            placeholder={tx('auto.specialRequest.tellUsWhatSuitsYou', 'Tell us what suits you and we will say what is possible.')}
             placeholderTextColor={theme.textThird} style={input as any} />
           {/* Deliberately not a date picker: see the file header. */}
           <Text style={[styles.note, { color: theme.textThird }]}>

@@ -156,7 +156,7 @@ export default function InlineAddressPicker({ label, dotColor, value, onSelect, 
             onChangeText={onChange}
             onFocus={() => setFocused(true)}
             onBlur={() => setTimeout(() => setFocused(false), 150)}
-            placeholder="Tap to search address…"
+            placeholder={tx('auto.InlineAddressPicker.tapToSearchAddress', 'Tap to search address…')}
             placeholderTextColor={theme.textThird}
             style={[styles.input, { color: theme.text }]}
           />

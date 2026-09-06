@@ -129,7 +129,7 @@ export default function PromoScreen() {
             <Ionicons name="pricetag-outline" size={18} color={applied ? '#22C55E' : theme.textThird} />
             <TextInput
               style={[styles.input, { color: theme.text }]}
-              placeholder="Enter promo code"
+              placeholder={tx('auto.promo.enterPromoCode', 'Enter promo code')}
               placeholderTextColor={theme.textThird}
               autoCapitalize="characters"
               value={code}
@@ -160,14 +160,14 @@ export default function PromoScreen() {
           ) : null}
           {applied ? (
             <Button
-              label="Remove code"
+              label={tx('auto.promo.removeCode', 'Remove code')}
               variant="outline"
               onPress={handleClear}
               fullWidth
             />
           ) : (
             <Button
-              label="Save Code"
+              label={tx('auto.promo.saveCode', 'Save Code')}
               onPress={handleApply}
               disabled={!code.trim()}
               fullWidth

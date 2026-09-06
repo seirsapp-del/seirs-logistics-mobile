@@ -21,6 +21,7 @@ import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 
 import { mapsApi, deliveriesApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Places and geocoding go through our backend (security review
 // 2026-08-12): the Google key is no longer shipped inside the app.
@@ -366,8 +367,8 @@ export default function RequestDriverScreen() {
         showsUserLocation
         showsMyLocationButton={false}
       >
-        {pickup  && <Marker coordinate={{ latitude: pickup.lat,  longitude: pickup.lng  }} pinColor="#22C55E" title="Pickup"  description={pickup.address}  />}
-        {dropoff && <Marker coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }} pinColor="#EF4444" title="Dropoff" description={dropoff.address} />}
+        {pickup  && <Marker coordinate={{ latitude: pickup.lat,  longitude: pickup.lng  }} pinColor="#22C55E" title={tx('auto.request.pickup', 'Pickup')}  description={pickup.address}  />}
+        {dropoff && <Marker coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }} pinColor="#EF4444" title={tx('auto.request.dropoff', 'Dropoff')} description={dropoff.address} />}
         {pickup && dropoff && routeCoords.length > 1 && (
           <Polyline coordinates={routeCoords} strokeColor={theme.primary} strokeWidth={4} />
         )}

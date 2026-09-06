@@ -229,7 +229,7 @@ export default function DriverNotificationsScreen() {
             </Pressable>
           )}
           {notifs.length > 0 && (
-            <Pressable onPress={clearAll} hitSlop={8} accessibilityLabel="Clear notifications">
+            <Pressable onPress={clearAll} hitSlop={8} accessibilityLabel={tx('auto.notifications.clearNotifications', 'Clear notifications')}>
               <Ionicons name="trash-outline" size={20} color={theme.textSecond} />
             </Pressable>
           )}

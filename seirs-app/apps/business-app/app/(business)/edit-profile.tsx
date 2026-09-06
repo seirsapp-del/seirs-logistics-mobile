@@ -252,7 +252,7 @@ export default function BusinessEditProfileScreen() {
               onFocus={onFieldFocus}
               value={firstName} onChangeText={setFirstName}
               style={[styles.input, { borderColor: errors.firstName ? '#DC2626' : colors.border, color: colors.text }]}
-              placeholder="Adebayo" placeholderTextColor={colors.textThird} />
+              placeholder={tx('auto.editProfile.adebayo', 'Adebayo')} placeholderTextColor={colors.textThird} />
             {errors.firstName && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.firstName}</Text>}
             <Text style={{ fontSize: 12, color: colors.textThird }}>30-day change limit</Text>
           </View>
@@ -273,7 +273,7 @@ export default function BusinessEditProfileScreen() {
               onFocus={onFieldFocus}
               value={lastName} onChangeText={setLastName}
               style={[styles.input, { borderColor: errors.lastName ? '#DC2626' : colors.border, color: colors.text }]}
-              placeholder="Ogunlana" placeholderTextColor={colors.textThird} />
+              placeholder={tx('auto.editProfile.ogunlana', 'Ogunlana')} placeholderTextColor={colors.textThird} />
             {errors.lastName && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.lastName}</Text>}
             <Text style={{ fontSize: 12, color: colors.textThird }}>30-day change limit</Text>
           </View>
@@ -316,7 +316,7 @@ export default function BusinessEditProfileScreen() {
               onFocus={onFieldFocus}
               value={emergencyName} onChangeText={setEmergencyName}
               style={[styles.input, { borderColor: errors.emergencyName ? '#DC2626' : colors.border, color: colors.text }]}
-              placeholder="e.g. Chinyere Okafor" placeholderTextColor={colors.textThird} />
+              placeholder={tx('auto.editProfile.eGChinyereOkafor', 'e.g. Chinyere Okafor')} placeholderTextColor={colors.textThird} />
             {errors.emergencyName && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.emergencyName}</Text>}
           </View>
 
@@ -360,7 +360,7 @@ export default function BusinessEditProfileScreen() {
               onFocus={onFieldFocus}
                   value={companyName} onChangeText={setCompanyName} editable={isOwner}
                   style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: isOwner ? 1 : 0.6 }]}
-                  placeholder="Acme Logistics Ltd" placeholderTextColor={colors.textThird} />
+                  placeholder={tx('auto.editProfile.acmeLogisticsLtd', 'Acme Logistics Ltd')} placeholderTextColor={colors.textThird} />
               </View>
 
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -382,7 +382,7 @@ export default function BusinessEditProfileScreen() {
                   state chosen below. */}
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <StreetAutocomplete
-                  label="STREET ADDRESS"
+                  label={tx('auto.editProfile.streetAddress', 'STREET ADDRESS')}
                   value={streetAddress}
                   onChangeText={setStreetAddress}
                   state={state}
@@ -400,7 +400,7 @@ export default function BusinessEditProfileScreen() {
                     if (info.city)  setCity(info.city);
                     if (info.state) setState(info.state);
                   }}
-                  placeholder="15 Adeola Odeku"
+                  placeholder={tx('auto.editProfile.15AdeolaOdeku', '15 Adeola Odeku')}
                 />
               </View>
 
@@ -411,7 +411,7 @@ export default function BusinessEditProfileScreen() {
               onFocus={onFieldFocus}
                     value={city} onChangeText={setCity} editable={isOwner}
                     style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: isOwner ? 1 : 0.6 }]}
-                    placeholder="Lekki" placeholderTextColor={colors.textThird} />
+                    placeholder={tx('auto.editProfile.lekki', 'Lekki')} placeholderTextColor={colors.textThird} />
                 </View>
                 <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}>
                   {/* Free text let a business save "Lagoss" and it is what
@@ -419,10 +419,10 @@ export default function BusinessEditProfileScreen() {
                       Same 36-states-plus-FCT picker the registration form
                       uses. */}
                   <StatePicker
-                    label="STATE"
+                    label={tx('auto.editProfile.state', 'STATE')}
                     value={state}
                     onChange={setState}
-                    placeholder="Select state"
+                    placeholder={tx('auto.editProfile.selectState', 'Select state')}
                   />
                 </View>
               </View>

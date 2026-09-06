@@ -116,7 +116,7 @@ export default function ForgotPasswordScreen() {
           style={styles.backBtn}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={tx('auto.forgotPassword.back', 'Back')}
           onPress={() => router.back()}
         >
           <View style={[styles.backCircle, { backgroundColor: theme.surface }, Shadows.xs]}>

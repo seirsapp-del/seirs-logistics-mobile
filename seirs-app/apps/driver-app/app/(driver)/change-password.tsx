@@ -71,16 +71,16 @@ export default function ChangePasswordScreen() {
             </Text>
           </View>
 
-          <Field label="Current password" theme={theme}>
-            <PasswordInput value={current} onChangeText={setCurrent} placeholder="Enter current" />
+          <Field label={tx('auto.changePassword.currentPassword', 'Current password')} theme={theme}>
+            <PasswordInput value={current} onChangeText={setCurrent} placeholder={tx('auto.changePassword.enterCurrent', 'Enter current')} />
           </Field>
 
-          <Field label="New password" theme={theme}>
-            <PasswordInput value={next} onChangeText={setNext} placeholder="At least 8 chars, mixed case, digit/symbol" />
+          <Field label={tx('auto.changePassword.newPassword', 'New password')} theme={theme}>
+            <PasswordInput value={next} onChangeText={setNext} placeholder={tx('auto.changePassword.atLeast8CharsMixed', 'At least 8 chars, mixed case, digit/symbol')} />
           </Field>
 
-          <Field label="Confirm new password" theme={theme}>
-            <PasswordInput value={confirm} onChangeText={setConfirm} placeholder="Re-enter new password" />
+          <Field label={tx('auto.changePassword.confirmNewPassword', 'Confirm new password')} theme={theme}>
+            <PasswordInput value={confirm} onChangeText={setConfirm} placeholder={tx('auto.changePassword.reEnterNewPassword', 'Re-enter new password')} />
           </Field>
 
           <Pressable
