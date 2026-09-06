@@ -347,7 +347,10 @@ export class BusinessService {
       const pickupAt = new Date(t.nextRunAt);
       try {
         const { termsAcceptedAt: _terms, kind, ...payload } = (t.payload ?? {}) as any;
-        const delivery: any = kind === 'customer'
+        // createDelivery answers with an envelope { delivery, stops, ... };
+        // the customer path answers with the row itself. Unwrap both, or
+        // the id and price read undefined (the N0.00 push, 2026-09-06).
+        const created: any = kind === 'customer'
           // The customer's own booking path: same pricing, same photos,
           // same receiver rules as a booking made by hand.
           ? await this.deliveriesService.create({
@@ -364,6 +367,7 @@ export class BusinessService {
               // is matched for then, and the unpaid cancel below reads it.
               scheduledAt: pickupAt.toISOString(),
             });
+        const delivery: any = created?.delivery ?? created;
         // Neither booking path persists the flag from its DTO, and the flag
         // is what the unpaid-run sweep and the app's "Recurring run" label
         // key on, so it is written here, after the fact, for both.
