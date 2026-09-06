@@ -8,7 +8,6 @@ import { Payment, PaymentMethod, PaymentStatus, EscrowStatus, PaymentPurpose } f
 import { mapProviderMethod } from './flutterwave.service';
 import { spendNarrative, methodLabel } from '../business/spend-narrative';
 import { Wallet } from './wallet.entity';
-import { SavedCard } from './saved-card.entity';
 import { FlutterwaveService } from './flutterwave.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AccountSecurityService } from '../notifications/account-security.service';
@@ -36,7 +35,6 @@ export class PaymentsService {
   constructor(
     @InjectRepository(Payment)   private paymentsRepo:   Repository<Payment>,
     @InjectRepository(Wallet)    private walletsRepo:    Repository<Wallet>,
-    @InjectRepository(SavedCard) private savedCardsRepo: Repository<SavedCard>,
     private flutterwaveService: FlutterwaveService,
     private earningsService:    EarningsService,
     private loyaltyService:     LoyaltyService,
@@ -45,218 +43,14 @@ export class PaymentsService {
     private accountSecurity: AccountSecurityService,
   ) {}
 
-  // ── SavedCard CRUD (Flutterwave-tokenized cards for one-tap reuse) ───────
-
-  async listSavedCards(userId: string): Promise<Array<Omit<SavedCard, 'flutterwaveToken'>>> {
-    const cards = await this.savedCardsRepo.find({
-      where: { userId },
-      order: { isDefault: 'DESC', createdAt: 'DESC' },
-    });
-    // Strip the Flutterwave token from API responses - opaque + sensitive.
-    return cards.map(({ flutterwaveToken: _t, ...rest }) => rest as any);
-  }
-
-  async setDefaultCard(userId: string, cardId: string): Promise<void> {
-    const card = await this.savedCardsRepo.findOneBy({ id: cardId, userId });
-    if (!card) throw new NotFoundException('Saved card not found');
-    await this.dataSource.transaction(async (m) => {
-      await m.update(SavedCard, { userId }, { isDefault: false });
-      await m.update(SavedCard, { id: cardId }, { isDefault: true });
-    });
-  }
-
-  async deleteSavedCard(userId: string, cardId: string): Promise<void> {
-    const card = await this.savedCardsRepo.findOneBy({ id: cardId, userId });
-    if (!card) throw new NotFoundException('Saved card not found');
-    await this.savedCardsRepo.delete(cardId);
-  }
-
-  /**
-   * Persist a Flutterwave card token after a successful first-time charge.
-   * If this is the user's first card, it becomes the default.
+  /*
+   * No saved cards, no card tokens, no add-card verification charge
+   * (founder 2026-09-06). Every payment goes through the hosted checkout,
+   * where the bank sends its OTP each time and Flutterwave's own
+   * "remember this card" does the remembering. The saved_cards table is
+   * orphaned until a migration drops it; rows tagged CARD_VERIFICATION in
+   * payments are history and stay.
    */
-  async saveCardToken(userId: string, params: {
-    token:     string;
-    last4:     string;
-    brand:     string;
-    expMonth:  number;
-    expYear:   number;
-    holder?:   string | null;
-  }): Promise<SavedCard> {
-    // Skip if we already saved this exact token (idempotent on retries).
-    const existing = await this.savedCardsRepo.findOneBy({ userId, flutterwaveToken: params.token });
-    if (existing) return existing;
-
-    const otherCount = await this.savedCardsRepo.count({ where: { userId } });
-    const card = this.savedCardsRepo.create({
-      userId,
-      flutterwaveToken: params.token,
-      last4:    params.last4,
-      brand:    params.brand.toLowerCase(),
-      expMonth: params.expMonth,
-      expYear:  params.expYear,
-      cardHolder: params.holder ?? null,
-      isDefault: otherCount === 0,
-    });
-    return this.savedCardsRepo.save(card);
-  }
-
-  // ── Proactive card save (Bolt/Uber pattern) ──────────────────────────────
-  // Nigerian PCI-DSS forbids us collecting raw cards. Cards can only be
-  // tokenized through Flutterwave's hosted page during a real charge. So
-  // "add a card without booking" needs a small verification charge that
-  // we auto-refund immediately. Standard approach across Uber, Bolt, and
-  // Nigerian fintech onboarding (Kuda, Piggyvest, etc.).
-  //
-  // Flow:
-  //   1. initiateCardVerification -> Flutterwave hosted page for NGN CARD_VERIFY_NAIRA
-  //   2. User completes checkout in browser (card saved by our verify step)
-  //   3. verifyAndRefundCardCharge -> confirm the txn, pull card token,
-  //      save to saved_cards, refund the amount to the card
-
-  // TODO(cost-review 2026-08-08): the verify + auto-refund pattern costs
-  // us Flutterwave fees on both legs (~1.4% charge fee + potential flat
-  // refund fee). User accepted this at launch but wants to revisit.
-  // Options if we need to cut this cost:
-  //   - Drop the proactive flow: cards save on first real delivery only
-  //   - Lower this to NGN50 (halves the % fee proportionally)
-  //   - Investigate Flutterwave "authorize without capture" tokenization
-  // See [[project_seirs_addcard_cost]] before changing.
-  private readonly CARD_VERIFY_NAIRA = 100;
-
-  async initiateCardVerification(customer: User): Promise<{
-    authorizationUrl: string;
-    reference:        string;
-  }> {
-    const txRef = `SRS-CARDV-${uuidv4().slice(0, 8).toUpperCase()}`;
-
-    const { paymentLink } = await this.flutterwaveService.initializePayment({
-      txRef,
-      amount:      this.CARD_VERIFY_NAIRA,
-      currency:    'NGN',
-      email:       customer.email,
-      phone:       customer.phone ?? '',
-      name:        customer.name,
-      redirectUrl: 'seirsmobile://payment-callback',
-      meta: {
-        purpose:    'card_verification',
-        customerId: customer.id,
-      },
-      paymentOption: 'card',
-    });
-
-    // Record a placeholder Payment row so ops has a paper trail even
-    // when the user abandons the flow. Marked pending; refund status
-    // will flip to REFUNDED on successful verify.
-    const payment = this.paymentsRepo.create({
-      customer,
-      amountKobo:        toKobo(this.CARD_VERIFY_NAIRA),
-      // CARD stands here, unlike the other creation paths, because this
-      // checkout passes paymentOption 'card': no other rail is on offer,
-      // so this is a fact about the request and not an assumption about
-      // the customer. Settle still overwrites it with what came back.
-      method:            PaymentMethod.CARD,
-      status:            PaymentStatus.PENDING,
-      // Tagged so the webhook does not mistake a ₦100 tokenization
-      // charge for a fare and put it into escrow.
-      purpose:           PaymentPurpose.CARD_VERIFICATION,
-      provider:          'flutterwave',
-      providerReference: txRef,
-      authorizationUrl:  paymentLink,
-    });
-    await this.paymentsRepo.save(payment);
-
-    return { authorizationUrl: paymentLink, reference: txRef };
-  }
-
-  async verifyAndRefundCardCharge(userId: string, txRef: string): Promise<{
-    saved: boolean;
-    refunded: boolean;
-    last4?: string;
-    brand?: string;
-  }> {
-    /**
-     * The reference is a path parameter, so it is entirely caller-chosen
-     * (audit 2026-08-14).
-     *
-     * This method used to take it straight to Flutterwave, pull the card
-     * token off whatever transaction came back, and save that token to
-     * the *calling* account. It never asked whose reference it was. Pass
-     * somebody else's SRS-CARDV- reference and their card landed on your
-     * account, chargeable through the saved-card flow. The only thing
-     * standing in the way was guessing 8 hex characters, on an endpoint
-     * with no rate limit.
-     *
-     * Ownership is now established from our own records first, and
-     * Flutterwave is only consulted about a reference we already know
-     * belongs to this user.
-     */
-    const own = await this.paymentsRepo.findOne({
-      where: { providerReference: txRef, customer: { id: userId } },
-      relations: ['customer'],
-    });
-    if (!own) {
-      throw new NotFoundException('No card verification found for that reference on this account.');
-    }
-    if (own.purpose !== PaymentPurpose.CARD_VERIFICATION) {
-      throw new BadRequestException('That reference is not a card verification.');
-    }
-    // SUCCESS is allowed as well as PENDING: the webhook and the client's
-    // return trip race each other, and the webhook often wins. REFUNDED
-    // means this flow already ran to completion.
-    if (own.status === PaymentStatus.REFUNDED) {
-      throw new BadRequestException('That card verification has already been processed.');
-    }
-
-    // Confirm the transaction actually succeeded before saving anything.
-    const verified = await this.flutterwaveService.verifyByTxRef(txRef);
-    if (!verified.success) {
-      throw new BadRequestException('Card verification did not complete. Try again.');
-    }
-
-    // Pull the card token from the completed transaction. If Flutterwave
-    // didn't return a token (unusual - some card types don't tokenize),
-    // fail loudly so we don't refund silently without a saved card.
-    const cardMeta = await this.flutterwaveService.fetchCardTokenFromTransaction(verified.transactionId);
-    if (!cardMeta?.token) {
-      throw new BadRequestException('Card was charged but no reusable token was issued. Refund will still process.');
-    }
-
-    // Save the card first - losing the token would be worse than a
-    // failed refund (which ops can retry manually).
-    await this.saveCardToken(userId, {
-      token:    cardMeta.token,
-      last4:    cardMeta.last4,
-      brand:    cardMeta.brand,
-      expMonth: cardMeta.expMonth,
-      expYear:  cardMeta.expYear,
-      holder:   cardMeta.holder,
-    });
-
-    // Refund the verification charge. Best-effort - if the refund API
-    // fails, admin can trigger manually from Flutterwave dashboard, but
-    // the card is already saved for the user.
-    let refunded = false;
-    try {
-      await this.flutterwaveService.refundTransaction(verified.transactionId, this.CARD_VERIFY_NAIRA);
-      refunded = true;
-    } catch (e: any) {
-      this.logger.warn(`Card verify refund failed for tx ${verified.transactionId}: ${e?.message ?? e}. Ops must refund manually.`);
-    }
-
-    // Mark the placeholder Payment row as refunded (or attempted-refund).
-    await this.paymentsRepo.update(
-      { providerReference: txRef },
-      { status: refunded ? PaymentStatus.REFUNDED : PaymentStatus.SUCCESS },
-    ).catch(() => {});
-
-    return {
-      saved:    true,
-      refunded,
-      last4:    cardMeta.last4,
-      brand:    cardMeta.brand,
-    };
-  }
 
   // ── Wallet ────────────────────────────────────────────────────────────────
 
@@ -324,81 +118,6 @@ export class PaymentsService {
     await this.paymentsRepo.save(payment);
 
     return { authorizationUrl: paymentLink, reference: txRef, paymentId: payment.id };
-  }
-
-  /**
-   * One-tap fare payment with a saved (tokenized) card. No hosted page,
-   * no 16 digits: the charge fires server-side against the Flutterwave
-   * token, then flows through confirmFlutterwavePayment so the amount
-   * verification, escrow and loyalty behave exactly as a hosted-page
-   * payment would (founder 2026-08-22: nobody should hunt for their
-   * card to finish an order).
-   *
-   * Failure is a clean fallback, not an error state: the app offers the
-   * hosted checkout when { success: false } comes back.
-   */
-  async payWithSavedCard(delivery: Delivery, cardId: string, user: User): Promise<{
-    success: boolean;
-    alreadyPaid?: boolean;
-    paymentId?: string;
-    last4?: string;
-    error?: string;
-  }> {
-    // The actor must own the booking: a token charge moves money with
-    // no checkout page in between, so this check is not optional.
-    if (delivery.customer?.id !== user.id) {
-      throw new ForbiddenException('This booking belongs to another account.');
-    }
-    if (delivery.paymentHeldAt) {
-      return { success: true, alreadyPaid: true };
-    }
-    if (delivery.status !== 'pending') {
-      return { success: false, error: 'This booking can no longer be paid.' };
-    }
-
-    const card = await this.savedCardsRepo.findOneBy({ id: cardId, userId: user.id });
-    if (!card) throw new NotFoundException('That saved card was not found on this account.');
-
-    const txRef = `SRS-PAY-${uuidv4().slice(0, 8).toUpperCase()}`;
-    const payment = this.paymentsRepo.create({
-      customer:          user,
-      delivery,
-      amountKobo:        toKobo(delivery.price),
-      // CARD stands here too: this charges a stored card token directly,
-      // with no checkout page in between that could offer another rail.
-      method:            PaymentMethod.CARD,
-      status:            PaymentStatus.PENDING,
-      provider:          'flutterwave',
-      providerReference: txRef,
-    });
-    await this.paymentsRepo.save(payment);
-
-    const res = await this.flutterwaveService.chargeWithToken({
-      token:     card.flutterwaveToken,
-      txRef,
-      amount:    Number(delivery.price),
-      currency:  'NGN',
-      email:     user.email,
-      narration: `SEIRS delivery ${delivery.trackingCode ?? ''}`.trim(),
-    });
-
-    if (!res.success) {
-      await this.paymentsRepo.update(payment.id, { status: PaymentStatus.FAILED });
-      return {
-        success: false,
-        error: 'Your bank declined the saved card. Try the full checkout instead.',
-      };
-    }
-
-    // Same verification + escrow + loyalty path as the hosted page.
-    const confirmed = await this.confirmFlutterwavePayment(txRef, user.id);
-    if (confirmed?.status !== PaymentStatus.SUCCESS) {
-      return {
-        success: false,
-        error: 'The charge could not be verified. If you were debited it will be reconciled.',
-      };
-    }
-    return { success: true, paymentId: payment.id, last4: card.last4 };
   }
 
   /**
@@ -1076,27 +795,8 @@ export class PaymentsService {
         }
       }
 
-      /**
-       * Tokenise the card, if a card is what was used.
-       *
-       * This READS the method resolved above, from the in-memory object.
-       * It used to match every single payment, because every payment
-       * claimed to be a card, and then asked the provider for a token
-       * that a transfer or USSD transaction never had. The null return
-       * hid it. Now it only asks when a card was really used, which is
-       * both correct and one fewer provider call per transfer.
-       */
-      if (payment.method === PaymentMethod.CARD && result.transactionId) {
-        try {
-          const card = await this.flutterwaveService.fetchCardTokenFromTransaction(result.transactionId);
-          if (card && payment.customer) {
-            await this.saveCardToken(payment.customer.id, card);
-            this.logger.log(`Card tokenized for user ${payment.customer.id}: ${card.brand} ****${card.last4}`);
-          }
-        } catch (e: any) {
-          this.logger.warn(`Card tokenize failed for ${txRef}: ${e.message}`);
-        }
-      }
+      // No card tokenisation after a payment (founder 2026-09-06): SEIRS
+      // keeps no card tokens. Flutterwave's page remembers cards itself.
     } else {
       await this.paymentsRepo.update(payment.id, { status: PaymentStatus.FAILED });
     }

@@ -50,7 +50,6 @@ Match the slot key the screen asks for. Current Phase 1 slots:
 | `send-confirm`          | /send Step 5             | "high five", "deal"          |
 | `empty-no-active`       | Home — no active tab     | "waiting", "watching window" |
 | `empty-no-deliveries`   | Home + /history empty    | "empty box", "first package" |
-| `empty-no-cards`        | /payment-methods empty   | "credit card", "wallet"      |
 
 ## Brand fit tips
 

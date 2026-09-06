@@ -63,15 +63,6 @@ export default function ConfirmRideScreen() {
   const luggageFee = Number(params.luggageFee ?? '0') || 0;
   const riderName  = (params.riderName ?? '').trim();
 
-  // How they'll pay, previewed before the payment screen: a saved
-  // card means the next screen is one tap (founder 2026-08-23).
-  const [savedCard, setSavedCard] = useState<any | null>(null);
-  useEffect(() => {
-    paymentsApi.listSavedCards()
-      .then((cards: any[]) => setSavedCard(cards?.find((c) => c.isDefault) ?? cards?.[0] ?? null))
-      .catch(() => {});
-  }, []);
-
   const [tcAgreed,   setTcAgreed]   = useState(false);
   const [confirming, setConfirming] = useState(false);
 
@@ -154,9 +145,7 @@ export default function ConfirmRideScreen() {
       ? [['Luggage', params.luggage === 'large' ? `Large${luggageFee > 0 ? ` · ${naira(luggageFee)}` : ''}` : 'Small bag'] as [string, string]]
       : []),
     ...(serviceFee > 0 ? [['Service fee', naira(serviceFee)] as [string, string]] : []),
-    ['Payment', savedCard
-      ? `${String(savedCard.brand ?? 'Card').toUpperCase()} ···· ${savedCard.last4} · one tap`
-      : 'Card or transfer at checkout'],
+    ['Payment', 'Card, transfer, USSD and more at checkout'],
     ['Total',       naira(total)],
   ];
 

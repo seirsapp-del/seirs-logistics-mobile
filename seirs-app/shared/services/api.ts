@@ -733,26 +733,9 @@ export const paymentsApi = {
     }>('GET', '/payments/bank-details'),
   banks: () => request<Array<{ id: string; name: string; code: string }>>('GET', '/payments/banks'),
 
-  // ── Saved cards (Flutterwave-tokenized, one-tap reuse) ──
-  listSavedCards: () => request<SavedCard[]>('GET', '/payments/saved-cards'),
-  /** One-tap fare payment with a saved card; falls back to initiate() when success is false. */
-  payWithSavedCard: (deliveryId: string, cardId: string) =>
-    request<{ success: boolean; alreadyPaid?: boolean; paymentId?: string; last4?: string; error?: string }>(
-      'POST', '/payments/pay-with-saved-card', { deliveryId, cardId },
-    ),
-  setDefaultCard: (id: string) => request<{ ok: boolean }>('PATCH', `/payments/saved-cards/${id}/default`),
-  deleteSavedCard: (id: string) => request<{ ok: boolean }>('DELETE', `/payments/saved-cards/${id}`),
-
-  // ── Proactive add card (Bolt/Uber pattern) ──
-  // ₦100 verification charge → immediate refund → card token saved.
-  // Two-step: start returns the Flutterwave hosted URL, verify runs
-  // after the user returns to the app.
-  addCardStart:  () =>
-    request<{ authorizationUrl: string; reference: string }>('POST', '/payments/add-card'),
-  addCardVerify: (txRef: string) =>
-    request<{ saved: boolean; refunded: boolean; last4?: string; brand?: string }>(
-      'POST', `/payments/add-card/verify/${txRef}`,
-    ),
+  // No saved cards and no add-card (founder 2026-09-06): every payment
+  // goes through the hosted checkout, which asks the bank's OTP each
+  // time and offers its own "remember this card". SEIRS stores no tokens.
 
   // ── Bank account verify (driver onboarding) ──
   verifyBank: (bankCode: string, accountNumber: string) =>
@@ -872,18 +855,6 @@ export const earningsApi = {
       amountNaira !== undefined || instant ? { amountNaira, instant: !!instant } : undefined,
     ),
 };
-
-// ─── Saved Card type (used by paymentsApi above) ─────────────────────────────
-export interface SavedCard {
-  id:         string;
-  last4:      string;
-  brand:      string;
-  expMonth:   number;
-  expYear:    number;
-  cardHolder: string | null;
-  isDefault:  boolean;
-  createdAt:  string;
-}
 
 // ─── Drivers ─────────────────────────────────────────────────────────────────
 /**

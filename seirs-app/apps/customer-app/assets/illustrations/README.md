@@ -35,7 +35,6 @@ never break — but please fill them in before launch.
 | `send-confirm.svg`              | /send Step 5 Confirm  | "high five" / "deal"       |
 | `empty-no-active.svg`           | /home — no active     | "waiting" / "relaxing"     |
 | `empty-no-deliveries.svg`       | /home + /history empty| "package" / "first box"    |
-| `empty-no-cards.svg`            | /payment-methods empty| "credit card" / "wallet"   |
 
 ## How to register a new illustration
 

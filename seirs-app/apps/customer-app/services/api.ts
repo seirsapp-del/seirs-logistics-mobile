@@ -56,7 +56,6 @@ export type {
   RateCard,
   PriceBreakdown,
   QuoteInput,
-  SavedCard,
   LoyaltyEntry,
   ReferralHistoryItem,
   LoyaltyTier,

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TextInput, Switch, Modal, Platform,
+  View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TextInput, Switch, Modal, Platform, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { businessApi, feesApi } from '@/services/api';
+import { TERMS_URL } from '@/constants/config';
 import { tint } from '@/constants/tint';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
@@ -497,16 +498,15 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
             We create the run and ask you to pay from {pad(((hour * 60 + minute - leadMin + 1440) % 1440) / 60 | 0)}:{pad((hour * 60 + minute - leadMin + 1440) % 60)}, at that day's price.
           </Text>
 
-          <Step n={5} title="Read before you save" />
+          {/* The same terms line the pay screens carry (founder 2026-09-06:
+              the essentials only; the blue card above already explains). */}
           <Pressable onPress={() => setAgreed(a => !a)} style={[styles.agree, { borderColor: agreed ? colors.primary : colors.border, backgroundColor: colors.surface }]}>
             <View style={[styles.checkbox, { borderColor: agreed ? colors.primary : colors.textThird, backgroundColor: agreed ? colors.primary : 'transparent' }]}>
               {agreed && <Icon name="Check" size={14} color="#fff" />}
             </View>
             <Text style={[styles.agreeText, { color: colors.text }]}>
-              This is not a subscription and nothing is charged on its own. Each run is priced on the day and created as
-              Awaiting payment {leadWords(leadMin)} before pickup. I pay each one myself through checkout, with my bank's
-              OTP, and I see the card processing cost before I confirm. A run I have not paid for by pickup time is
-              cancelled and does not go out.
+              I agree to the SEIRS Terms of Service. Each run is priced on the day and I pay it before pickup.{' '}
+              <Text onPress={() => Linking.openURL(TERMS_URL).catch(() => {})} style={{ color: colors.primary, fontWeight: '600' }}>Read them</Text>
             </Text>
           </Pressable>
         </ScrollView>

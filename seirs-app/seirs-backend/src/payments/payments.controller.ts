@@ -23,27 +23,9 @@ export class PaymentsController {
     private readonly flutterwave:       FlutterwaveService,
   ) {}
 
-  // ── Saved cards (one-tap reuse via Flutterwave tokens) ───────────────────
-
-  @UseGuards(JwtAuthGuard)
-  @Get('saved-cards')
-  listSavedCards(@CurrentUser() user: User) {
-    return this.paymentsService.listSavedCards(user.id);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Patch('saved-cards/:id/default')
-  async setDefaultCard(@CurrentUser() user: User, @Param('id') id: string) {
-    await this.paymentsService.setDefaultCard(user.id, id);
-    return { ok: true };
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Delete('saved-cards/:id')
-  async deleteSavedCard(@CurrentUser() user: User, @Param('id') id: string) {
-    await this.paymentsService.deleteSavedCard(user.id, id);
-    return { ok: true };
-  }
+  // No saved-card or add-card routes (founder 2026-09-06): every payment
+  // goes through the hosted checkout, which asks the bank's OTP each time
+  // and remembers cards itself. SEIRS holds no card tokens.
 
   // ── Bank account verification (driver onboarding) ────────────────────────
   // Returns the registered name on the account so the driver app can show
@@ -105,19 +87,6 @@ export class PaymentsController {
     }
   }
 
-  // POST /api/v1/payments/pay-with-saved-card { deliveryId, cardId }
-  // One tap: charges the saved Flutterwave token for the fare. The app
-  // falls back to the hosted checkout when success is false.
-  @UseGuards(JwtAuthGuard, MaintenanceGuard)
-  @Post('pay-with-saved-card')
-  async payWithSavedCard(
-    @CurrentUser() user: User,
-    @Body() body: { deliveryId: string; cardId: string },
-  ) {
-    const delivery = await this.deliveriesService.findById(body.deliveryId);
-    return this.paymentsService.payWithSavedCard(delivery, body.cardId, user);
-  }
-
   // POST /api/v1/payments/verify/:txRef
   // The reference is caller-chosen, so the service checks it belongs to
   // this account before confirming anything.
@@ -175,29 +144,6 @@ export class PaymentsController {
     @Body() body: { amountNaira: number },
   ) {
     return this.paymentsService.requestWithdrawal(user.id, body.amountNaira);
-  }
-
-  // ── Proactive card save (Bolt/Uber pattern) ──────────────────────────────
-  // POST /api/v1/payments/add-card
-  // Starts a ₦100 card-verification charge on Flutterwave. Returns the
-  // hosted page URL. Client opens it, user completes checkout, returns.
-  @UseGuards(JwtAuthGuard)
-  @Post('add-card')
-  addCardStart(@CurrentUser() user: User) {
-    return this.paymentsService.initiateCardVerification(user);
-  }
-
-  // POST /api/v1/payments/add-card/verify/:txRef
-  // Client calls this after returning from the Flutterwave page. Server
-  // verifies the transaction succeeded, saves the card token, and
-  // immediately refunds the ₦100 verification charge.
-  @UseGuards(JwtAuthGuard)
-  @Post('add-card/verify/:txRef')
-  addCardVerify(
-    @CurrentUser() user: User,
-    @Param('txRef') txRef: string,
-  ) {
-    return this.paymentsService.verifyAndRefundCardCharge(user.id, txRef);
   }
 
   // GET /api/v1/payments/bank-details  (current registered payout account)

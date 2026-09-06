@@ -236,75 +236,14 @@ export class FlutterwaveService {
 
   // ── Tokenized card charges (saved cards / Amazon-style one-tap) ──────────
 
-  /**
-   * Charge a previously-saved card token. The token is returned by Flutterwave
-   * after the user's first successful card payment (in the verify response
-   * under data.card.token). SEIRS stores only the token + display metadata,
-   * never the card number.
-   *
-   * Flutterwave docs: https://developer.flutterwave.com/reference/tokenized-charge
+  /*
+   * No tokenized charges and no card-token capture any more (founder
+   * 2026-09-06). Every payment goes through the hosted page, where the
+   * customer's bank sends its OTP each time and Flutterwave's own
+   * "remember this card" does the remembering. SEIRS holds no card
+   * tokens. The Verve one-tap failures were the last straw, but the
+   * reason is the security rule, not the failures.
    */
-  async chargeWithToken(params: {
-    token:      string;
-    txRef:      string;
-    amount:     number;   // major unit (NGN naira, not kobo)
-    currency:   string;   // 'NGN' | 'GHS' | 'KES' | 'UGX'
-    email:      string;
-    narration?: string;
-  }): Promise<{ success: boolean; transactionId?: number; chargeReference?: string; rawStatus?: string }> {
-    try {
-      const data = await this.request<any>('POST', '/tokenized-charges', {
-        token:      params.token,
-        currency:   params.currency,
-        country:    'NG',
-        amount:     params.amount,
-        email:      params.email,
-        tx_ref:     params.txRef,
-        narration:  params.narration ?? `SEIRS delivery payment ${params.txRef}`,
-      });
-      const tx = data.data ?? {};
-      return {
-        success:         tx.status === 'successful',
-        transactionId:   tx.id,
-        chargeReference: tx.flw_ref,
-        rawStatus:       tx.status,
-      };
-    } catch (e: any) {
-      this.logger.error(`Tokenized charge failed (txRef=${params.txRef}): ${e.message}`);
-      return { success: false };
-    }
-  }
-
-  /**
-   * After a successful first-time card charge, fetch the reusable card
-   * details so we can persist a PaymentMethod row. Flutterwave returns the
-   * token in the verify response under data.card.token.
-   */
-  async fetchCardTokenFromTransaction(transactionId: number): Promise<{
-    token:     string;
-    last4:     string;
-    brand:     string;   // 'VISA' | 'MASTERCARD' | 'VERVE' | etc
-    expMonth:  number;
-    expYear:   number;
-    holder:    string | null;
-  } | null> {
-    try {
-      const data = await this.request<any>('GET', `/transactions/${transactionId}/verify`);
-      const card = data.data?.card;
-      if (!card?.token) return null;
-      return {
-        token:    card.token,
-        last4:    String(card.last_4digits ?? '').slice(-4),
-        brand:    String(card.type ?? 'unknown').toUpperCase(),
-        expMonth: parseInt(card.expiry?.split('/')?.[0] ?? '0', 10),
-        expYear:  2000 + parseInt(card.expiry?.split('/')?.[1] ?? '0', 10),
-        holder:   data.data?.customer?.name ?? null,
-      };
-    } catch (e: any) {
-      this.logger.error(`Fetch card token failed (tx=${transactionId}): ${e.message}`);
-      return null;
-    }
-  }
 
   // ── Bank account verification (driver onboarding) ────────────────────────
 

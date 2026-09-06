@@ -152,7 +152,6 @@ export default function ProfileScreen() {
         // itself handles status (not-started / pending / rejected / verified)
         // + benefits copy + doc-type picker + upload + submit.
         { icon: 'shield-outline',    label: t('profile.verifyIdentity'),  sub: t('profile.verifyIdentitySub'),  onPress: () => router.push('/(customer)/verify-identity') },
-        { icon: 'card-outline',      label: t('profile.paymentMethods'),  sub: t('profile.paymentMethodsSub'),  onPress: () => router.push('/(customer)/payment-methods') },
         { icon: 'location-outline',  label: t('profile.savedAddresses'),  sub: t('profile.savedAddressesSub'),  onPress: () => router.push('/(customer)/addresses') },
       ],
     },
