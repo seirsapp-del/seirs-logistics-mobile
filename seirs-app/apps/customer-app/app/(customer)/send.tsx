@@ -25,7 +25,7 @@ import { DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { Illustration } from '@/components/Illustration';
 import {
   ArrowLeft, ArrowRight, Truck, Calendar, CreditCard,
-  Camera, X, CheckCircle, Zap, Moon, MapPin, Store, Bike, Clock, AlertCircle,
+  Camera, X, CheckCircle, Zap, Moon, MapPin, Store, Bike, Clock, AlertCircle, RotateCcw,
 } from 'lucide-react-native';
 
 // Places and geocoding go through our backend (security review
@@ -642,10 +642,61 @@ export default function SendScreen() {
       .catch(() => {});
   }, []);
 
+  /**
+   * The saved draft, made visible and refusable (founder 2026-09-06,
+   * first on the business app: "imagine a user having to delete their
+   * old input"). The draft still survives a restart, and still expires
+   * after a day in the store; what changes is that it no longer comes
+   * back looking like a blank form. A strip on the first step names it
+   * and its age, with Start fresh beside Continue, and the header carries
+   * Start over on every step.
+   */
+  const [showResume, setShowResume] = useState(false);
+  const draftAge = (() => {
+    const at = draft.savedAt;
+    if (!at) return '';
+    const min = Math.max(1, Math.round((Date.now() - at) / 60000));
+    if (min < 60) return `${min} min ago`;
+    const h = Math.round(min / 60);
+    return h < 24 ? `${h} hour${h === 1 ? '' : 's'} ago` : 'yesterday';
+  })();
+  const formDirty = step > 0 || !!pickup || !!pickupQuery.trim() || packages.some((p: any) =>
+    (p?.photos?.length ?? 0) > 0 || p?.description || p?.category || p?.weightKg ||
+    p?.receiverFirst || p?.receiverLast || p?.receiverPhone || p?.dropoffQuery || p?.dropoff ||
+    p?.instructions || p?.declaredValue);
+  const clearBooking = () => {
+    clearDraft();
+    setPackages([emptyPackage()]);
+    setPickup(null);
+    setPickupQuery('');
+    setVehicleId('motorcycle');
+    setScheduleNow(true);
+    setScheduledDate(new Date().toISOString().slice(0, 10));
+    setScheduledHour(null);
+    setPaymentId('card');
+    setShowResume(false);
+    setStep(0);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+  const startOver = () => {
+    showDialog({
+      title:   t('send.startOverTitle', { defaultValue: 'Start over?' }),
+      message: t('send.startOverBody',  { defaultValue: 'This clears every package, address and photo in this booking.' }),
+      actions: [
+        { text: t('send.keepEditing', { defaultValue: 'Keep editing' }), style: 'cancel' },
+        { text: t('send.startOver',   { defaultValue: 'Start over' }),   style: 'destructive', onPress: clearBooking },
+      ],
+    });
+  };
+
   useEffect(() => {
     if (!draftReady || hydrated.current) return;
     hydrated.current = true;
     if (!hasContent()) return;
+    // Decided once, here, after the stored draft has loaded: not derived
+    // from the form, or the strip would greet somebody with "unfinished
+    // booking" the moment they typed their first word into a fresh one.
+    setShowResume(true);
     setStep(draft.step ?? 0);
     // Drafts saved before multi-package shipped carry flat fields; fall
     // back to composing a single package from them so an in-flight draft
@@ -1514,14 +1565,26 @@ export default function SendScreen() {
             {t('send.stepOf', { current: step + 1, total: STEPS.length })}: {t(`send.${STEP_KEYS[step]}`)}
           </Text>
         </View>
-        <View style={styles.stepDots}>
-          {STEPS.map((_, i) => (
-            <View
-              key={i}
-              style={[styles.stepDot, { backgroundColor: i <= step ? theme.primary : theme.border }]}
-            />
-          ))}
-        </View>
+        {/* One way out of a filled form, on every step, that is not
+            deleting fields one by one (founder 2026-09-06, first on the
+            business app). Hidden while the form is blank. */}
+        {formDirty ? (
+          <Pressable onPress={startOver} hitSlop={8} style={[styles.startOverBtn, { borderColor: theme.border }]}>
+            <RotateCcw size={14} color={theme.textSecond} strokeWidth={2} />
+            <Text style={[styles.startOverText, { color: theme.textSecond }]}>
+              {t('send.startOver', { defaultValue: 'Start over' })}
+            </Text>
+          </Pressable>
+        ) : (
+          <View style={styles.stepDots}>
+            {STEPS.map((_, i) => (
+              <View
+                key={i}
+                style={[styles.stepDot, { backgroundColor: i <= step ? theme.primary : theme.border }]}
+              />
+            ))}
+          </View>
+        )}
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -1573,6 +1636,36 @@ export default function SendScreen() {
                   it now lives in "Where is it going?" below. Keeping both
                   meant two controls for one decision, and the banner threw
                   away whatever the sender had already typed into this form. */}
+
+              {/* The saved draft, named. Continue keeps it; Start fresh
+                  clears it. Either way the sender knows the form is not
+                  blank, which was the missing part: the leftover used to
+                  come back looking like a fresh form. */}
+              {showResume && formDirty && (
+                <View style={[styles.resumeStrip, { backgroundColor: theme.surfaceSecond, borderColor: theme.primary }]}>
+                  <Clock size={18} color={theme.primary} strokeWidth={2} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.resumeTitle, { color: theme.text }]}>
+                      {t('send.resumeTitle', { defaultValue: 'Unfinished booking{{age}}', age: draftAge ? ` from ${draftAge}` : '' })}
+                    </Text>
+                    <Text style={[styles.resumeSub, { color: theme.textSecond }]}>
+                      {t('send.resumeBody', {
+                        defaultValue: '{{count}} package saved on this phone. Continue where you stopped, or start fresh.',
+                        defaultValue_plural: '{{count}} packages saved on this phone. Continue where you stopped, or start fresh.',
+                        count: packages.length,
+                      })}
+                    </Text>
+                  </View>
+                  <View style={{ gap: 6 }}>
+                    <Pressable onPress={() => setShowResume(false)} style={[styles.resumeBtn, { backgroundColor: theme.primary }]}>
+                      <Text style={[styles.resumeBtnText, { color: '#fff' }]}>{t('send.resumeContinue', { defaultValue: 'Continue' })}</Text>
+                    </Pressable>
+                    <Pressable onPress={clearBooking} style={[styles.resumeBtn, { borderWidth: 1, borderColor: theme.primary }]}>
+                      <Text style={[styles.resumeBtnText, { color: theme.primary }]}>{t('send.resumeFresh', { defaultValue: 'Start fresh' })}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
 
               {/* Everything about the package sits inside one bordered card,
                   the same container the business app's Send a Package uses
@@ -2811,6 +2904,15 @@ export default function SendScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  // Start over (header) and the saved-draft strip (step 1), 2026-09-06,
+  // the same two the business app grew the same day.
+  startOverBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
+  startOverText: { fontSize: 12, fontWeight: '600' },
+  resumeStrip:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
+  resumeTitle:   { fontSize: 14, fontWeight: '700' },
+  resumeSub:     { fontSize: 12, lineHeight: 17, marginTop: 2 },
+  resumeBtn:     { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, alignItems: 'center' },
+  resumeBtnText: { fontSize: 12, fontWeight: '700' },
   recentRow:   { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 8 },
   recentLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
   recentChip:  { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, maxWidth: 220 },
