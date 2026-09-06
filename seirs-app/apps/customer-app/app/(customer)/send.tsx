@@ -1613,10 +1613,10 @@ export default function SendScreen() {
               dropped in assets/illustrations/. */}
           {(() => {
             const SLOTS = [
-              { name: 'send-package',  captionKey: tx9('auto.send.step1caption', 'step1Caption') },
-              { name: 'send-address',  captionKey: tx9('auto.send.step2caption', 'step2Caption') },
-              { name: 'send-vehicle',  captionKey: tx9('auto.send.step3caption', 'step3Caption') },
-              { name: 'send-fare',     captionKey: tx9('auto.send.step4caption', 'step4Caption') },
+              { name: 'send-package',  captionKey: 'step1Caption' },
+              { name: 'send-address',  captionKey: 'step2Caption' },
+              { name: 'send-vehicle',  captionKey: 'step3Caption' },
+              { name: 'send-fare',     captionKey: 'step4Caption' },
             ];
             const slot = SLOTS[step];
             if (!slot) return null;

@@ -1080,7 +1080,14 @@
       "15AdeolaOdekuStreetVictoria": "15 Adeola Odeku Street, Victoria Island",
       "atLeast8Characters": "Opekata mkpụrụ 8",
       "home": "Ụlọ",
-      "iAgreeToThe": "Ekwenyere m na"
+      "iAgreeToThe": "Ekwenyere m na",
+      "firstNameIsRequired": "Achọrọ aha mbụ.",
+      "lastNameIsRequired": "Achọrọ aha ikpeazụ.",
+      "emailAddressIsRequired": "Achọrọ adreesị email.",
+      "enterAValidEmailAddress": "Tinye adreesị email ziri ezi.",
+      "passwordsDoNotMatch": "Paswọdụ adabaghị.",
+      "youMustConfirmYouAre": "Ị ga-ekwenye na ị dị afọ 18 ma ọ bụ karịa.",
+      "youMustAgreeToThe": "Ị ga-ekwenye n'Usoro ọrụ na Iwu nzuzo."
     },
     "history": {
       "trackLive": "Soro ozugbo",
@@ -1088,7 +1095,10 @@
       "searchByTrackingNumber": "Chọọ site na nọmba nsoro…",
       "keep": "Hapụ ya",
       "cancelBooking": "Kagbuo ndebe",
-      "edit": "Dezie"
+      "edit": "Dezie",
+      "inTransit": "N'ụzọ",
+      "opening": "Na-emepe…",
+      "checking": "Na-elele…"
     },
     "profile": {
       "verified": "Enyochara",
@@ -1131,7 +1141,24 @@
       "ptsThisMonth": "isi ọnwa a",
       "pointsYouEarnAndSpend": "Isi ị nwetara ma mefuo ga-adị ebe a, nke ọhụrụ na mbụ.",
       "bookADeliveryFirstThen": "Debe nnyefe na mbụ, wee gbanwee. Ụgwọ ọrụ ahụ na-apụ na ndebe ahụ tupu ị kwụọ ụgwọ, isi ndị ahụ na-apụkwa n'akaụntụ gị n'otu oge ahụ.",
-      "bookYourFirstDeliveryTo": "Debe nnyefe mbụ gị iji mepee mmezu ma malite inweta isi ụgwọ ọrụ SEIRS."
+      "bookYourFirstDeliveryTo": "Debe nnyefe mbụ gị iji mepee mmezu ma malite inweta isi ụgwọ ọrụ SEIRS.",
+      "comesOffThePriceBefore": "Ọ na-apụ n'ọnụahịa tupu ị kwụọ.",
+      "coversOneBookingUpTo": "Na-ekpuchi otu ndebe ruo ₦2,000.",
+      "youReOnFireKeep": "Ị na-eme nke ọma! Gaa n'ihu!",
+      "nothingEarnedYet": "Enwetabeghị ihe ọ bụla",
+      "ready": "Dị njikere",
+      "deliveryCompleted": "Nnyefe emechara",
+      "bankTransferBonus": "Bonus mbufe ụlọ akụ",
+      "referralBonus": "Bonus ntụaka",
+      "ratedADriver": "Tụrụ ọkwọ ụgbọ",
+      "monthlyStreakBonus": "Bonus usoro kwa ọnwa",
+      "redeemed500Off": "Agbanweela ₦500 mbelata",
+      "redeemedFreeDelivery": "Agbanweela nnyefe efu",
+      "redeemedPriorityDispatch": "Agbanweela mbupụ mbụ",
+      "redeemedInsuranceCover": "Agbanweela mkpuchi",
+      "refundAdjustment": "Mgbanwe nkwụghachi",
+      "pointsExpired": "Isi agwụla",
+      "tierWarningSent": "Ezipụla ịdọ aka ná ntị ọkwa"
     },
     "rewards": {
       "redeem": "Gbanwee",
@@ -1157,7 +1184,23 @@
       "perFriendWhoSignsUp": "kwa enyi debanyere aha ma mezue nnyefe",
       "forRatingADriver": "maka ịtụ ọkwọ ụgbọ",
       "bonusOnYour5thDelivery": "bonus na nnyefe nke ise gị kwa ọnwa",
-      "pointsExpire24MonthsAfter": "Isi na-agwụ ọnwa 24 mgbe enwetara ha. Ọkwa dabere n'isi enwetara n'ọnwa 12 gara aga."
+      "pointsExpire24MonthsAfter": "Isi na-agwụ ọnwa 24 mgbe enwetara ha. Ọkwa dabere n'isi enwetara n'ọnwa 12 gara aga.",
+      "insureASingleDeliveryUp": "Kpuchie otu nnyefe ruo ₦50,000",
+      "500DiscountOnYourNext": "Mbelata ₦500 na nnyefe gị ọzọ",
+      "oneFreeDeliveryUpTo": "Otu nnyefe efu ruo ₦2,000",
+      "youDonTHaveAny": "Ị nweghị nnyefe na-aga iji tinye ụgwọ ọrụ a. Debe nnyefe, wee lọghachi ebe a iji gbanwee.",
+      "applyToWhichDelivery": "Tinye {{label}} na nnyefe nke?",
+      "thisWillDeductPointsFrom": "Nke a ga-ewepụ isi {{v0}} n'akaụntụ gị ma tinye ụgwọ ọrụ na nnyefe {{trackingCode}}. Enweghị ike iweghachi.",
+      "noPointsYet": "Enwebeghị isi",
+      "nothingYetThisWeekEvery": "Ọ dịghị ihe n'izu a. Nnyefe ọ bụla na-enweta, isi {{v0}} fọdụrụ ka ị rute {{name}}.",
+      "nothingYetThisWeekEvery2": "Ọ dịghị ihe n'izu a. Nnyefe ọ bụla ị debere na-enweta isi.",
+      "earnedRedeemedThisWeek": "Enwetara {{v0}}, gbanwere {{v1}} n'izu a.",
+      "10Pts": "isi 10",
+      "5Pts": "+isi 5",
+      "200Pts": "isi 200",
+      "5Pts2": "isi 5",
+      "50Pts": "isi 50",
+      "adminAdjustment": "Mgbanwe onye nchịkwa"
     },
     "id": {
       "readThisOnTheSeirs": "Gụọ nke a na weebụsaịtị SEIRS",
@@ -1208,7 +1251,16 @@
       "giveThisToSupportInstead": "Nye nkwado nke a kama email ma ọ bụ aha gị. Ọ na-amata gị n'ụzọ pụrụ iche na nzuzo.",
       "90DayChangeLimit": "Oke mgbanwe ụbọchị 90",
       "30DayChangeLimit": "Oke mgbanwe ụbọchị 30",
-      "someFieldsHaveChangeLimits": "Ụfọdụ mpaghara nwere oke mgbanwe iji gbochie ime ka onye ọzọ na mmegbu. A na-edekọ mgbanwe ọ bụla maka nchekwa gị. Lee akụkọ gị n'okpuru Profaịlụ wee Nzuzo."
+      "someFieldsHaveChangeLimits": "Ụfọdụ mpaghara nwere oke mgbanwe iji gbochie ime ka onye ọzọ na mmegbu. A na-edekọ mgbanwe ọ bụla maka nchekwa gị. Lee akụkọ gị n'okpuru Profaịlụ wee Nzuzo.",
+      "onlyLettersSpacesHyphensApostrophes": "Naanị mkpụrụedemede, oghere, hyphen, apostrophe, kpọm",
+      "noPhoneNumbersUrlsOr": "Enweghị nọmba ekwentị, URL, ma ọ bụ email",
+      "nigerianMobileOnly0234": "Naanị ekwentị Naịjirịa (0/234/+234 + ọnụọgụ 10)",
+      "useYyyyMmDdFormat": "Jiri usoro YYYY-MM-DD",
+      "notARealDate": "Ọ bụghị ụbọchị n'ezie",
+      "mustBe13OrOlder": "Ga-adị afọ 13 ma ọ bụ karịa",
+      "pleaseEnterARealDate": "Biko tinye ụbọchị ọmụmụ n'ezie",
+      "lockedOnceSetContactSupport": "Akpọchiri ozugbo etinyere ya. Kpọtụrụ nkwado iji mezie mmejọ.",
+      "usedForIdentityVerificationAnd": "A na-eji ya maka nyocha njirimara na ihe ndị nwere oke afọ. Akpọchiri ozugbo ị chekwara."
     },
     "deliveryId": {
       "total": "Ngụkọta",
@@ -1248,7 +1300,11 @@
       "thePlateTheVehiclePhoto": "Nọmba ụgbọ, foto ụgbọ na ebe nzukọ kpọmkwem dị na ndebe ozugbo akwụrụ ụgwọ. Kwụọ ka ijide oche.",
       "whereToMeet": "EBE NZUKỌ",
       "whereYouGetOff": "EBE Ị GA-ARỊDA",
-      "theyCanDropItAt": "Ha nwere ike ịhapụ ya na"
+      "theyCanDropItAt": "Ha nwere ike ịhapụ ya na",
+      "start": "Mmalite",
+      "end": "Njedebe",
+      "theDriver": "Ọkwọ ụgbọ ahụ",
+      "priceToConfirm": "Ọnụahịa a ga-ekwenye"
     },
     "track": {
       "showPackageQr": "Gosi QR ngwugwu",
@@ -1312,7 +1368,10 @@
       "forWhenTheRecipientCannot": "Maka mgbe onye nnata enweghị ike ịnata ngwugwu. A haziri ụlọ ahịa site na nke kacha nso n'adreesị nnyefe. Otu ntụgharị kwa nnyefe.",
       "noPartnerStoresAvailableNear": "Enweghị ụlọ ahịa mmekọ dị nso n'ebe njedebe ugbu a.",
       "correctTheDeliveryAddress": "Mezie adreesị nnyefe",
-      "yourDriverIsAlreadyCarrying": "Ọkwọ ụgbọ gị na-ebu ngwugwu a ugbua, ya mere nkwado ga-akwado mgbanwe ahụ. A ga-agwa gị ọnụahịa maka ebe dị anya site n'ebe ha nọ ugbu a, ị ga-akwụ naanị ma ọ bụrụ na akwadoro ya."
+      "yourDriverIsAlreadyCarrying": "Ọkwọ ụgbọ gị na-ebu ngwugwu a ugbua, ya mere nkwado ga-akwado mgbanwe ahụ. A ga-agwa gị ọnụahịa maka ebe dị anya site n'ebe ha nọ ugbu a, ị ga-akwụ naanị ma ọ bụrụ na akwadoro ya.",
+      "findingYourDriver": "Na-achọ ọkwọ ụgbọ gị",
+      "driverOnTheWay": "Ọkwọ ụgbọ nọ n'ụzọ",
+      "onTheTrip": "Na njem"
     },
     "confirmRide": {
       "orderSummary": "Nchịkọta oda",
@@ -1352,7 +1411,13 @@
       "medicalLoadsAreReviewedCase": "A na-enyocha ibu ahụike otu otu tupu anyị anabata ha, anyị ga-agwa gị n'ụzọ ọ bụla. Anyị anaghị ekwe nkwa oge mbata.",
       "weWillTellYouWhat": "Anyị ga-agwa gị ihe ga-ekwe omume tupu ị nabata ihe ọ bụla. Anyị anaghị ekwe nkwa oge mbata.",
       "bySendingThisYouConfirm": "Site n'izipu nke a ị na-ekwenye na ibu ahụ dị iwu ibufe ma kọwaa ya n'eziokwu. Ibu ọrụ maka ihe ọ bụla na-akwadoghị iwu ma ọ bụ nke ekwughị eziokwu dị n'aka onye debere ya.",
-      "nothingIsChargedNowWe": "Anaghị akwụ ụgwọ ọ bụla ugbu a. Anyị ga-akpọ gị, wee zipu nkọwa zuru ezu."
+      "nothingIsChargedNowWe": "Anaghị akwụ ụgwọ ọ bụla ugbu a. Anyị ga-akpọ gị, wee zipu nkọwa zuru ezu.",
+      "fragile": "Na-emebi",
+      "needsCarefulHandlingOrPadding": "Chọrọ njikwa nlezianya ma ọ bụ mkpuchi.",
+      "hazardous": "Dị ize ndụ",
+      "fuelChemicalsGasAnythingFlammable": "Mmanụ, kemịkalụ, gas, ihe ọ bụla na-ere ọkụ.",
+      "temperatureControlled": "Njikwa okpomọkụ",
+      "mustStayColdOrMust": "Ga-adị oyi ma ọ bụ agaghị ekpọnwụ."
     },
     "request": {
       "pickup": "Ebe mbulite",
@@ -1366,7 +1431,9 @@
       "pickup": "Ebe mbulite",
       "requestSent": "Ezipụla arịrịọ",
       "thisOneNeedsAQuote": "Nke a chọrọ ọnụahịa site n'aka anyị",
-      "aLoadLikeThisIs": "Mmadụ na-akpọ ọnụ ibu dị ka nke a, ọ bụghị n'onwe ya, ya mere anyị anaghị eche ya. Gwa anyị gbasara ya, anyị ga-akpọ gị na nkọwa zuru ezu. Anaghị akwụ ụgwọ ọ bụla ruo mgbe ị nabatara."
+      "aLoadLikeThisIs": "Mmadụ na-akpọ ọnụ ibu dị ka nke a, ọ bụghị n'onwe ya, ya mere anyị anaghị eche ya. Gwa anyị gbasara ya, anyị ga-akpọ gị na nkọwa zuru ezu. Anaghị akwụ ụgwọ ọ bụla ruo mgbe ị nabatara.",
+      "smallTruck": "Obere gwongworo",
+      "largeTruck": "Nnukwu gwongworo"
     },
     "vehicleSelect": {
       "pickup": "Ebe mbulite",
@@ -1389,7 +1456,14 @@
       "softDeletedNowSignIn": "Ehichapụla ya nwa oge; banye n'ime ụbọchị 30 iji kagbuo. Mgbe ahụ gasịrị, a ga-ewepụ data gị niile kpamkpam.",
       "downloadMyDataFirstRecommended": "Budata data m na mbụ (akwadoro)",
       "confirmYourPassword": "KWENYE PASWỌDỤ GỊ",
-      "deleteMyAccount": "Hichapụ akaụntụ m"
+      "deleteMyAccount": "Hichapụ akaụntụ m",
+      "yourProfileNamePhonePhoto": "Profaịlụ gị, aha, ekwentị, foto",
+      "yourDeliveryHistoryAfterThe": "Akụkọ nnyefe gị (mgbe oge amara ụbọchị 30 gasịrị)",
+      "yourRewardPointsAndTier": "Isi ụgwọ ọrụ na ọkwa gị, nke enweghị ike ibufe ma ọ bụ kwụọ",
+      "yourSavedPaymentBankDetails": "Nkọwa ịkwụ ụgwọ na ụlọ akụ gị echekwara",
+      "auditTrailsForAnyOpen": "Ndekọ nyocha maka esemokwu ọ bụla ka na-emepe megide akaụntụ gị",
+      "taxRecordsWeAreLegally": "Ndekọ ụtụ isi iwu chọrọ ka anyị debe (FIRS / NDPR)",
+      "anonymisedAnalyticsYouAreNot": "Nyocha na-enweghị aha: enweghị ike ịmata gị n'onwe gị"
     },
     "documents": {
       "documents": "Akwụkwọ",
@@ -1397,7 +1471,9 @@
       "close": "Mechie",
       "back": "Azụ",
       "fromSeirs": "SITE NA SEIRS",
-      "officialLettersAndDocumentsFrom": "Akwụkwọ ozi na akwụkwọ gọọmentị site na SEIRS ga-apụta ebe a."
+      "officialLettersAndDocumentsFrom": "Akwụkwọ ozi na akwụkwọ gọọmentị site na SEIRS ga-apụta ebe a.",
+      "sentBy": "· {{sentByName}} zitere",
+      "makingPdf": "Na-emepụta PDF..."
     },
     "notifications": {
       "back": "Azụ",
@@ -1408,7 +1484,8 @@
       "clearNotifications": "Kpochapụ ọkwa",
       "clearReadOnly": "Kpochapụ naanị ndị agụrụ",
       "clearEverything": "Kpochapụ ihe niile",
-      "deliveryUpdatesAndSeirsAnnouncements": "Mmelite nnyefe na ọkwa SEIRS ga-apụta ebe a."
+      "deliveryUpdatesAndSeirsAnnouncements": "Mmelite nnyefe na ọkwa SEIRS ga-apụta ebe a.",
+      "justNow": "Ugbu a"
     },
     "verifyIdentity": {
       "yyyyMmDd": "YYYY-MM-DD",
@@ -1465,7 +1542,11 @@
       "liveChat": "Mkparịta ụka ozugbo",
       "6am10pmWatReply": "Nzaghachi 6am–10pm WAT",
       "callUs": "Kpọọ anyị",
-      "tryADifferentSearchTerm": "Nwaa okwu ọchụchọ ọzọ ma ọ bụ chọgharịa site na isiokwu."
+      "tryADifferentSearchTerm": "Nwaa okwu ọchụchọ ọzọ ma ọ bụ chọgharịa site na isiokwu.",
+      "couldNotOpenDialer": "Enweghị ike imepe oku",
+      "couldNotOpenEmail": "Enweghị ike imepe email",
+      "resultsFor": "Nsonaazụ maka \"{{query}}\"",
+      "frequentlyAskedQuestions": "Ajụjụ a na-ajụkarị"
     },
     "packageQr": {
       "packageQr": "QR ngwugwu",
@@ -1476,7 +1557,9 @@
       "trackingCode": "KOODU NSORO",
       "showThisToYourSeirs": "Gosi nke a ọkwọ ụgbọ SEIRS gị mgbe nnyefe",
       "screenshotThisAndSendIt": "See foto ihuenyo nke a ma zigara onye ga-anata ngwugwu ahụ. Ha achọghị app SEIRS: ọkwọ ụgbọ na-enyocha ya n'ihuenyo ha, ma ọ bụ pịa koodu ahụ.",
-      "safeToForwardTheCode": "Ọ dị mma izipu. Naanị koodu ka QR a bu: enweghị aha, adreesị ma ọ bụ nọmba ekwentị na-eso ya."
+      "safeToForwardTheCode": "Ọ dị mma izipu. Naanị koodu ka QR a bu: enweghị aha, adreesị ma ọ bụ nọmba ekwentị na-eso ya.",
+      "copied": "Edepụtara",
+      "copyCode": "Depụta koodu"
     },
     "promo": {
       "promoCode": "Koodu promo",
@@ -1486,10 +1569,13 @@
       "checkBackSoonNewOffers": "Lọghachi n'oge na-adịghị anya: promo ọhụrụ na-apụta mgbe niile.",
       "enterPromoCode": "Tinye koodu promo",
       "removeCode": "Wepụ koodu",
-      "saveCode": "Chekwaa koodu"
+      "saveCode": "Chekwaa koodu",
+      "freeDeliveryOnYourNext": "Nnyefe efu na oda gị ọzọ",
+      "offYourNextOrder": "{{value}}% mbelata na oda gị ọzọ"
     },
     "promotions": {
-      "applyCode": "Tinye koodu"
+      "applyCode": "Tinye koodu",
+      "expiresToday": "Na-agwụ taa"
     },
     "recipientId": {
       "twoWaysToVerify": "Ụzọ abụọ iji nyochaa",
@@ -1503,7 +1589,10 @@
       "1PhysicalIdEmailCode": "1. ID anụ ahụ + koodu email",
       "showStaffYourNationalId": "Gosi ndị ọrụ ID mba gị, akwụkwọ ikike ọkwọ ụgbọ, kaadị ntuli aka, akwụkwọ NIN, ma ọ bụ paspọtụ: gbakwunye koodu ọnụọgụ 6 anyị na-eziga n'email mgbe ị pịrị n'elu.",
       "2SeirsIdSpokenName": "2. SEIRS ID + aha ekwuru",
-      "showStaffYourQrCode": "Gosi ndị ọrụ koodu QR gị n'elu, wee kwuo aha gị zuru ezu. Ha ga-ahụ aha ị debanyere ma pịa ihe ị kwuru iji kwenye na ọ dabara."
+      "showStaffYourQrCode": "Gosi ndị ọrụ koodu QR gị n'elu, wee kwuo aha gị zuru ezu. Ha ga-ahụ aha ị debanyere ma pịa ihe ị kwuru iji kwenye na ọ dabara.",
+      "a6DigitVerificationCode": "Ezitere gị koodu nyocha ọnụọgụ 6 n'email. Ọ ga-agwụ n'ime nkeji {{expiresInMinutes}}. Lelee igbe ozi gị ma gụọ ya n'olu dara ụda nye ndị ọrụ ma ọ bụ ọkwọ ụgbọ mgbe nnyefe.",
+      "sending": "Na-eziga…",
+      "emailMeAVerificationCode": "Zitere m koodu nyocha n'email"
     },
     "referral": {
       "inviteFriendsEarnRewards": "Kpọọ ndị enyi, nweta ụgwọ ọrụ",
@@ -1517,7 +1606,8 @@
       "shareYourReferralCodeWith": "Kesaa koodu ntụaka gị na ndị enyi",
       "friendSignsUpAndCompletes": "Enyi debanye aha ma mezue nnyefe mbụ ha",
       "youBothGetRewarded": "Unu abụọ na-enweta ụgwọ ọrụ!",
-      "shareYourCodeWithA": "Kesaa koodu gị na enyi. Mgbe ha debanyere aha ma mezue nnyefe mbụ ha, unu abụọ na-amalite inweta isi."
+      "shareYourCodeWithA": "Kesaa koodu gị na enyi. Mgbe ha debanyere aha ma mezue nnyefe mbụ ha, unu abụọ na-amalite inweta isi.",
+      "copied": "Edepụtara!"
     },
     "report": {
       "reportReceived": "Anatala akụkọ",
@@ -1529,7 +1619,13 @@
       "supportHasYourReportAnd": "Nkwado enwetala akụkọ gị ma ga-aza na Ozi. Ị nwere ike itinye nkọwa ọzọ ebe ahụ oge ọ bụla.",
       "whatHappened": "GỊNỊ MERE?",
       "whichOrderIsThisAbout": "ODA GỊNỊ KA NKE A GBASARA?",
-      "describeTheIssue": "KỌWAA NSOGBU AHỤ"
+      "describeTheIssue": "KỌWAA NSOGBU AHỤ",
+      "leftSomethingInTheVehicle": "Hapụrụ ihe n'ụgbọ",
+      "rudeDangerousOrUnprofessional": "Nkwanye ùgwù, dị ize ndụ ma ọ bụ enweghị ọkachamara",
+      "chargedMoreThanTheQuoted": "Kwụrụ ụgwọ karịa nke ekwuru",
+      "driverTookAnUnexpectedRoute": "Ọkwọ ụgbọ gara ụzọ a na-atụghị anya",
+      "dirtyOrUnsafeVehicle": "Ụgbọ ruru unyi ma ọ bụ na-adịghị mma",
+      "somethingElseHappened": "Ihe ọzọ mere"
     },
     "seirsId": {
       "mySeirsId": "SEIRS ID m",
@@ -1544,7 +1640,9 @@
       "theySeeYourRegisteredName": "Ha na-ahụ aha ị debanyere n'ihuenyo ha.",
       "sayYourFullNameOut": "Kwuo aha gị zuru ezu n'olu dara ụda: ha na-apị ya iji kwenye na ọ dabara.",
       "theHandoffIsLoggedIn": "Edekọrọ nnyefe ahụ n'akụkọ nyocha nnyefe gị.",
-      "openYourCollectionPassId": "Mepee akwụkwọ nnata gị: ID + koodu email, ma ọ bụ SEIRS ID + aha apịrị."
+      "openYourCollectionPassId": "Mepee akwụkwọ nnata gị: ID + koodu email, ma ọ bụ SEIRS ID + aha apịrị.",
+      "refreshing": "Na-emelite…",
+      "tryAgain": "Nwaa ọzọ"
     },
     "sos": {
       "quickDial": "Oku ngwa ngwa"
@@ -1558,7 +1656,9 @@
       "last90Days": "Ụbọchị 90 gara aga",
       "spentInThisPeriod": "emefuru n'oge a ·",
       "nothingSettledInThisPeriod": "Ọ dịghị ihe edoziri n'oge a. Nwaa nke sara mbara karịa.",
-      "tapAnyLineForIts": "Pịa ahịrị ọ bụla maka akwụkwọ nnata ya. Ọnụọgụ ọ bụla na-ekpuchi oge egosiri n'elu ya, ọ bụghị akụkọ gị niile na SEIRS. Ụgwọ ndị edozibeghị anaghị agụ ebe a."
+      "tapAnyLineForIts": "Pịa ahịrị ọ bụla maka akwụkwọ nnata ya. Ọnụọgụ ọ bụla na-ekpuchi oge egosiri n'elu ya, ọ bụghị akụkọ gị niile na SEIRS. Ụgwọ ndị edozibeghị anaghị agụ ebe a.",
+      "selectAPeriod": "HỌRỌ OGE",
+      "exportThisStatement": "Bupụta nkwupụta a"
     },
     "stories": {
       "readTheStory": "Gụọ akụkọ ahụ",
@@ -1590,7 +1690,11 @@
       "howCanWeHelp": ", kedu ka anyị ga-esi nyere gị aka?",
       "whatIsYourQuestionAbout": "Gịnị ka ajụjụ gị gbasara?",
       "conversationsArePrivateBetweenYou": "Mkparịta ụka bụ nzuzo n'etiti gị na ndị otu nkwado SEIRS.",
-      "relatedDeliveryOptional": "Nnyefe metụtara (nhọrọ)"
+      "relatedDeliveryOptional": "Nnyefe metụtara (nhọrọ)",
+      "supportIsOnlineNowHours": "Nkwado nọ n'ịntanetị ugbu a · awa 6am–10pm WAT",
+      "supportIsClosedRightNow": "Nkwado emechiela ugbu a · awa 6am–10pm WAT",
+      "supportIsOnlineNowHours2": "Nkwado nọ n'ịntanetị ugbu a. Awa: 6am–10pm WAT.",
+      "supportIsClosedRightNow2": "Nkwado emechiela ugbu a (awa 6am–10pm WAT). Zipu ozi gị, anyị ga-aza ozugbo anyị meghere na 6am."
     },
     "AddressPicker": {
       "cancel": "Kagbuo",
@@ -1631,7 +1735,9 @@
       "orTry": "MA Ọ BỤ NWAA",
       "onThisRouteNoneIn": "n'ụzọ a, ọ nweghị n'oge ahụ. Nwaa Oge ọ bụla.",
       "exactSpotOnceTheDriver": "Ebe kpọmkwem ozugbo ọkwọ ụgbọ nabatara gị",
-      "thePlateIsShownOnce": "A na-egosi nọmba ụgbọ ozugbo ọkwọ ụgbọ nabatara gị"
+      "thePlateIsShownOnce": "A na-egosi nọmba ụgbọ ozugbo ọkwọ ụgbọ nabatara gị",
+      "tomorrow": "Echi",
+      "vehicle": "Ụgbọ"
     },
     "NotFound": {
       "screenNotFound": "Ahụghị ihuenyo",
@@ -1669,7 +1775,10 @@
       "addsAFee": "Na-agbakwunye ụgwọ",
       "nothingHasBeenPaidYet": "Akwụbeghị ihe ọ bụla, ya mere nke a nwere ike ịgbanwe. Anyị na-agbakọgharị ọnụahịa mgbe ị chekwara.",
       "theseAreTheDriverS": "Ndị a bụ nkwụsị nke ọkwọ ụgbọ n'onwe ya, ya mere ụgwọ na-agbanwe na akụkụ ị họọrọ. Kwekọrịta ebe kpọmkwem na ha na mkparịta ụka.",
-      "thisTripRunsStraightThrough": "Njem a na-aga ozugbo n'enweghị nkwụsị n'etiti, ya mere enweghị akụkụ ọzọ ị ga-aga. Kagbuo ma chọọ ọzọ iji gaa ụzọ ọzọ."
+      "thisTripRunsStraightThrough": "Njem a na-aga ozugbo n'enweghị nkwụsị n'etiti, ya mere enweghị akụkụ ọzọ ị ga-aga. Kagbuo ma chọọ ọzọ iji gaa ụzọ ọzọ.",
+      "deliverTo": "Nyefee na",
+      "weightKg": "Ibu (kg)",
+      "receiverPhone": "Ekwentị onye nnata"
     },
     "paymentDetail": {
       "500Off": "₦500 mbelata",
@@ -1688,7 +1797,8 @@
       "baseFare": "Ụgwọ ntọala",
       "distanceFee": "Ụgwọ ebe dị anya",
       "timeFee": "Ụgwọ oge",
-      "serviceFee": "Ụgwọ ọrụ"
+      "serviceFee": "Ụgwọ ọrụ",
+      "amount": "Ego"
     },
     "specialRequestDetail": {
       "weHaveIt": "Anyị nwere ya",
@@ -1739,22 +1849,29 @@
       "send": "Zipu",
       "sendAgain": "Zipu ọzọ",
       "sameRoutePricedFresh": "Otu ụzọ, ọnụahịa ọhụrụ",
-      "liveStatusDriverPositionAnd": "Ọnọdụ ozugbo, ebe ọkwọ ụgbọ nọ na mmelite"
+      "liveStatusDriverPositionAnd": "Ọnọdụ ozugbo, ebe ọkwọ ụgbọ nọ na mmelite",
+      "collectedFrom": "EWETARA SITE NA",
+      "you": "Gị",
+      "reuseAllPackagesThenEdit": "Jiri ngwugwu {{length}} niile ọzọ, wee dezie ihe ọ bụla",
+      "reuseTheseDetailsThenEdit": "Jiri nkọwa ndị a ọzọ, wee dezie ihe ọ bụla"
     },
     "notFound": {
       "notFound": "Ahụghị ya"
     },
     "addresspicker": {
-      "openSettings": "Mepee Ntọala"
+      "openSettings": "Mepee Ntọala",
+      "tapToSelectAddress": "Pịa ka ịhọrọ adreesị…"
     },
     "messagesinbox": {
-      "seirsSupport": "Nkwado SEIRS"
+      "seirsSupport": "Nkwado SEIRS",
+      "noMessages": "(enweghị ozi)"
     },
     "deletionpendingbanner": {
       "keepDeleting": "Nọgide na-ehichapụ",
       "cancelDeletion": "Kagbuo nhichapụ",
       "accountDeletionPending": "Nhichapụ akaụntụ na-echere",
-      "yourAccountWillBePermanently": "A ga-ehichapụ akaụntụ gị kpamkpam na"
+      "yourAccountWillBePermanently": "A ga-ehichapụ akaụntụ gị kpamkpam na",
+      "dayLeft": "(ụbọchị {{daysLeft}} fọdụrụ)"
     },
     "deliverytrackmap": {
       "noMapForThisDelivery": "Enwebeghị maapụ maka nnyefe a",
@@ -1762,6 +1879,30 @@
     },
     "statepicker": {
       "noStateMatches": "Enweghị steeti dabara “"
+    },
+    "messagesDetail": {
+      "iMAtTheGate": "Anọ m n'ọnụ ụzọ",
+      "ringTheDoorbell": "Kụọ mgbịrịgba ụzọ",
+      "leaveWithSecurity": "Hapụ ya n'aka ndị nche",
+      "callWhenYouArrive": "Kpọọ mgbe ị rutere"
+    },
+    "supportDetail": {
+      "support": "Nkwado",
+      "document": "Akwụkwọ"
+    },
+    "citysearchfield": {
+      "findingYou": "Na-achọ gị...",
+      "useMyLocation": "Jiri ebe m nọ"
+    },
+    "drawer": {
+      "seirsLogisticsV": "SEIRS Logistics v{{v0}}"
+    },
+    "passwordinput": {
+      "hidePassword": "Zoo paswọdụ",
+      "showPassword": "Gosi paswọdụ"
+    },
+    "streetautocomplete": {
+      "startTypingAStreetOr": "Malite ịpị okporo ụzọ ma ọ bụ ihe ngosi…"
     }
   }
 }

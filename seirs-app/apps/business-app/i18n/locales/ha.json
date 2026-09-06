@@ -453,7 +453,19 @@
       "someoneSharedSeirsWithYou": "Wani ya raba SEIRS da kai? Lambarsa na nan.",
       "termsOfService": "Sharuɗɗan hidima",
       "privacyPolicy": "Tsarin sirri",
-      "weWillEmailYouA": "Za mu aika maka lamba mai lamba 6 ta imel don tabbatar da adireshinka."
+      "weWillEmailYouA": "Za mu aika maka lamba mai lamba 6 ta imel don tabbatar da adireshinka.",
+      "pleaseEnterYourFirstName": "Don Allah shigar da sunanka na farko.",
+      "pleaseEnterYourLastName": "Don Allah shigar da sunan mahaifinka.",
+      "pleaseEnterYourEmailAddress": "Don Allah shigar da adireshin imel ɗinka.",
+      "pleaseEnterAValidEmail": "Don Allah shigar da adireshin imel mai inganci.",
+      "pleaseEnterYourPhoneNumber": "Don Allah shigar da lambar wayarka.",
+      "pleaseEnterYourCompanyName": "Don Allah shigar da sunan kamfaninka.",
+      "pleasePickYourState": "Don Allah zaɓi jiharka.",
+      "pleaseEnterYourCityOr": "Don Allah shigar da birninka ko ƙaramar hukuma (misali Ikeja, Surulere, Lekki).",
+      "pleaseEnterYourStreetAddress": "Don Allah shigar da adireshin titinka (sunan titi + lambar gini / alamar wuri).",
+      "passwordsDoNotMatchPlease": "Kalmomin sirri ba su yi daidai ba. Don Allah sake rubuta kalmar sirri ta tabbatarwa.",
+      "pleaseConfirmYouAre18": "Don Allah tabbatar kana da shekara 18 ko fiye.",
+      "pleaseAcceptTheTermsOf": "Don Allah karɓi Sharuɗɗan hidima."
     },
     "editProfile": {
       "adebayo": "Adebayo",
@@ -482,7 +494,14 @@
       "contactPhone": "WAYAR MUTUMIN",
       "businessFieldsAreOwnerOnly": "Filayen kasuwanci na mai shi ne kaɗai. Tuntuɓi mai asusunka don sabunta su.",
       "companyName": "SUNAN KAMFANI",
-      "rcNumber": "LAMBAR RC"
+      "rcNumber": "LAMBAR RC",
+      "onlyLettersSpacesHyphensApostrophes": "Haruffa, sarari, layin haɗi, alamar 'yan-kwafi, ɗigo kaɗai",
+      "noPhoneNumbersUrlsOr": "Babu lambobin waya, URL, ko imel",
+      "mustBeToCharacters": "Dole ya kasance haruffa {{min}} zuwa {{max}}",
+      "nigerianMobileOnly": "Wayar Najeriya kaɗai",
+      "locked": "(AN KULLE)",
+      "contactSupportToCorrectA": "Tuntuɓi tallafi don gyara kuskure.",
+      "lockedOnceYouSaveFormat": "Ana kulle da zarar ka ajiye. Tsari: YYYY-MM-DD"
     },
     "move": {
       "eGIkejaSurulereLekki": "misali Ikeja, Surulere, Lekki",
@@ -508,7 +527,20 @@
       "whyAreYouMovingOptional": "Me ya sa kake ƙaura? (na zaɓi)",
       "canPeopleStillReachYou": "Har yanzu mutane na iya samun ka a shagonka na yanzu?",
       "rightNowWhateverYouAnswer": "a yanzu. Ko me ka amsa, kada ka motsa su: ƙungiyarmu za ta kira ka game da su.",
-      "afterYouSendThisWe": "Bayan ka aika wannan za mu nemi hotunan sabon shagon. Sabbin fakiti na daina zuwa gare ka har sai an amince da sabon adireshin, don haka aika hotunan da sauri."
+      "afterYouSendThisWe": "Bayan ka aika wannan za mu nemi hotunan sabon shagon. Sabbin fakiti na daina zuwa gare ka har sai an amince da sabon adireshin, don haka aika hotunan da sauri.",
+      "theNewShopFront": "Gaban sabon shago",
+      "whereParcelsWillSit": "Inda fakiti za su zauna",
+      "theNewShopFromThe": "Sabon shago daga titi",
+      "theShelfOrLockUp": "Shelf ko makullin ajiya (na zaɓi)",
+      "standAcrossTheRoadAnd": "Tsaya a ɗaya gefen titi ka ɗauki hoton gaba gaba ɗaya, har da kowace alama.",
+      "theShelfCornerOrRoom": "Shelf, kusurwa ko ɗakin da za a ajiye fakitin kwastomomi da gaske.",
+      "theStreetLookingTowardsYour": "Titin da ke fuskantar shagonka, don direba ya gane juyawar.",
+      "ifParcelsGoInA": "Idan fakiti na shiga makullin ajiya ko kabad, nuna shi.",
+      "sentOurTeamWillLook": "An aika. Ƙungiyarmu za ta duba.",
+      "retake": "Sake ɗauka",
+      "take": "Ɗauka",
+      "yesCustomersHoldingACollection": "Eh. Kwastomomin da ke da lambar karɓa har yanzu suna iya zuwa su karɓi fakitinsu.",
+      "noTheShopIsAlready": "A'a, shagon ya rufe tuni. Faɗa mana yanzu don mu shirya dawo da waɗannan fakiti."
     },
     "deliveries": {
       "searchByTrackingNumber": "Nemo da lambar bibiya…",
@@ -518,7 +550,12 @@
       "edit": "Gyara",
       "cancelDelivery": "Soke isarwa",
       "recurringRunTodaySPrice": "Tafiya mai maimaitawa · farashin yau · biya kafin",
-      "orItDoesNotGo": "ko ba zai fita ba"
+      "orItDoesNotGo": "ko ba zai fita ba",
+      "inTransit": "A kan hanya",
+      "opening": "Ana buɗewa…",
+      "payNow": "Biya yanzu",
+      "couldNotLoadYourDeliveries": "Ba a iya loda isarwarka ba. Ja ƙasa don sake gwadawa.",
+      "noDeliveriesFound": "Ba a sami isarwa ba"
     },
     "wallet": {
       "totalRewards": "Jimillar lada",
@@ -537,7 +574,29 @@
       "partnerStoresHoldPackagesAt": "Shagunan abokan hulɗa na riƙe fakiti a kantarsu kuma suna samun biya kowane mako.",
       "whatYourPointsAreFor": "Abin da makinka ke amfani",
       "openABookingYouHave": "Buɗe odar da ba ka biya ba tukuna ka karɓa a can. Ladar na fita daga wannan odar kafin ka biya, kuma makin na barin asusunka a lokaci guda.",
-      "noPayoutsYetPackagesHandled": "Babu biya tukuna. Fakitin da ake sarrafa a kantarka na samun kuɗi; ana biya kowane mako zuwa asusun bankin kasuwancinka."
+      "noPayoutsYetPackagesHandled": "Babu biya tukuna. Fakitin da ake sarrafa a kantarka na samun kuɗi; ana biya kowane mako zuwa asusun bankin kasuwancinka.",
+      "comesOffThePriceBefore": "Yana fita daga farashin kafin ka biya.",
+      "ready": "A shirye",
+      "deliveryCompleted": "An kammala isarwa",
+      "bankTransferBonus": "Ƙarin tura kuɗi ta banki",
+      "referralBonus": "Ƙarin gayyata",
+      "ratedADriver": "An kimanta direba",
+      "monthlyStreakBonus": "Ƙarin jere na wata",
+      "redeemed500Off": "An karɓi rangwamen ₦500",
+      "redeemedFreeDelivery": "An karɓi isarwa kyauta",
+      "refundAdjustment": "Gyaran maido da kuɗi",
+      "pointsExpired": "Maki sun ƙare",
+      "coversOneBookingUpTo": "Yana rufe odar ɗaya har iyakar lada.",
+      "openingBalance": "Ma'aunin farko",
+      "wallet": "Walat",
+      "nothingYet": "Babu kome tukuna",
+      "everyDeliveryYouBookAdds": "Kowace isarwar da ka yi odar na ƙara wa wannan.",
+      "paidOutToYourBusiness": "Ana biya zuwa asusun bankin kasuwancinka kowane mako.",
+      "bookADeliveryAndYour": "Yi odar isarwa makinka za su bayyana nan.",
+      "payoutsWillShowUpHere": "Biya za su bayyana nan da zarar fakiti sun wuce ta kantarka.",
+      "paidToBank": "An biya zuwa banki",
+      "pendingPayout": "Biyan da ke jira",
+      "settlesWithTheWeeklyRun": "Ana biya tare da na mako"
     },
     "id": {
       "readThisOnTheSeirs": "Karanta wannan a gidan yanar gizon SEIRS",
@@ -569,7 +628,13 @@
       "ifYouRunAPartner": "Idan kana gudanar da kanta na abokin hulɗa",
       "registeredName": "SUNAN DA AKA YI RAJISTA",
       "yourSeirsIdIsBeing": "Ana shirya SEIRS ID naka. Fita ka sake shiga yakan gyara wannan.",
-      "thisIsYourBusinessS": "Wannan ita ce shaidar kasuwancinka da aka tabbatar a SEIRS. Lamba ɗaya don komai: mikawa, aikin kanta da tallafi."
+      "thisIsYourBusinessS": "Wannan ita ce shaidar kasuwancinka da aka tabbatar a SEIRS. Lamba ɗaya don komai: mikawa, aikin kanta da tallafi.",
+      "droppingARunAtA": "Ajiye tafiya a kantar abokin hulɗa: ma'aikata na duba wannan don yi odar fakiti a kan asusunka.",
+      "aDriverCollectingFromYour": "Direban da ke karɓa daga wurinka na iya tabbatar yana a kasuwancin da ya dace.",
+      "readTheCodeToSeirs": "Karanta lambar wa tallafin SEIRS, za su samo asusunka nan take, ba tare da haruffa imel ba.",
+      "seirsDriversCollectingFromYour": "Direbobin SEIRS da ke karɓa daga kantarka na tabbatar suna hulɗa da mai shagon da aka yi rajista.",
+      "payoutQuestionsThisIdTies": "Tambayoyin biya: wannan ID na haɗa littafin abin da kantarka ta samu da kai ba kowa ba.",
+      "yourStoreAlsoHasIts": "Shagonka kuma yana da LAMBAR SHAGO tasa don kwastomomi; wannan ID NAKA ne, lambar shago ta shagon ce."
     },
     "sendPackage": {
       "route": "Hanya",
@@ -653,7 +718,50 @@
       "finalFareUsesTheRoad": "Kuɗin ƙarshe na amfani da nisan hanya a lokacin oda. Kowane fakiti na samun lambar bibiyarsa don mai karɓarsa.",
       "offeredFirstToThe": "An fara bayarwa ga",
       "tripTheDriverCanAccept": "tafiya. Direba na iya karɓa ko ƙi, kuma ana maido maka kuɗi cikakke idan babu wanda ya ɗauka.",
-      "iAgreeToTheSeirs": "Na yarda da Sharuɗɗan hidimar SEIRS, har da abin da ke faruwa idan isarwa ta gaza."
+      "iAgreeToTheSeirs": "Na yarda da Sharuɗɗan hidimar SEIRS, har da abin da ke faruwa idan isarwa ta gaza.",
+      "vehicle": "Mota",
+      "packageNeedsAtLeastOne": "Fakiti {{v0}} na buƙatar aƙalla hoto ɗaya.",
+      "packageNeedsAWeight": "Fakiti {{v0}} na buƙatar nauyi.",
+      "packageNeedsACategory": "Fakiti {{v0}} na buƙatar rukuni.",
+      "packageNeedsTheReceiverS": "Fakiti {{v0}} na buƙatar sunan farko na mai karɓa.",
+      "packageNameTheNeighbourWho": "Fakiti {{v0}}: ambaci maƙwabcin da zai iya karɓa.",
+      "packageNeedsTheReceiverS2": "Fakiti {{v0}} na buƙatar wayar mai karɓa.",
+      "packageChooseThePartnerStore": "Fakiti {{v0}}: zaɓi shagon abokin hulɗa da zai je.",
+      "packageNeedsADeliveryAddress": "Fakiti {{v0}} na buƙatar adireshin isarwa da aka zaɓa daga shawarwari.",
+      "packageIsGoingToThe": "Fakiti {{v0}} na zuwa kantar ɗaya da kake ajiye shi. Aika shi zuwa adireshi ko wata kanta.",
+      "areaTheReceiverIsIn": "Yankin da mai karɓa yake, misali Yaba",
+      "streetAreaCity": "Titi, yanki, birni",
+      "full": "· Cike",
+      "nearlyFull": "· Ya kusa cika",
+      "spaceAvailable": "· Akwai sarari",
+      "noPartnerCounterNearThat": "Babu kantar abokin hulɗa kusa da wannan yanki tukuna. Aika zuwa adireshi maimakon.",
+      "typeTheAreaTheReceiver": "Rubuta yankin da mai karɓa yake, za mu nuna kantunan da ke kewaye.",
+      "findACounterNear": "Nemo kanta kusa da",
+      "pickupAddress": "Adireshin karɓa",
+      "searchAPlaceEG": "Nemi wuri, misali Yaba",
+      "whereTheDriverCollectsEverything": "Inda direba ke karɓar kome",
+      "noCounterNearThatArea": "Babu kanta kusa da wannan yanki tukuna. Direba na iya karɓa daga gare ka maimakon.",
+      "typeAPlaceNearbyAnd": "Rubuta wuri kusa, za mu nuna kantunan da za ka iya ajiye.",
+      "pickAnHourToContinue": "Zaɓi awa don ci gaba.",
+      "pickupIsBookedForAround": "An yi odar karɓa don {{v0}}, wajen {{v1}}.",
+      "upToPackages": "Har fakiti {{cap}}{{v1}}",
+      "youDropAtDriverCollects": "Ka ajiye a {{pickupStoreName}} · direba na karɓa a can",
+      "sendNow2": "· Aika yanzu",
+      "receiver": "Mai karɓa",
+      "weight": "Nauyi",
+      "when": "Yaushe",
+      "serviceFee": "Kuɗin hidima",
+      "distanceSurcharge": "Ƙarin kuɗin nisa",
+      "notProvided": "Ba a bayar ba",
+      "daysNotProvided": "Ba a bayar da kwanaki ba",
+      "openRightNow": "A buɗe yanzu",
+      "closedRightNow": "A rufe yanzu",
+      "under1kmAway": "Ƙasa da 1km",
+      "addressCopied": "An kwafi adireshi",
+      "copyAddress": "Kwafi adireshi",
+      "dropAt": "· ajiye a {{v0}}",
+      "pickup2": "· karɓa",
+      "bookThisRun": "Yi odar wannan tafiya"
     },
     "DeliveryTrackMap": {
       "pickup": "Ɗauka",
@@ -671,7 +779,18 @@
       "confirmYourPassword": "TABBATAR DA KALMAR SIRRINKA",
       "deleteMyAccount": "Goge asusuna",
       "delete": "Goge",
-      "deactivatedNowSignInWithin": "An kashe yanzu. Shiga cikin kwana 30 don sokewa. Bayan haka duk abin da ke ƙasa za a cire har abada."
+      "deactivatedNowSignInWithin": "An kashe yanzu. Shiga cikin kwana 30 don sokewa. Bayan haka duk abin da ke ƙasa za a cire har abada.",
+      "deliveriesStillInProgressLet": "Isarwa da ke gudana: bar su su kammala ko soke su",
+      "packagesSittingAtAPartner": "Fakiti da ke zaune a shagon abokin hulɗa na jiran karɓa",
+      "apiKeysInUseBy": "Maɓallan API da shagonka ke amfani, waɗanda ke daina aiki nan take",
+      "yourBusinessProfileContactDetails": "Bayanin kasuwancinka, bayanan tuntuɓa da tambari",
+      "yourDeliveryHistoryAndItemised": "Tarihin isarwarka da bayanan da aka jera, bayan lokacin jinkiri",
+      "savedAddressesRecurringRunsAnd": "Adiresoshin da aka ajiye, tafiye-tafiye masu maimaituwa da bayanan biya da aka ajiye",
+      "yourApiKeysAndWebhook": "Maɓallan API naka da wuraren webhook",
+      "loyaltyPointsWhichCannotBe": "Makin aminci, waɗanda ba za a iya tura ko biya ba",
+      "recordsTiedToAnOpen": "Bayanan da ke da alaƙa da takaddama a buɗe, har sai an warware",
+      "invoicesAndTaxRecordsWe": "Daftarin kuɗi da bayanan haraji da doka ta buƙaci mu riƙe",
+      "anonymisedAnalyticsWhichCannotIdentify": "Bayanan bincike ba tare da suna, waɗanda ba za su iya gane ka ba"
     },
     "documents": {
       "documents": "Takardu",
@@ -681,7 +800,11 @@
       "fromSeirs": "DAGA SEIRS",
       "spendStatements": "BAYANAN KASHE KUƊI",
       "payoutStatements": "BAYANAN BIYAN KUƊI",
-      "contractsOfficialLettersFromSeirs": "Kwangiloli, wasiƙun hukuma daga SEIRS, da bayananka za su bayyana a nan."
+      "contractsOfficialLettersFromSeirs": "Kwangiloli, wasiƙun hukuma daga SEIRS, da bayananka za su bayyana a nan.",
+      "sentBy": "· {{sentByName}} ya aika",
+      "makingPdf": "Ana yin PDF...",
+      "seirsSpendStatement": "Bayanin kashe kuɗi na SEIRS {{year}}",
+      "seirsPayoutStatement": "Bayanin biya na SEIRS {{year}}"
     },
     "settings": {
       "documents": "Takardu",
@@ -718,7 +841,13 @@
       "messagesSupport": "Saƙonni da tallafi",
       "closeStore": "Rufe shago",
       "permanentlyShutDownThisPartner": "Rufe wannan shagon abokin hulɗa har abada. Ba za ka iya rufewa ba yayin da fakiti har yanzu suna hannunka.",
-      "storeIsEmptySafeTo": "✓ Shago babu kome. ana iya rufewa"
+      "storeIsEmptySafeTo": "✓ Shago babu kome. ana iya rufewa",
+      "noAddressOnFile": "Babu adireshi a rikodi",
+      "sendTheRequest": "Aika buƙatar",
+      "opensAt": "na buɗewa da",
+      "closesAt": "na rufewa da",
+      "yourStore": "Shagonka",
+      "resolveBlockersFirst": "Warware abubuwan hana da farko"
     },
     "verification": {
       "documents": "Takardu",
@@ -738,7 +867,20 @@
       "weCouldNotLoadYour": "Ba mu iya loda takardunka a yanzu ba. Ja ƙasa don sake gwadawa.",
       "eachOneIsCheckedOn": "Ana duba kowanne da kansa. Idan ɗaya na buƙatar sake aikawa, shi kaɗai: sauran na riƙe shawararsu, kuma aikace-aikacenka na nan inda yake.",
       "takenWithTheCameraAt": "An ɗauka da kyamara, a shagon. Muna rubuta inda aka ɗauka.",
-      "nothingStopsBecauseADocument": "Babu abin da ke tsayawa saboda takarda ta ƙare. Za mu faɗa maka, kuma ƙungiyarmu za ta yanke shawarar abin da zai biyo baya. Shagonka na ci gaba da karɓar fakiti yayin da kake gyara."
+      "nothingStopsBecauseADocument": "Babu abin da ke tsayawa saboda takarda ta ƙare. Za mu faɗa maka, kuma ƙungiyarmu za ta yanke shawarar abin da zai biyo baya. Shagonka na ci gaba da karɓar fakiti yayin da kake gyara.",
+      "checkedAndAcceptedNothingElse": "An duba an karɓa. Babu wani abu da ake buƙata don wannan.",
+      "withOurTeamYouDo": "Yana hannun ƙungiyarmu. Ba ka buƙatar yin kome yayin da yake nan.",
+      "nothingIsWrongWithWhat": "Babu abin da ba daidai ba a abin da ka aika. Ya ƙare, don haka muna buƙatar na yanzu.",
+      "thisOneCouldNotBe": "Ba a iya karɓar wannan ba. Dalilin na ƙasa.",
+      "documentIs": "takarda",
+      "documentsAre": "takardu",
+      "everythingWeNeedIsIn": "Duk abin da muke buƙata ya shiga. Babu abin da ke jiran ka.",
+      "ranOutOn": "Ya ƙare a",
+      "validUntil": "Yana aiki har",
+      "takeItAgain": "Sake ɗauka",
+      "takeThisPhoto": "Ɗauki wannan hoto",
+      "sendANewOne": "Aika sabo",
+      "sendThisOne": "Aika wannan"
     },
     "forgotPassword": {
       "back": "Baya",
@@ -760,7 +902,9 @@
       "verifyYourEmail": "Tabbatar da imel ɗinka",
       "codeExpiresIn15Minutes": "Lambar za ta ƙare cikin minti 15.",
       "weSentA6Digit": "Mun aika lamba mai lamba 6 zuwa",
-      "didnTReceiveIt": "Ba ka karɓa ba?"
+      "didnTReceiveIt": "Ba ka karɓa ba?",
+      "resendInS": "Sake aika cikin {{cooldown}}s",
+      "resendCode": "Sake aika lamba"
     },
     "notifications": {
       "back": "Baya",
@@ -771,7 +915,8 @@
       "clearNotifications": "Share sanarwa",
       "clearReadOnly": "Share waɗanda aka karanta kawai",
       "clearEverything": "Share komai",
-      "deliveryUpdatesAndSeirsAnnouncements": "Sabuntawar isarwa da sanarwar SEIRS za su bayyana a nan."
+      "deliveryUpdatesAndSeirsAnnouncements": "Sabuntawar isarwa da sanarwar SEIRS za su bayyana a nan.",
+      "justNow": "Yanzu-yanzu"
     },
     "specialRequest": {
       "phone": "Waya",
@@ -799,7 +944,13 @@
       "weightAndSizeItDecides": "NAUYI DA GIRMA (YANA TANTANCE MOTA)",
       "pickingUpFrom": "INDA ZA A ƊAUKA",
       "takingItTo": "INDA ZA A KAI",
-      "whenWouldYouLikeIt": "YAUSHE KAKE SON A ƊAUKE SHI?"
+      "whenWouldYouLikeIt": "YAUSHE KAKE SON A ƊAUKE SHI?",
+      "fragile": "Mai fashewa",
+      "needsCarefulHandlingOrPadding": "Yana buƙatar kulawa a hankali ko rufewa.",
+      "hazardous": "Mai haɗari",
+      "fuelChemicalsGasAnythingFlammable": "Man fetur, sinadarai, gas, duk abin da ke kamawa da wuta.",
+      "temperatureControlled": "Kula da zafi",
+      "mustStayColdOrMust": "Dole ya kasance sanyi, ko kada ya daskare."
     },
     "applyPartner": {
       "state": "Jiha",
@@ -825,7 +976,9 @@
       "canNowAcceptSeirsDrop": "yanzu na iya karɓar sauke na SEIRS. Yi amfani da mai canza yanayi a saman app don sauyawa tsakanin yanayin aikawa da na abokin hulɗa.",
       "operateASeirsCollectionPoint": "Gudanar da wurin karɓa na SEIRS. Sami kuɗi a kowane fakiti, biya kowane mako. Za mu duba takardun KYC naka cikin kwanaki 3 na aiki.",
       "nationalIdDriverSLicence": "Katin shaidar ƙasa, lasisin tuƙi, ko fasfo na ƙasashen waje",
-      "speedsUpReviewIfYou": "Yana hanzarta dubawa idan kana da kasuwancin da aka yi rajista"
+      "speedsUpReviewIfYou": "Yana hanzarta dubawa idan kana da kasuwancin da aka yi rajista",
+      "takenAtYourShopAccurate": "An ɗauka a shagonka, daidai har kimanin {{accuracyM}} m",
+      "standOutsideYourShopAnd": "Tsaya a wajen shagonka ka ɗauki wannan yanzu. Haka muke sanya shagonka a taswira."
     },
     "packageQr": {
       "packageQr": "QR na fakiti",
@@ -836,7 +989,10 @@
       "openThisFromAPackage": "Buɗe wannan daga fakiti cikin isarwa, lambarsa na zuwa tare da shi.",
       "screenshotThisAndSendIt": "Ɗauki hoton allon nan ka aika wa wanda zai karɓi wannan fakiti. Ba sa buƙatar app ɗin SEIRS: direba na duba shi daga allonsu, ko ya shigar da lambar.",
       "everyPackageInThisRun": "Kowane fakiti a wannan tafiya na da lambarsa. Yi amfani da kibiyoyi a sama don zuwa na gaba ka aika wa kowane mai karɓa nasa kaɗai.",
-      "safeToForwardTheCode": "Ba matsala a tura. Lambar kaɗai wannan QR ke ɗauka: babu suna, adireshi ko lambar waya a ciki."
+      "safeToForwardTheCode": "Ba matsala a tura. Lambar kaɗai wannan QR ke ɗauka: babu suna, adireshi ko lambar waya a ciki.",
+      "copyCode": "Kwafi lamba",
+      "packageOf": "FAKITI {{v0}} CIKIN {{total}}",
+      "packageQr2": "QR NA FAKITI"
     },
     "tripRequests": {
       "nothingAskedYet": "Ba a nemi kome tukuna",
@@ -853,7 +1009,8 @@
       "theyCanDropItAt": "Za su iya sauke shi a",
       "loadsYouHaveAskedDrivers": "Kayan da ka nemi direbobi su ɗauka",
       "findADriverAlreadyMaking": "Nemo direban da ke bin hanyarka tuni a ƙarƙashin Sararin kaya ka roƙe shi ya ɗauki kayanka. Ba a cajin kome har sai ya yarda.",
-      "nothingIsChargedWhileYou": "Ba a cajin kome yayin da kake jira."
+      "nothingIsChargedWhileYou": "Ba a cajin kome yayin da kake jira.",
+      "priceToConfirm": "Farashin da za a tabbatar"
     },
     "referral": {
       "howItWorks": "Yadda yake aiki",
@@ -867,7 +1024,14 @@
       "youEarn200SeirsPoints": "Kana samun maki 200 na SEIRS duk lokacin da kasuwanci ya yi rajista da lambarka ya kammala isarwarsa ta farko da aka biya.",
       "yourReferralCode": "LAMBAR GAYYATARKA",
       "pointsEarned": "Maki da aka samu",
-      "shareYourCodeWhenThey": "Raba lambarka. Idan sun yi rajista suka kammala isarwarsu ta farko, ku duka kuna fara samun maki."
+      "shareYourCodeWhenThey": "Raba lambarka. Idan sun yi rajista suka kammala isarwarsu ta farko, ku duka kuna fara samun maki.",
+      "notAvailable": "Babu",
+      "shareYourCodeWithAnother": "Raba lambarka da wani kasuwanci",
+      "theySignUpAndComplete": "Su yi rajista su kammala isarwarsu ta farko",
+      "youBothGetRewarded": "Ku duka biyu ku sami lada",
+      "aBusiness": "Kasuwanci",
+      "bonusPaid": "An biya ƙari",
+      "awaitingFirstDelivery": "Ana jiran isarwa ta farko"
     },
     "report": {
       "reportReceived": "An karɓi rahoto",
@@ -882,7 +1046,12 @@
       "describeTheIssue": "BAYYANA MATSALAR",
       "deliveryIssue": "Matsalar isarwa",
       "other": "Sauran",
-      "billing": "Biyan kuɗi"
+      "billing": "Biyan kuɗi",
+      "somethingElseHappened": "Wani abu daban ya faru",
+      "aDeliveryWentWrongOr": "Isarwa ta ɓaci ko ta makale",
+      "chargedWronglyOrARefund": "An caji ba daidai ba ko tambayar maido da kuɗi",
+      "aProblemWithADriver": "Matsala da direba a kan aiki",
+      "accessTeamOrBusinessDetails": "Shiga, ƙungiya ko bayanan kasuwanci"
     },
     "rewards": {
       "yourPoints": "Makinka",
@@ -892,7 +1061,11 @@
       "openAnUnpaidBookingTo": "Buɗe odar da ba a biya ba don karɓa",
       "500ParcelCover": "Inshorar fakiti ₦500",
       "ptsToTheNextTier": "maki zuwa mataki na gaba",
-      "pointsExpire24MonthsAfter": "Maki na ƙarewa watanni 24 bayan an same su. Matakinka ya danganta da makin da aka samu a watanni 12 da suka wuce."
+      "pointsExpire24MonthsAfter": "Maki na ƙarewa watanni 24 bayan an same su. Matakinka ya danganta da makin da aka samu a watanni 12 da suka wuce.",
+      "coverASingleDeliveryUp": "Rufe isarwa ɗaya har ₦50,000",
+      "500OffYourNextBooking": "Rangwamen ₦500 a odar ka na gaba",
+      "oneBookingCoveredUpTo": "An rufe odar ɗaya har iyakar lada",
+      "notAvailableYet": "· Babu tukuna"
     },
     "sos": {
       "quickDial": "Kira da sauri",
@@ -905,7 +1078,17 @@
       "theftAccidentPersonalSafety": "Sata · Hatsari · Tsaron kai",
       "oneTapSharesYourLive": "Taɓawa ɗaya na raba inda kake da tallafin SEIRS. Yi amfani da wannan don gaggawa na gaske kaɗai.",
       "supportCanSee": "Tallafi na iya gani: “",
-      "supportIsAlreadyAlertedAnd": "An riga an faɗakar da tallafi kuma ana raba inda kake. Wannan na zaɓi ne: yana faɗa musu abin da suke shiga ne kawai."
+      "supportIsAlreadyAlertedAnd": "An riga an faɗakar da tallafi kuma ana raba inda kake. Wannan na zaɓi ne: yana faɗa musu abin da suke shiga ne kawai.",
+      "fireOrAVehicleBurning": "Wuta, ko mota na ci. Don wani abu daban yi amfani da 112.",
+      "sosSent": "An aika SOS",
+      "sosActivated": "An kunna SOS!",
+      "updateWhatIsHappening": "Sabunta abin da ke faruwa",
+      "theNationalEmergencyLineDial": "Layin gaggawa na ƙasa. Kira wannan da farko idan an ji maka rauni ko kana cikin haɗari.",
+      "supportHasBeenAlertedAnd": "An sanar da tallafi kuma ana raba inda kake. Soke cikin {{countdown}}s idan kuskure ne.",
+      "helpIsOnTheWay": "Taimako na kan hanya. Riƙe wayarka tare da kai.",
+      "tellSupportWhatIsHappening": "Faɗa wa tallafi abin da ke faruwa",
+      "cancelSos": "Soke SOS",
+      "falseAlarmCancelTheAlert": "Ƙararrawar ƙarya: soke faɗakarwar"
     },
     "billing": {
       "runningTotal": "Jimillar yanzu",
@@ -951,7 +1134,13 @@
       "featuredFirstInStorePicker": "Na farko a sakamakon zaɓin shago idan abokan ciniki suka tsara sauke",
       "impressionAndClickThroughReporting": "Rahoton nunawa da danna da zarar bibiyar ma'auni ta zo",
       "invoicedMonthlySettledThroughFlutterwave": "Daftari kowane wata, ana biya ta wurin biya mai tsaro: dakatar a kowane lokaci, babu kwangila",
-      "pricingReadLiveFromThe": "Ana karanta farashi kai tsaye daga Jerin kuɗin SEIRS. Canje-canje na isa cikin daƙiƙa 60."
+      "pricingReadLiveFromThe": "Ana karanta farashi kai tsaye daga Jerin kuɗin SEIRS. Canje-canje na isa cikin daƙiƙa 60.",
+      "selectAPeriod": "ZAƁI LOKACI",
+      "exportThisStatement": "Fitar da wannan bayani",
+      "seirsStatement": "Bayanin SEIRS {{v0}}",
+      "charge": "Caji",
+      "inactive": "Ba mai aiki",
+      "activatePlacement": "Kunna wuri"
     },
     "statement": {
       "runningTotal": "Jimillar yanzu",
@@ -979,7 +1168,10 @@
       "fullStatement": "Cikakken bayani",
       "noPayoutsYet": "Babu biya tukuna",
       "yourShareByWeight": "rabonka, bisa nauyi",
-      "paidInto": "AN BIYA CIKIN"
+      "paidInto": "AN BIYA CIKIN",
+      "thisWeek": "Wannan mako",
+      "monday": "Litinin",
+      "yourPayoutAccount": "Asusun biyanka"
     },
     "scan": {
       "cancel": "Soke",
@@ -1012,7 +1204,11 @@
       "noBankMatchesThatCheck": "Babu bankin da ya yi daidai da wannan. Duba rubutun, ko gwada kalma mafi ƙanƙanta.",
       "accountNumber": "Lambar asusu",
       "weCheckThisWithYour": "Muna duba wannan da bankinka mu nuna maka sunan da ke asusun kafin a ajiye kome.",
-      "changingAnAccountIsChecked": "Mutum ne ke duba canjin asusu kafin ya fara aiki, don kada wani ya karkatar da abin da ka samu. Asusunka na yanzu na ci gaba da biya yayin da muke dubawa."
+      "changingAnAccountIsChecked": "Mutum ne ke duba canjin asusu kafin ya fara aiki, don kada wani ya karkatar da abin da ka samu. Asusunka na yanzu na ci gaba da biya yayin da muke dubawa.",
+      "newAccount": "SABON ASUSU",
+      "addYourAccount": "ƘARA ASUSUNKA",
+      "checkingWithYourBank": "Ana duba da bankinka...",
+      "checkAndSave": "Duba ka ajiye"
     },
     "ticketId": {
       "tapToOpen": "Taɓa don buɗewa",
@@ -1106,7 +1302,16 @@
       "driversDeclareIntercityTripsIn": "Direbobi na sanar da tafiye-tafiyen tsakanin birane tun farko kuma su faɗi nauyin da har yanzu za su iya ɗauka. Roƙi ɗaya ya ɗauki kayanka kuma ba a cajin kome yayin da suke yanke shawara. Kana biya ne kawai bayan sun karɓa, don haka a'a ba ya kashe ka kome.",
       "commonRoutes": "HANYOYIN DA AKA SABA",
       "alertMeWhenADriver": "Faɗakar da ni idan direba ya bi wannan hanya",
-      "exactSpotOnceTheDriver": "Ainihin wuri da zarar direba ya karɓi kayanka"
+      "exactSpotOnceTheDriver": "Ainihin wuri da zarar direba ya karɓi kayanka",
+      "nothingThatSizeOnThat": "Babu wani irin wannan girman a wannan rana",
+      "noSpaceOnThatRoute": "Babu sarari a wannan hanya tukuna",
+      "thereTripOnThisRoute": "Akwai tafiya {{length}} a wannan hanya, amma babu wanda ke da sarari ga abin da ka nema a ranar da ka zaɓa. Gwada Kowace rana, ko kaya mafi sauƙi.",
+      "driversUsuallyDeclareATrip": "Direbobi na yawan bayyana tafiya kwana ɗaya ko biyu gaba. Sake duba, ko aika ta hanyar da aka saba direban da ke tafiya wannan hanya na iya ɗaukarsa.",
+      "mostRoom": "Mafi sarari",
+      "loadsInUnloadsAt": "Ana lodi a {{boardCity}}, ana sauke a {{alightCity}}",
+      "loadsInUnloadsAt2": "Ana lodi a {{pickupArea}}, ana sauke a {{toCity}}",
+      "loadsAlongTheRouteUnloads": "Ana lodi a kan hanya, ana sauke a {{toCity}}",
+      "spaceNotStated": "Ba a faɗi sarari ba"
     },
     "recurring": {
       "recurringDeliveries": "Isarwa mai maimaitawa",
@@ -1132,7 +1337,14 @@
       "24Hour": "Awa 24",
       "weCreateTheRunAnd": "Muna ƙirƙirar tafiyar mu nemi ka biya daga",
       "atThatDaySPrice": ", a farashin wannan rana.",
-      "iAgreeToTheSeirs": "Na yarda da Sharuɗɗan hidimar SEIRS. Kowace tafiya ana ƙayyade farashi a ranar kuma ina biya kafin ɗauka."
+      "iAgreeToTheSeirs": "Na yarda da Sharuɗɗan hidimar SEIRS. Kowace tafiya ana ƙayyade farashi a ranar kuma ina biya kafin ɗauka.",
+      "everyDay": "Kowace rana",
+      "everyWeek": "Kowane mako",
+      "everyMonth": "Kowane wata",
+      "everyDayAt": "Kowace rana da {{time}}",
+      "everyAt": "Kowace {{v0}} da {{time}}",
+      "dayOfEachMonthAt": "Rana {{v0}} ta kowane wata da {{time}}",
+      "couldNotBeCreated": "· {{errorCount}} ba a iya ƙirƙira ba"
     },
     "receiveDropoff": {
       "continue": "Ci gaba",
@@ -1166,7 +1378,17 @@
       "senderVerification": "TABBATAR DA MAI AIKAWA",
       "theCodeExpiresAfter10": "Lambar na ƙarewa bayan minti 10. Tana zuwa imel da ke asusun SEIRS na mai aikawa.",
       "whoIsAcceptingThis": "WA KE KARƁAR WANNAN",
-      "typeYourOwnFullName": "Rubuta cikakken sunanka. Ana rubuta shi a matsayin sa hannunka a wannan fakiti."
+      "typeYourOwnFullName": "Rubuta cikakken sunanka. Ana rubuta shi a matsayin sa hannunka a wannan fakiti.",
+      "destinationNotRecorded": "Ba a rubuta inda za a ba",
+      "recipientCollectsFromThatCounter": "Mai karɓa na karɓa daga wannan kanta",
+      "driverDeliversToThisAddress": "Direba na isar zuwa wannan adireshi",
+      "senderSaidKg": "Mai aikawa ya ce {{weightKg}} kg",
+      "a6DigitCodeWas": "An aika lambar mai lamba 6 zuwa {{otpSentTo}} yanzu. Tambayi mai aikawa ya karanta ta.",
+      "sendTheSenderA6": "Aika wa mai aikawa lambar mai lamba 6, sannan ka tambaye su su karanta ta.",
+      "sendingCode": "Ana aika lamba...",
+      "sendANewCodeIn": "Aika sabuwar lamba cikin {{resendIn}}s",
+      "sendANewCode": "Aika sabuwar lamba",
+      "sendTheCode": "Aika lambar"
     },
     "inventory": {
       "markCollected": "Yi alama an karɓa",
@@ -1211,7 +1433,9 @@
       "thatHaveCrossedThe24": "waɗanda suka wuce awa 24 na kyauta.",
       "hoursInStore": "AWANNI A SHAGO",
       "feesAccrued": "KUƊIN DA YA TARU",
-      "storageFeesAccrueDailyAt": "Kuɗin ajiya na taruwa kullum da 1 AM ta aikin kai tsaye. Ana cajin mai aikawa idan an karɓa ko an mayar."
+      "storageFeesAccrueDailyAt": "Kuɗin ajiya na taruwa kullum da 1 AM ta aikin kai tsaye. Ana cajin mai aikawa idan an karɓa ko an mayar.",
+      "noOverstayedPackagesRightNow": "Babu fakitin da ya wuce lokaci yanzu: kome na cikin awa 24 na kyauta.",
+      "noPackagesInThisTier": "Babu fakiti a wannan mataki."
     },
     "NotFound": {
       "goToLogin": "Je shiga"
@@ -1223,7 +1447,9 @@
       "dark": "Duhu"
     },
     "editDeliveryDetail": {
-      "done": "An gama"
+      "done": "An gama",
+      "thisOrderIsPaidSo": "An biya wannan oda, don haka kuɗin tafiya a kafe yake ga wannan tafiya daidai. Har yanzu kana iya canza umarnin da direba ke karanta idan ya isa. Don aika wani wuri, soke don maido da kuɗi ka sake yin oda.",
+      "nothingHasBeenChargedYet": "Ba a caji kome ba tukuna, don haka wannan na iya canzawa. Muna ƙididdige farashin kuma idan ka ajiye."
     },
     "specialRequestDetail": {
       "couldNotAccept": "Ba a iya karɓa ba",
@@ -1282,10 +1508,24 @@
       "cardProcessingOfAbout": "Kuɗin sarrafa kati na kimanin",
       "isAddedAtCheckoutThen": ") ana ƙara a wurin biya, sannan bankinka ya nemi OTP ɗinsa.",
       "useYourPoints": "YI AMFANI DA MAKINKA",
-      "somethingWrongEditThisOrder": "Wani abu ba daidai ba? Gyara wannan odar"
+      "somethingWrongEditThisOrder": "Wani abu ba daidai ba? Gyara wannan odar",
+      "copied": "An kwafa",
+      "reuseAllPackagesThenEdit": "Sake amfani da duk fakiti {{length}}, sannan ka gyara kome",
+      "reuseTheseDetailsThenEdit": "Sake amfani da waɗannan bayanai, sannan ka gyara kome",
+      "whereItWent": "INDA YA JE",
+      "whereItIs": "INDA YAKE",
+      "lastDropPackageOf": "Ajiyar ƙarshe · fakiti {{v0}} cikin {{length}}",
+      "dropPinPackageOf": "Fil na ajiya: fakiti {{v0}} cikin {{length}}",
+      "totalDue": "JIMILLAR DA ZA A BIYA",
+      "thisIsARecurringRun": "Wannan tafiya mai maimaituwa ce a farashin yau. Ba a biya ba kuma babu abin da ake caji da kansa: biya ta wurin biya kafin lokacin karɓa za ta fita.",
+      "thisBookingIsSavedBut": "An ajiye wannan oda amma ba a biya ba. Ana haɗa direba da zarar biya ta wuce.",
+      "applying": "Ana amfani…",
+      "copy": "Kwafi",
+      "noPackageDetailsRecordedFor": "Ba a rubuta bayanan fakiti don wannan isarwa ba."
     },
     "messagesinbox": {
-      "seirsSupport": "Tallafin SEIRS"
+      "seirsSupport": "Tallafin SEIRS",
+      "noMessages": "(babu saƙonni)"
     },
     "deliverytrackmap": {
       "noMapForThisDelivery": "Babu taswira don wannan isarwa tukuna",
@@ -1310,13 +1550,35 @@
       "oneOrManyPackagesOne": "Fakiti ɗaya ko da yawa, biya ɗaya",
       "heavyOrUnusualLoadsQuoted": "Kaya masu nauyi ko na daban, mutum ne ke ƙayyade farashi",
       "interstateTripsRoomOnA": "Tafiye-tafiyen tsakanin jihohi: sarari a tafiyar da ake yi tuni",
-      "handAPackageToRecipient": "Mika fakiti wa mai karɓa da tabbatar da ID + OTP"
+      "handAPackageToRecipient": "Mika fakiti wa mai karɓa da tabbatar da ID + OTP",
+      "recurringRunWaitingForPayment": "Tafiya mai maimaituwa na jiran biya",
+      "waitingForPayment": "Ana jiran biya",
+      "payBefore": "· biya kafin {{v0}}",
+      "codePendingApproval": "Lamba na jiran amincewa",
+      "couldNotLoadStoreStatus": "Ba a iya loda matsayin shago ba. Ja don sabuntawa.",
+      "awaiting": "Ana jira"
     },
     "supportDetail": {
-      "fromGallery": "Daga gallery"
+      "fromGallery": "Daga gallery",
+      "support": "Tallafi",
+      "document": "Takarda"
     },
     "notFound": {
       "pageNotFound": "Ba a sami shafi ba"
+    },
+    "citysearchfield": {
+      "findingYou": "Ana neman ka...",
+      "useMyLocation": "Yi amfani da inda nake"
+    },
+    "passwordinput": {
+      "hidePassword": "Ɓoye kalmar sirri",
+      "showPassword": "Nuna kalmar sirri"
+    },
+    "chatthread": {
+      "packageIsReadyForPickup": "Fakiti a shirye don karɓa",
+      "comeToTheFrontCounter": "Zo kantar gaba",
+      "giveUs5Minutes": "Ba mu minti 5",
+      "pleaseCallOurOffice": "Don Allah kira ofishinmu"
     }
   }
 }

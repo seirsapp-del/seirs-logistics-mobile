@@ -391,7 +391,23 @@
       "largeTruck": "Ọkọ̀ ẹrù ńlá",
       "optional": "(kò pọn dandan)",
       "cityLga": "Ìlú / Ìjọba ìbílẹ̀",
-      "includingTheDriverCodeOf": "(pẹ̀lú Ìlànà ìwà awakọ̀) àti"
+      "includingTheDriverCodeOf": "(pẹ̀lú Ìlànà ìwà awakọ̀) àti",
+      "passwordsDoNotMatch": "Àwọn ọ̀rọ̀ìgbaniwọlé kò bára mu.",
+      "upTo5Kg": "Tó 5 kg",
+      "upTo20Kg": "Tó 20 kg",
+      "upTo100Kg": "Tó 100 kg",
+      "upTo200Kg": "Tó 200 kg",
+      "upTo800Kg": "Tó 800 kg",
+      "upTo3000Kg": "Tó 3,000 kg",
+      "enterYourFirstName": "Tẹ orúkọ àkọ́kọ́ rẹ.",
+      "enterYourLastName": "Tẹ orúkọ ìdílé rẹ.",
+      "enterYourEmailAddress": "Tẹ àdírẹ́sì ímeèlì rẹ.",
+      "pickTheStateYouLive": "Yan ìpínlẹ̀ tí o ń gbé.",
+      "enterYourCityOrLga": "Tẹ ìlú tàbí ìjọba ìbílẹ̀ rẹ.",
+      "enterYourStreetAddress": "Tẹ àdírẹ́sì òpópónà rẹ.",
+      "selectAVehicleType": "Yan irú ọkọ̀.",
+      "confirmYouAre18Years": "Jẹ́rìí pé o tó ọmọ ọdún 18 tàbí jù bẹ́ẹ̀ lọ.",
+      "acceptTheTermsOfService": "Gba Àwọn òfin ìlò àti Ìlànà àṣírí."
     },
     "profile": {
       "yourSeirsId": "SEIRS ID rẹ",
@@ -442,7 +458,11 @@
       "customersCheckYourFaceBefore": "Àwọn oníbàárà ń wo ojú rẹ kí wọ́n tó fi ẹrù lé ọ lọ́wọ́. Fọ́tò tó ṣe kedere máa jẹ́ kí a gbà ọ kíákíá.",
       "totalTrips": "Àpapọ̀ ìrìn àjò",
       "totalEarned": "Àpapọ̀ tí o jèrè",
-      "showThisToACustomer": "Fi èyí han oníbàárà nígbà ìgbàwọ́ láti fi hàn pé ìwọ ni awakọ̀ tí a yàn."
+      "showThisToACustomer": "Fi èyí han oníbàárà nígbà ìgbàwọ́ láti fi hàn pé ìwọ ni awakọ̀ tí a yàn.",
+      "changeProfilePhoto": "Yí fọ́tò púrọ́fáìlì padà",
+      "addYourProfilePhoto": "Fi fọ́tò púrọ́fáìlì rẹ kún un",
+      "online": "Lórí ayélujára",
+      "offline": "Kúrò lórí ayélujára"
     },
     "storeHandoff": {
       "seirsId": "SEIRS ID",
@@ -466,7 +486,24 @@
       "thisParcelNigerianEvidenceAct": "ẹrù yìí. Òfin Ẹ̀rí Nàìjíríà, abala 84.",
       "storeSeirsId": "SEIRS ID ilé ìtajà",
       "ifTheCounterCanShow": "Bí kaǹtà bá lè fi SEIRS ID wọn hàn, fi kún un. Ó so orúkọ náà mọ́ ilé ìtajà tí a forúkọ sílẹ̀.",
-      "optionalSkipItIfThe": "Kò pọn dandan. Fò ó bí ìlà bá ń lọ."
+      "optionalSkipItIfThe": "Kò pọn dandan. Fò ó bí ìlà bá ń lọ.",
+      "scanTheParcelBeforeYou": "Ṣàyẹ̀wò ẹrù náà kí o tó gbà á. Láti ìsinsìnyí, ó wà lọ́wọ́ rẹ, kì í ṣe ilé ìtajà.",
+      "whoIsReleasingIt": "Ta ló ń fi í sílẹ̀?",
+      "handYourPhoneToThe": "Fún ẹni tó wà ní kaǹtà ní fóònù rẹ. Wọ́n máa tẹ orúkọ wọn ní kíkún fúnra wọn. Orúkọ yẹn ni yóò dáhùn ìbéèrè nípa ẹrù yìí lẹ́yìn náà, ìdánimọ̀ ilé ìtajà kò lè ṣe é.",
+      "counterStaffSFullName": "Orúkọ òṣìṣẹ́ kaǹtà ní kíkún",
+      "signedFor": "A ti fọwọ́ sí i",
+      "theParcelIsOnYou": "Ẹrù náà wà lọ́wọ́ rẹ báyìí. Kaǹtà wà nínú àkọsílẹ̀ pé ó fi í sílẹ̀.",
+      "scanTheParcelAsYou": "Ṣàyẹ̀wò ẹrù náà bí o ṣe ń gbé e lọ́wọ́. Títí kaǹtà yóò fi fọwọ́ sí i, ó ṣì wà lọ́wọ́ rẹ.",
+      "whoIsReceivingIt": "Ta ló ń gbà á?",
+      "handYourPhoneToThe2": "Fún ẹni tó wà ní kaǹtà ní fóònù rẹ. Wọ́n máa tẹ orúkọ wọn ní kíkún fúnra wọn. Èyí ló ń dí ilé ìtajà lọ́wọ́ láti sọ lẹ́yìn náà pé ẹrù náà kò dé rárá.",
+      "handedOver": "A ti gbé e lọ́wọ́",
+      "theCounterHasSignedFor": "Kaǹtà ti fọwọ́ sí i. Ó ti kúrò lọ́wọ́ rẹ, ó wà lọ́wọ́ ilé ìtajà.",
+      "openNow": "Ó ṣí báyìí",
+      "closedNow": "Ó ti pa dé báyìí",
+      "scan": "Ṣàyẹ̀wò",
+      "sign": "Fọwọ́ sí i",
+      "photoAttached": "A ti so fọ́tò mọ́",
+      "addAPhotoOfThe": "Fi fọ́tò ìgbélọ́wọ́ kún un"
     },
     "id": {
       "saveChanges": "Fi àyípadà pamọ́",
@@ -524,7 +561,16 @@
       "90DayChangeLimit": "Ààlà àyípadà ọjọ́ 90",
       "30DayChangeLimit": "Ààlà àyípadà ọjọ́ 30",
       "giveThisToSupportInstead": "Fún ìrànlọ́wọ́ ní èyí dípò ímeèlì tàbí orúkọ rẹ. Ó ṣe ìdánimọ̀ rẹ ní àṣírí àti ní ọ̀nà àrà ọ̀tọ̀.",
-      "someFieldsHaveChangeLimits": "Àwọn àyè kan ní ààlà àyípadà láti dènà ìfarahàn èké. A máa ń ṣàkọsílẹ̀ gbogbo àyípadà fún ààbò rẹ. A ń ṣàtúnṣe ìwífún ọkọ̀ nípa fífi KYC sílẹ̀ lẹ́ẹ̀kan sí i."
+      "someFieldsHaveChangeLimits": "Àwọn àyè kan ní ààlà àyípadà láti dènà ìfarahàn èké. A máa ń ṣàkọsílẹ̀ gbogbo àyípadà fún ààbò rẹ. A ń ṣàtúnṣe ìwífún ọkọ̀ nípa fífi KYC sílẹ̀ lẹ́ẹ̀kan sí i.",
+      "onlyLettersSpacesHyphensApostrophes": "Lẹ́tà, àyè, àmì ìdábùú, àmì àpóstrófì, àmì ìdúró nìkan",
+      "noPhoneNumbersUrlsOr": "Kò sí nọ́ńbà fóònù, URL, tàbí ímeèlì",
+      "nigerianMobileOnly0234": "Fóònù Nàìjíríà nìkan (0/234/+234 + nọ́ńbà 10)",
+      "useYyyyMmDdFormat": "Lo ọ̀nà YYYY-MM-DD",
+      "notARealDate": "Kì í ṣe ọjọ́ gidi",
+      "pleaseEnterARealDate": "Jọ̀wọ́ tẹ ọjọ́ ìbí gidi",
+      "lockedOnceSetContactSupport": "A tì í nígbà tí o bá ṣètò rẹ̀. Kàn sí ìrànlọ́wọ́ láti ṣàtúnṣe àṣìṣe.",
+      "driversMustBeAtLeast": "Awakọ̀ ní láti tó ọmọ ọdún 18",
+      "mustMatchYourKycDocument": "Ó ní láti bá ìwé KYC rẹ mu. A tì í nígbà tí o bá fi pamọ́."
     },
     "active": {
       "pickup": "Ibi ìgbé",
@@ -610,7 +656,21 @@
       "nobodyAvailableToReceive": "Kò sí ẹni tó máa gbà?",
       "theSenderGets5Minutes": "Olùfiránṣẹ́ ní ìṣẹ́jú 5 láti dáhùn: dúró, aládùúgbò, ẹnu ọ̀nà, tàbí ilé ìtajà alábàáṣiṣẹ́. Ìdáhùn wọn máa dé nínú ìjíròrò ìfijíṣẹ́ yìí. Bí wọn kò bá dáhùn, tẹ̀lé ìwé àfipamọ́.",
       "notifyTheSender": "Sọ fún olùfiránṣẹ́",
-      "theirNameAsTheyGave": "Orúkọ wọn, bí wọ́n ṣe sọ fún ọ. Èyí máa wà lórí àkọsílẹ̀ ìfijíṣẹ́."
+      "theirNameAsTheyGave": "Orúkọ wọn, bí wọ́n ṣe sọ fún ọ. Èyí máa wà lórí àkọsílẹ̀ ìfijíṣẹ́.",
+      "justStarted": "Ó ṣẹ̀ṣẹ̀ bẹ̀rẹ̀",
+      "onThisJobMin": "Lórí iṣẹ́ yìí ìṣẹ́jú {{mins}}",
+      "onThisJobHM": "Lórí iṣẹ́ yìí {{h}}h {{v1}}m",
+      "deliveredYouStillHavePackage": "A ti fi {{trackingCode}} jíṣẹ́. O ṣì ní ẹrù {{remainingActive}} nínú ọkọ̀: ya fọ́tò ẹrù tó kù kíákíá. Ó ń dáàbò bo Ọ nínú aáwọ̀ èyíkéyìí.",
+      "youVeSuccessfullyDelivered": "O ti fi {{trackingCode}} jíṣẹ́ dáadáa. {{clearanceLine}}",
+      "partnerCounter": "Kaǹtà alábàáṣiṣẹ́",
+      "gpsAlways": "GPS NÍGBÀ GBOGBO",
+      "tripDetails": "Àlàyé ìrìn àjò",
+      "packageDetails": "Àlàyé ẹrù",
+      "yesHandleCarefully": "Bẹ́ẹ̀ ni: tọ́jú pẹ̀lẹ́",
+      "travellingWithLargeLuggage": "Ń rìn pẹ̀lú ẹrù ńlá",
+      "travellingWithASmallBag": "Ń rìn pẹ̀lú àpò kékeré",
+      "noLuggage": "Kò sí ẹrù",
+      "notNamed": "A kò dárúkọ"
     },
     "withdrawal": {
       "destination": "Ibi tí a ń lọ",
@@ -628,7 +688,15 @@
       "businessDaysAfterEachDelivery": "ọjọ́ iṣẹ́ lẹ́yìn ìfijíṣẹ́ kọ̀ọ̀kan)",
       "all": "Gbogbo",
       "noPayoutAccountYetAdd": "Kò tíì sí àkáǹtì ìsanwó. Fi àkáǹtì báǹkì rẹ kún un láti yọ owó.",
-      "businessDaysAfterEachDelivery2": "ọjọ́ iṣẹ́ lẹ́yìn ìfijíṣẹ́ kọ̀ọ̀kan, lẹ́yìn náà yọ owó lọ́fẹ̀ẹ́ nígbàkúgbà. A ń so ìyọwó mọ́ ìfijíṣẹ́ kíkún, a sì ń fi ránṣẹ́ bí ìgbéwọ́ báǹkì; àkókò ìdé dá lórí báǹkì rẹ."
+      "businessDaysAfterEachDelivery2": "ọjọ́ iṣẹ́ lẹ́yìn ìfijíṣẹ́ kọ̀ọ̀kan, lẹ́yìn náà yọ owó lọ́fẹ̀ẹ́ nígbàkúgbà. A ń so ìyọwó mọ́ ìfijíṣẹ́ kíkún, a sì ń fi ránṣẹ́ bí ìgbéwọ́ báǹkì; àkókò ìdé dá lórí báǹkì rẹ.",
+      "yourBank": "báǹkì rẹ",
+      "newDriversKeepBackFor": "Awakọ̀ tuntun máa dá {{holdbackPct}}% dúró fún ọ̀sẹ̀ díẹ̀ àkọ́kọ́, nítorí náà {{v1}} wà nínú àkáǹtì rẹ fún ìgbà mìíràn.",
+      "withdrawalsMatchWholeDeliveriesSo": "Ìyọwó bá ìfijíṣẹ́ pípé mu, nítorí náà èyí tó kù ṣì wà.",
+      "newBank": "báǹkì tuntun",
+      "change": "Yí padà",
+      "addBank": "+ Fi báǹkì kún un",
+      "bankAccount": "Àkáǹtì báǹkì",
+      "processing": "Ń ṣiṣẹ́ lé e…"
     },
     "deleteAccount": {
       "deleteAccount": "Pa àkáǹtì rẹ́",
@@ -646,7 +714,15 @@
       "recoverableFor30DaysPermanent": "Ó ṣeé dá padà fún ọjọ́ 30, títí láé lẹ́yìn náà",
       "keepMyAccount": "Pa àkáǹtì mi mọ́",
       "softDeletedNowSignIn": "A ti pa á rẹ́ fún ìgbà díẹ̀; wọlé láàrín ọjọ́ 30 láti fagilé.",
-      "checkingYourAccount": "Ń ṣàyẹ̀wò àkáǹtì rẹ…"
+      "checkingYourAccount": "Ń ṣàyẹ̀wò àkáǹtì rẹ…",
+      "taxRecordsWeAreLegally": "Àkọsílẹ̀ owó orí tí òfin ní kí a pa mọ́ (FIRS / NDPR)",
+      "anonymisedAnalyticsYouAreNot": "Ìṣirò aláìlórúkọ: a kò lè dá ọ mọ̀ fúnra rẹ",
+      "walletBalance": "Owó tó wà nínú àpò: {{v0}}",
+      "yourDriverProfileKycDocuments": "Púrọ́fáìlì awakọ̀ rẹ, ìwé KYC, àti ìdíwọ̀n",
+      "yourTripHistoryAfterThe": "Ìtàn ìrìn àjò rẹ (lẹ́yìn ọjọ́ 30 ìdúró)",
+      "yourWalletBalanceWithdrawIt": "Owó nínú àpò rẹ: yọ ọ́ kí o tó pa á rẹ́",
+      "yourBankDetailsSavedPayout": "Àlàyé báǹkì rẹ àti ìwífún ìsanwó tí a fi pamọ́",
+      "auditTrailsForAnyOpen": "Àkọsílẹ̀ àyẹ̀wò fún ẹ̀sùn tàbí aáwọ̀ èyíkéyìí tó ṣì ṣí"
     },
     "documents": {
       "documents": "Àwọn ìwé",
@@ -654,7 +730,9 @@
       "allYourDocumentsOnePlace": "Gbogbo ìwé rẹ, ibì kan",
       "fromSeirs": "LÁTI SEIRS",
       "officialDocumentsFromSeirsContracts": "Àwọn ìwé ìjọba láti SEIRS (àdéhùn, lẹ́tà, ìlànà) yóò farahàn níbí nígbà tí a bá fi wọ́n ránṣẹ́ sí ọ, pẹ̀lú ìwé àkọsílẹ̀ owó ìjèrè rẹ nísàlẹ̀.",
-      "contractsLettersAndNoticesSeirs": "Àdéhùn, lẹ́tà àti ìkéde tí SEIRS ti fi ránṣẹ́ sí ọ. Ìwé àkọsílẹ̀ owó ìjèrè rẹ wà lábẹ́ Ìwé àkọsílẹ̀, lórí púrọ́fáìlì rẹ."
+      "contractsLettersAndNoticesSeirs": "Àdéhùn, lẹ́tà àti ìkéde tí SEIRS ti fi ránṣẹ́ sí ọ. Ìwé àkọsílẹ̀ owó ìjèrè rẹ wà lábẹ́ Ìwé àkọsílẹ̀, lórí púrọ́fáìlì rẹ.",
+      "sentBy": "· {{sentByName}} ló fi ránṣẹ́",
+      "makingPdf": "Ń ṣe PDF..."
     },
     "changePassword": {
       "changePassword2": "Yí ọ̀rọ̀ìgbaniwọlé padà",
@@ -686,7 +764,8 @@
       "contactSupport": "Kàn sí ìrànlọ́wọ́",
       "talkToAPersonAbout": "Bá ènìyàn sọ̀rọ̀ nípa rẹ̀",
       "sosEmergency": "Pàjáwìrì SOS",
-      "alertOpsAndShareMy": "Kìlọ̀ fún ẹgbẹ́ iṣẹ́ kí o sì pín ibi tí mo wà báyìí"
+      "alertOpsAndShareMy": "Kìlọ̀ fún ẹgbẹ́ iṣẹ́ kí o sì pín ibi tí mo wà báyìí",
+      "justNow": "Ní ìsinsìnyí"
     },
     "earnings": {
       "withdraw": "Yọ owó",
@@ -710,7 +789,8 @@
       "goalReachedYouBeatYour": "O ti dé àfojúsùn! O borí",
       "targetRaiseItAndSee": "àfojúsùn rẹ. Gbé e ga kí o rí bí o ṣe lè lọ tó.",
       "yourPersonalTargetSetIt": "Àfojúsùn tirẹ. Ṣètò rẹ̀ láti bá iṣẹ́ rẹ mu; o lè yí i padà nígbàkúgbà.",
-      "save": "Fi pamọ́"
+      "save": "Fi pamọ́",
+      "withdrawal": "Ìyọwó"
     },
     "seirsId": {
       "mySeirsId": "SEIRS ID mi",
@@ -723,7 +803,12 @@
       "showThisCodeAtHandoffs": "Fi kóòdù yìí hàn ní ìgbàwọ́ nígbà tí olùgbà tàbí òṣìṣẹ́ alábàáṣiṣẹ́ bá nílò láti jẹ́rìí ìdánimọ̀ rẹ.",
       "partnerStaffScansTheQr": "Òṣìṣẹ́ alábàáṣiṣẹ́ ṣàyẹ̀wò QR (tàbí tẹ kóòdù) nígbà ìgbé.",
       "sayYourFullNameThey": "Sọ orúkọ rẹ ní kíkún: wọ́n tẹ̀ ẹ́ láti jẹ́rìí pé ó bára mu.",
-      "theHandoffIsRecordedIn": "A ṣàkọsílẹ̀ ìgbàwọ́ náà nínú ìtàn àyẹ̀wò ìfijíṣẹ́ rẹ."
+      "theHandoffIsRecordedIn": "A ṣàkọsílẹ̀ ìgbàwọ́ náà nínú ìtàn àyẹ̀wò ìfijíṣẹ́ rẹ.",
+      "copied": "A ti ṣe àdàkọ",
+      "collectingFromAPartnerCounter": "Gbígbà láti kaǹtà alábàáṣiṣẹ́: òṣìṣẹ́ máa ṣàyẹ̀wò èyí kí wọ́n tó fún ọ ní ẹrù.",
+      "atAPickupTheSender": "Ní ibi ìgbàwọ́, olùfiránṣẹ́ lè ṣàyẹ̀wò rẹ̀ láti jẹ́rìí pé ìwọ ni awakọ̀ tí SEIRS yàn.",
+      "readTheCodeToSeirs": "Ka kóòdù náà fún ìrànlọ́wọ́ SEIRS, wọ́n á sì rí àkáǹtì rẹ lẹ́sẹ̀kẹsẹ̀.",
+      "itIsAlsoYourSeirs": "Ó tún jẹ́ ìdánimọ̀ SEIRS tí a jẹ́rìí sí fún ọ nígbà tí o kò ní káàdì ìdánimọ̀ lọ́wọ́."
     },
     "sos": {
       "quickDial": "Ìpè kíákíá",
@@ -742,7 +827,15 @@
       "oneTapSharesYourLive": "Ìtẹ̀ kan pín ibi tí o wà pẹ̀lú ẹgbẹ́ iṣẹ́ SEIRS. Lo èyí fún pàjáwìrì gidi nìkan.",
       "couldNotLoadTheFull": "Kò ṣeé gbé gbogbo àkójọ wọlé. Àwọn nọ́ńbà orílẹ̀-èdè yìí ṣì ń ṣiṣẹ́.",
       "supportIsAlreadyAlertedAnd": "A ti kìlọ̀ fún ìrànlọ́wọ́, a sì ń pín ibi tí o wà. Èyí kò pọn dandan: ó kàn sọ fún wọn ohun tí wọ́n ń bọ̀ wá bá.",
-      "skip": "Fò ó"
+      "skip": "Fò ó",
+      "theNationalEmergencyLineDial": "Nọ́ńbà pàjáwìrì orílẹ̀-èdè. Pe èyí ní àkọ́kọ́ bí o bá fara pa, tí a bá ń halẹ̀ mọ́ ọ, tàbí tí o kò dá ẹni tí o nílò mọ̀.",
+      "fireOrAVehicleBurning": "Iná, tàbí ọkọ̀ tó ń jó. Fún ohun mìíràn lo 112.",
+      "sosSent": "A ti fi SOS ránṣẹ́",
+      "sosActivated": "SOS ti bẹ̀rẹ̀!",
+      "opsHasBeenAlertedAnd": "A ti kìlọ̀ fún ẹgbẹ́ iṣẹ́, a sì ń pín ibi tí o wà. Fagilé láàrín {{countdown}}s bí àṣìṣe bá ni.",
+      "helpIsOnTheWay": "Ìrànlọ́wọ́ ń bọ̀. Wà láìléwu.",
+      "updateWhatIsHappening": "Ṣàtúnṣe ohun tó ń ṣẹlẹ̀",
+      "tellOpsWhatIsHappening": "Sọ ohun tó ń ṣẹlẹ̀ fún ẹgbẹ́ iṣẹ́"
     },
     "statement": {
       "runningTotal": "Àpapọ̀ lọ́wọ́lọ́wọ́",
@@ -755,7 +848,13 @@
       "thisYear": "Ọdún yìí",
       "lastYear": "Ọdún tó kọjá",
       "yoursInThisPeriod": "tìrẹ ní àkókò yìí ·",
-      "everyFigureCoversThePeriod": "Gbogbo iye bo àkókò tó wà lókè rẹ̀, kì í ṣe gbogbo ìtàn rẹ pẹ̀lú SEIRS. A kò ka owó ìjèrè tí kò tíì yanjú síbí. Ẹ̀dà tí a gbé jáde ní kóòdù tí ẹnikẹ́ni lè ṣàyẹ̀wò, nítorí náà ó wúlò bí ẹ̀rí owó ìwọlé."
+      "everyFigureCoversThePeriod": "Gbogbo iye bo àkókò tó wà lókè rẹ̀, kì í ṣe gbogbo ìtàn rẹ pẹ̀lú SEIRS. A kò ka owó ìjèrè tí kò tíì yanjú síbí. Ẹ̀dà tí a gbé jáde ní kóòdù tí ẹnikẹ́ni lè ṣàyẹ̀wò, nítorí náà ó wúlò bí ẹ̀rí owó ìwọlé.",
+      "selectAPeriod": "YAN ÀKÓKÒ KAN",
+      "exportThisStatement": "Gbé ìwé àkọsílẹ̀ yìí jáde",
+      "carriedForward": "A gbé lọ síwájú",
+      "cancelledAfterYouSetOff": "A fagilé lẹ́yìn tí o ti gbéra",
+      "carriedForward2": "· {{v0}} tí a gbé lọ síwájú",
+      "moneyCarriedForwardFromAn": "Owó tí a gbé wá láti ìsanwó ìṣáájú ti jẹ́ tìrẹ, a sì ti kà á sínú àpapọ̀ lókè."
     },
     "interstate": {
       "cancel": "Fagilé",
@@ -794,7 +893,30 @@
       "sparePackageCapacityKg": "ÀYÈ ẸRÙ ÀṢẸ́KÙ (kg)",
       "whatAreYouOffering": "KÍ NI O Ń PÈSÈ?",
       "showsYourSpareKgTo": "Ó fi kg àṣẹ́kù rẹ han àwọn olùfiránṣẹ́ lórí ọ̀nà yìí",
-      "packagesRunningYourDeclaredRoute": "Àwọn ẹrù tó ń lọ ọ̀nà tí o kéde yóò wá sọ́dọ̀ rẹ ní àkọ́kọ́ ní àkókò ìlọ rẹ. A kì í fi ipá mú ọ: fò ẹrù èyíkéyìí tí kò bá ìrìn náà mu. Ìbéèrè ìjókòó yàtọ̀: a ṣe é fún ìwọ nìkan, a kì í sì í gba owó kankan títí o fi gbà. Sọ bẹ́ẹ̀ ni tàbí bẹ́ẹ̀ kọ́, ó sì máa pari bí o kò bá dáhùn."
+      "packagesRunningYourDeclaredRoute": "Àwọn ẹrù tó ń lọ ọ̀nà tí o kéde yóò wá sọ́dọ̀ rẹ ní àkọ́kọ́ ní àkókò ìlọ rẹ. A kì í fi ipá mú ọ: fò ẹrù èyíkéyìí tí kò bá ìrìn náà mu. Ìbéèrè ìjókòó yàtọ̀: a ṣe é fún ìwọ nìkan, a kì í sì í gba owó kankan títí o fi gbà. Sọ bẹ́ẹ̀ ni tàbí bẹ́ẹ̀ kọ́, ó sì máa pari bí o kò bá dáhùn.",
+      "youAreListedForOn": "A ti fi ọ sí àtòjọ fún {{routeLine}} ní {{when}}. {{lines}}",
+      "auto": "Aládàáni",
+      "eGBergerBusStop": "b.a. Berger Bus Stop",
+      "whereYouFinish": "Ibi tí o parí",
+      "whereYouStop": "Ibi tí o dúró",
+      "runsThatLeaveYourState": "A lè fún ọ ní ìrìn tó kúrò ní ìpínlẹ̀ rẹ.",
+      "youWillOnlyBeOffered": "A ó fún ọ ní ìrìn nínú ìpínlẹ̀ rẹ nìkan.",
+      "saving": "Ń fi pamọ́",
+      "kgSpare": ", {{kg}}kg àṣẹ́kù",
+      "noPackages": "Kò sí ẹrù",
+      "noSeats": "Kò sí ìjókòó",
+      "stopOnTheWay": "· ibùdó {{midStops}} lójú ọ̀nà",
+      "boardsAt": "· wọ ọkọ̀ ní {{pickupAddress}}",
+      "stillOpen": ", {{left}} ṣì ṣí",
+      "full": ", ó ti kún",
+      "chooseADayAndTime": "Yan ọjọ́ àti àkókò",
+      "giveAtLeastNoticeSo": "Fún wa ní ìkìlọ̀ ó kéré tán {{v0}}, kí olùfiránṣẹ́ lè rí ìrìn àjò rẹ, fohùn ṣọ̀kan lórí iye owó kí ó sì dé ọ̀dọ̀ rẹ.",
+      "aIsNotAPassenger": "{{v0}} kì í ṣe ọkọ̀ èrò lórí SEIRS. Ẹrù nìkan lórí ìrìn yìí.",
+      "realSeatsOnlySeirsBlocks": "Ìjókòó gidi nìkan: SEIRS kò gba ìkúnjù. Kò sí ẹ̀mejì lórí ìjókòó iwájú, láéláé.",
+      "seatsYouReSellingA": "Ìjókòó tí o ń tà ({{vehicleType}} ń ta tó {{seatCap}})",
+      "seatsYouReSellingYour": "Ìjókòó tí o ń tà (irú ọkọ̀ rẹ ló ń pinnu ààlà)",
+      "passengersBoardAtAndGet": "Àwọn èrò wọ ọkọ̀ ní {{v0}}, wọ́n sì gba àmì máàpù lórí {{primary}}{{v2}}. Àwọn ibùdó láàrín ni ọ̀nà rẹ gidi, a sì ń díwọ̀n owó ọkọ̀ lórí wọn dípò láti àárín ìlú dé àárín ìlú.",
+      "setYourStartingPointAbove": "Ṣètò ibi ìbẹ̀rẹ̀ rẹ lókè. Àwọn èrò gba àmì máàpù lórí rẹ̀, nítorí náà ó ní láti jẹ́ ibi tí o máa dúró gan-an."
     },
     "parcelRequests": {
       "cancel": "Fagilé",
@@ -811,7 +933,11 @@
       "declareAnIntercityTripWith": "Kéde ìrìn àjò láàrín ìlú pẹ̀lú ìjókòó tàbí ẹrù, àwọn tó ń lọ ọ̀nà rẹ lè béèrè láti gùn tàbí kí a gbé tiwọn.",
       "seatAndParcelRequestsShow": "Àwọn ìbéèrè ìjókòó àti ẹrù máa farahàn níbí. A kì í gba owó kankan títí o fi gbà, nítorí náà o lè kọ̀ láìjẹ́ kí ẹnikẹ́ni pàdánù owó.",
       "waitingForTheSenderTo": ". Ń dúró de ìdáhùn olùfiránṣẹ́.",
-      "nameAPlaceOnYour": "Dárúkọ ibi kan lórí ọ̀nà rẹ tí o lè dé gan-an. Olùfiránṣẹ́ máa rí i pẹ̀lú iye owó tuntun, ó sì lè gbà tàbí kọ̀. A kì í gba owó kankan lọ́nàkọnà."
+      "nameAPlaceOnYour": "Dárúkọ ibi kan lórí ọ̀nà rẹ tí o lè dé gan-an. Olùfiránṣẹ́ máa rí i pẹ̀lú iye owó tuntun, ó sì lè gbà tàbí kọ̀. A kì í gba owó kankan lọ́nàkọnà.",
+      "nothingWaiting": "Kò sí ohun tó ń dúró",
+      "yourStart": "ìbẹ̀rẹ̀ rẹ",
+      "yourDestination": "ibi tí o ń lọ",
+      "youEarn": "O ń jèrè {{v0}}"
     },
     "ticketId": {
       "tapToOpen": "Tẹ láti ṣí"
@@ -867,7 +993,18 @@
       "colour": "Àwọ̀",
       "eGRed": "b.a. Pupa",
       "freshPhotosOfTheVehicle": "Fọ́tò tuntun ọkọ̀ tí o ń forúkọ sílẹ̀ báyìí, kì í ṣe ti àtijọ́.",
-      "whyAreYouChanging": "Kí ló dé tí o fi ń yí padà?"
+      "whyAreYouChanging": "Kí ló dé tí o fi ń yí padà?",
+      "someoneElse": "ẹlòmíràn",
+      "withdrawThisRequest2": "Fagilé ìbéèrè yìí",
+      "yourVehicleIsApproved": "A ti fọwọ́ sí ọkọ̀ rẹ",
+      "noVehicleOnFileYet": "Kò tíì sí ọkọ̀ nínú àkọsílẹ̀",
+      "youAreRidingAndJobs": "O ń wa {{liveTitle}}{{v1}}, a sì ń bá iṣẹ́ mu rẹ̀.",
+      "fillThisInToTell": "Kún èyí láti sọ ohun tí o ń wa fún wa. Ẹgbẹ́ wa máa ṣàyẹ̀wò rẹ̀ kí iṣẹ́ tó bẹ̀rẹ̀ sí í bá a mu.",
+      "onlyNeedsRedoingEverythingElse": "{{v0}} nìkan ló nílò àtúnṣe. A ti gba gbogbo ohun mìíràn tí o fi ránṣẹ́, nítorí náà fi í sílẹ̀ bí ó ṣe wà.",
+      "theseNeedRedoingEverythingElse": "Àwọn wọ̀nyí nílò àtúnṣe: {{v0}}. A ti gba gbogbo ohun mìíràn tí o fi ránṣẹ́, nítorí náà fi àwọn tó kù sílẹ̀ bí wọ́n ṣe wà.",
+      "noReasonWasRecordedAsk": "A kò kọ ìdí kankan sílẹ̀. Bèèrè lọ́wọ́ ìrànlọ́wọ́ ohun tó kù kí o tó tún fi ránṣẹ́.",
+      "askToChangeYourVehicle": "BÉÈRÈ LÁTI YÍ ỌKỌ̀ RẸ PADÀ",
+      "tellUsWhatYouRide": "SỌ OHUN TÍ O Ń WA FÚN WA"
     },
     "NotFound": {
       "screenNotFound": "Kò rí ojú ìwé yìí",
@@ -917,7 +1054,9 @@
     "verifyOtp": {
       "checkYourEmail": "Ṣàyẹ̀wò ímeèlì rẹ",
       "verifyEmail": "Jẹ́rìí ímeèlì",
-      "weSentA6Digit": "A fi kóòdù oní-nọ́ńbà 6 ránṣẹ́ sí"
+      "weSentA6Digit": "A fi kóòdù oní-nọ́ńbà 6 ránṣẹ́ sí",
+      "resendInS": "Tún fi ránṣẹ́ ní {{cooldown}}s",
+      "resendCode": "Tún kóòdù ránṣẹ́"
     },
     "history": {
       "myTrips": "Ìrìn àjò mi",
@@ -936,7 +1075,12 @@
       "ordersInTheLastHours": "Àwọn ìbéèrè ní wákàtí tó kọjá",
       "goOnlineSoSeirsKnows": "Wà lórí ayélujára kí SEIRS lè mọ ibi tí o wà, lẹ́yìn náà padà wá wo ìbéèrè ní àyíká rẹ.",
       "tapToNavigate": "Tẹ láti tọ́ ọ̀nà",
-      "noDemandClustersRightNow": "Kò sí àkójọ ìbéèrè báyìí. Máa wà lórí ayélujára: èyí ń yípadà bí ìbéèrè bá ń wọlé."
+      "noDemandClustersRightNow": "Kò sí àkójọ ìbéèrè báyìí. Máa wà lórí ayélujára: èyí ń yípadà bí ìbéèrè bá ń wọlé.",
+      "steady": "Déédéé",
+      "medium": "Àárín",
+      "high": "Gíga",
+      "store": "Ilé ìtajà",
+      "kmFromYou": "· {{distanceKm}} km láti ọ̀dọ̀ rẹ"
     },
     "addBank": {
       "payoutBankAccount": "Àkáǹtì báǹkì fún ìsanwó",
@@ -952,7 +1096,21 @@
       "keepMyCurrentAccount": "Pa àkáǹtì mi lọ́wọ́lọ́wọ́ mọ́",
       "reviewTakesUpTo3": ". Àyẹ̀wò máa gba tó ọjọ́ iṣẹ́ 3.",
       "bank": "Báǹkì",
-      "theAccountNameIsConfirmed": "A jẹ́rìí orúkọ àkáǹtì tààrà pẹ̀lú báǹkì. A pa àlàyé rẹ mọ́ pẹ̀lú ìpamọ́, a sì ń lò ó fún sísan ọ nìkan."
+      "theAccountNameIsConfirmed": "A jẹ́rìí orúkọ àkáǹtì tààrà pẹ̀lú báǹkì. A pa àlàyé rẹ mọ́ pẹ̀lú ìpamọ́, a sì ń lò ó fún sísan ọ nìkan.",
+      "checking": "Ń ṣàyẹ̀wò…",
+      "submittedForReview": "A ti fi sílẹ̀ fún àyẹ̀wò",
+      "bankSaved": "A ti fi báǹkì pamọ́!",
+      "weCheckPayoutAccountChanges": "A ń ṣàyẹ̀wò àyípadà àkáǹtì ìsanwó, tó ọjọ́ iṣẹ́ 3.",
+      "payoutsPauseUntilThenAnd": "Ìsanwó máa dúró títí di ìgbà náà, kò sì sí ohun tó sọnù.",
+      "newBank": "Báǹkì tuntun",
+      "loadingBanks": "Ń gbé àwọn báǹkì wọlé…",
+      "selectBank2": "Yan báǹkì…",
+      "verify": "Jẹ́rìí",
+      "replacingYourAccountPausesWithdrawals": "Rírọ́pò àkáǹtì rẹ máa dá ìyọwó dúró títí ìrànlọ́wọ́ yóò fi fọwọ́ sí àyípadà náà (tó ọjọ́ iṣẹ́ 3). Èyí ń dáàbò bo owó ìjèrè rẹ bí ẹlòmíràn bá wọ àkáǹtì rẹ.",
+      "saving": "Ń fi pamọ́…",
+      "saveBankAccount": "Fi àkáǹtì báǹkì pamọ́",
+      "bankListUnavailableCheckYour": "Àkójọ báǹkì kò sí. Ṣàyẹ̀wò ìsopọ̀ rẹ kí o sì tún ṣí.",
+      "noBankMatchesThatSearch": "Kò sí báǹkì tó bá ìwádìí yẹn mu."
     },
     "codeOfConduct": {
       "driverCodeOfConduct": "Ìlànà ìwà awakọ̀",
@@ -984,7 +1142,14 @@
       "tellTheDispatcherYouRe": "Sọ fún olùpín iṣẹ́ pé o ti parí lẹ́yìn àwọn iṣẹ́ rẹ lọ́wọ́lọ́wọ́. Dáwọ́ gbígba ìbéèrè tuntun dúró láìjáde ní àárín ìrìn.",
       "activeJobs": "ÀWỌN IṢẸ́ LỌ́WỌ́LỌ́WỌ́",
       "todaySAcceptanceRate": "ÌWỌ̀N ÌGBÀ ÒNÍ",
-      "lastOrderRequires80This": "Ìbéèrè ìkẹyìn nílò ≥80%. Èyí dènà àwọn awakọ̀ láti lo bọ́tìnì náà láti fò àwọn ìbéèrè tí wọn kò fẹ́."
+      "lastOrderRequires80This": "Ìbéèrè ìkẹyìn nílò ≥80%. Èyí dènà àwọn awakọ̀ láti lo bọ́tìnì náà láti fò àwọn ìbéèrè tí wọn kò fẹ́.",
+      "windingDown": "Ń parí iṣẹ́",
+      "acceptingJobs": "Ń gba iṣẹ́",
+      "noActiveJobsYouCan": "Kò sí iṣẹ́ lọ́wọ́lọ́wọ́: o lè jáde bí ó ti wà.",
+      "completeTheseBeforeFullySigning": "Parí {{activeJobs}} wọ̀nyí kí o tó jáde pátápátá.",
+      "dispatcherStopsSendingYouNew": "Olùpín iṣẹ́ dáwọ́ fífún ọ ní iṣẹ́ tuntun dúró",
+      "activeJobsContinueNormallyComplete": "Àwọn iṣẹ́ lọ́wọ́lọ́wọ́ ń bá a lọ bí ó ti wà: parí wọn ní ìwọ̀n tìrẹ",
+      "youCanTReEnable": "O kò lè tún mú iṣẹ́ ṣiṣẹ́ láìjáde pátápátá (bọ́tìnì ọ̀nà kan)"
     },
     "multiLeg": {
       "activePoolTrip": "Ìrìn àjò àjọpín lọ́wọ́lọ́wọ́",
@@ -995,7 +1160,9 @@
       "inTransit": "Lójú ọ̀nà",
       "poolCapacity": "ÀYÈ ÀJỌPÍN",
       "whenYouAcceptAJob": "Nígbà tí o bá gba iṣẹ́, ó máa farahàn níbí. Àwọn ìpele púpọ̀ lórí ọ̀nà kan náà ni a ń kó jọ sí ìrìn àjò àjọpín.",
-      "theDispatcherSilentlyInsertsLegs": "Olùpín iṣẹ́ máa fi àwọn ìpele tó wà láàrín 1km sí ọ̀nà rẹ tí ó sì fi ≤20% kún àkókò rẹ sínú láìsọ. O kò nílò láti gba ọ̀kọ̀ọ̀kan: parí àwọn ìpele ní ètò tí a fi hàn."
+      "theDispatcherSilentlyInsertsLegs": "Olùpín iṣẹ́ máa fi àwọn ìpele tó wà láàrín 1km sí ọ̀nà rẹ tí ó sì fi ≤20% kún àkókò rẹ sínú láìsọ. O kò nílò láti gba ọ̀kọ̀ọ̀kan: parí àwọn ìpele ní ètò tí a fi hàn.",
+      "atCapNoNewInsertions": "Ó ti kún: kò sí ìfikún tuntun títí ìpele kan yóò fi parí",
+      "package": "Ẹrù"
     },
     "ratings": {
       "myRatings": "Àwọn ìdíwọ̀n mi",
@@ -1003,7 +1170,9 @@
       "breakdown": "Àlàyé kíkún",
       "recentReviews": "Àwọn àtúnyẹ̀wò àìpẹ́",
       "tipsToImproveYourRating": "Ìmọ̀ràn láti mú ìdíwọ̀n rẹ dára sí i",
-      "sustainedLowRatingsMayResult": ". Ìdíwọ̀n kékeré tó ń bá a lọ lè yọrí sí àyẹ̀wò àkáǹtì. Wo ìmọ̀ràn nísàlẹ̀ láti mú un dára sí i."
+      "sustainedLowRatingsMayResult": ". Ìdíwọ̀n kékeré tó ń bá a lọ lè yọrí sí àyẹ̀wò àkáǹtì. Wo ìmọ̀ràn nísàlẹ̀ láti mú un dára sí i.",
+      "basedOnRating": "Láti inú ìdíwọ̀n {{v0}}",
+      "noRatingsYetCompleteDeliveries": "Kò tíì sí ìdíwọ̀n. Parí ìfijíṣẹ́ láti gba èyí àkọ́kọ́."
     },
     "scanPackage": {
       "verifyThePackage": "Jẹ́rìí ẹrù náà",
@@ -1019,7 +1188,10 @@
       "noScheduledJobsYet": "Kò tíì sí iṣẹ́ tí a ṣètò",
       "myWorkingHours": "Àwọn wákàtí iṣẹ́ mi",
       "dayOff": "Ọjọ́ ìsinmi",
-      "aPersonalNoteToYourself": "Àkọsílẹ̀ ara ẹni fún ọ, tí a fi pamọ́ sórí fóònù yìí nìkan. Kò yí àwọn iṣẹ́ tí a ń fún ọ padà: o ń gba iṣẹ́ nígbàkúgbà tí o bá wà lórí ayélujára."
+      "aPersonalNoteToYourself": "Àkọsílẹ̀ ara ẹni fún ọ, tí a fi pamọ́ sórí fóònù yìí nìkan. Kò yí àwọn iṣẹ́ tí a ń fún ọ padà: o ń gba iṣẹ́ nígbàkúgbà tí o bá wà lórí ayélujára.",
+      "start": "Ìbẹ̀rẹ̀",
+      "saved": "A ti fi pamọ́",
+      "saveMyHours": "Fi wákàtí mi pamọ́"
     },
     "signature": {
       "verifyRecipient": "Jẹ́rìí olùgbà",
@@ -1047,7 +1219,9 @@
       "recipientSSeirsId": "SEIRS ID olùgbà",
       "expectedName": "ORÚKỌ TÍ A RETÍ",
       "askTheRecipientToSpeak": "Ní kí olùgbà sọ orúkọ rẹ̀ ní kíkún. Tẹ OHUN TÍ WỌ́N SỌ GAN-AN nísàlẹ̀.",
-      "photoOfRecipientWithPackage": "Fọ́tò olùgbà pẹ̀lú ẹrù (pẹ̀lú ID tí a gbé sókè bí ó bá jẹ́ olówó iyebíye)"
+      "photoOfRecipientWithPackage": "Fọ́tò olùgbà pẹ̀lú ẹrù (pẹ̀lú ID tí a gbé sókè bí ó bá jẹ́ olówó iyebíye)",
+      "sending": "Ń fi ránṣẹ́…",
+      "emailRecipientA6Digit": "Fi kóòdù oní-nọ́ńbà 6 ránṣẹ́ sí ímeèlì olùgbà"
     },
     "trunkCheck": {
       "retake": "Tún yà",
@@ -1056,7 +1230,8 @@
       "tapToCaptureTrunk": "Tẹ láti ya fọ́tò àpótí ẹrù",
       "frameTheInsideOfThe": "Ya inú àpótí ẹrù kí gbogbo ẹrù tó kù lè hàn.",
       "confirmAndContinue": "Jẹ́rìí kí o sì tẹ̀síwájú",
-      "ifAnythingIsMissingDo": "Bí ohunkóhun bá sọnù, MÁ tẹ̀síwájú. Dúró sí ibi ààbò kí o sì kàn sí ìrànlọ́wọ́ kí o tó wakọ̀ síwájú, kí o sì pa fọ́tò náà mọ́ sórí fóònù rẹ."
+      "ifAnythingIsMissingDo": "Bí ohunkóhun bá sọnù, MÁ tẹ̀síwájú. Dúró sí ibi ààbò kí o sì kàn sí ìrànlọ́wọ́ kí o tó wakọ̀ síwájú, kí o sì pa fọ́tò náà mọ́ sórí fóònù rẹ.",
+      "takeAQuickPhotoOf": "Ya fọ́tò àpótí ẹrù kíákíá kí a lè kọ ẹni tó ń tọ́jú ẹrù sílẹ̀."
     },
     "statusBroadcast": {
       "statusBroadcast": "Ìkéde ipò",
@@ -1134,7 +1309,8 @@
       "notFound": "Kò rí i"
     },
     "messagesinbox": {
-      "seirsSupport": "Ìrànlọ́wọ́ SEIRS"
+      "seirsSupport": "Ìrànlọ́wọ́ SEIRS",
+      "noMessages": "(kò sí ìwé)"
     },
     "tabsIndex": {
       "live": "Láàyè",
@@ -1143,7 +1319,24 @@
       "activeJob": "IṢẸ́ LỌ́WỌ́LỌ́WỌ́",
       "sellSpareSeatsAndBoot": "Ta ìjókòó àṣẹ́kù àti àyè àpótí ẹrù",
       "newJobsArePaused": "A ti dá àwọn iṣẹ́ tuntun dúró",
-      "yourVehicleChangeIsBeing": "A ń ṣàyẹ̀wò àyípadà ọkọ̀ rẹ, sábà láàrín wákàtí 24 sí ọjọ́ iṣẹ́ 3. A dá àwọn iṣẹ́ tuntun dúró títí a fi fọwọ́ sí i kí a má bàa fún ọ ní iṣẹ́ tí ọkọ̀ rẹ kò lè ṣe. Ohunkóhun tí a ti yàn fún ọ kò yípadà: parí rẹ̀ bí ó ti wà."
+      "yourVehicleChangeIsBeing": "A ń ṣàyẹ̀wò àyípadà ọkọ̀ rẹ, sábà láàrín wákàtí 24 sí ọjọ́ iṣẹ́ 3. A dá àwọn iṣẹ́ tuntun dúró títí a fi fọwọ́ sí i kí a má bàa fún ọ ní iṣẹ́ tí ọkọ̀ rẹ kò lè ṣe. Ohunkóhun tí a ti yàn fún ọ kò yípadà: parí rẹ̀ bí ó ti wà.",
+      "applicationNotApproved": "A kò fọwọ́ sí ìbéèrè náà",
+      "accountSuspended": "A ti dá àkáǹtì dúró",
+      "accountUnderReview": "Àkáǹtì wà lábẹ́ àyẹ̀wò",
+      "somethingWasWrongWithYour": "Nǹkan kan kò tọ̀nà nínú ìwé rẹ. Ṣí Ìjẹ́rìí KYC láti rí ohun tí o máa tún fi ránṣẹ́.",
+      "yourAccountIsSuspendedSo": "A ti dá àkáǹtì rẹ dúró, nítorí náà o kò lè wọlé. Fi ìwé ránṣẹ́ sí ìrànlọ́wọ́, a ó sì ṣàtúnṣe rẹ̀.",
+      "completeYourKycDocumentsTo": "Parí ìwé KYC rẹ kí a lè fọwọ́ sí ọ. Àyẹ̀wò gba tó ọjọ́ iṣẹ́ 3. O lè wo inú àpù, ṣùgbọ́n wíwọlé máa ṣí lẹ́yìn ìfọwọ́sí.",
+      "youAreOnline": "O WÀ LÓRÍ AYÉLUJÁRA",
+      "youAreOffline": "O KÚRÒ LÓRÍ AYÉLUJÁRA",
+      "receivingNewJobRequests": "Ń gba ìbéèrè iṣẹ́ tuntun",
+      "goOnlineToStartEarning": "Wọlé láti bẹ̀rẹ̀ sí í jèrè",
+      "jobCompleted": "iṣẹ́ tí a parí",
+      "jobsCompleted": "iṣẹ́ tí a parí",
+      "new": "Tuntun",
+      "noRatingsYet": "kò tíì sí ìdíwọ̀n",
+      "waitingOnYou": "ń dúró dè ọ́",
+      "forYourTrips": "fún ìrìn àjò rẹ",
+      "packageDelivery": "Ìfijíṣẹ́ ẹrù"
     },
     "statepicker": {
       "noStateMatches": "Kò sí ìpínlẹ̀ tó bá “"
@@ -1166,13 +1359,24 @@
       "navigateTheRestOfThe": "Tọ́ ọ̀nà fún ìyókù ìrìn náà (",
       "handToTheCounterStaff": "Fi lé òṣìṣẹ́ kaǹtà lọ́wọ́, kì í ṣe oníbàárà",
       "iVeArrived": "Mo ti dé",
-      "earningsBreakdown": "Àlàyé owó ìjèrè"
+      "earningsBreakdown": "Àlàyé owó ìjèrè",
+      "tripNotFound": "A kò rí ìrìn àjò náà",
+      "stopTrip": "Ìrìn àjò ibùdó {{length}}",
+      "completedTrip": "Ìrìn àjò tí a parí",
+      "cancelledTrip": "Ìrìn àjò tí a fagilé",
+      "failedTrip": "Ìrìn àjò tí kò yọrí",
+      "activeTrip": "Ìrìn àjò lọ́wọ́lọ́wọ́",
+      "delivery": "Ìfijíṣẹ́",
+      "surchargeShare": "Ìpín owó àfikún ({{v0}})",
+      "surchargeShare2": "Ìpín owó àfikún"
     },
     "editTripDetail": {
       "departureTime": "ÀKÓKÒ ÌLỌ",
       "cannotBeTurnedOffWith": "Kò ṣeé pa nígbà tí a ti bùkù ìjókòó.",
       "spareSpaceKg": "ÀYÈ ÀṢẸ́KÙ (KG)",
-      "whatIsGenuinelyLeftAfter": "Ohun tó kù ní tòótọ́ lẹ́yìn ẹrù tìrẹ. A máa dáwọ́ fífún ọ ní ẹrù dúró nígbà tí èyí bá ti kún."
+      "whatIsGenuinelyLeftAfter": "Ohun tó kù ní tòótọ́ lẹ́yìn ẹrù tìrẹ. A máa dáwọ́ fífún ọ ní ẹrù dúró nígbà tí èyí bá ti kún.",
+      "nobodyHasBookedYetSo": "Kò sẹ́ni tó bùkù síbẹ̀, nítorí náà gbogbo ohun tó wà nísàlẹ̀ ṣì jẹ́ tìrẹ láti yí padà. Ọ̀nà náà fúnra rẹ̀ ti wà títí: fagilé kí o sì kéde ìrìn àjò tuntun láti wa lọ síbòmíràn.",
+      "alreadyBooked": "({{booked}} ti bùkù)"
     },
     "jobDetail": {
       "instant": "Lẹ́sẹ̀kẹsẹ̀",
@@ -1182,14 +1386,43 @@
       "interstateThisRunLeaves": "LÁÀRÍN ÌPÍNLẸ̀: ìrìn yìí ń kúrò ní",
       "checkYourPapersAndYour": ". Ṣàyẹ̀wò ìwé rẹ àti epo rẹ kí o tó gbà.",
       "thisJobIsFinishedNothing": "Iṣẹ́ yìí ti parí. Kò sí ohun tó kù láti ṣe níbí.",
-      "anotherDriverTookThisOne": "Awakọ̀ mìíràn ti gba èyí. Ó ti kúrò lórí àtòjọ rẹ."
+      "anotherDriverTookThisOne": "Awakọ̀ mìíràn ti gba èyí. Ó ti kúrò lórí àtòjọ rẹ.",
+      "documentsEnvelope": "Ìwé / Àpò ìwé",
+      "smallParcel": "Ẹrù kékeré",
+      "standardParcel": "Ẹrù déédéé",
+      "fragileElectronics": "Ó lè fọ́ / Ẹ̀rọ ìtànná",
+      "hotFood": "Oúnjẹ gbígbóná",
+      "coldFrozenFood": "Oúnjẹ tútù / dídì",
+      "medicalSupplies": "Ohun èlò ìṣègùn",
+      "bulkGoods": "Ẹrù ọ̀pọ̀",
+      "farmProduce": "Ọjà oko",
+      "buildingMaterials": "Ohun èlò ìkọ́lé",
+      "lumberSawmill": "Pákó / Ilé iṣẹ́ igi",
+      "houseMoveSingleItem": "Ìkórò ilé, ohun kan",
+      "houseMoveFullUnit": "Ìkórò ilé, gbogbo ilé",
+      "liveAnimals": "Ẹranko alààyè",
+      "industrialParts": "Ẹ̀yà ẹ̀rọ ilé iṣẹ́",
+      "otherSpecial": "Òmíràn / Pàtàkì",
+      "keepItHotDeliverWithout": "Jẹ́ kó gbóná, fi jíṣẹ́ láì yà",
+      "coldChainDoNotLet": "Ẹrù tútù, má ṣe jẹ́ kó dúró nínú oòrùn",
+      "medicalLoadHandleWithPriority": "Ẹrù ìṣègùn, tọ́jú rẹ̀ ní àkọ́kọ́",
+      "liveAnimalsAirAndWater": "Ẹranko alààyè, afẹ́fẹ́ àti omi ṣe pàtàkì",
+      "seatBookingHeldForYou": "A ti dá ìjókòó dúró fún ọ: {{countdownLabel}} ló kù",
+      "thisOfferClosesIn": "Ìfilọ́ yìí máa parí ní {{countdownLabel}}",
+      "aboutKmEachWay": ", tó {{distanceKm}} km lọ́nà kọ̀ọ̀kan",
+      "inAppChatOnlyNo": "Ìfọ̀rọ̀wérọ̀ nínú àpù nìkan. A kò pín nọ́ńbà fóònù kankan.",
+      "phoneSharedAfterAcceptance": "A pín fóònù lẹ́yìn ìgbà tí a bá gbà",
+      "acceptBooking": "Gba bùkù",
+      "acceptRide": "Gba ìgbéra",
+      "acceptJob": "Gba iṣẹ́"
     },
     "supportDetail": {
       "attachPhoto": "So fọ́tò mọ́ ọn",
       "chooseWhereToAttachFrom": "Yan ibi tí o máa gbé e láti.",
       "useTheCameraNow": "Lo kámẹ́rà báyìí",
       "fromGallery": "Láti inú gálárì",
-      "pickAPhotoYouAlready": "Yan fọ́tò tí o ti ní"
+      "pickAPhotoYouAlready": "Yan fọ́tò tí o ti ní",
+      "document": "Ìwé"
     },
     "transactionDetail": {
       "thisEntryIsNotIn": "Àkọsílẹ̀ yìí kò sí nínú owó ìjèrè àìpẹ́ rẹ. Àwọn àkọsílẹ̀ àtijọ́ kò tíì wà lórí ojú ìwé yìí.",
@@ -1199,7 +1432,9 @@
       "status": "Ipò",
       "whatHappened": "Ohun tó ṣẹlẹ̀",
       "paidToBank": "A san sí báǹkì",
-      "forTheDistanceYouRode": "fún ìjìnnà tí o rìn kí a tó fagilé e. A dá owó ọkọ̀ oníbàárà padà fún wọn. O kò ṣe ohunkóhun tí kò tọ́, èyí kò sì kan ìdíwọ̀n rẹ."
+      "forTheDistanceYouRode": "fún ìjìnnà tí o rìn kí a tó fagilé e. A dá owó ọkọ̀ oníbàárà padà fún wọn. O kò ṣe ohunkóhun tí kò tọ́, èyí kò sì kan ìdíwọ̀n rẹ.",
+      "readyToWithdraw": "Ó ṣetán fún ìyọwó",
+      "onHoldReview": "Ó dúró (àyẹ̀wò)"
     },
     "corridorcard": {
       "end": "Ìparí",
@@ -1210,7 +1445,8 @@
       "pdfAttached": "PDF ti wà"
     },
     "earningscalendar": {
-      "noEarningsOnThisDay": "Kò sí owó ìjèrè ní ọjọ́ yìí."
+      "noEarningsOnThisDay": "Kò sí owó ìjèrè ní ọjọ́ yìí.",
+      "thisMonth": "oṣù yìí"
     },
     "identitydocuments": {
       "notUploaded": "A kò tíì gbé e sókè",
@@ -1226,13 +1462,37 @@
       "guarantorLetter": "Lẹ́tà onígbọ̀wọ́",
       "aFileFromYourEmail": "Fáìlì láti ímeèlì rẹ tàbí ojú òpó",
       "tapItAndUploadThe": ". Tẹ ẹ́ kí o sì gbé èyí tó wà lọ́wọ́lọ́wọ́ sókè.",
-      "askedOnceTheseDoNot": "A béèrè lẹ́ẹ̀kan. Àwọn wọ̀nyí kò yípadà nígbà tí o bá yí ọkọ̀ padà, nítorí náà a kò ní tún béèrè wọn lọ́wọ́ rẹ."
+      "askedOnceTheseDoNot": "A béèrè lẹ́ẹ̀kan. Àwọn wọ̀nyí kò yípadà nígbà tí o bá yí ọkọ̀ padà, nítorí náà a kò ní tún béèrè wọn lọ́wọ́ rẹ.",
+      "governmentIssuedIdOrNin": "Káàdì ìdánimọ̀ ìjọba tàbí ìwé NIN, iwájú",
+      "backSideOfTheSame": "Ẹ̀yìn káàdì ìdánimọ̀ tàbí ìwé NIN kan náà",
+      "aClearPhotoOfYour": "Fọ́tò ojú rẹ tó ṣe kedere, tí a ń lò lórí púrọ́fáìlì awakọ̀ rẹ",
+      "aValidNigerianDriverLicence": "Ìwé àṣẹ awakọ̀ Nàìjíríà tó wúlò",
+      "aLetterFromAGuarantor": "Lẹ́tà láti ọ̀dọ̀ olùṣèdúró. A gbani níyànjú, kò pọn dandan",
+      "expiredTapToReplace": "{{label}}, ó ti pari, tẹ láti rọ́pò",
+      "nothingIsWrongWithWhat": "{{rejectionReason}} Kò sí ohun tó burú nínú ohun tí o fi ránṣẹ́. Tẹ láti gbé èyí tó wà lọ́wọ́lọ́wọ́ sókè.",
+      "thisIsNoLongerCurrent": "Èyí kò wúlò mọ́. Kò sí ohun tó burú nínú ohun tí o fi ránṣẹ́: tẹ láti gbé èyí tó wà lọ́wọ́lọ́wọ́ sókè."
     },
     "insurancepartners": {
-      "seirsEarnsAReferralFee": "SEIRS ń jèrè owó ìpè nígbà tí o bá rà nípasẹ̀ alábàáṣiṣẹ́. Kò yí ohun tí o ń san padà."
+      "seirsEarnsAReferralFee": "SEIRS ń jèrè owó ìpè nígbà tí o bá rà nípasẹ̀ alábàáṣiṣẹ́. Kò yí ohun tí o ń san padà.",
+      "vehicleAndThirdPartyCover": "Ìṣedúró ọkọ̀ àti ẹni kẹta",
+      "motorcycleAndAutoInsurance": "Ìṣedúró alùpùpù àti ọkọ̀",
+      "affordableRiderPolicies": "Ìṣedúró awakọ̀ tó rọrùn",
+      "motorAndLiabilityCover": "Ìṣedúró ọkọ̀ àti ojúṣe"
     },
     "packagecodecapture": {
       "youCanStillFinishThis": "O ṣì lè parí ìgbàwọ́ yìí: tẹ kóòdù nísàlẹ̀."
+    },
+    "passwordinput": {
+      "hidePassword": "Fi ọ̀rọ̀ìgbaniwọlé pamọ́",
+      "showPassword": "Fi ọ̀rọ̀ìgbaniwọlé hàn"
+    },
+    "streetautocomplete": {
+      "startTypingAStreetOr": "Bẹ̀rẹ̀ sí í tẹ òpópónà tàbí àmì ilẹ̀…"
+    },
+    "messagesDetail": {
+      "onMyWay": "Mo wà lójú ọ̀nà",
+      "inTrafficRunningLate": "Mo wà nínú ìdíwọ́ ọkọ̀, mo ń pẹ́",
+      "packageDelivered": "A ti fi ẹrù jíṣẹ́"
     }
   }
 }
