@@ -286,26 +286,32 @@ export class BusinessService {
     cadence: RecurringCadence; dayOfWeek?: number | null; dayOfMonth?: number | null;
     hour: number; minute: number;
   }, from: Date): Date {
-    const next = new Date(from);
-    next.setSeconds(0, 0);
-    next.setHours(t.hour, t.minute, 0, 0);
+    /**
+     * hour:minute is the OWNER'S clock, Africa/Lagos, not the server's.
+     * Railway runs on UTC, and until 2026-09-06 this used setHours on the
+     * server clock, so a 09:00 pickup was created for 10:00 Lagos. Nigeria
+     * has no daylight saving, so the arithmetic is done on a copy shifted
+     * by the fixed +1h and shifted back at the end.
+     */
+    const LAGOS_MS = 60 * 60 * 1000;
+    const fromL = new Date(from.getTime() + LAGOS_MS);       // Lagos wall clock, expressed in UTC fields
+    const next = new Date(fromL);
+    next.setUTCSeconds(0, 0);
+    next.setUTCHours(t.hour, t.minute, 0, 0);
 
     if (t.cadence === RecurringCadence.DAILY) {
-      if (next <= from) next.setDate(next.getDate() + 1);
-      return next;
-    }
-    if (t.cadence === RecurringCadence.WEEKLY) {
+      if (next <= fromL) next.setUTCDate(next.getUTCDate() + 1);
+    } else if (t.cadence === RecurringCadence.WEEKLY) {
       const target = t.dayOfWeek ?? 1;
-      let diff = (target - next.getDay() + 7) % 7;
-      if (diff === 0 && next <= from) diff = 7;
-      next.setDate(next.getDate() + diff);
-      return next;
+      let diff = (target - next.getUTCDay() + 7) % 7;
+      if (diff === 0 && next <= fromL) diff = 7;
+      next.setUTCDate(next.getUTCDate() + diff);
+    } else {
+      const target = t.dayOfMonth ?? 1;
+      next.setUTCDate(target);
+      if (next <= fromL) next.setUTCMonth(next.getUTCMonth() + 1);
     }
-    // MONTHLY
-    const target = t.dayOfMonth ?? 1;
-    next.setDate(target);
-    if (next <= from) next.setMonth(next.getMonth() + 1);
-    return next;
+    return new Date(next.getTime() - LAGOS_MS);
   }
 
   /**
