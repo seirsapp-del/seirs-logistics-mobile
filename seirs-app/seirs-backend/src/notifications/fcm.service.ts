@@ -62,8 +62,24 @@ export class FcmService implements OnModuleInit {
     body: string,
     data?: Record<string, string>,
   ): Promise<{ sent: boolean; stale: boolean; reason?: string }> {
-    if (!this.messaging) return { sent: false, stale: false, reason: 'push-disabled' };
     if (!fcmToken)       return { sent: false, stale: false, reason: 'no-token' };
+
+    /**
+     * Expo tokens go to Expo, not Firebase (2026-09-06).
+     *
+     * All three apps register with getExpoPushTokenAsync, which yields
+     * ExponentPushToken[...]. Firebase Admin rejects that shape as an
+     * invalid registration token, this method then reported it STALE,
+     * and the caller deleted it. So every phone was silently
+     * unregistered on the first push it should have received, which is
+     * why nobody ever saw a system notification. Expo's push API takes
+     * these tokens directly and relays through FCM/APNs itself.
+     */
+    if (/^Expo(nent)?PushToken\[/.test(fcmToken)) {
+      return this.sendViaExpo(fcmToken, title, body, data);
+    }
+
+    if (!this.messaging) return { sent: false, stale: false, reason: 'push-disabled' };
 
     try {
       await this.messaging.send({
@@ -94,6 +110,43 @@ export class FcmService implements OnModuleInit {
     }
   }
 
+  /** Expo's push relay. No credentials needed; an access token can be added later. */
+  private async sendViaExpo(
+    token: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>,
+  ): Promise<{ sent: boolean; stale: boolean; reason?: string }> {
+    try {
+      const res = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          to: token,
+          title,
+          body,
+          data: data ?? {},
+          sound: 'default',
+          priority: 'high',
+          channelId: 'seirs_default',
+        }),
+      });
+      const json: any = await res.json().catch(() => ({}));
+      const ticket = Array.isArray(json?.data) ? json.data[0] : json?.data;
+      if (ticket?.status === 'ok') return { sent: true, stale: false };
+      const err = ticket?.details?.error ?? json?.errors?.[0]?.code ?? ticket?.message ?? `http ${res.status}`;
+      if (err === 'DeviceNotRegistered') {
+        this.logger.log(`Stale Expo token removed for prefix ${token.slice(0, 24)}...`);
+        return { sent: false, stale: true, reason: 'stale-token' };
+      }
+      this.logger.warn(`Expo push failed: ${err}`);
+      return { sent: false, stale: false, reason: String(err) };
+    } catch (e: any) {
+      this.logger.warn(`Expo push request failed: ${e?.message ?? e}`);
+      return { sent: false, stale: false, reason: e?.message ?? 'expo-request-failed' };
+    }
+  }
+
   // Returns true if token should be removed (invalid/unregistered)
   async sendToToken(
     fcmToken: string,
@@ -111,10 +164,14 @@ export class FcmService implements OnModuleInit {
     body: string,
     data?: Record<string, string>,
   ): Promise<void> {
-    if (!this.messaging || !fcmTokens.length) return;
+    if (!fcmTokens.length) return;
 
-    const valid = fcmTokens.filter(Boolean);
-    if (!valid.length) return;
+    // Expo tokens one by one through Expo; the rest as one FCM multicast.
+    const expo = fcmTokens.filter((t) => t && /^Expo(nent)?PushToken\[/.test(t));
+    for (const t of expo) await this.sendViaExpo(t, title, body, data);
+
+    const valid = fcmTokens.filter((t) => t && !/^Expo(nent)?PushToken\[/.test(t));
+    if (!this.messaging || !valid.length) return;
 
     try {
       await this.messaging.sendEachForMulticast({

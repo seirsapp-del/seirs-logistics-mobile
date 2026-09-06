@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
-import { Repository, MoreThanOrEqual, LessThanOrEqual, DataSource, In } from 'typeorm';
+import { Repository, MoreThanOrEqual, LessThanOrEqual, DataSource, In, IsNull } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../users/user.entity';
 import { BusinessAccount } from './business-account.entity';
@@ -444,10 +444,28 @@ export class BusinessService {
       }),
     ]);
 
-    const recentPackages = await this.packagesRepo.find({
-      where: { businessAccountId: biz.id },
+    /**
+     * Real deliveries, not the legacy business_packages rows (2026-09-06).
+     * The home listed packages, so a run created today (a recurring run,
+     * a booking waiting for payment) never appeared there, and the three
+     * tiles read fields this method never returned. The list tab and the
+     * home now read the same table.
+     */
+    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const recent = await this.deliveriesRepo.find({
+      where: { customer: { id: userId } },
       order: { createdAt: 'DESC' },
       take: 5,
+    });
+    const [todayDeliveries, pendingDeliveries, activeRuns] = await Promise.all([
+      this.deliveriesRepo.count({ where: { customer: { id: userId }, createdAt: MoreThanOrEqual(dayStart) } }),
+      this.deliveriesRepo.count({ where: { customer: { id: userId }, status: DeliveryStatus.PENDING } }),
+      this.deliveriesRepo.count({ where: { customer: { id: userId }, status: In([DeliveryStatus.ASSIGNED, DeliveryStatus.PICKED_UP, DeliveryStatus.IN_TRANSIT]) } }),
+    ]);
+    // The newest booking still waiting to be paid, for the home banner.
+    const unpaid = await this.deliveriesRepo.findOne({
+      where: { customer: { id: userId }, status: DeliveryStatus.PENDING, paymentHeldAt: IsNull() },
+      order: { createdAt: 'DESC' },
     });
 
     const weekTxs = await this.walletTxRepo.find({
@@ -455,14 +473,24 @@ export class BusinessService {
     });
     const weeklySpend = weekTxs.reduce((s, t) => s + Number(t.amount), 0);
 
+    const strip = (d: any) => d && ({
+      id: d.id, trackingCode: d.trackingCode, status: d.status, price: Number(d.price ?? 0),
+      pickupAddress: d.pickupAddress, dropoffAddress: d.dropoffAddress, vehicleType: d.vehicleType,
+      createdAt: d.createdAt, scheduledFor: d.scheduledFor ?? null, paymentHeldAt: d.paymentHeldAt ?? null,
+      isRecurring: !!(d as any).isRecurring, isMultiStop: !!d.isMultiStop,
+    });
+
     return {
       totalDeliveries:  totalPkgs,
-      activeDeliveries: weekPkgs,
+      todayDeliveries,
+      activeDeliveries: activeRuns || weekPkgs,
+      pendingDeliveries,
       walletBalance:    Number(biz.walletBalance),
       loyaltyPoints:    biz.loyaltyPoints,
       weeklySpend,
       companyName:      biz.companyName,
-      recentDeliveries: recentPackages,
+      recentDeliveries: recent.map(strip),
+      awaitingPayment:  strip(unpaid),
     };
   }
 

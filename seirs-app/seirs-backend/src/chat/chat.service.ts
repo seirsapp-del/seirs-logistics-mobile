@@ -402,7 +402,15 @@ export class ChatService {
         .innerJoin('support_tickets', 't', 't.id = m."ticketId"')
         .where('m."ticketId" IS NOT NULL')
         .andWhere('m.readAt IS NULL')
-        .andWhere('(m.senderId IS NULL OR m.senderId != :userId)', { userId })
+        /**
+         * Human messages only (founder 2026-09-06: "I keep seeing the
+         * number on Messages and that's false"). Automated notices have
+         * no sender and they were counting; a person opened Messages for a
+         * reply and found a system line. They still show in the inbox,
+         * they just do not badge it.
+         */
+        .andWhere('m.senderId IS NOT NULL')
+        .andWhere('m.senderId != :userId', { userId })
         .andWhere('t."userId" = :userId', { userId })
         .select('COUNT(*)', 'c')
         .getRawOne();

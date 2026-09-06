@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import { businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { tint, statusTint } from '@/constants/tint';
+import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 
 export default function BusinessDashboard() {
@@ -47,25 +48,25 @@ export default function BusinessDashboard() {
   return (
     <>
       <Drawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      {/* Greeting + bell + drawer stay pinned (founder 2026-08-15: the
-          hamburger scrolled away with the header, stranding the drawer).
-          Solid navy matches the top of the gradient below so the seam is
-          invisible; only the wallet card scrolls. */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-        <Pressable style={styles.avatarBtn} onPress={() => setDrawerOpen(true)}>
-          <Icon name="AlignLeft" size={20} color="#fff" strokeWidth={1.75} />
+      {/*
+       * The customer app's top bar, exactly (founder 2026-09-06): the
+       * page background, the hamburger and the bell on light plates, the
+       * okada mark and wordmark centred and theme-coloured. The solid navy
+       * bar this replaced painted the status bar navy too, so in light
+       * mode a user could not read their own clock or signal. It stays
+       * pinned above the scroll (founder 2026-08-15).
+       */}
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8, backgroundColor: colors.background }]}>
+        <Pressable style={[styles.menuBtn, { backgroundColor: colors.surface }]} onPress={() => setDrawerOpen(true)}>
+          <Icon name="AlignLeft" size={20} color={colors.text} strokeWidth={2} />
         </Pressable>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          {/* Brand eyebrow: screenshots carry the okada (founder
-              2026-08-22), and the greeting stays as this app's voice. */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <SeirsMarkBold size={34} color="#FFFFFF" hubColor="#0F2B4C" />
-            <Text style={{ color: '#fff', fontSize: 10.5, fontWeight: '800', letterSpacing: 1.8 }}>SEIRS</Text>
-          </View>
-          <Text style={styles.companyName}>Hi, {user?.name?.split(' ')[0] ?? user?.companyName?.split(' ')[0]}</Text>
+        <View style={styles.brandSlot}>
+          <SeirsMarkBold size={46} color={colors.text} hubColor={colors.background} />
+          <Text style={[styles.brandWord, { color: colors.text }]}>SEIRS</Text>
         </View>
-        <View style={styles.avatarBtn}>
-          <NotificationBell size={20} color="#fff" />
+        <View style={[styles.menuBtn, { backgroundColor: colors.surface }]}>
+          <NotificationBell size={20} color={colors.text} />
         </View>
       </View>
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} showsVerticalScrollIndicator={false}>
@@ -74,6 +75,31 @@ export default function BusinessDashboard() {
         {/* The wallet hero is gone (founder 2026-08-16): the dashboard
             leads with the same living carousel the customer app has, so
             businesses get the news, promos and product updates too. */}
+        {/* The customer home's amber banner, for a booking still waiting to
+            be paid (founder 2026-09-06: the business app had nothing like
+            it, so a recurring run created an hour before pickup was
+            invisible until somebody opened the Deliveries tab). */}
+        {data?.awaitingPayment && (
+          <Pressable
+            style={[styles.activeBanner, { backgroundColor: isDark ? '#1C2128' : '#FFF8E6', borderColor: '#FFBE0B' }]}
+            onPress={() => router.push(`/(business)/delivery/${data.awaitingPayment.id}` as any)}
+          >
+            <View style={[styles.activeDot, { backgroundColor: '#FFBE0B' }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.activeBannerTitle, { color: colors.text }]}>
+                {data.awaitingPayment.isRecurring ? 'Recurring run waiting for payment' : 'Waiting for payment'}
+                {data.awaitingPayment.scheduledFor
+                  ? ` · pay before ${new Date(data.awaitingPayment.scheduledFor).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}`
+                  : ''}
+              </Text>
+              <Text style={[styles.activeBannerSub, { color: colors.textSecond }]} numberOfLines={1}>
+                {data.awaitingPayment.trackingCode} · {naira(data.awaitingPayment.price)}
+                {data.awaitingPayment.dropoffAddress ? ` · to ${data.awaitingPayment.dropoffAddress}` : ''}
+              </Text>
+            </View>
+            <Icon name="ChevronRight" size={18} color={colors.primary} />
+          </Pressable>
+        )}
         <View style={{ marginTop: 12 }}>
           <HeroCarousel />
         </View>
@@ -249,11 +275,20 @@ function DeliveryRow({ delivery }: { delivery: any }) {
 
 // Structural styles only: colors come from useColors() and override at use site.
 const styles = StyleSheet.create({
+  // Awaiting-payment banner, same shape as the customer home (2026-09-06).
+  activeBanner:      { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 12, padding: 14, borderRadius: 14, borderWidth: 1.5 },
+  activeDot:         { width: 10, height: 10, borderRadius: 5 },
+  activeBannerTitle: { fontSize: 14, fontWeight: '600' },
+  activeBannerSub:   { fontSize: 12, marginTop: 2 },
   header:      { paddingHorizontal: 24, paddingTop: 4, paddingBottom: 28 },
   topBar:      {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingBottom: 12, backgroundColor: '#0F2B4C',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingBottom: 12,
   },
+  // Same plates and lockup as the customer home (2026-09-06).
+  menuBtn:   { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', elevation: 1 },
+  brandSlot: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  brandWord: { fontSize: 15, fontWeight: '900', letterSpacing: 2.2 },
   chipsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 14 },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

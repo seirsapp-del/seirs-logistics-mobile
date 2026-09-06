@@ -60,10 +60,22 @@ export function usePushRegistration(enabled: boolean) {
         if (status !== 'granted' || cancelled) return;
 
         // Android needs a notification channel before tokens are issued.
+        // 'seirs_default' is the channel the server names on every push;
+        // a push aimed at a channel the phone never created is dropped.
+        // MAX importance is what makes a heads-up banner over other apps,
+        // the way WhatsApp does (founder 2026-09-06).
         if (Platform.OS === 'android') {
+          const max = Notifications.AndroidImportance?.MAX ?? 5;
+          await Notifications.setNotificationChannelAsync('seirs_default', {
+            name: 'SEIRS',
+            importance: max,
+            sound: 'default',
+            vibrationPattern: [0, 250, 250, 250],
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility?.PUBLIC ?? 1,
+          });
           await Notifications.setNotificationChannelAsync('default', {
             name: 'Default',
-            importance: Notifications.AndroidImportance?.DEFAULT ?? 3,
+            importance: max,
           });
         }
 
