@@ -21,6 +21,7 @@ import type { EmergencyContactDTO } from '@seirs/shared/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 /** Which glyph a directory entry gets, from the category an admin set. */
 const CATEGORY_ICON: Record<string, IconName> = {
   emergency: 'AlertCircle',
@@ -160,8 +161,8 @@ export default function BusinessSosScreen() {
       'Send SOS alert?',
       'SEIRS support is alerted immediately with your location and account. False alarms can be cancelled in the next moments.',
       [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'SEND SOS', style: 'destructive', onPress: fire },
+        { text: tr('auto.deliveryDetail.notNow', 'Not now'), style: 'cancel' },
+        { text: tr('auto.sos.sendSos', 'SEND SOS'), style: 'destructive', onPress: fire },
       ],
     );
   };
@@ -237,10 +238,9 @@ export default function BusinessSosScreen() {
 
         {!alertId ? (
           <View style={styles.idleState}>
-            <Text style={styles.idleTitle}>Theft · Accident · Personal safety</Text>
+            <Text style={styles.idleTitle}>{tr('auto.sos.theftAccidentPersonalSafety', 'Theft · Accident · Personal safety')}</Text>
             <Text style={styles.idleDesc}>
-              One tap shares your live location with SEIRS support. Use this
-              for real emergencies only.
+              {tr('auto.sos.oneTapSharesYourLive', 'One tap shares your live location with SEIRS support. Use this for real emergencies only.')}
             </Text>
           </View>
         ) : (
@@ -258,7 +258,7 @@ export default function BusinessSosScreen() {
                 is happening can change while help is on its way. */}
             {noteSent && (
               <Text style={styles.noteSentLine} numberOfLines={3}>
-                Support can see: “{noteText.trim()}”
+                {tr('auto.sos.supportCanSee', 'Support can see: “')}{noteText.trim()}”
               </Text>
             )}
             <Pressable style={styles.detailBtn} onPress={() => setNoteOpen(true)}>
@@ -330,8 +330,7 @@ export default function BusinessSosScreen() {
           <View style={styles.noteCard}>
             <Text style={styles.noteTitle}>{tx('auto.sos.whatIsHappening', 'What is happening?')}</Text>
             <Text style={styles.noteSub}>
-              Support is already alerted and your location is being shared.
-              This is optional: it only tells them what they are coming into.
+              {tr('auto.sos.supportIsAlreadyAlertedAnd', 'Support is already alerted and your location is being shared. This is optional: it only tells them what they are coming into.')}
             </Text>
             <TextInput
               value={noteText}
@@ -350,7 +349,7 @@ export default function BusinessSosScreen() {
                 onPress={() => setNoteOpen(false)}
                 disabled={noteSaving}
               >
-                <Text style={styles.noteSkipText}>Skip</Text>
+                <Text style={styles.noteSkipText}>{tr('auto.sos.skip', 'Skip')}</Text>
               </Pressable>
               <Pressable
                 style={[styles.noteSendBtn, (!noteText.trim() || noteSaving) && styles.noteSendBtnOff]}

@@ -10,6 +10,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §1.17: driver presents this screen at handoff so the partner
 // staff or recipient can scan the QR (or read the alphanumeric backup
@@ -30,7 +31,7 @@ export default function SeirsIdScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl }}>
         <Text style={{ color: theme.text, fontSize: FontSize.base, textAlign: 'center' }}>
-          Your SEIRS Verified ID is being provisioned. Try again in a few minutes.
+          {tr('auto.seirsId.yourSeirsVerifiedIdIs', 'Your SEIRS Verified ID is being provisioned. Try again in a few minutes.')}
         </Text>
       </SafeAreaView>
     );
@@ -58,7 +59,7 @@ export default function SeirsIdScreen() {
         <View style={[styles.intro, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           <Shield size={18} color={theme.primary} strokeWidth={1.75} />
           <Text style={[styles.introText, { color: theme.textSecond }]}>
-            Show this code at handoffs when a recipient or partner staff member needs to verify your identity.
+            {tr('auto.seirsId.showThisCodeAtHandoffs', 'Show this code at handoffs when a recipient or partner staff member needs to verify your identity.')}
           </Text>
         </View>
 
@@ -73,7 +74,7 @@ export default function SeirsIdScreen() {
             />
           </View>
 
-          <Text style={[styles.nameLabel, { color: theme.textSecond }]}>REGISTERED NAME</Text>
+          <Text style={[styles.nameLabel, { color: theme.textSecond }]}>{tr('auto.seirsId.registeredName', 'REGISTERED NAME')}</Text>
           <Text style={[styles.name, { color: theme.text }]}>{name}</Text>
 
           <View style={[styles.codeRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
@@ -95,10 +96,10 @@ export default function SeirsIdScreen() {
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.seirsId.howHandoffVerificationWorks', 'How handoff verification works')}</Text>
           {[
-            { step: '1', text: 'Partner staff scans the QR (or types the code) at pickup.' },
-            { step: '2', text: 'They see your registered name on their screen.' },
-            { step: '3', text: 'Say your full name: they type it to confirm a match.' },
-            { step: '4', text: 'The handoff is recorded in your delivery audit trail.' },
+            { step: '1', text: tr('auto.seirsId.partnerStaffScansTheQr', 'Partner staff scans the QR (or types the code) at pickup.') },
+            { step: '2', text: tr('auto.seirsId.theySeeYourRegisteredName', 'They see your registered name on their screen.') },
+            { step: '3', text: tr('auto.seirsId.sayYourFullNameThey', 'Say your full name: they type it to confirm a match.') },
+            { step: '4', text: tr('auto.seirsId.theHandoffIsRecordedIn', 'The handoff is recorded in your delivery audit trail.') },
           ].map(s => (
             <View key={s.step} style={styles.howRow}>
               <View style={[styles.howStep, { backgroundColor: theme.primary }]}>

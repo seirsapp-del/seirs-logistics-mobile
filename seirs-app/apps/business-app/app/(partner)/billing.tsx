@@ -12,6 +12,7 @@ import { naira } from '@/utils/money';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 // Spec V8 §4.11: partner sponsored-placement billing view. Live monthly
 // fee is read from the Fee Catalogue (admin-editable, propagates within
 // 60s) so the displayed price always matches what would actually be
@@ -65,8 +66,8 @@ export default function PartnerBillingScreen() {
         'Activate Sponsored Placement',
         `Your store will appear pinned at the top of the customer map.\n\nMonthly fee: ${monthlyPrice != null ? naira(monthlyPrice) : '-'}.\n\nFlutterwave recurring billing is being wired in Phase 2 payments: for now the invoice is recorded but no card is charged. Pause anytime, no contract.`,
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Activate', onPress: async () => {
+          { text: tr('auto.payoutAccount.cancel', 'Cancel'), style: 'cancel' },
+          { text: tr('auto.billing.activate', 'Activate'), onPress: async () => {
             setBusy(true);
             try { await partnerApi.sponsorship.activate(); await load(); }
             catch (e: any) { alertDialog('Could not activate', e?.message ?? 'Try again.'); }
@@ -79,8 +80,8 @@ export default function PartnerBillingScreen() {
         'Pause Sponsored Placement',
         'Your store will return to standard map ranking. No further monthly invoices until you reactivate.',
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Pause', style: 'destructive', onPress: async () => {
+          { text: tr('auto.payoutAccount.cancel', 'Cancel'), style: 'cancel' },
+          { text: tr('auto.billing.pause', 'Pause'), style: 'destructive', onPress: async () => {
             setBusy(true);
             try { await partnerApi.sponsorship.pause(); await load(); }
             catch (e: any) { alertDialog('Could not pause', e?.message ?? 'Try again.'); }
@@ -119,13 +120,13 @@ export default function PartnerBillingScreen() {
         </View>
         <Text style={styles.heroTitle}>{tx('auto.billing.beTheFirstStoreCustomers', 'Be the first store customers see')}</Text>
         <Text style={styles.heroSub}>
-          Sponsored stores appear pinned at the top of the customer map and in the drop-off picker: significantly more drop-offs and impressions per week.
+          {tr('auto.billing.sponsoredStoresAppearPinnedAt', 'Sponsored stores appear pinned at the top of the customer map and in the drop-off picker: significantly more drop-offs and impressions per week.')}
         </Text>
       </View>
 
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardTopRow}>
-          <Text style={[styles.cardLabel, { color: colors.textSecond }]}>YOUR PLAN</Text>
+          <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.billing.yourPlan', 'YOUR PLAN')}</Text>
           {/* Active used a 9% green alpha while inactive used a theme
               token, so the two states were not even the same weight, and
               the active one read 2.96:1 in light mode (2026-08-24). */}
@@ -150,7 +151,7 @@ export default function PartnerBillingScreen() {
         )}
 
         <Text style={[styles.planSub, { color: colors.textSecond }]}>
-          Pinned at top of customer map · Featured in drop-off picker · Priority in search results
+          {tr('auto.billing.pinnedAtTopOfCustomer', 'Pinned at top of customer map · Featured in drop-off picker · Priority in search results')}
         </Text>
 
         <View style={[styles.toggleRow, { borderTopColor: colors.border }]}>
@@ -180,24 +181,23 @@ export default function PartnerBillingScreen() {
         </View>
         {!IMPRESSIONS_TRACKED && (
           <Text style={[styles.statsHint, { color: colors.textThird }]}>
-            Impression and click-through tracking ships with the placement
-            metrics table. Spend is live.
+            {tr('auto.billing.impressionAndClickThroughTracking', 'Impression and click-through tracking ships with the placement metrics table. Spend is live.')}
           </Text>
         )}
         {!active && (
           <Text style={[styles.statsHint, { color: colors.textThird }]}>
-            Activate to start collecting placement metrics.
+            {tr('auto.billing.activateToStartCollectingPlacement', 'Activate to start collecting placement metrics.')}
           </Text>
         )}
       </View>
 
       <View style={[styles.benefitsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text style={[styles.benefitsTitle, { color: colors.text }]}>What&apos;s included</Text>
+        <Text style={[styles.benefitsTitle, { color: colors.text }]}>{tr('auto.billing.whatSIncluded', 'What\'s included')}</Text>
         {[
-          { icon: 'MapPin',     text: 'Top-pinned spot on customer map within your service area' },
-          { icon: 'Search',     text: 'Featured first in store-picker results when customers schedule drop-offs' },
-          { icon: 'BarChart3',  text: 'Impression and click-through reporting once metrics tracking ships' },
-          { icon: 'CreditCard', text: 'Invoiced monthly, settled through Flutterwave: pause anytime, no contract' },
+          { icon: 'MapPin',     text: tr('auto.billing.topPinnedSpotOnCustomer', 'Top-pinned spot on customer map within your service area') },
+          { icon: 'Search',     text: tr('auto.billing.featuredFirstInStorePicker', 'Featured first in store-picker results when customers schedule drop-offs') },
+          { icon: 'BarChart3',  text: tr('auto.billing.impressionAndClickThroughReporting', 'Impression and click-through reporting once metrics tracking ships') },
+          { icon: 'CreditCard', text: tr('auto.billing.invoicedMonthlySettledThroughFlutterwave', 'Invoiced monthly, settled through Flutterwave: pause anytime, no contract') },
         ].map(b => (
           <View key={b.text} style={styles.benefitRow}>
             <View style={[styles.benefitIcon, { backgroundColor: colors.accent + '18' }]}>
@@ -211,7 +211,7 @@ export default function PartnerBillingScreen() {
       <View style={styles.footnote}>
         <Icon name="Info" size={12} color={colors.textThird} />
         <Text style={[styles.footnoteText, { color: colors.textThird }]}>
-          Pricing read live from the SEIRS Fee Catalogue. Changes propagate within 60s.
+          {tr('auto.billing.pricingReadLiveFromThe', 'Pricing read live from the SEIRS Fee Catalogue. Changes propagate within 60s.')}
         </Text>
       </View>
     </ScrollView>

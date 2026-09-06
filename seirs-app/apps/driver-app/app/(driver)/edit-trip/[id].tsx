@@ -34,6 +34,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Every half hour of the day, matching the declare form.
@@ -124,7 +125,7 @@ export default function EditTrip() {
     try {
       await driversApi.editInterstateTrip(String(id), body);
       alertDialog('Trip updated', 'Your changes are live. Passengers searching this route see them now.', [
-        { text: 'Done', onPress: () => router.back() },
+        { text: tr('auto.profile.done', 'Done'), onPress: () => router.back() },
       ]);
     } catch (e: any) {
       setError(e?.message ?? 'Could not save your changes.');
@@ -193,7 +194,7 @@ export default function EditTrip() {
               }}
             />
             <View style={{ padding: Spacing.md, borderTopWidth: 1, borderTopColor: theme.border }}>
-              <Text style={[styles.label, { color: theme.textSecond, marginBottom: 8 }]}>DEPARTURE TIME</Text>
+              <Text style={[styles.label, { color: theme.textSecond, marginBottom: 8 }]}>{tr('auto.editTripDetail.departureTime', 'DEPARTURE TIME')}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {DEPART_SLOTS.map(slot => {
                   const active = departTime === slot;
@@ -231,7 +232,7 @@ export default function EditTrip() {
             <Text style={[styles.rowTitle, { color: theme.text }]}>{tx('auto.id.takePassengers', 'Take passengers')}</Text>
             {frozen && takesPax && (
               <Text style={[styles.rowNote, { color: theme.textThird }]}>
-                Cannot be turned off with seats already booked.
+                {tr('auto.editTripDetail.cannotBeTurnedOffWith', 'Cannot be turned off with seats already booked.')}
               </Text>
             )}
           </View>
@@ -265,7 +266,7 @@ export default function EditTrip() {
         </View>
         {takesPkg && (
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>SPARE SPACE (KG)</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tr('auto.editTripDetail.spareSpaceKg', 'SPARE SPACE (KG)')}</Text>
             <TextInput
               value={spareKg}
               onChangeText={v => setSpareKg(onlyDecimal(v))}
@@ -275,7 +276,7 @@ export default function EditTrip() {
               style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
             />
             <Text style={[styles.rowNote, { color: theme.textThird }]}>
-              What is genuinely left after your own load. We stop offering you packages once this much is spoken for.
+              {tr('auto.editTripDetail.whatIsGenuinelyLeftAfter', 'What is genuinely left after your own load. We stop offering you packages once this much is spoken for.')}
             </Text>
           </View>
         )}

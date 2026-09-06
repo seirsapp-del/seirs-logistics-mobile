@@ -36,6 +36,7 @@ import { showDialog } from '@/components/SeirsDialog';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 import { collectUrl } from '@/constants/config';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
@@ -211,9 +212,9 @@ export default function TripDetailsScreen() {
     try {
       const res = await deliveriesApi.payRedirectFee(String(id));
       if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
-      else showDialog({ title: 'Could not start payment', message: 'Please try again in a moment.' });
+      else showDialog({ title: tr('auto.parcelRequests.couldNotStartPayment', 'Could not start payment'), message: tr('auto.track.pleaseTryAgainInA', 'Please try again in a moment.') });
     } catch (e: any) {
-      showDialog({ title: 'Could not start payment', message: e?.message ?? 'Please try again.' });
+      showDialog({ title: tr('auto.parcelRequests.couldNotStartPayment', 'Could not start payment'), message: e?.message ?? 'Please try again.' });
     }
   };
 
@@ -234,7 +235,7 @@ export default function TripDetailsScreen() {
     try {
       const q = await deliveriesApi.getReturnQuote(String(id));
       showDialog({
-        title: 'Return this package?',
+        title: tr('auto.track.returnThisPackage', 'Return this package?'),
         message:
           `${q.note}\n\nBack to: ${q.returnTo}\n` +
           `${q.km} km by road\n` +
@@ -259,15 +260,15 @@ export default function TripDetailsScreen() {
                 });
                 setD(await deliveriesApi.get(String(id)));
               } catch (e: any) {
-                showDialog({ title: 'Could not request that', message: e?.message ?? 'Please try again.' });
+                showDialog({ title: tr('auto.track.couldNotRequestThat', 'Could not request that'), message: e?.message ?? 'Please try again.' });
               }
             },
           },
-          { text: 'Not now', style: 'cancel' },
+          { text: tr('auto.track.notNow', 'Not now'), style: 'cancel' },
         ],
       });
     } catch (e: any) {
-      showDialog({ title: 'Could not price a return', message: e?.message ?? 'Please try again.' });
+      showDialog({ title: tr('auto.track.couldNotPriceAReturn', 'Could not price a return'), message: e?.message ?? 'Please try again.' });
     }
   };
 
@@ -276,7 +277,7 @@ export default function TripDetailsScreen() {
       const res = await deliveriesApi.payReturn(String(id));
       if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
     } catch (e: any) {
-      showDialog({ title: 'Could not start payment', message: e?.message ?? 'Please try again.' });
+      showDialog({ title: tr('auto.parcelRequests.couldNotStartPayment', 'Could not start payment'), message: e?.message ?? 'Please try again.' });
     }
   };
 
@@ -361,10 +362,10 @@ export default function TripDetailsScreen() {
              use: unpaid is a brand-coloured nudge, not a warning. */
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#FFBE0B', borderWidth: 1.5 }]}>
             <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
-              Waiting for payment
+              {tr('auto.tripDetail.waitingForPayment', 'Waiting for payment')}
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
-              We match a driver the moment this is paid. Nothing has been charged yet.
+              {tr('auto.tripDetail.weMatchADriverThe', 'We match a driver the moment this is paid. Nothing has been charged yet.')}
             </Text>
             <Pressable
               onPress={() => router.push({ pathname: '/(customer)/payment/[deliveryId]', params: { deliveryId: String(d.id) } } as any)}
@@ -394,7 +395,7 @@ export default function TripDetailsScreen() {
               hitSlop={8}
             >
               <Text style={{ color: colors.textSecond, fontWeight: '600', fontSize: 14 }}>
-                Something wrong? Edit this booking
+                {tr('auto.tripDetail.somethingWrongEditThisBooking', 'Something wrong? Edit this booking')}
               </Text>
             </Pressable>
           </View>
@@ -404,11 +405,10 @@ export default function TripDetailsScreen() {
         {d.arrivalIssueAt && !d.arrivalResolution && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#F59E0B', borderWidth: 1.5 }]}>
             <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
-              Nobody available to receive
+              {tr('auto.tripDetail.nobodyAvailableToReceive', 'Nobody available to receive')}
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
-              The driver is at the drop-off and cannot hand the package over. If we do
-              not hear from you it will follow your booked fallback.
+              {tr('auto.tripDetail.theDriverIsAtThe', 'The driver is at the drop-off and cannot hand the package over. If we do not hear from you it will follow your booked fallback.')}
             </Text>
           </View>
         )}
@@ -417,12 +417,10 @@ export default function TripDetailsScreen() {
         {Number(d.redirectFeeOwedNgn ?? 0) > 0 && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#F59E0B', borderWidth: 1.5 }]}>
             <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
-              Waiting at a partner store
+              {tr('auto.tripDetail.waitingAtAPartnerStore', 'Waiting at a partner store')}
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
-              Nobody was available, so this is being kept safe at a SEIRS partner
-              store. {naira(d.redirectFeeOwedNgn)} settles it and reveals the pickup
-              location.
+              {tr('auto.tripDetail.nobodyWasAvailableSoThis', 'Nobody was available, so this is being kept safe at a SEIRS partner store.')} {naira(d.redirectFeeOwedNgn)} {tr('auto.tripDetail.settlesItAndRevealsThe', 'settles it and reveals the pickup location.')}
             </Text>
             <Pressable
               onPress={payRedirectFee}
@@ -434,7 +432,7 @@ export default function TripDetailsScreen() {
             </Pressable>
             <Pressable onPress={shareCollectLink} style={{ marginTop: 8, paddingVertical: 8, alignItems: 'center' }}>
               <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>
-                Send the collection link to the recipient
+                {tr('auto.tripDetail.sendTheCollectionLinkTo', 'Send the collection link to the recipient')}
               </Text>
             </Pressable>
           </View>
@@ -457,7 +455,7 @@ export default function TripDetailsScreen() {
                 style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#7C3AED' }}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
-                  Pay {naira(d.returnQuoteNgn)} to start the return
+                  Pay {naira(d.returnQuoteNgn)} {tr('auto.track.toStartTheReturn', 'to start the return')}
                 </Text>
               </Pressable>
             )}
@@ -471,10 +469,10 @@ export default function TripDetailsScreen() {
             style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}
           >
             <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>
-              Need this package back?
+              {tr('auto.tripDetail.needThisPackageBack', 'Need this package back?')}
             </Text>
             <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
-              Priced from where it is now, back to your pickup address
+              {tr('auto.track.pricedFromWhereItIs', 'Priced from where it is now, back to your pickup address')}
             </Text>
           </Pressable>
         )}
@@ -568,7 +566,7 @@ export default function TripDetailsScreen() {
                   2026-08-24). */}
               {Array.isArray(st.packagePhotoUrls) && st.packagePhotoUrls.length > 0 && (
                 <View style={styles.photoBlock}>
-                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>WHAT YOU SENT</Text>
+                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>{tr('auto.tripDetail.whatYouSent', 'WHAT YOU SENT')}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoStrip} contentContainerStyle={{ gap: 8 }}>
                     {st.packagePhotoUrls.map((u: string, k: number) => (
                       <Image key={k} source={{ uri: u }} style={styles.photoThumb} resizeMode="cover" />
@@ -581,7 +579,7 @@ export default function TripDetailsScreen() {
                   the sender was the one person who could not see it. */}
               {Array.isArray(st.proofPhotoUrls) && st.proofPhotoUrls.length > 0 && (
                 <View style={styles.photoBlock}>
-                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>PROOF OF DELIVERY</Text>
+                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>{tr('auto.tripDetail.proofOfDelivery', 'PROOF OF DELIVERY')}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoStrip} contentContainerStyle={{ gap: 8 }}>
                     {st.proofPhotoUrls.map((u: string, k: number) => (
                       <Image key={k} source={{ uri: u }} style={styles.photoThumb} resizeMode="cover" />
@@ -607,7 +605,7 @@ export default function TripDetailsScreen() {
                   </Pressable>
                   <Pressable onPress={() => shareCode(code, st.receiverFirstName)} hitSlop={8} style={styles.codeBtn}>
                     <Icon name="Share2" size={14} color={colors.primary} />
-                    <Text style={[styles.codeBtnText, { color: colors.primary }]}>Send</Text>
+                    <Text style={[styles.codeBtnText, { color: colors.primary }]}>{tr('auto.tripDetail.send', 'Send')}</Text>
                   </Pressable>
                 </View>
               )}
@@ -689,7 +687,7 @@ export default function TripDetailsScreen() {
             style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}
           >
             <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>
-              Send again
+              {tr('auto.tripDetail.sendAgain', 'Send again')}
             </Text>
             <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
               {stops.length > 1
@@ -719,7 +717,7 @@ export default function TripDetailsScreen() {
           >
             <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>{tx('auto.id.bookAgain', 'Book again')}</Text>
             <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
-              Same route, priced fresh
+              {tr('auto.tripDetail.sameRoutePricedFresh', 'Same route, priced fresh')}
             </Text>
           </Pressable>
         )}
@@ -734,7 +732,7 @@ export default function TripDetailsScreen() {
               {t('tripDetail.trackPackage', { defaultValue: 'Track this delivery live' })}
             </Text>
             <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
-              Live status, driver position and updates
+              {tr('auto.tripDetail.liveStatusDriverPositionAnd', 'Live status, driver position and updates')}
             </Text>
           </Pressable>
         )}

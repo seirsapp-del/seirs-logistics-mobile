@@ -15,6 +15,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §2.14: quick three-button status broadcast. One tap posts a
 // status the customer sees on their tracking screen.
@@ -37,13 +38,13 @@ const WIRE: Record<Status, 'network_bad' | 'traffic' | 'need_help'> = {
   help:    'need_help',
 };
 
-const OPTIONS: Array<{ key: Status; label: string; sub: string; color: string; Icon: any }> = [
-  { key: 'network', label: 'Network is bad: still moving',     sub: 'GPS may be delayed but I&apos;m on the way',                color: '#3A7BD5', Icon: Wifi          },
+const OPTIONS = (): Array<{ key: Status; label: string; sub: string; color: string; Icon: any }> => [
+  { key: 'network', label: tr('auto.statusBroadcast.networkIsBadStillMoving', 'Network is bad: still moving'),     sub: tr('auto.statusBroadcast.gpsMayBeDelayedBut', 'GPS may be delayed but I&apos;m on the way'),                color: '#3A7BD5', Icon: Wifi          },
   // No arrival times, ever (founder rule): Lagos traffic plus NEPA plus
   // checkpoints make any ETA a refund magnet. This read "ETA may extend",
   // which implies there was an ETA to extend (audit 2026-08-24).
-  { key: 'traffic', label: 'Stuck in traffic',                  sub: 'Held up on the road, still on my way',                    color: '#D97706', Icon: AlertCircle   },
-  { key: 'help',    label: 'Need help: please contact support', sub: 'Trigger an alert to ops with my last known location',   color: '#DC2626', Icon: AlertTriangle },
+  { key: 'traffic', label: tr('auto.statusBroadcast.stuckInTraffic', 'Stuck in traffic'),                  sub: tr('auto.statusBroadcast.heldUpOnTheRoad', 'Held up on the road, still on my way'),                    color: '#D97706', Icon: AlertCircle   },
+  { key: 'help',    label: tr('auto.statusBroadcast.needHelpPleaseContactSupport', 'Need help: please contact support'), sub: tr('auto.statusBroadcast.triggerAnAlertToOps', 'Trigger an alert to ops with my last known location'),   color: '#DC2626', Icon: AlertTriangle },
 ];
 
 export default function StatusBroadcastScreen() {
@@ -60,7 +61,7 @@ export default function StatusBroadcastScreen() {
     try {
       await driversApi.sendStatusBroadcast({ type: WIRE[key] });
       setSent(key);
-      const msg = OPTIONS.find(o => o.key === key)?.label ?? '';
+      const msg = OPTIONS().find(o => o.key === key)?.label ?? '';
       alertDialog('Status sent', `Customer will see: "${msg}".`);
     } catch (e: any) {
       // No queue exists, so a failed send is simply not sent. Say so.
@@ -88,10 +89,10 @@ This needs a connection. Try again once you have signal.`,
       <ScrollView contentContainerStyle={styles.content}>
 
         <Text style={[styles.intro, { color: theme.textSecond }]}>
-          Tap any status to send it to the customer. Sending needs a connection: if it fails, nothing is stored, so try again once you have signal.
+          {tr('auto.statusBroadcast.tapAnyStatusToSend', 'Tap any status to send it to the customer. Sending needs a connection: if it fails, nothing is stored, so try again once you have signal.')}
         </Text>
 
-        {OPTIONS.map(o => {
+        {OPTIONS().map(o => {
           const isSending = sending === o.key;
           const isSent    = sent    === o.key;
           return (
@@ -127,7 +128,7 @@ This needs a connection. Try again once you have signal.`,
         <View style={[styles.footnote, { backgroundColor: theme.primary + '10' }]}>
           <Wifi size={14} color={theme.primary} />
           <Text style={[styles.footnoteText, { color: theme.textSecond }]}>
-            Your customer sees the last position SEIRS received from you. If you lose signal, that position stops updating until you are back online.
+            {tr('auto.statusBroadcast.yourCustomerSeesTheLast', 'Your customer sees the last position SEIRS received from you. If you lose signal, that position stops updating until you are back online.')}
           </Text>
         </View>
       </ScrollView>

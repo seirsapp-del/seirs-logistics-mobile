@@ -636,11 +636,11 @@ export class AuthService {
       passwordResetExpiry: expiry,
     });
 
-    // Admins receive a web URL (admin dashboard); everyone else gets a
-    // deep link in THEIR app's scheme. One email = one account = one
-    // role, so the role fully determines which app to open: driver ->
-    // seirsdriver, business (businessAccountId set) -> seirsbusiness,
-    // else customer.
+    // Admins receive a web URL (admin dashboard); everyone else gets the
+    // website's reset page, which only uses the audience to name the app
+    // to go back to. One email = one account = one role, so the role
+    // fully determines it: driver, business (businessAccountId set),
+    // else customer. The apps carry no reset screen (removed 2026-09-06).
     const audience =
       user.role === UserRole.ADMIN  ? 'admin' :
       user.role === UserRole.DRIVER ? 'driver' :

@@ -46,6 +46,7 @@ import { deliveriesApi, dropoffApi, identityApi, uploadApi } from '@/services/ap
 import { PackageCodeCapture } from '@/components/PackageCodeCapture';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type Direction = 'collect' | 'drop';
 type Step      = 'scan' | 'sign' | 'done';
@@ -61,31 +62,31 @@ const STAGE: Record<Direction, string> = {
   drop:    'driver_to_store',
 };
 
-const COPY: Record<Direction, {
+const COPY = (): Record<Direction, {
   title: string; scanLead: string; signTitle: string; signBody: string;
   namePlaceholder: string; cta: string; doneTitle: string; doneBody: string;
-}> = {
+}> => ({
   collect: {
-    title:    'Collect from the counter',
+    title:    tr('auto.storeHandoff.collectFromTheCounter', 'Collect from the counter'),
     scanLead: 'Scan the parcel before you take it. From this moment it is on you, not the store.',
     signTitle: 'Who is releasing it?',
     signBody:  'Hand your phone to the person at the counter. They type their own full name. That name is what answers a question about this parcel later, and a store id cannot.',
     namePlaceholder: "Counter staff's full name",
-    cta:       'Take custody',
+    cta:       tr('auto.storeHandoff.takeCustody', 'Take custody'),
     doneTitle: 'Signed for',
     doneBody:  'The parcel is on you now. The counter is on the record as having released it.',
   },
   drop: {
-    title:    'Hand in at the counter',
+    title:    tr('auto.storeHandoff.handInAtTheCounter', 'Hand in at the counter'),
     scanLead: 'Scan the parcel as you hand it over. Until the counter signs, it is still on you.',
     signTitle: 'Who is receiving it?',
     signBody:  'Hand your phone to the person at the counter. They type their own full name. This is what stops the store saying later that the parcel never arrived.',
     namePlaceholder: "Counter staff's full name",
-    cta:       'Hand over',
+    cta:       tr('auto.storeHandoff.handOver', 'Hand over'),
     doneTitle: 'Handed over',
     doneBody:  'The counter has signed for it. It is off you and on the store.',
   },
-};
+});
 
 export default function StoreHandoffScreen() {
   const router = useRouter();
@@ -103,7 +104,7 @@ export default function StoreHandoffScreen() {
   const expected     = (params.code ?? '').trim().toUpperCase();
   const direction    = (params.direction === 'collect' ? 'collect' : 'drop') as Direction;
   const storeId      = (params.storeId ?? '').trim();
-  const copy         = COPY[direction];
+  const copy         = COPY()[direction];
 
   /**
    * Which counter is this, and is it even open?
@@ -209,11 +210,11 @@ export default function StoreHandoffScreen() {
 
   // ── Step 2: the counter photo (optional evidence) ─────────────────────
   const choosePhoto = () => setSheet({
-    title:   'Photo of the hand-over',
-    message: 'Optional. The parcel on the counter, or the counter book with the entry in it.',
+    title:   tr('auto.storeHandoff.photoOfTheHandOver', 'Photo of the hand-over'),
+    message: tr('auto.storeHandoff.optionalTheParcelOnThe', 'Optional. The parcel on the counter, or the counter book with the entry in it.'),
     options: [
-      { label: 'Take a photo',        variant: 'primary', icon: 'camera-outline', onPress: () => grabPhoto('camera') },
-      { label: 'Choose from gallery', icon: 'images-outline',                     onPress: () => grabPhoto('library') },
+      { label: tr('auto.storeHandoff.takeAPhoto', 'Take a photo'),        variant: 'primary', icon: 'camera-outline', onPress: () => grabPhoto('camera') },
+      { label: tr('auto.storeHandoff.chooseFromGallery', 'Choose from gallery'), icon: 'images-outline',                     onPress: () => grabPhoto('library') },
     ],
   });
 
@@ -333,7 +334,7 @@ export default function StoreHandoffScreen() {
                   style={{ color: theme.primary, fontWeight: FontWeight.semibold }}
                   onPress={() => Linking.openURL(`tel:${counter.phone}`).catch(() => {})}
                 >
-                  Call the counter
+                  {tr('auto.storeHandoff.callTheCounter', 'Call the counter')}
                 </Text>
               ) : null}
             </Text>
@@ -388,7 +389,7 @@ export default function StoreHandoffScreen() {
                   <Ionicons name="alert-circle" size={30} color="#fff" />
                   <Text style={styles.verdictTitle}>{tx('auto.storeHandoff.wrongParcel', 'Wrong parcel')}</Text>
                   <Text style={styles.verdictSub}>
-                    Got {scanned || 'nothing'}{'\n'}Expected {expected}. Do not hand it over.
+                    Got {scanned || 'nothing'}{'\n'}Expected {expected}{tr('auto.storeHandoff.doNotHandItOver', '. Do not hand it over.')}
                   </Text>
                 </View>
               )}
@@ -431,23 +432,23 @@ export default function StoreHandoffScreen() {
                     will offer if we let it. */}
                 {staffName.trim().length > 0 && nameParts.length < 2 && (
                   <Text style={[styles.inlineErr, { color: theme.warning }]}>
-                    Their full name, first and last.
+                    {tr('auto.storeHandoff.theirFullNameFirstAnd', 'Their full name, first and last.')}
                   </Text>
                 )}
 
                 <Text style={[styles.legal, { color: theme.textThird }]}>
-                  By typing their name they confirm they
+                  {tr('auto.storeHandoff.byTypingTheirNameThey', 'By typing their name they confirm they')}
                   {direction === 'drop' ? ' received ' : ' released '}
-                  this parcel. Nigerian Evidence Act, section 84.
+                  {tr('auto.storeHandoff.thisParcelNigerianEvidenceAct', 'this parcel. Nigerian Evidence Act, section 84.')}
                 </Text>
               </View>
 
               <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
                 <Text style={[styles.cardTitle, { color: theme.text }]}>
-                  Store SEIRS ID <Text style={{ color: theme.textThird, fontWeight: FontWeight.medium as any }}>(optional)</Text>
+                  {tr('auto.storeHandoff.storeSeirsId', 'Store SEIRS ID')} <Text style={{ color: theme.textThird, fontWeight: FontWeight.medium as any }}>{tr('auto.driverRegister.optional', '(optional)')}</Text>
                 </Text>
                 <Text style={[styles.cardBody, { color: theme.textSecond }]}>
-                  If the counter can show their SEIRS ID, add it. It ties the name to a registered store.
+                  {tr('auto.storeHandoff.ifTheCounterCanShow', 'If the counter can show their SEIRS ID, add it. It ties the name to a registered store.')}
                 </Text>
                 <TextInput
                   style={[styles.nameInput, {
@@ -479,7 +480,7 @@ export default function StoreHandoffScreen() {
                     {photoUri ? 'Photo attached' : 'Add a photo of the hand-over'}
                   </Text>
                   <Text style={[styles.photoSub, { color: theme.textSecond }]}>
-                    Optional. Skip it if the queue is moving.
+                    {tr('auto.storeHandoff.optionalSkipItIfThe', 'Optional. Skip it if the queue is moving.')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.textThird} />

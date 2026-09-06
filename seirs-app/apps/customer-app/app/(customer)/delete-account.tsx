@@ -15,6 +15,7 @@ import { PasswordInput } from '@/components/PasswordInput';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 const CONFIRM_PHRASE = 'delete my account';
 
 // Spec V8: NDPR right to erasure. Soft-deletes (isActive=false) with
@@ -110,7 +111,7 @@ export default function DeleteAccountScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.warnTitle}>{tx('auto.deleteAccount.permanentAfter30Days', 'Permanent after 30 days')}</Text>
               <Text style={styles.warnSub}>
-                Soft-deleted now; sign in within 30 days to cancel. After that, all your data is permanently removed.
+                {tr('auto.deleteAccount.softDeletedNowSignIn', 'Soft-deleted now; sign in within 30 days to cancel. After that, all your data is permanently removed.')}
               </Text>
             </View>
           </View>
@@ -150,14 +151,14 @@ export default function DeleteAccountScreen() {
               : <>
                   <Download size={16} color={theme.primary} />
                   <Text style={{ color: theme.primary, fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>
-                    Download my data first (recommended)
+                    {tr('auto.deleteAccount.downloadMyDataFirstRecommended', 'Download my data first (recommended)')}
                   </Text>
                 </>}
           </Pressable>
 
           {/* Password confirm */}
           <View style={{ marginTop: Spacing.lg, gap: 6 }}>
-            <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>CONFIRM YOUR PASSWORD</Text>
+            <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{tr('auto.deleteAccount.confirmYourPassword', 'CONFIRM YOUR PASSWORD')}</Text>
             <PasswordInput value={password} onChangeText={setPassword} placeholder={tx('auto.deleteAccount.enterCurrentPassword', 'Enter current password')} />
           </View>
 
@@ -194,7 +195,7 @@ export default function DeleteAccountScreen() {
               : <>
                   <Trash2 size={16} color={canSubmit ? '#fff' : theme.textThird} />
                   <Text style={[styles.dangerBtnText, { color: canSubmit ? '#fff' : theme.textThird }]}>
-                    Delete my account
+                    {tr('auto.deleteAccount.deleteMyAccount', 'Delete my account')}
                   </Text>
                 </>
             }

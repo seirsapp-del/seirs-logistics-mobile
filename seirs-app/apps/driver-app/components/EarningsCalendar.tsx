@@ -14,6 +14,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react-native';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { naira, nairaAxis } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 interface EarningRow {
   id:            string;
@@ -216,7 +217,7 @@ export function EarningsCalendar({ history, theme, currentMonthTotal }: Props) {
           </View>
           {selectedRows.length === 0 ? (
             <Text style={[styles.dayEmpty, { color: theme.textThird }]}>
-              No earnings on this day.
+              {tx('auto.earningscalendar.noEarningsOnThisDay', 'No earnings on this day.')}
             </Text>
           ) : selectedRows.map(r => (
             <View key={r.id} style={styles.dayRow}>

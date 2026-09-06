@@ -26,6 +26,7 @@ import { deliveriesApi, travelBuddyApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type Req = {
   id: string;
@@ -45,14 +46,14 @@ type Req = {
 };
 
 /** Plain words for each state, from the sender's side of it. */
-const STATE_COPY: Record<string, { label: string; tone: 'wait' | 'act' | 'done' | 'dead' }> = {
-  requested: { label: 'Waiting for the driver',       tone: 'wait' },
-  countered: { label: 'Driver offered another spot',  tone: 'act'  },
-  accepted:  { label: 'Agreed, payment due',          tone: 'done' },
-  declined:  { label: 'Driver said no',               tone: 'dead' },
-  withdrawn: { label: 'You withdrew this',            tone: 'dead' },
-  expired:   { label: 'No answer in time',            tone: 'dead' },
-};
+const STATE_COPY = (): Record<string, { label: string; tone: 'wait' | 'act' | 'done' | 'dead' }> => ({
+  requested: { label: tr('auto.parcelRequests.waitingForTheDriver', 'Waiting for the driver'),       tone: 'wait' },
+  countered: { label: tr('auto.parcelRequests.driverOfferedAnotherSpot', 'Driver offered another spot'),  tone: 'act'  },
+  accepted:  { label: tr('auto.parcelRequests.agreedPaymentDue', 'Agreed, payment due'),          tone: 'done' },
+  declined:  { label: tr('auto.parcelRequests.driverSaidNo', 'Driver said no'),               tone: 'dead' },
+  withdrawn: { label: tr('auto.parcelRequests.youWithdrewThis', 'You withdrew this'),            tone: 'dead' },
+  expired:   { label: tr('auto.parcelRequests.noAnswerInTime', 'No answer in time'),            tone: 'dead' },
+});
 
 /**
  * Seat requests live on this screen too (2026-09-05).
@@ -82,16 +83,16 @@ type SeatReq = {
   driver: { name: string; rating: number | null; vehicleType?: string | null; vehiclePlate?: string | null };
 };
 
-const SEAT_COPY: Record<string, { label: string; tone: 'wait' | 'act' | 'done' | 'dead' }> = {
-  requested:       { label: 'Waiting for the driver',      tone: 'wait' },
-  accepted:        { label: 'Driver said yes, pay to hold', tone: 'act'  },
-  pending_payment: { label: 'Driver said yes, pay to hold', tone: 'act'  },
-  booked:          { label: 'Seat held',                    tone: 'done' },
-  boarded:         { label: 'On board',                     tone: 'done' },
-  dropped:         { label: 'Completed',                    tone: 'done' },
-  cancelled:       { label: 'Cancelled',                    tone: 'dead' },
-  no_show:         { label: 'Marked as no-show',            tone: 'dead' },
-};
+const SEAT_COPY = (): Record<string, { label: string; tone: 'wait' | 'act' | 'done' | 'dead' }> => ({
+  requested:       { label: tr('auto.parcelRequests.waitingForTheDriver', 'Waiting for the driver'),      tone: 'wait' },
+  accepted:        { label: tr('auto.parcelRequests.driverSaidYesPayTo', 'Driver said yes, pay to hold'), tone: 'act'  },
+  pending_payment: { label: tr('auto.parcelRequests.driverSaidYesPayTo', 'Driver said yes, pay to hold'), tone: 'act'  },
+  booked:          { label: tr('auto.parcelRequests.seatHeld', 'Seat held'),                    tone: 'done' },
+  boarded:         { label: tr('auto.parcelRequests.onBoard', 'On board'),                     tone: 'done' },
+  dropped:         { label: tr('auto.parcelRequests.completed', 'Completed'),                    tone: 'done' },
+  cancelled:       { label: tr('auto.parcelRequests.cancelled', 'Cancelled'),                    tone: 'dead' },
+  no_show:         { label: tr('auto.parcelRequests.markedAsNoShow', 'Marked as no-show'),            tone: 'dead' },
+});
 
 export default function ParcelRequestsScreen() {
   const router = useRouter();
@@ -125,7 +126,7 @@ export default function ParcelRequestsScreen() {
       await deliveriesApi.withdrawParcelRequest(r.id);
       await load();
     } catch (e: any) {
-      showDialog({ title: 'Could not withdraw', message: e?.message ?? 'Try again in a moment.' });
+      showDialog({ title: tr('auto.parcelRequests.couldNotWithdraw', 'Could not withdraw'), message: e?.message ?? 'Try again in a moment.' });
     } finally {
       setBusy(null);
     }
@@ -151,7 +152,7 @@ export default function ParcelRequestsScreen() {
         await load();
       }
     } catch (e: any) {
-      showDialog({ title: 'Could not accept', message: e?.message ?? 'Try again in a moment.' });
+      showDialog({ title: tr('auto.parcelRequests.couldNotAccept', 'Could not accept'), message: e?.message ?? 'Try again in a moment.' });
     } finally {
       setBusy(null);
     }
@@ -179,7 +180,7 @@ export default function ParcelRequestsScreen() {
         params: { deliveryId: res.deliveryId, price: String(Number(res.amountNgn ?? 0)) },
       } as any);
     } catch (e: any) {
-      showDialog({ title: 'Could not start payment', message: e?.message ?? 'Try again in a moment.' });
+      showDialog({ title: tr('auto.parcelRequests.couldNotStartPayment', 'Could not start payment'), message: e?.message ?? 'Try again in a moment.' });
     } finally {
       setBusy(null);
     }
@@ -191,7 +192,7 @@ export default function ParcelRequestsScreen() {
       await travelBuddyApi.cancelSeat(b.id);
       await load();
     } catch (e: any) {
-      showDialog({ title: 'Could not withdraw', message: e?.message ?? 'Try again in a moment.' });
+      showDialog({ title: tr('auto.parcelRequests.couldNotWithdraw', 'Could not withdraw'), message: e?.message ?? 'Try again in a moment.' });
     } finally {
       setBusy(null);
     }
@@ -227,15 +228,14 @@ export default function ParcelRequestsScreen() {
             <Package size={40} color={theme.textThird} strokeWidth={1.5} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.parcelRequests.nothingAskedYet', 'Nothing asked yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Find a driver already going your way under Travel Buddy and ask for
-              a seat or for them to carry your parcel. Nothing is charged until they agree.
+              {tr('auto.parcelRequests.findADriverAlreadyGoing', 'Find a driver already going your way under Travel Buddy and ask for a seat or for them to carry your parcel. Nothing is charged until they agree.')}
             </Text>
           </View>
         )}
 
         {seats.length > 0 && <Text style={[styles.section, { color: theme.textThird }]}>SEATS</Text>}
         {seats.map((b) => {
-          const meta = SEAT_COPY[b.status] ?? { label: b.status, tone: 'wait' as const };
+          const meta = SEAT_COPY()[b.status] ?? { label: b.status, tone: 'wait' as const };
           const canPay = b.status === 'pending_payment' || b.status === 'accepted';
           const open   = b.status === 'requested';
           return (
@@ -262,7 +262,7 @@ export default function ParcelRequestsScreen() {
               )}
               {canPay && (
                 <Text style={[styles.fact, { color: theme.textSecond }]}>
-                  The plate, the vehicle photo and the exact meeting spot are on the booking once paid. Pay to hold the seat.
+                  {tr('auto.parcelRequests.thePlateTheVehiclePhoto', 'The plate, the vehicle photo and the exact meeting spot are on the booking once paid. Pay to hold the seat.')}
                 </Text>
               )}
               {/* Paid: the exact spot the driver picked, in their words, and
@@ -270,7 +270,7 @@ export default function ParcelRequestsScreen() {
                   2026-09-06). Same again for where they get off. */}
               {(b.status === 'booked' || b.status === 'boarded') && !!b.board?.address && (
                 <View style={[styles.spot, { borderColor: theme.border, backgroundColor: theme.surfaceSecond }]}>
-                  <Text style={[styles.spotLabel, { color: theme.textThird }]}>WHERE TO MEET</Text>
+                  <Text style={[styles.spotLabel, { color: theme.textThird }]}>{tr('auto.parcelRequests.whereToMeet', 'WHERE TO MEET')}</Text>
                   <Text style={[styles.spotAddr, { color: theme.text }]}>{b.board.address}</Text>
                   {!!b.board.description && (
                     <Text style={[styles.spotNote, { color: theme.textSecond }]}>{b.driver?.name?.split(' ')[0] ?? 'The driver'} says: {b.board.description}</Text>
@@ -283,7 +283,7 @@ export default function ParcelRequestsScreen() {
                   )}
                   {!!b.alight?.address && (
                     <>
-                      <Text style={[styles.spotLabel, { color: theme.textThird, marginTop: 10 }]}>WHERE YOU GET OFF</Text>
+                      <Text style={[styles.spotLabel, { color: theme.textThird, marginTop: 10 }]}>{tr('auto.parcelRequests.whereYouGetOff', 'WHERE YOU GET OFF')}</Text>
                       <Text style={[styles.spotAddr, { color: theme.text }]}>{b.alight.address}</Text>
                       {!!b.alight.mapsUrl && (
                         <Pressable onPress={() => Linking.openURL(b.alight.mapsUrl!).catch(() => {})} style={styles.mapsLink}>
@@ -320,7 +320,7 @@ export default function ParcelRequestsScreen() {
 
         {rows.length > 0 && seats.length > 0 && <Text style={[styles.section, { color: theme.textThird }]}>PARCELS</Text>}
         {rows.map((r) => {
-          const meta = STATE_COPY[r.status] ?? { label: r.status, tone: 'wait' as const };
+          const meta = STATE_COPY()[r.status] ?? { label: r.status, tone: 'wait' as const };
           const open = r.status === 'requested' || r.status === 'countered';
           return (
             <View key={r.id} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
@@ -354,7 +354,7 @@ export default function ParcelRequestsScreen() {
               {r.status === 'countered' && (
                 <View style={[styles.counter, { backgroundColor: '#B4530918', borderColor: '#B45309' }]}>
                   <Text style={[styles.counterTitle, { color: '#B45309' }]}>
-                    They can drop it at {r.counterDropAddress}
+                    {tr('auto.parcelRequests.theyCanDropItAt', 'They can drop it at')} {r.counterDropAddress}
                   </Text>
                   {!!r.counterNote && (
                     <Text style={[styles.counterNote, { color: theme.textSecond }]}>{r.counterNote}</Text>
@@ -374,7 +374,7 @@ export default function ParcelRequestsScreen() {
                 <View style={styles.row}>
                   <Clock size={12} color={theme.textThird} strokeWidth={2} />
                   <Text style={[styles.fact, { color: theme.textThird }]}>
-                    Nothing is charged while you wait.
+                    {tr('auto.parcelRequests.nothingIsChargedWhileYou', 'Nothing is charged while you wait.')}
                   </Text>
                 </View>
               )}

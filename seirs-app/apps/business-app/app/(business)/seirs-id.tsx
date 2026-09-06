@@ -16,6 +16,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 export default function BusinessSeirsIdScreen() {
   const router     = useRouter();
@@ -32,7 +33,7 @@ export default function BusinessSeirsIdScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
         <Text style={{ color: theme.text, fontSize: 15, textAlign: 'center' }}>
-          Your SEIRS ID is being provisioned. Signing out and back in usually clears this.
+          {tr('auto.seirsId.yourSeirsIdIsBeing', 'Your SEIRS ID is being provisioned. Signing out and back in usually clears this.')}
         </Text>
         <Pressable onPress={() => router.back()} style={{ marginTop: 12 }}>
           <Text style={{ color: theme.primary, fontWeight: '700' }}>{tx('auto.seirsId.goBack', 'Go back')}</Text>
@@ -63,8 +64,7 @@ export default function BusinessSeirsIdScreen() {
         <View style={[styles.intro, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Icon name="ShieldCheck" size={18} color={theme.primary} />
           <Text style={[styles.introText, { color: theme.textSecond }]}>
-            This is your business&apos;s verified identity on SEIRS. One code
-            for everything: handoffs, counter work and support.
+            {tr('auto.seirsId.thisIsYourBusinessS', 'This is your business\'s verified identity on SEIRS. One code for everything: handoffs, counter work and support.')}
           </Text>
         </View>
 
@@ -79,7 +79,7 @@ export default function BusinessSeirsIdScreen() {
             />
           </View>
 
-          <Text style={[styles.nameLabel, { color: theme.textSecond }]}>REGISTERED NAME</Text>
+          <Text style={[styles.nameLabel, { color: theme.textSecond }]}>{tr('auto.seirsId.registeredName', 'REGISTERED NAME')}</Text>
           <Text style={[styles.name, { color: theme.text }]}>{name}</Text>
 
           <View style={[styles.codeRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>

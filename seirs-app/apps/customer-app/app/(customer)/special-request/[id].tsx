@@ -33,6 +33,7 @@ import { specialRequestsApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * What each status means TO THE SENDER, in their words.
@@ -41,30 +42,30 @@ import { tx } from '@/i18n/tx';
  * waiting on a quote wants to read "in_review". Each line says what is
  * happening and, where there is one, what happens next.
  */
-const SAY: Record<string, { title: string; body: string; tone: 'wait' | 'act' | 'done' | 'stop' }> = {
-  submitted: { tone: 'wait', title: 'We have it',
-    body: 'Someone will read this and call you. Nothing is charged yet.' },
-  in_review: { tone: 'wait', title: 'Being worked out',
-    body: 'We are pricing the vehicle, the hands and the handling. We may ring you with questions.' },
-  quoted:    { tone: 'act',  title: 'Your quote is ready',
-    body: 'Every line is below. Accept it and we will assign a named driver and vehicle before you pay.' },
-  accepted:  { tone: 'done', title: 'Accepted',
-    body: 'We are assigning the driver and vehicle now.' },
-  assigned:  { tone: 'done', title: 'Driver assigned',
-    body: 'Your driver and vehicle are set. Payment comes next.' },
-  paid:      { tone: 'done', title: 'Paid',
-    body: 'This is now a normal booking and you can track it like any other.' },
-  converted: { tone: 'done', title: 'On its way',
-    body: 'Track it from your bookings.' },
-  declined:  { tone: 'stop', title: 'We cannot take this one',
-    body: 'The reason is below. If something changes, send it again.' },
-  escalated: { tone: 'wait', title: 'With a senior colleague',
-    body: 'Someone more senior is looking at it. This usually means we want to get it right rather than quickly.' },
-  expired:   { tone: 'stop', title: 'The quote ran out',
-    body: 'Diesel and haulage move, so quotes do not last forever. Ask us for a fresh one.' },
-  withdrawn: { tone: 'stop', title: 'You cancelled this',
-    body: 'Nothing was charged.' },
-};
+const SAY = (): Record<string, { title: string; body: string; tone: 'wait' | 'act' | 'done' | 'stop' }> => ({
+  submitted: { tone: 'wait', title: tr('auto.specialRequestDetail.weHaveIt', 'We have it'),
+    body: tr('auto.specialRequestDetail.someoneWillReadThisAnd', 'Someone will read this and call you. Nothing is charged yet.') },
+  in_review: { tone: 'wait', title: tr('auto.specialRequestDetail.beingWorkedOut', 'Being worked out'),
+    body: tr('auto.specialRequestDetail.weArePricingTheVehicle', 'We are pricing the vehicle, the hands and the handling. We may ring you with questions.') },
+  quoted:    { tone: 'act',  title: tr('auto.specialRequestDetail.yourQuoteIsReady', 'Your quote is ready'),
+    body: tr('auto.specialRequestDetail.everyLineIsBelowAccept', 'Every line is below. Accept it and we will assign a named driver and vehicle before you pay.') },
+  accepted:  { tone: 'done', title: tr('auto.specialRequestDetail.accepted', 'Accepted'),
+    body: tr('auto.specialRequestDetail.weAreAssigningTheDriver', 'We are assigning the driver and vehicle now.') },
+  assigned:  { tone: 'done', title: tr('auto.specialRequestDetail.driverAssigned', 'Driver assigned'),
+    body: tr('auto.specialRequestDetail.yourDriverAndVehicleAre', 'Your driver and vehicle are set. Payment comes next.') },
+  paid:      { tone: 'done', title: tr('auto.specialRequestDetail.paid', 'Paid'),
+    body: tr('auto.specialRequestDetail.thisIsNowANormal', 'This is now a normal booking and you can track it like any other.') },
+  converted: { tone: 'done', title: tr('auto.specialRequestDetail.onItsWay', 'On its way'),
+    body: tr('auto.specialRequestDetail.trackItFromYourBookings', 'Track it from your bookings.') },
+  declined:  { tone: 'stop', title: tr('auto.specialRequestDetail.weCannotTakeThisOne', 'We cannot take this one'),
+    body: tr('auto.specialRequestDetail.theReasonIsBelowIf', 'The reason is below. If something changes, send it again.') },
+  escalated: { tone: 'wait', title: tr('auto.specialRequestDetail.withASeniorColleague', 'With a senior colleague'),
+    body: tr('auto.specialRequestDetail.someoneMoreSeniorIsLooking', 'Someone more senior is looking at it. This usually means we want to get it right rather than quickly.') },
+  expired:   { tone: 'stop', title: tr('auto.specialRequestDetail.theQuoteRanOut', 'The quote ran out'),
+    body: tr('auto.specialRequestDetail.dieselAndHaulageMoveSo', 'Diesel and haulage move, so quotes do not last forever. Ask us for a fresh one.') },
+  withdrawn: { tone: 'stop', title: tr('auto.specialRequestDetail.youCancelledThis', 'You cancelled this'),
+    body: tr('auto.specialRequestDetail.nothingWasCharged', 'Nothing was charged.') },
+});
 
 const TONE: Record<string, string> = {
   wait: '#D97706', act: '#16A34A', done: '#0F2B4C', stop: '#DC2626',
@@ -93,7 +94,7 @@ export default function SpecialRequestDetail() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const status = String(row?.status ?? 'submitted');
-  const say    = SAY[status] ?? SAY.submitted;
+  const say    = SAY()[status] ?? SAY().submitted;
   const quote  = row?.quote ?? null;
   const lines: any[] = Array.isArray(quote?.lines) ? quote.lines : [];
 
@@ -107,10 +108,10 @@ export default function SpecialRequestDetail() {
 
   const accept = async () => {
     showDialog({
-      title: 'Accept this quote?',
+      title: tr('auto.specialRequestDetail.acceptThisQuote', 'Accept this quote?'),
       message: `${naira(Number(quote?.totalNgn ?? 0))} in total. We will assign a named driver and vehicle, then take payment. Nothing is charged by accepting.`,
       actions: [
-        { text: 'Accept', onPress: async () => {
+        { text: tr('auto.specialRequestDetail.accept', 'Accept'), onPress: async () => {
             setBusy(true);
             try {
               const res = await specialRequestsApi.accept(String(id));
@@ -119,24 +120,24 @@ export default function SpecialRequestDetail() {
                 params: { deliveryId: res.deliveryId, price: String(res.priceNgn) },
               } as any);
             } catch (e: any) {
-              showDialog({ title: 'Could not accept', message: e?.message ?? 'The quote may have expired. Pull to refresh.' });
+              showDialog({ title: tr('auto.parcelRequests.couldNotAccept', 'Could not accept'), message: e?.message ?? 'The quote may have expired. Pull to refresh.' });
             } finally { setBusy(false); }
           } },
-        { text: 'Not yet', style: 'cancel' },
+        { text: tr('auto.specialRequestDetail.notYet', 'Not yet'), style: 'cancel' },
       ],
     });
   };
 
   const withdraw = () => {
     showDialog({
-      title: 'Cancel this request?',
-      message: 'Nothing has been charged, so this costs you nothing. You can always send it again.',
+      title: tr('auto.specialRequestDetail.cancelThisRequest', 'Cancel this request?'),
+      message: tr('auto.specialRequestDetail.nothingHasBeenChargedSo', 'Nothing has been charged, so this costs you nothing. You can always send it again.'),
       actions: [
-        { text: 'Cancel it', style: 'destructive', onPress: async () => {
+        { text: tr('auto.specialRequestDetail.cancelIt', 'Cancel it'), style: 'destructive', onPress: async () => {
             try { await specialRequestsApi.withdraw(String(id)); await load(); }
-            catch (e: any) { showDialog({ title: 'Could not cancel', message: e?.message ?? 'Try again.' }); }
+            catch (e: any) { showDialog({ title: tr('auto.specialRequestDetail.couldNotCancel', 'Could not cancel'), message: e?.message ?? 'Try again.' }); }
           } },
-        { text: 'Keep it', style: 'cancel' },
+        { text: tr('auto.specialRequestDetail.keepIt', 'Keep it'), style: 'cancel' },
       ],
     });
   };
@@ -223,7 +224,7 @@ export default function SpecialRequestDetail() {
           )}
 
           <View style={[styles.recap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-            <Text style={[styles.recapHead, { color: theme.textSecond }]}>WHAT YOU SENT US</Text>
+            <Text style={[styles.recapHead, { color: theme.textSecond }]}>{tr('auto.specialRequestDetail.whatYouSentUs', 'WHAT YOU SENT US')}</Text>
             <Text style={[styles.recapBody, { color: theme.text }]}>{row?.description ?? ''}</Text>
             <Text style={[styles.recapMeta, { color: theme.textThird }]}>
               {row?.pickupAddress} to {row?.dropoffAddress}

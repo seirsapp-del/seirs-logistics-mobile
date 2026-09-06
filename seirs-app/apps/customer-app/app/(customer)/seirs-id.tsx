@@ -10,6 +10,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §1.9 + §1.17: customer presents this screen when collecting
 // at a partner store or as the recipient at the door. Partner staff /
@@ -59,10 +60,10 @@ export default function SeirsIdScreen() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl, gap: Spacing.md }}>
           <Shield size={32} color={theme.primary} strokeWidth={1.5} />
           <Text style={{ color: theme.text, fontSize: FontSize.md, fontWeight: FontWeight.bold, textAlign: 'center' }}>
-            Setting up your SEIRS ID
+            {tr('auto.seirsId.settingUpYourSeirsId', 'Setting up your SEIRS ID')}
           </Text>
           <Text style={{ color: theme.textSecond, fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 }}>
-            Your ID should be ready. If this message stays, signing out and back in usually clears it.
+            {tr('auto.seirsId.yourIdShouldBeReady', 'Your ID should be ready. If this message stays, signing out and back in usually clears it.')}
           </Text>
           <Pressable
             disabled={refreshing}
@@ -103,7 +104,7 @@ export default function SeirsIdScreen() {
         <View style={[styles.intro, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           <Shield size={18} color={theme.primary} strokeWidth={1.75} />
           <Text style={[styles.introText, { color: theme.textSecond }]}>
-            Show this code when collecting a package from a partner store, or at the door if you don&apos;t have a physical ID. It is your SEIRS Verified ID.
+            {tr('auto.seirsId.showThisCodeWhenCollecting', 'Show this code when collecting a package from a partner store, or at the door if you don\'t have a physical ID. It is your SEIRS Verified ID.')}
           </Text>
         </View>
 
@@ -118,7 +119,7 @@ export default function SeirsIdScreen() {
             />
           </View>
 
-          <Text style={[styles.nameLabel, { color: theme.textSecond }]}>REGISTERED NAME</Text>
+          <Text style={[styles.nameLabel, { color: theme.textSecond }]}>{tr('auto.seirsId.registeredName', 'REGISTERED NAME')}</Text>
           <Text style={[styles.name, { color: theme.text }]}>{name}</Text>
 
           <View style={[styles.codeRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
@@ -140,10 +141,10 @@ export default function SeirsIdScreen() {
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.seirsId.howHandoffVerificationWorks', 'How handoff verification works')}</Text>
           {[
-            { step: '1', text: 'Partner staff (or your driver) scans this QR, or types the SEIRS ID shown above.' },
-            { step: '2', text: 'They see your registered name on their screen.' },
-            { step: '3', text: 'Say your full name out loud: they type it to confirm the match.' },
-            { step: '4', text: 'The handoff is logged in your delivery audit trail.' },
+            { step: '1', text: tr('auto.seirsId.partnerStaffOrYourDriver', 'Partner staff (or your driver) scans this QR, or types the SEIRS ID shown above.') },
+            { step: '2', text: tr('auto.seirsId.theySeeYourRegisteredName', 'They see your registered name on their screen.') },
+            { step: '3', text: tr('auto.seirsId.sayYourFullNameOut', 'Say your full name out loud: they type it to confirm the match.') },
+            { step: '4', text: tr('auto.seirsId.theHandoffIsLoggedIn', 'The handoff is logged in your delivery audit trail.') },
           ].map(s => (
             <View key={s.step} style={styles.howRow}>
               <View style={[styles.howStep, { backgroundColor: theme.primary }]}>
@@ -168,7 +169,7 @@ export default function SeirsIdScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[styles.receiveTitle, { color: theme.text }]}>{tx('auto.seirsId.receivingAPackage', 'Receiving a package?')}</Text>
             <Text style={[styles.receiveSub, { color: theme.textSecond }]}>
-              Open your collection pass: ID + email code, or SEIRS ID + typed name.
+              {tr('auto.seirsId.openYourCollectionPassId', 'Open your collection pass: ID + email code, or SEIRS ID + typed name.')}
             </Text>
           </View>
           <ChevronRight size={18} color={theme.textThird} />

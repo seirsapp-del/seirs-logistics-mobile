@@ -22,6 +22,7 @@ import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 import { CitySearchField } from '@/components/CitySearchField';
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 
 /**
@@ -156,8 +157,8 @@ export default function TravelBuddyScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         showDialog({
-          title:   'Location is off',
-          message: 'Turn on location for SEIRS, or type the town instead. Both work.',
+          title:   tr('auto.travelBuddy.locationIsOff', 'Location is off'),
+          message: tr('auto.travelBuddy.turnOnLocationForSeirs', 'Turn on location for SEIRS, or type the town instead. Both work.'),
         });
         return;
       }
@@ -180,7 +181,7 @@ export default function TravelBuddyScreen() {
       else                  { setToCoords({ lat, lng });   if (label) setTo(label); }
     } catch (e: any) {
       showDialog({
-        title:   'Could not find you',
+        title:   tr('auto.travelBuddy.couldNotFindYou', 'Could not find you'),
         message: e?.message ?? 'Try again, or type the town instead.',
       });
     } finally {
@@ -324,7 +325,7 @@ export default function TravelBuddyScreen() {
      */
     Keyboard.dismiss();
     if (!from.trim() || !to.trim()) {
-      showDialog({ title: 'Both cities needed', message: 'Where are you leaving from, and where to?' });
+      showDialog({ title: tr('auto.travelBuddy.bothCitiesNeeded', 'Both cities needed'), message: tr('auto.travelBuddy.whereAreYouLeavingFrom', 'Where are you leaving from, and where to?') });
       return;
     }
     setLoading(true);
@@ -341,7 +342,7 @@ export default function TravelBuddyScreen() {
           : undefined);
       setTrips(rows ?? []);
     } catch (e: any) {
-      showDialog({ title: 'Search failed', message: e?.message ?? 'Try again.' });
+      showDialog({ title: tr('auto.travelBuddy.searchFailed', 'Search failed'), message: e?.message ?? 'Try again.' });
     } finally {
       setLoading(false);
     }
@@ -354,7 +355,7 @@ export default function TravelBuddyScreen() {
       setAlerted(true);
     } catch (e: any) {
       showDialog({
-        title:   'Could not set that alert',
+        title:   tr('auto.travelBuddy.couldNotSetThatAlert', 'Could not set that alert'),
         message: e?.message ?? 'Try again in a moment.',
       });
     }
@@ -384,20 +385,20 @@ export default function TravelBuddyScreen() {
         text: seatWord(n),
         onPress: () => {
           showDialog({
-            title: 'Any luggage?',
-            message: 'A small bag rides free. Large luggage adds a small fee.',
+            title: tr('auto.travelBuddy.anyLuggage', 'Any luggage?'),
+            message: tr('auto.travelBuddy.aSmallBagRidesFree', 'A small bag rides free. Large luggage adds a small fee.'),
             actions: [
-              { text: 'No luggage', onPress: () => doBook(trip, n, 'none') },
-              { text: 'Small bag',  onPress: () => doBook(trip, n, 'small') },
-              { text: 'Large',      onPress: () => doBook(trip, n, 'large') },
-              { text: 'Cancel',     style: 'cancel' },
+              { text: tr('auto.editBookingDetail.noLuggage', 'No luggage'), onPress: () => doBook(trip, n, 'none') },
+              { text: tr('auto.editBookingDetail.smallBag', 'Small bag'),  onPress: () => doBook(trip, n, 'small') },
+              { text: tr('auto.editBookingDetail.large', 'Large'),      onPress: () => doBook(trip, n, 'large') },
+              { text: tr('auto.AddressPicker.cancel', 'Cancel'),     style: 'cancel' },
             ],
           });
         },
       });
     }
     showDialog({
-      title: 'How many seats?',
+      title: tr('auto.travelBuddy.howManySeats', 'How many seats?'),
       // The vehicle used to be named here, on the reasoning that this is
       // the last screen before money moves. It cannot be: at this point
       // the driver has not agreed to carry this person, and printing
@@ -405,7 +406,7 @@ export default function TravelBuddyScreen() {
       // price of a tap. It is promised instead, and delivered on
       // acceptance, before any money actually moves.
       message: `${trip.seatsLeft} available on this trip.\n\nThis sends a request to the driver. Nothing is charged until they accept, and the plate is shown once you pay to hold the seat.`,
-      actions: [...seats, { text: 'Cancel', style: 'cancel' }],
+      actions: [...seats, { text: tr('auto.AddressPicker.cancel', 'Cancel'), style: 'cancel' }],
     });
   };
 
@@ -434,15 +435,15 @@ export default function TravelBuddyScreen() {
           : {}),
       });
       showDialog({
-        title: 'Request sent',
+        title: tr('auto.send.requestSent', 'Request sent'),
         message: `${trip.driver?.name ?? 'The driver'} has your request. Nothing is charged until they accept. You can watch it under Your trip requests.`,
         actions: [
-          { text: 'View requests', onPress: () => router.push('/(customer)/parcel-requests' as any) },
-          { text: 'Done', style: 'cancel' },
+          { text: tr('auto.travelBuddy.viewRequests', 'View requests'), onPress: () => router.push('/(customer)/parcel-requests' as any) },
+          { text: tr('auto.profile.done', 'Done'), style: 'cancel' },
         ],
       });
     } catch (e: any) {
-      showDialog({ title: 'Could not send request', message: e?.message ?? 'Try again.' });
+      showDialog({ title: tr('auto.travelBuddy.couldNotSendRequest', 'Could not send request'), message: e?.message ?? 'Try again.' });
     } finally {
       setBooking(null);
     }
@@ -463,9 +464,7 @@ export default function TravelBuddyScreen() {
         <View style={[styles.intro, { backgroundColor: theme.primary + '12' }]}>
           <Ionicons name="car-outline" size={20} color={theme.primary} />
           <Text style={[styles.introText, { color: theme.textSecond }]}>
-            Drivers already making an intercity trip sell their real spare
-            seats. Cheaper than the park, fully identified drivers, and the
-            system never lets a vehicle be overloaded.
+            {tr('auto.travelBuddy.driversAlreadyMakingAnIntercity', 'Drivers already making an intercity trip sell their real spare seats. Cheaper than the park, fully identified drivers, and the system never lets a vehicle be overloaded.')}
           </Text>
         </View>
 
@@ -554,7 +553,7 @@ export default function TravelBuddyScreen() {
                   onPress={() => { setDayISO(null); setCalOpen(false); }}
                   style={[styles.dayClear, { color: theme.primary }]}
                 >
-                  Any date
+                  {tr('auto.travelBuddy.anyDate', 'Any date')}
                 </Text>
               )}
               <Ionicons name={calOpen ? 'chevron-up' : 'calendar-outline'} size={18} color={theme.textSecond} />
@@ -592,7 +591,7 @@ export default function TravelBuddyScreen() {
             one tap. They step aside the moment there are results. */}
         {!searched && (
           <View style={styles.routesWrap}>
-            <Text style={[styles.routesLabel, { color: theme.textSecond }]}>POPULAR ROUTES</Text>
+            <Text style={[styles.routesLabel, { color: theme.textSecond }]}>{tr('auto.travelBuddy.popularRoutes', 'POPULAR ROUTES')}</Text>
             <View style={styles.routesRow}>
               {POPULAR_ROUTES.map(r => (
                 <Pressable
@@ -607,7 +606,7 @@ export default function TravelBuddyScreen() {
               ))}
             </View>
             <Text style={[styles.routesNote, { color: theme.textThird }]}>
-              Tap one to fill the boxes, then Find trips. Any other route works too: type it in.
+              {tr('auto.travelBuddy.tapOneToFillThe', 'Tap one to fill the boxes, then Find trips. Any other route works too: type it in.')}
             </Text>
           </View>
         )}
@@ -630,7 +629,7 @@ export default function TravelBuddyScreen() {
                 <View style={[styles.alertDone, { borderColor: theme.border, backgroundColor: theme.surface }]}>
                   <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
                   <Text style={[styles.alertDoneText, { color: theme.text }]}>
-                    We will tell you when a driver declares {from.trim()} to {to.trim()}.
+                    {tr('auto.travelBuddy.weWillTellYouWhen', 'We will tell you when a driver declares')} {from.trim()} to {to.trim()}.
                   </Text>
                 </View>
               ) : (
@@ -640,13 +639,13 @@ export default function TravelBuddyScreen() {
                 >
                   <Ionicons name="notifications-outline" size={17} color={theme.primary} />
                   <Text style={[styles.alertBtnText, { color: theme.primary }]}>
-                    Alert me when someone declares this route
+                    {tr('auto.travelBuddy.alertMeWhenSomeoneDeclares', 'Alert me when someone declares this route')}
                   </Text>
                 </Pressable>
               )
             )}
 
-            <Text style={[styles.routesLabel, { color: theme.textSecond, marginTop: Spacing.lg }]}>OR TRY</Text>
+            <Text style={[styles.routesLabel, { color: theme.textSecond, marginTop: Spacing.lg }]}>{tr('auto.travelBuddy.orTry', 'OR TRY')}</Text>
             <View style={styles.routesRow}>
               {POPULAR_ROUTES.map(r => (
                 <Pressable
@@ -703,7 +702,7 @@ export default function TravelBuddyScreen() {
                 this route". */}
             {visibleTrips.length === 0 && (
               <Text style={{ fontSize: FontSize.sm, color: theme.textSecond }}>
-                {trips.length} {trips.length === 1 ? 'trip' : 'trips'} on this route, none in that window. Try Any time.
+                {trips.length} {trips.length === 1 ? 'trip' : 'trips'} {tr('auto.travelBuddy.onThisRouteNoneIn', 'on this route, none in that window. Try Any time.')}
               </Text>
             )}
           </View>
@@ -789,7 +788,7 @@ export default function TravelBuddyScreen() {
                       : 'Pickup along the route (agree in chat)'}
                 </Text>
                 <Text style={[styles.tripMeta, { color: theme.textThird }]}>
-                  Exact spot once the driver accepts you
+                  {tr('auto.travelBuddy.exactSpotOnceTheDriver', 'Exact spot once the driver accepts you')}
                 </Text>
               </View>
             </View>
@@ -827,7 +826,7 @@ export default function TravelBuddyScreen() {
                     .join(' ') || VEHICLE_LABEL[trip.driver?.vehicleType] || 'Vehicle'}
                 </Text>
                 <Text style={[styles.tripMeta, { color: theme.textThird }]}>
-                  The plate is shown once the driver accepts you
+                  {tr('auto.travelBuddy.thePlateIsShownOnce', 'The plate is shown once the driver accepts you')}
                 </Text>
               </View>
             </View>

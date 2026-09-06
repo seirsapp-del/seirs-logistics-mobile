@@ -28,6 +28,7 @@ import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §2.18: driver declares an upcoming intercity trip
 // (Lagos → Ibadan, etc.). System surfaces matching packages along
@@ -576,13 +577,13 @@ export default function InterstateScreen() {
       trip.acceptsPassengers ? 'passenger seats' : null,
     ].filter(Boolean).join(' and ') || 'this route';
     setSheet({
-      title: 'Cancel this trip?',
+      title: tr('auto.interstate.cancelThisTrip', 'Cancel this trip?'),
       message: booked > 0
         ? `${trip.fromCity} → ${trip.toCity}. ${booked} seat${booked === 1 ? '' : 's'} already booked and paid for on this trip. Cancelling delists it, and anyone still waiting on your answer gets refunded. If a passenger is counting on this run, tell them in chat first.`
         : `${trip.fromCity} → ${trip.toCity}. You will be delisted and stop being matched for ${sells}.`,
       options: [
         {
-          label: 'Cancel this trip',
+          label: tr('auto.interstate.cancelThisTrip2', 'Cancel this trip'),
           sub: booked > 0 ? `${booked} paid seat${booked === 1 ? '' : 's'} on it` : undefined,
           variant: 'destructive',
           icon: 'close-circle-outline',
@@ -592,7 +593,7 @@ export default function InterstateScreen() {
           },
         },
       ],
-      cancelLabel: 'Keep the trip',
+      cancelLabel: tr('auto.interstate.keepTheTrip', 'Keep the trip'),
     });
   };
 
@@ -838,10 +839,10 @@ export default function InterstateScreen() {
         setDepartAt(''); setDepartDate(''); setDepartTime('');
       };
       setSheet({
-        title: 'Trip declared',
+        title: tr('auto.interstate.tripDeclared', 'Trip declared'),
         message: `You are listed for ${routeLine} on ${when}.\n\n${lines}`,
         options: [{
-          label: 'Done',
+          label: tr('auto.profile.done', 'Done'),
           variant: 'primary',
           icon: 'checkmark-circle-outline',
           onPress: clear,
@@ -945,8 +946,7 @@ export default function InterstateScreen() {
 
         {!!stop.query.trim() && !stop.place && (
           <Text style={[styles.warn, { color: '#D97706' }]}>
-            Tap a suggestion so this stop gets a real pin. Typed on its own it is
-            only words, and words cannot settle where you actually waited.
+            {tr('auto.interstate.tapASuggestionSoThis', 'Tap a suggestion so this stop gets a real pin. Typed on its own it is only words, and words cannot settle where you actually waited.')}
           </Text>
         )}
         {/*
@@ -962,15 +962,13 @@ export default function InterstateScreen() {
         */}
         {stop.cityGuessed && !!stop.city && (
           <Text style={[styles.warn, { color: '#D97706' }]}>
-            We read {stop.city} off the address, and we are not certain of it.
-            Check it before you declare: passengers find this trip by searching
-            that name.
+            We read {stop.city} {tr('auto.interstate.offTheAddressAndWe', 'off the address, and we are not certain of it. Check it before you declare: passengers find this trip by searching that name.')}
           </Text>
         )}
 
         <View style={{ gap: 6 }}>
           <Text style={[styles.miniLabel, { color: theme.textSecond }]}>
-            HOW TO FIND THIS SPOT (OPTIONAL)
+            {tr('auto.interstate.howToFindThisSpot', 'HOW TO FIND THIS SPOT (OPTIONAL)')}
           </Text>
           <TextInput
             value={stop.description}
@@ -1040,7 +1038,7 @@ export default function InterstateScreen() {
 
             <View style={{ marginTop: 12 }}>
               <Text style={[styles.prefSub, { color: theme.textSecond, marginBottom: 6 }]}>
-                Longest trip you will take (km). Leave empty for no limit.
+                {tr('auto.interstate.longestTripYouWillTake', 'Longest trip you will take (km). Leave empty for no limit.')}
               </Text>
               <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                 <TextInput
@@ -1065,7 +1063,7 @@ export default function InterstateScreen() {
           {myTrips.length > 0 && (
             <View style={{ gap: 8, marginBottom: 4 }}>
               <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, letterSpacing: 0.6, color: theme.textSecond }}>
-                MY DECLARED TRIPS
+                {tr('auto.interstate.myDeclaredTrips', 'MY DECLARED TRIPS')}
               </Text>
               {myTrips.map((tr) => {
                 /**
@@ -1126,7 +1124,7 @@ export default function InterstateScreen() {
                         onPress={() => router.push(`/(driver)/edit-trip/${tr.id}` as any)}
                         hitSlop={8}
                       >
-                        <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: '700' }}>Edit</Text>
+                        <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: '700' }}>{tr('auto.interstate.edit', 'Edit')}</Text>
                       </Pressable>
                       <Pressable onPress={() => cancelTrip(tr)} hitSlop={8}>
                         <Text style={{ color: '#DC2626', fontSize: FontSize.sm, fontWeight: '700' }}>{tx('auto.interstate.cancel', 'Cancel')}</Text>
@@ -1148,9 +1146,7 @@ export default function InterstateScreen() {
                   mentioned at all even though they are the half that pays up
                   front (2026-08-25 interstate walk). */}
               <Text style={[styles.introSub, { color: theme.textSecond }]}>
-                Set out the whole run before you leave: where you start, anywhere you
-                stop, where you finish. Passengers can book your spare seats, and
-                packages going the same way are ranked towards you.
+                {tr('auto.interstate.setOutTheWholeRun', 'Set out the whole run before you leave: where you start, anywhere you stop, where you finish. Passengers can book your spare seats, and packages going the same way are ranked towards you.')}
               </Text>
             </View>
           </View>
@@ -1160,7 +1156,7 @@ export default function InterstateScreen() {
               corridor name is not a place and the distance is measured from
               places. Adding a stop from a different corridor makes no sense,
               so this starts the route over. */}
-          <Text style={[styles.label, { color: theme.textSecond }]}>POPULAR ROUTES</Text>
+          <Text style={[styles.label, { color: theme.textSecond }]}>{tr('auto.interstate.popularRoutes', 'POPULAR ROUTES')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {POPULAR_ROUTES.map(r => (
               <Pressable
@@ -1172,18 +1168,17 @@ export default function InterstateScreen() {
                 style={[styles.routeChip, { borderColor: theme.border, backgroundColor: theme.surface }]}
               >
                 <Text style={{ color: theme.text, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>{r.from} → {r.to}</Text>
-                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs }}>tap to start</Text>
+                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs }}>{tr('auto.interstate.tapToStart', 'tap to start')}</Text>
               </Pressable>
             ))}
           </ScrollView>
 
           {/* ── The route, stop by stop ──────────────────────────────── */}
           <Text style={[styles.label, { color: theme.textSecond, marginTop: Spacing.md }]}>
-            YOUR ROUTE
+            {tr('auto.interstate.yourRoute', 'YOUR ROUTE')}
           </Text>
           <Text style={[styles.helper, { color: theme.textThird, marginBottom: 4 }]}>
-            Name every place you will stop, in order, before you set off. Passengers
-            book days ahead and plan around the route you sell them.
+            {tr('auto.interstate.nameEveryPlaceYouWill', 'Name every place you will stop, in order, before you set off. Passengers book days ahead and plan around the route you sell them.')}
           </Text>
 
           {stops.slice(0, -1).map((stop, i) => (
@@ -1202,13 +1197,12 @@ export default function InterstateScreen() {
             >
               <Plus size={16} color={theme.primary} />
               <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>
-                Add a stop on the way
+                {tr('auto.interstate.addAStopOnThe', 'Add a stop on the way')}
               </Text>
             </Pressable>
           ) : (
             <Text style={[styles.helper, { color: theme.textThird, textAlign: 'center' }]}>
-              {MAX_STOPS} stops is the limit on one run. You have to stop at every one
-              of these, and a route nobody can hold you to is worth nothing.
+              {MAX_STOPS} {tr('auto.interstate.stopsIsTheLimitOn', 'stops is the limit on one run. You have to stop at every one of these, and a route nobody can hold you to is worth nothing.')}
             </Text>
           )}
 
@@ -1289,7 +1283,7 @@ export default function InterstateScreen() {
                 </Text>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 0.6 }}>
-                    ROUTE DISTANCE
+                    {tr('auto.interstate.routeDistance', 'ROUTE DISTANCE')}
                   </Text>
                   <Text style={{ color: theme.text, fontSize: FontSize.lg, fontWeight: '800' }}>
                     {km > 0 ? `${km} km` : '--'}
@@ -1303,9 +1297,7 @@ export default function InterstateScreen() {
                   * They would, and nothing stopped them.
                   */}
                 <Text style={{ color: theme.textThird, fontSize: FontSize.xs, lineHeight: 16 }}>
-                  Measured along the stops you picked, not between city centres.
-                  SEIRS sets this, not the driver, because it is what passengers
-                  are charged per kilometre.
+                  {tr('auto.interstate.measuredAlongTheStopsYou', 'Measured along the stops you picked, not between city centres. SEIRS sets this, not the driver, because it is what passengers are charged per kilometre.')}
                 </Text>
 
                 {riderPerSeat != null && km > 0 && (
@@ -1329,8 +1321,7 @@ export default function InterstateScreen() {
                       </View>
                     )}
                     <Text style={{ color: theme.textThird, fontSize: FontSize.xs, marginTop: 2 }}>
-                      Estimate. The exact figure is priced when a passenger books, and
-                      a night or weekend departure pays more.
+                      {tr('auto.interstate.estimateTheExactFigureIs', 'Estimate. The exact figure is priced when a passenger books, and a night or weekend departure pays more.')}
                     </Text>
                   </View>
                 )}
@@ -1392,7 +1383,7 @@ export default function InterstateScreen() {
                 />
                 <View style={{ padding: Spacing.md, borderTopWidth: 1, borderTopColor: theme.border }}>
                   <Text style={[styles.label, { color: theme.textSecond, marginBottom: 8 }]}>
-                    DEPARTURE TIME
+                    {tr('auto.editTripDetail.departureTime', 'DEPARTURE TIME')}
                   </Text>
                   {/* Say why the early times are greyed, or it reads as a bug. */}
                   {minLeadMins > 0 && (
@@ -1478,7 +1469,7 @@ export default function InterstateScreen() {
                       fontWeight: FontWeight.semibold,
                       marginTop: 12,
                     }}>
-                      No departures left on this day. Pick tomorrow, or a later date, above.
+                      {tr('auto.interstate.noDeparturesLeftOnThis', 'No departures left on this day. Pick tomorrow, or a later date, above.')}
                     </Text>
                   )}
                 </View>
@@ -1487,7 +1478,7 @@ export default function InterstateScreen() {
           </View>
 
           <View style={{ gap: 6, marginTop: Spacing.sm }}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>SPARE PACKAGE CAPACITY (kg)</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tr('auto.interstate.sparePackageCapacityKg', 'SPARE PACKAGE CAPACITY (kg)')}</Text>
             <TextInput
               value={vehicleSpace}
               onChangeText={setVehicleSpace}
@@ -1501,7 +1492,7 @@ export default function InterstateScreen() {
 
           {/* ── Travel Buddy: what this trip sells ─────────────────── */}
           <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, letterSpacing: 0.6, color: theme.textSecond, marginTop: 4 }}>
-            WHAT ARE YOU OFFERING?
+            {tr('auto.interstate.whatAreYouOffering', 'WHAT ARE YOU OFFERING?')}
           </Text>
 
           <Pressable
@@ -1517,7 +1508,7 @@ export default function InterstateScreen() {
                   compares it against a package weight. Say what it really
                   does (2026-08-25 interstate walk). */}
               <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
-                Shows your spare kg to senders on this route
+                {tr('auto.interstate.showsYourSpareKgTo', 'Shows your spare kg to senders on this route')}
               </Text>
             </View>
             {/* D-6.10: this was bound to (takePassengers || takePackages), so
@@ -1611,7 +1602,7 @@ export default function InterstateScreen() {
               (2026-08-23 sweep, D-6.9, paired with D-1.5). Seat bookings on
               the trip DO have a real decline; packages you simply skip. */}
           <Text style={[styles.footnote, { color: theme.textThird }]}>
-            Packages running your declared route are ranked towards you around your departure. Nothing is forced on you: skip any package that does not suit the run. A seat request is different: it is made to you alone and nothing is charged until you accept it. Say yes or no, and it expires if you leave it unanswered.
+            {tr('auto.interstate.packagesRunningYourDeclaredRoute', 'Packages running your declared route are ranked towards you around your departure. Nothing is forced on you: skip any package that does not suit the run. A seat request is different: it is made to you alone and nothing is charged until you accept it. Say yes or no, and it expires if you leave it unanswered.')}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

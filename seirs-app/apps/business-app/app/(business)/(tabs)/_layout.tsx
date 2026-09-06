@@ -7,6 +7,7 @@ import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { tx } from '@/i18n/tx';
 
 function TabIcon({ name, focused }: { name: any; focused: boolean }) {
   const { isDark } = useTheme();
@@ -85,11 +86,11 @@ export default function BusinessTabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Dashboard', tabBarIcon: ({ focused }) => <TabIcon name="LayoutDashboard" focused={focused} /> }}
+        options={{ title: tx('auto.layout.dashboard', 'Dashboard'), tabBarIcon: ({ focused }) => <TabIcon name="LayoutDashboard" focused={focused} /> }}
       />
       <Tabs.Screen
         name="deliveries"
-        options={{ title: 'Deliveries', tabBarIcon: ({ focused }) => <TabIcon name="Package" focused={focused} /> }}
+        options={{ title: tx('auto.deliveries.deliveries', 'Deliveries'), tabBarIcon: ({ focused }) => <TabIcon name="Package" focused={focused} /> }}
       />
       {/* The centre + tab is gone (founder 2026-08-15): booking starts
           from the dashboard's Send a Package card, the way the customer
@@ -105,11 +106,11 @@ export default function BusinessTabsLayout() {
       />
       <Tabs.Screen
         name="messages"
-        options={{ tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined, title: 'Messages', tabBarIcon: ({ focused }) => <TabIcon name="MessageSquare" focused={focused} /> }}
+        options={{ tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined, title: tx('auto.layout.messages', 'Messages'), tabBarIcon: ({ focused }) => <TabIcon name="MessageSquare" focused={focused} /> }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profile', tabBarIcon: ({ focused }) => <TabIcon name="User" focused={focused} /> }}
+        options={{ title: tx('auto.layout.profile', 'Profile'), tabBarIcon: ({ focused }) => <TabIcon name="User" focused={focused} /> }}
       />
     </Tabs>
   );

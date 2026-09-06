@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const OTP_LENGTH      = 6;
 const RESEND_COOLDOWN = 60;
@@ -115,7 +116,7 @@ export default function VerifyOtpScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xxl, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -137,7 +138,7 @@ export default function VerifyOtpScreen() {
           <View style={styles.brandRow}>
             <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
             <Text style={[styles.brand,    { color: theme.primary }]}>SEIRS</Text>
-            <Text style={[styles.brandSub, { color: theme.textThird }]}>BUSINESS &amp; PARTNERS</Text>
+            <Text style={[styles.brandSub, { color: theme.textThird }]}>{tr('auto.forgotPassword.businessPartners', 'BUSINESS & PARTNERS')}</Text>
           </View>
 
           <View style={[styles.iconWrap, { backgroundColor: theme.surfaceSecond }]}>
@@ -146,7 +147,7 @@ export default function VerifyOtpScreen() {
 
           <Text style={[styles.title, { color: theme.text }]}>{tx('auto.verifyOtp.verifyYourEmail', 'Verify your email')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            We sent a 6-digit code to{'\n'}
+            {tr('auto.verifyOtp.weSentA6Digit', 'We sent a 6-digit code to')}{'\n'}
             <Text style={{ color: theme.text, fontWeight: FontWeight.semibold as any }}>{maskedEmail}</Text>
           </Text>
           <Text style={[styles.expiry, { color: theme.textThird }]}>{tx('auto.verifyOtp.codeExpiresIn15Minutes', 'Code expires in 15 minutes.')}</Text>
@@ -208,7 +209,7 @@ export default function VerifyOtpScreen() {
 
           {/* Resend */}
           <View style={styles.resendRow}>
-            <Text style={[styles.resendLabel, { color: theme.textSecond }]}>Didn&apos;t receive it?</Text>
+            <Text style={[styles.resendLabel, { color: theme.textSecond }]}>{tr('auto.verifyOtp.didnTReceiveIt', 'Didn\'t receive it?')}</Text>
             <Pressable
               style={styles.resendBtn}
               onPress={handleResend}

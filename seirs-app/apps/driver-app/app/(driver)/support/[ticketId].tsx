@@ -30,6 +30,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supportApi, uploadApi, type SupportThreadDTO } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 export default function DriverSupportThreadScreen() {
   const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
@@ -108,13 +109,13 @@ export default function DriverSupportThreadScreen() {
     // At Android's three-button ceiling, same as the KYC and chat
     // pickers (2026-08-25 dialog sweep).
     setSheet({
-      title: 'Attach photo',
-      message: 'Choose where to attach from.',
+      title: tr('auto.supportDetail.attachPhoto', 'Attach photo'),
+      message: tr('auto.supportDetail.chooseWhereToAttachFrom', 'Choose where to attach from.'),
       options: [
-        { label: 'Take photo',   sub: 'Use the camera now', variant: 'primary', icon: 'camera-outline', onPress: pickCamera },
-        { label: 'From gallery', sub: 'Pick a photo you already have', icon: 'images-outline', onPress: pickGallery },
+        { label: tr('auto.active.takePhoto', 'Take photo'),   sub: tr('auto.supportDetail.useTheCameraNow', 'Use the camera now'), variant: 'primary', icon: 'camera-outline', onPress: pickCamera },
+        { label: tr('auto.supportDetail.fromGallery', 'From gallery'), sub: tr('auto.supportDetail.pickAPhotoYouAlready', 'Pick a photo you already have'), icon: 'images-outline', onPress: pickGallery },
       ],
-      cancelLabel: 'Cancel',
+      cancelLabel: tr('auto.parcelRequests.cancel', 'Cancel'),
     });
   };
 

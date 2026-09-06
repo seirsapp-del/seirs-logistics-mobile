@@ -43,6 +43,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { trackUrl } from '@/constants/config';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * The ticket is deliberately the same paper white in both themes.
@@ -128,11 +129,10 @@ export default function PackageQrScreen() {
         <View style={styles.empty}>
           <Icon name="QrCode" size={34} color={colors.textThird} />
           <Text style={{ color: colors.text, fontSize: FontSize.base, fontWeight: FontWeight.bold }}>
-            No tracking code
+            {tr('auto.packageQr.noTrackingCode', 'No tracking code')}
           </Text>
           <Text style={{ color: colors.textSecond, fontSize: FontSize.sm, textAlign: 'center', lineHeight: 19 }}>
-            Open this from a package on your trip or tracking screen and the
-            code comes with it.
+            {tr('auto.packageQr.openThisFromAPackage', 'Open this from a package on your trip or tracking screen and the code comes with it.')}
           </Text>
         </View>
       </SafeAreaView>
@@ -170,7 +170,7 @@ export default function PackageQrScreen() {
 
           <View style={styles.kicker}>
             <View style={styles.kickerDot} />
-            <Text style={styles.kickerText}>PACKAGE QR</Text>
+            <Text style={styles.kickerText}>{tr('auto.packageQr.packageQr2', 'PACKAGE QR')}</Text>
             <View style={styles.kickerDot} />
           </View>
 
@@ -187,7 +187,7 @@ export default function PackageQrScreen() {
             />
           </View>
 
-          <Text style={styles.codeLabel}>TRACKING CODE</Text>
+          <Text style={styles.codeLabel}>{tr('auto.packageQr.trackingCode', 'TRACKING CODE')}</Text>
           <Text style={styles.code} selectable>{code}</Text>
 
           {(!!description || !!receiver) && (
@@ -210,7 +210,7 @@ export default function PackageQrScreen() {
 
           <View style={styles.perforation} />
           <Text style={styles.footprint}>
-            Show this to your SEIRS driver at handover
+            {tr('auto.packageQr.showThisToYourSeirs', 'Show this to your SEIRS driver at handover')}
           </Text>
         </View>
 
@@ -246,16 +246,13 @@ export default function PackageQrScreen() {
           <View style={styles.noteRow}>
             <Icon name="Camera" size={16} color={colors.primary} />
             <Text style={[styles.noteText, { color: colors.textSecond }]}>
-              Screenshot this and send it to whoever is receiving the package.
-              They do not need the SEIRS app: the driver scans it off their
-              screen, or types the code in.
+              {tr('auto.packageQr.screenshotThisAndSendIt', 'Screenshot this and send it to whoever is receiving the package. They do not need the SEIRS app: the driver scans it off their screen, or types the code in.')}
             </Text>
           </View>
           <View style={styles.noteRow}>
             <Icon name="ShieldCheck" size={16} color={colors.success} />
             <Text style={[styles.noteText, { color: colors.textSecond }]}>
-              Safe to forward. The code is all this QR carries: no name,
-              address or phone number travels with it.
+              {tr('auto.packageQr.safeToForwardTheCode', 'Safe to forward. The code is all this QR carries: no name, address or phone number travels with it.')}
             </Text>
           </View>
         </View>

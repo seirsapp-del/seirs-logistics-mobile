@@ -28,6 +28,7 @@ import { canAttachFiles, pickDocument } from '@/utils/documentPicker';
 import { alertDialog } from '@/components/SeirsDialog';
 import type { SeirsSheetSpec } from '@/components/SeirsSheet';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type DocStatus = 'not_uploaded' | 'uploaded' | 'verified' | 'rejected' | 'expired' | 'needs_replacing';
 
@@ -42,11 +43,11 @@ interface DocItem {
   expiresAt?: string | null;
 }
 
-const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; Icon: any }> = {
-  not_uploaded: { label: 'Not uploaded', color: '#9CA3AF', Icon: UploadCloud },
-  uploaded:     { label: 'Under review', color: '#D97706', Icon: Clock       },
-  verified:     { label: 'Verified',     color: '#16A34A', Icon: CheckCircle },
-  rejected:     { label: 'Rejected',     color: '#EF4444', Icon: XCircle     },
+const STATUS_CONFIG = (): Record<DocStatus, { label: string; color: string; Icon: any }> => ({
+  not_uploaded: { label: tr('auto.identitydocuments.notUploaded', 'Not uploaded'), color: '#9CA3AF', Icon: UploadCloud },
+  uploaded:     { label: tr('auto.identitydocuments.underReview', 'Under review'), color: '#D97706', Icon: Clock       },
+  verified:     { label: tr('auto.identitydocuments.verified', 'Verified'),     color: '#16A34A', Icon: CheckCircle },
+  rejected:     { label: tr('auto.identitydocuments.rejected', 'Rejected'),     color: '#EF4444', Icon: XCircle     },
   /**
    * Approved, and no longer valid.
    *
@@ -55,7 +56,7 @@ const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; Icon: any
    * looked at expiresAt, which the server has always sent. A rider looking
    * at a green tick has no reason to replace anything.
    */
-  expired:      { label: 'Expired',      color: '#EF4444', Icon: XCircle     },
+  expired:      { label: tr('auto.identitydocuments.expired', 'Expired'),      color: '#EF4444', Icon: XCircle     },
   /**
    * Amber and worded as an instruction, deliberately.
    *
@@ -63,19 +64,19 @@ const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; Icon: any
    * same event as a document being turned down, and showing it in the same
    * red as "Rejected" tells a rider who did nothing wrong that they failed.
    */
-  needs_replacing: { label: 'Needs replacing', color: '#D97706', Icon: UploadCloud },
-};
+  needs_replacing: { label: tr('auto.identitydocuments.needsReplacing', 'Needs replacing'), color: '#D97706', Icon: UploadCloud },
+});
 
 /**
  * Five documents, all about the person. vehicle_photo, ownership_proof and
  * insurance_cert are deliberately absent: they were the duplicates.
  */
-const IDENTITY_DOCS: DocItem[] = [
-  { id: 'national_id_front', label: 'National ID: Front', desc: 'Government-issued ID or NIN slip, front side',           Icon: CreditCard, required: true,  status: 'not_uploaded' },
-  { id: 'national_id_back',  label: 'National ID: Back',  desc: 'Back side of the same ID or NIN slip',                   Icon: CreditCard, required: true,  status: 'not_uploaded' },
-  { id: 'selfie',            label: 'Selfie',             desc: 'A clear photo of your face, used on your rider profile', Icon: Camera,     required: true,  status: 'not_uploaded' },
-  { id: 'drivers_license',   label: 'Driver licence',     desc: 'A valid Nigerian driver licence',                        Icon: Car,        required: true,  status: 'not_uploaded' },
-  { id: 'guarantor',         label: 'Guarantor letter',   desc: 'A letter from a guarantor. Recommended, not required',   Icon: Users,      required: false, status: 'not_uploaded' },
+const IDENTITY_DOCS = (): DocItem[] => [
+  { id: 'national_id_front', label: tr('auto.identitydocuments.nationalIdFront', 'National ID: Front'), desc: 'Government-issued ID or NIN slip, front side',           Icon: CreditCard, required: true,  status: 'not_uploaded' },
+  { id: 'national_id_back',  label: tr('auto.identitydocuments.nationalIdBack', 'National ID: Back'),  desc: 'Back side of the same ID or NIN slip',                   Icon: CreditCard, required: true,  status: 'not_uploaded' },
+  { id: 'selfie',            label: tr('auto.identitydocuments.selfie', 'Selfie'),             desc: 'A clear photo of your face, used on your rider profile', Icon: Camera,     required: true,  status: 'not_uploaded' },
+  { id: 'drivers_license',   label: tr('auto.identitydocuments.driverLicence', 'Driver licence'),     desc: 'A valid Nigerian driver licence',                        Icon: Car,        required: true,  status: 'not_uploaded' },
+  { id: 'guarantor',         label: tr('auto.identitydocuments.guarantorLetter', 'Guarantor letter'),   desc: 'A letter from a guarantor. Recommended, not required',   Icon: Users,      required: false, status: 'not_uploaded' },
 ];
 
 /** The doc ids map 1:1 onto the has* flags on the driver record. */
@@ -103,7 +104,7 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
   const cs    = useColorScheme();
   const theme = Colors[cs ?? 'light'];
 
-  const [docs,      setDocs]      = useState<DocItem[]>(IDENTITY_DOCS);
+  const [docs,      setDocs]      = useState<DocItem[]>(IDENTITY_DOCS());
   const [loading,   setLoading]   = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
 
@@ -199,24 +200,24 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
 
   const choose = (doc: DocItem) => onSheet({
     title:   doc.label,
-    message: 'How do you want to add it?',
+    message: tr('auto.vehicle.howDoYouWantTo', 'How do you want to add it?'),
     options: [
-      { label: 'Take a photo',        variant: 'primary', icon: 'camera-outline', onPress: () => doUpload(doc.id, 'camera') },
-      { label: 'Choose from gallery', icon: 'images-outline',                     onPress: () => doUpload(doc.id, 'library') },
+      { label: tr('auto.storeHandoff.takeAPhoto', 'Take a photo'),        variant: 'primary', icon: 'camera-outline', onPress: () => doUpload(doc.id, 'camera') },
+      { label: tr('auto.storeHandoff.chooseFromGallery', 'Choose from gallery'), icon: 'images-outline',                     onPress: () => doUpload(doc.id, 'library') },
       ...(canAttachFiles()
         ? [{
-            label: 'Attach a PDF',
-            sub: 'A file from your email or a portal',
+            label: tr('auto.vehicle.attachAPdf', 'Attach a PDF'),
+            sub: tr('auto.identitydocuments.aFileFromYourEmail', 'A file from your email or a portal'),
             icon: 'document-text-outline' as const,
             onPress: () => doUpload(doc.id, 'document'),
           }]
         : []),
     ],
-    cancelLabel: 'Not now',
+    cancelLabel: tr('auto.sos.notNow', 'Not now'),
   });
 
   const row = (doc: DocItem) => {
-    const cfg  = STATUS_CONFIG[doc.status];
+    const cfg  = STATUS_CONFIG()[doc.status];
     const busy = uploading === doc.id;
     return (
       <View key={doc.id}>
@@ -255,7 +256,7 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
         )}
         {doc.status === 'expired' && (
           <Text style={[styles.rejectNote, { color: theme.error }]}>
-            This expired on {String((doc as any).expiresAt).slice(0, 10)}. Tap it and upload the current one.
+            This expired on {String((doc as any).expiresAt).slice(0, 10)}{tr('auto.identitydocuments.tapItAndUploadThe', '. Tap it and upload the current one.')}
           </Text>
         )}
       </View>
@@ -266,7 +267,7 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
     <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
       <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.IdentityDocuments.aboutYou', 'About you')}</Text>
       <Text style={[styles.cardHint, { color: theme.textSecond }]}>
-        Asked once. These do not change when you change vehicle, so you will not be asked for them again.
+        {tr('auto.identitydocuments.askedOnceTheseDoNot', 'Asked once. These do not change when you change vehicle, so you will not be asked for them again.')}
       </Text>
 
       {loading ? (

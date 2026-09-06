@@ -12,6 +12,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 type DayId = typeof DAYS[number];
 
@@ -285,9 +286,7 @@ export default function PartnerSettingsScreen() {
               this kind of contradiction ever shows up, because both halves
               are individually correct. */}
           <Text style={[styles.hoursHint, { color: colors.textSecond }]}>
-            Customers and riders are sent here, so a change has to be checked by our team
-            first. While we check it, new parcels stop coming to you, and you should keep
-            handing back anything you are already holding.
+            {tr('auto.settings.customersAndRidersAreSent', 'Customers and riders are sent here, so a change has to be checked by our team first. While we check it, new parcels stop coming to you, and you should keep handing back anything you are already holding.')}
           </Text>
 
           <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.settings.phoneNumber', 'Phone Number')}</Text>
@@ -300,7 +299,7 @@ export default function PartnerSettingsScreen() {
             keyboardType="phone-pad"
           />
 
-          <Text style={[styles.label, { color: colors.textSecond }]}>Max Capacity (packages)</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.settings.maxCapacityPackages', 'Max Capacity (packages)')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             value={String(settings.maxCapacity)}
@@ -335,8 +334,7 @@ export default function PartnerSettingsScreen() {
           {!hours ? (
             <>
               <Text style={[styles.hoursHint, { color: colors.textSecond }]}>
-                You have not set your opening hours yet, so your shop shows as open at all
-                times. Set them and customers see exactly when they can reach you.
+                {tr('auto.settings.youHaveNotSetYour', 'You have not set your opening hours yet, so your shop shows as open at all times. Set them and customers see exactly when they can reach you.')}
               </Text>
               <Pressable
                 style={[styles.setHoursBtn, { borderColor: colors.primary }]}
@@ -402,8 +400,7 @@ export default function PartnerSettingsScreen() {
                 {/* Said plainly, because a closing time before an opening
                     time reads like a mistake and is not one: a shop open
                     from 6pm until 2am is a normal Lagos kiosk. */}
-                A closing time earlier than the opening time means you stay open past
-                midnight. Customers are never charged storage for days you are closed.
+                {tr('auto.settings.aClosingTimeEarlierThan', 'A closing time earlier than the opening time means you stay open past midnight. Customers are never charged storage for days you are closed.')}
               </Text>
             </>
           )}
@@ -419,8 +416,7 @@ export default function PartnerSettingsScreen() {
             >
               <Text style={[styles.modalTitle, { color: colors.text }]}>{tx('auto.settings.askToChangeTheShop', 'Ask to change the shop name')}</Text>
               <Text style={[styles.hoursHint, { color: colors.textSecond, marginTop: 0 }]}>
-                Our team checks it first, so customers keep seeing the name we approved. Nothing
-                changes until they say so.
+                {tr('auto.settings.ourTeamChecksItFirst', 'Our team checks it first, so customers keep seeing the name we approved. Nothing changes until they say so.')}
               </Text>
 
               <Text style={[styles.label, { color: colors.textSecond, marginTop: 12 }]}>{tx('auto.settings.newName', 'New name')}</Text>
@@ -510,7 +506,7 @@ export default function PartnerSettingsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.notifLabel, { color: colors.text }]}>{tx('auto.settings.everyStoreAlertIsOn', 'Every store alert is on')}</Text>
               <Text style={[styles.notifSub, { color: colors.textThird }]}>
-                Package arrivals, pickups and payouts all reach you. There is nothing to switch off yet.
+                {tr('auto.settings.packageArrivalsPickupsAndPayouts', 'Package arrivals, pickups and payouts all reach you. There is nothing to switch off yet.')}
               </Text>
             </View>
           </View>
@@ -569,7 +565,7 @@ export default function PartnerSettingsScreen() {
             onPress={() => router.push('/(partner)/messages' as any)}
           >
             <Icon name="MessageSquare" size={16} color={colors.textSecond} />
-            <Text style={[styles.linkRowText, { color: colors.text }]}>Messages &amp; support</Text>
+            <Text style={[styles.linkRowText, { color: colors.text }]}>{tr('auto.settings.messagesSupport', 'Messages & support')}</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
           {/* Added with the payout rail (2026-09-03). A shop cannot be
@@ -810,9 +806,9 @@ function ClosingSection({ storeId }: { storeId: string }) {
       'Close partner store?',
       'This pauses incoming bookings, removes you from the customer map, and starts the offboarding workflow. Final wallet payout follows the next regular cycle.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: tr('auto.payoutAccount.cancel', 'Cancel'), style: 'cancel' },
         {
-          text:    'Close store',
+          text:    tr('auto.settings.closeStore', 'Close store'),
           style:   'destructive',
           onPress: async () => {
             try {
@@ -833,13 +829,13 @@ function ClosingSection({ storeId }: { storeId: string }) {
     <View style={styles.closingSection}>
       <Text style={styles.closingTitle}>{tx('auto.settings.closeThisStore', 'Close This Store')}</Text>
       <Text style={styles.closingSub}>
-        Permanently shut down this partner store. You cannot close while packages are still in your custody.
+        {tr('auto.settings.permanentlyShutDownThisPartner', 'Permanently shut down this partner store. You cannot close while packages are still in your custody.')}
       </Text>
 
       {loading && <ActivityIndicator color="#DC2626" />}
 
       {readiness && readiness.ready && (
-        <Text style={styles.readyTip}>✓ Store is empty. safe to close</Text>
+        <Text style={styles.readyTip}>{tr('auto.settings.storeIsEmptySafeTo', '✓ Store is empty. safe to close')}</Text>
       )}
 
       {readiness && !readiness.ready && readiness.blockers.length > 0 && (

@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { uploadApi } from '@/services/api';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §2.16: anti-theft trunk inventory check. Whenever a passenger
 // or recipient exits the vehicle while there are still other packages
@@ -42,7 +43,7 @@ export default function TrunkCheckScreen() {
     setSheet({
       title,
       message,
-      options: [{ label: 'Got it', variant: 'primary', onPress: onDone }],
+      options: [{ label: tr('auto.active.gotIt', 'Got it'), variant: 'primary', onPress: onDone }],
       cancelLabel: null,
       onCancel: onDone,
     });
@@ -127,7 +128,7 @@ export default function TrunkCheckScreen() {
             <Camera size={36} color={theme.primary} />
             <Text style={[styles.photoTitle, { color: theme.text }]}>{tx('auto.trunkCheck.tapToCaptureTrunk', 'Tap to capture trunk')}</Text>
             <Text style={[styles.photoHint, { color: theme.textSecond }]}>
-              Frame the inside of the trunk so all remaining packages are visible.
+              {tr('auto.trunkCheck.frameTheInsideOfThe', 'Frame the inside of the trunk so all remaining packages are visible.')}
             </Text>
           </Pressable>
         )}
@@ -142,7 +143,7 @@ export default function TrunkCheckScreen() {
             : <>
                 <Check size={16} color={photoUri ? '#fff' : theme.textThird} />
                 <Text style={[styles.primaryBtnText, { color: photoUri ? '#fff' : theme.textThird }]}>
-                  Confirm and continue
+                  {tr('auto.trunkCheck.confirmAndContinue', 'Confirm and continue')}
                 </Text>
               </>
           }
@@ -153,7 +154,7 @@ export default function TrunkCheckScreen() {
             platform could not keep at the exact moment a rider needs to
             trust it (2026-08-23 sweep, D-1.6). */}
         <Text style={[styles.footnote, { color: theme.textThird }]}>
-          If anything is missing, do NOT continue. Pull over safely and contact support before driving further, and keep the photo on your phone.
+          {tr('auto.trunkCheck.ifAnythingIsMissingDo', 'If anything is missing, do NOT continue. Pull over safely and contact support before driving further, and keep the photo on your phone.')}
         </Text>
       </ScrollView>
 

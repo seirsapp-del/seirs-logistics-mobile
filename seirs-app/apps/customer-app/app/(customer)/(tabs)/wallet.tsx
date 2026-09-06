@@ -16,6 +16,7 @@ import {
 } from 'lucide-react-native';
 import { HamburgerButton } from '@/components/HamburgerButton';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Rewards tab hub.
@@ -46,9 +47,9 @@ import { tx } from '@/i18n/tx';
  * imported: if the two ever disagree the fix is to make redemptions a
  * shared module, not to let this screen quote a price it cannot honour.
  */
-const POINT_USES = [
-  { cost: 500,  label: '₦500 off a delivery', desc: 'Comes off the price before you pay.' },
-  { cost: 1000, label: 'A free delivery',       desc: 'Covers one booking up to ₦2,000.' },
+const POINT_USES = () => [
+  { cost: 500,  label: tr('auto.wallet.500OffADelivery', '₦500 off a delivery'), desc: 'Comes off the price before you pay.' },
+  { cost: 1000, label: tr('auto.wallet.aFreeDelivery', 'A free delivery'),       desc: 'Covers one booking up to ₦2,000.' },
 ];
 
 interface Achievement {
@@ -266,19 +267,19 @@ export default function WalletScreen() {
     // as two identical blue tiles: a row of the same thing twice rather
     // than two things somebody achieved. Bronze also starts the metal
     // ladder that silver, gold and platinum finish further along.
-    { key: 'first',    label: 'First delivery',  icon: Sparkles, color: '#CD7F32', earned: deliveredCount >= 1  },
-    { key: 'regular',  label: 'Regular',         icon: Package,  color: '#14B8A6', earned: deliveredCount >= 3  },
-    { key: 'champion', label: 'Champion',        icon: Trophy,   color: '#FFBE0B', earned: deliveredCount >= 10 },
-    { key: 'silver',   label: 'Silver tier',     icon: Award,    color: '#C0C0C0', earned: tier === 'silver' || tier === 'gold' || tier === 'platinum' },
-    { key: 'gold',     label: 'Gold tier',       icon: Award,    color: '#FFD700', earned: tier === 'gold' || tier === 'platinum' },
-    { key: 'platinum', label: 'Platinum tier',   icon: Award,    color: '#E5E4E2', earned: tier === 'platinum' },
-    { key: 'streak',   label: '4-week streak',   icon: Flame,    color: '#D97706', earned: streak >= 4 },
+    { key: 'first',    label: tr('auto.wallet.firstDelivery', 'First delivery'),  icon: Sparkles, color: '#CD7F32', earned: deliveredCount >= 1  },
+    { key: 'regular',  label: tr('auto.wallet.regular', 'Regular'),         icon: Package,  color: '#14B8A6', earned: deliveredCount >= 3  },
+    { key: 'champion', label: tr('auto.wallet.champion', 'Champion'),        icon: Trophy,   color: '#FFBE0B', earned: deliveredCount >= 10 },
+    { key: 'silver',   label: tr('auto.wallet.silverTier', 'Silver tier'),     icon: Award,    color: '#C0C0C0', earned: tier === 'silver' || tier === 'gold' || tier === 'platinum' },
+    { key: 'gold',     label: tr('auto.wallet.goldTier', 'Gold tier'),       icon: Award,    color: '#FFD700', earned: tier === 'gold' || tier === 'platinum' },
+    { key: 'platinum', label: tr('auto.wallet.platinumTier', 'Platinum tier'),   icon: Award,    color: '#E5E4E2', earned: tier === 'platinum' },
+    { key: 'streak',   label: tr('auto.wallet.4WeekStreak', '4-week streak'),   icon: Flame,    color: '#D97706', earned: streak >= 4 },
     // Earned on a referral that actually PAID OUT. Counting sign-ups
     // would award this for an invite that never completed a delivery,
     // which is not what the badge says. Until this was wired the flag was
     // hardcoded false, so the badge could never be earned by anyone no
     // matter what they did (device sweep 2026-08-19).
-    { key: 'referral', label: 'Referral hero',   icon: Users,    color: '#22C55E', earned: paidReferrals >= 1 },
+    { key: 'referral', label: tr('auto.wallet.referralHero', 'Referral hero'),   icon: Users,    color: '#22C55E', earned: paidReferrals >= 1 },
   ], [deliveredCount, tier, streak, paidReferrals]);
   const earnedCount = achievements.filter(a => a.earned).length;
 
@@ -326,7 +327,7 @@ export default function WalletScreen() {
           <View style={styles.greetRow}>
             <Text style={[styles.greetPts, { color: theme.text }]}>
               {monthPoints.toLocaleString()}
-              <Text style={[styles.greetUnit, { color: theme.textSecond }]}> pts this month</Text>
+              <Text style={[styles.greetUnit, { color: theme.textSecond }]}> {tr('auto.wallet.ptsThisMonth', 'pts this month')}</Text>
             </Text>
             {monthDelta != null && (
               <View style={[styles.deltaChip, { backgroundColor: monthDelta >= 0 ? '#DCFCE7' : '#FEE2E2' }]}>
@@ -565,7 +566,7 @@ export default function WalletScreen() {
 
           {history.length === 0 ? (
             <Text style={[styles.panelNote, { color: theme.textSecond }]}>
-              Points you earn and spend will be listed here, newest first.
+              {tr('auto.wallet.pointsYouEarnAndSpend', 'Points you earn and spend will be listed here, newest first.')}
             </Text>
           ) : (
             history.slice(0, 6).map((h: any, i: number) => {
@@ -598,7 +599,7 @@ export default function WalletScreen() {
         <View style={[styles.panel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.wallet.whatYourPointsAreFor', 'What your points are for')}</Text>
 
-          {POINT_USES.map((u, i) => {
+          {POINT_USES().map((u, i) => {
             const ready = balance >= u.cost;
             return (
               <View key={u.label} style={[styles.useRow, i > 0 && { borderTopWidth: 1, borderTopColor: theme.border }]}>
@@ -622,8 +623,7 @@ export default function WalletScreen() {
               applied to a booking that already exists, so redeeming with
               nothing in flight is the one thing that cannot work. */}
           <Text style={[styles.panelNote, { color: theme.textSecond }]}>
-            Book a delivery first, then redeem. The reward comes off that booking before you pay,
-            and the points leave your balance at the same moment.
+            {tr('auto.wallet.bookADeliveryFirstThen', 'Book a delivery first, then redeem. The reward comes off that booking before you pay, and the points leave your balance at the same moment.')}
           </Text>
 
           <Pressable
@@ -641,7 +641,7 @@ export default function WalletScreen() {
             <Zap size={28} color={theme.primary} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.wallet.startEarning', 'Start earning')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Book your first delivery to unlock achievements and start earning SEIRS Rewards points.
+              {tr('auto.wallet.bookYourFirstDeliveryTo', 'Book your first delivery to unlock achievements and start earning SEIRS Rewards points.')}
             </Text>
             <Pressable onPress={() => router.push('/(customer)/send' as any)} style={[styles.emptyCta, { backgroundColor: theme.primary }]}>
               <Text style={styles.emptyCtaText}>{tx('auto.wallet.bookADelivery', 'Book a delivery')}</Text>

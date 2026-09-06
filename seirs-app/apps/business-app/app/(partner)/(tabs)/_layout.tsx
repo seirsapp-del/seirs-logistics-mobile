@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { useColors } from '@/context/ThemeContext';
+import { tx } from '@/i18n/tx';
 
 function TabIcon({ name, focused }: { name: any; focused: boolean }) {
   const colors = useColors();
@@ -51,15 +52,15 @@ export default function PartnerLayout() {
           the store. */}
       <Tabs.Screen
         name="index"
-        options={{ title: 'Dashboard', tabBarIcon: ({ focused }) => <TabIcon name="LayoutDashboard" focused={focused} /> }}
+        options={{ title: tx('auto.layout.dashboard', 'Dashboard'), tabBarIcon: ({ focused }) => <TabIcon name="LayoutDashboard" focused={focused} /> }}
       />
       <Tabs.Screen
         name="inventory"
-        options={{ title: 'Inventory', tabBarIcon: ({ focused }) => <TabIcon name="Package" focused={focused} /> }}
+        options={{ title: tx('auto.layout.inventory', 'Inventory'), tabBarIcon: ({ focused }) => <TabIcon name="Package" focused={focused} /> }}
       />
       <Tabs.Screen
         name="scan"
-        options={{ title: 'Scan', tabBarIcon: () => (
+        options={{ title: tx('auto.layout.scan', 'Scan'), tabBarIcon: () => (
           <View style={{
             width: 44, height: 44, borderRadius: 14, backgroundColor: colors.primary,
             alignItems: 'center', justifyContent: 'center', marginBottom: 16,
@@ -70,11 +71,11 @@ export default function PartnerLayout() {
       />
       <Tabs.Screen
         name="earnings"
-        options={{ title: 'Earnings', tabBarIcon: ({ focused }) => <TabIcon name="TrendingUp" focused={focused} /> }}
+        options={{ title: tx('auto.earnings.earnings', 'Earnings'), tabBarIcon: ({ focused }) => <TabIcon name="TrendingUp" focused={focused} /> }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Store', tabBarIcon: ({ focused }) => <TabIcon name="Settings" focused={focused} /> }}
+        options={{ title: tx('auto.layout.store', 'Store'), tabBarIcon: ({ focused }) => <TabIcon name="Settings" focused={focused} /> }}
       />
 
       {/*

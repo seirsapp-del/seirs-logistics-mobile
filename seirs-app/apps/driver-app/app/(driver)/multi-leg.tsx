@@ -12,6 +12,7 @@ import { usePoolCap } from '@/hooks/usePoolCap';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §1 / §2.15: driver's view of a corridor pool trip with up
 // to 4 simultaneous active legs. Each leg shows pickup, dropoff, status
@@ -32,11 +33,11 @@ interface Leg {
   recipientName?: string;
 }
 
-const STATUS_META: Record<string, { label: string; color: string }> = {
-  pending_pickup: { label: 'Pickup pending', color: '#D97706' },
-  in_transit:     { label: 'In transit',     color: '#3A7BD5' },
-  completed:      { label: 'Delivered',      color: '#16A34A' },
-};
+const STATUS_META = (): Record<string, { label: string; color: string }> => ({
+  pending_pickup: { label: tr('auto.multiLeg.pickupPending', 'Pickup pending'), color: '#D97706' },
+  in_transit:     { label: tr('auto.multiLeg.inTransit', 'In transit'),     color: '#3A7BD5' },
+  completed:      { label: tr('auto.history.delivered', 'Delivered'),      color: '#16A34A' },
+});
 
 export default function MultiLegScreen() {
   const poolCap = usePoolCap();
@@ -97,7 +98,7 @@ export default function MultiLegScreen() {
         {/* Capacity card */}
         <View style={[styles.capacityCard, { backgroundColor: theme.primary }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.capacityLabel}>POOL CAPACITY</Text>
+            <Text style={styles.capacityLabel}>{tr('auto.multiLeg.poolCapacity', 'POOL CAPACITY')}</Text>
             <Text style={styles.capacityValue}>{slotsUsed} <Text style={styles.capacitySecond}>/ {poolCap} legs</Text></Text>
             <Text style={styles.capacitySub}>
               {slotsFree > 0
@@ -124,12 +125,12 @@ export default function MultiLegScreen() {
             <Package size={32} color={theme.textThird} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.multiLeg.noActiveLegs', 'No active legs')}</Text>
             <Text style={[styles.emptySub,   { color: theme.textSecond }]}>
-              When you accept a job, it appears here. Multiple legs along the same corridor get bundled into a pool trip.
+              {tr('auto.multiLeg.whenYouAcceptAJob', 'When you accept a job, it appears here. Multiple legs along the same corridor get bundled into a pool trip.')}
             </Text>
           </View>
         ) : (
           legs.map((leg, i) => {
-            const meta = STATUS_META[leg.status];
+            const meta = STATUS_META()[leg.status];
             const Icon = leg.type === 'passenger' ? Users : Package;
             return (
               <View
@@ -186,7 +187,7 @@ export default function MultiLegScreen() {
 
         <View style={[styles.note, { backgroundColor: theme.primary + '08' }]}>
           <Text style={[styles.noteText, { color: theme.textSecond }]}>
-            <Text style={{ fontWeight: '700' as any }}>{tx('auto.multiLeg.howPoolingWorks', 'How pooling works:')}</Text> The dispatcher silently inserts legs that lie within 1km of your route + add ≤20% to your time. You don&apos;t need to accept each insertion: just complete legs in the order shown.
+            <Text style={{ fontWeight: '700' as any }}>{tx('auto.multiLeg.howPoolingWorks', 'How pooling works:')}</Text> {tr('auto.multiLeg.theDispatcherSilentlyInsertsLegs', 'The dispatcher silently inserts legs that lie within 1km of your route + add ≤20% to your time. You don\'t need to accept each insertion: just complete legs in the order shown.')}
           </Text>
         </View>
       </ScrollView>

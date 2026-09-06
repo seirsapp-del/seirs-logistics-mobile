@@ -19,6 +19,7 @@ import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword } from '@seirs/shared';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -68,7 +69,7 @@ export default function ChangePasswordScreen() {
           <View style={[styles.banner, { backgroundColor: theme.primary + '15' }]}>
             <Lock size={16} color={theme.primary} />
             <Text style={[styles.bannerText, { color: theme.textSecond }]}>
-              You&apos;ll need your current password to confirm. Forgot it? Sign out and use the &ldquo;Forgot password&rdquo; link instead.
+              {tx('auto.changePassword.youLlNeedYourCurrent', 'You\'ll need your current password to confirm. Forgot it? Sign out and use the “Forgot password” link instead.')}
             </Text>
           </View>
 

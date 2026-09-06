@@ -34,6 +34,7 @@ import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const URGENCY_COLOR: Record<string, string> = {
   economy:  '#16A34A',
@@ -332,7 +333,7 @@ export default function DriverHomeScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <SeirsMarkBold size={34} color="#FFFFFF" hubColor="#0F2B4C" />
                 <Text style={{ color: '#fff', fontSize: 10.5, fontWeight: '800', letterSpacing: 1.8 }}>SEIRS</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: '700', letterSpacing: 1 }}>· DRIVER HUB</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: '700', letterSpacing: 1 }}>{tr('auto.tabsIndex.driverHub', '· DRIVER HUB')}</Text>
               </View>
               <Text style={styles.headerName}>Hi, {firstName}</Text>
             </View>
@@ -428,7 +429,7 @@ export default function DriverHomeScreen() {
               <View>
                 <Text style={[styles.poolBannerTitle, { color: theme.text }]}>{tx('auto.index.poolTripActive', 'Pool trip active')}</Text>
                 <Text style={[styles.poolBannerSub, { color: theme.textSecond }]}>
-                  Tap to view all {activeJobs.length} legs
+                  {tr('auto.tabsIndex.tapToViewAll', 'Tap to view all')} {activeJobs.length} legs
                 </Text>
               </View>
             </View>
@@ -461,7 +462,7 @@ export default function DriverHomeScreen() {
           >
             <View style={styles.activeTop}>
               <View style={[styles.activeDot, { backgroundColor: '#16A34A' }]} />
-              <Text style={[styles.activeLabel, { color: '#16A34A' }]}>ACTIVE JOB</Text>
+              <Text style={[styles.activeLabel, { color: '#16A34A' }]}>{tr('auto.tabsIndex.activeJob', 'ACTIVE JOB')}</Text>
               <ChevronRight size={16} color="#16A34A" strokeWidth={1.75} style={{ marginLeft: 'auto' }} />
             </View>
             {/* The job list below masks rides correctly; this card was
@@ -621,7 +622,7 @@ export default function DriverHomeScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[styles.interTitle, { color: theme.text }]}>{tx('auto.index.declareAnIntercityTrip', 'Declare an intercity trip')}</Text>
             <Text style={[styles.interSub, { color: theme.textThird }]} numberOfLines={1}>
-              Sell spare seats and boot space
+              {tr('auto.tabsIndex.sellSpareSeatsAndBoot', 'Sell spare seats and boot space')}
             </Text>
           </View>
           <ChevronRight size={18} color={theme.textThird} />
@@ -634,7 +635,7 @@ export default function DriverHomeScreen() {
             {isOnline && (
               <View style={[styles.liveDot]}>
                 <View style={[styles.livePulse, { backgroundColor: '#16A34A' }]} />
-                <Text style={[styles.liveText, { color: '#16A34A' }]}>Live</Text>
+                <Text style={[styles.liveText, { color: '#16A34A' }]}>{tr('auto.tabsIndex.live', 'Live')}</Text>
               </View>
             )}
           </View>
@@ -659,12 +660,10 @@ export default function DriverHomeScreen() {
             <View style={[styles.emptyBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Truck size={32} color={theme.textThird} strokeWidth={1.5} />
               <Text style={[styles.emptyText, { color: theme.text, fontSize: FontSize.md, fontWeight: '700' }]}>
-                New jobs are paused
+                {tr('auto.tabsIndex.newJobsArePaused', 'New jobs are paused')}
               </Text>
               <Text style={[styles.emptyText, { color: theme.textSecond }]}>
-                Your vehicle change is being reviewed, usually within 24 hours to 3 business days.
-                We hold new jobs until it is approved so you are never sent work your vehicle
-                cannot do. Anything already assigned to you is unaffected: finish it as normal.
+                {tr('auto.tabsIndex.yourVehicleChangeIsBeing', 'Your vehicle change is being reviewed, usually within 24 hours to 3 business days. We hold new jobs until it is approved so you are never sent work your vehicle cannot do. Anything already assigned to you is unaffected: finish it as normal.')}
               </Text>
             </View>
           ) : pendingJobs.length === 0 ? (

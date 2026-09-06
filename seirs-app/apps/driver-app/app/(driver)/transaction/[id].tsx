@@ -10,6 +10,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { earningsApi, type DriverEarning } from '@/services/api';
 import { naira } from '@/utils/money';
 import { tx as tr } from '@/i18n/tx';
+import { tx } from '@/i18n/tx';
 
 const STATUS_LABEL: Record<string, string> = {
   pending:   'Clearing',
@@ -58,7 +59,7 @@ export default function DriverTransactionDetailScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', gap: 12 }}>
         <Text style={{ color: theme.textSecond, textAlign: 'center', paddingHorizontal: 32 }}>
-          This entry is not in your recent earnings. Older entries are not available on this screen yet.
+          {tr('auto.transactionDetail.thisEntryIsNotIn', 'This entry is not in your recent earnings. Older entries are not available on this screen yet.')}
         </Text>
         <Pressable onPress={() => router.back()} style={{ backgroundColor: theme.primary, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10 }}>
           <Text style={{ color: '#fff', fontWeight: FontWeight.bold }}>{tr('auto.id.goBack2', 'Go back')}</Text>
@@ -93,14 +94,14 @@ export default function DriverTransactionDetailScreen() {
   const wasCancelled = dStatus === 'cancelled' || dStatus === 'failed';
 
   const rows = [
-    { label: 'Entry ID',     value: tx.id.slice(0, 8).toUpperCase() },
-    { label: 'Date',         value: new Date(tx.createdAt).toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
+    { label: tr('auto.transactionDetail.entryId', 'Entry ID'),     value: tx.id.slice(0, 8).toUpperCase() },
+    { label: tr('auto.transactionDetail.date', 'Date'),         value: new Date(tx.createdAt).toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
     // Gross − fee = net, to the kobo. Rounding these three independently
     // is exactly how the arithmetic stopped adding up (founder 2026-08-24).
-    { label: 'Your net',     value: naira(net) },
-    { label: 'Status',       value: statusLabel },
-    ...(wasCancelled ? [{ label: 'What happened', value: 'The trip was cancelled after you set off' }] : []),
-    ...(tx.paidAt ? [{ label: 'Paid to bank', value: new Date(tx.paidAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) }] : []),
+    { label: tr('auto.transactionDetail.yourNet', 'Your net'),     value: naira(net) },
+    { label: tr('auto.transactionDetail.status', 'Status'),       value: statusLabel },
+    ...(wasCancelled ? [{ label: tr('auto.transactionDetail.whatHappened', 'What happened'), value: 'The trip was cancelled after you set off' }] : []),
+    ...(tx.paidAt ? [{ label: tr('auto.transactionDetail.paidToBank', 'Paid to bank'), value: new Date(tx.paidAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) }] : []),
   ];
 
   return (
@@ -144,9 +145,7 @@ export default function DriverTransactionDetailScreen() {
         {wasCancelled && (
           <View style={[styles.detailCard, { backgroundColor: theme.surface, borderColor: theme.border, padding: 14 }, Shadows.sm]}>
             <Text style={{ color: theme.textSecond, fontSize: FontSize.sm, lineHeight: 20 }}>
-              You were paid {naira(net)} for the distance you rode before it was cancelled.
-              The customer's fare was returned to them. You did nothing wrong and this does
-              not affect your rating.
+              You were paid {naira(net)} {tr('auto.transactionDetail.forTheDistanceYouRode', 'for the distance you rode before it was cancelled. The customer\'s fare was returned to them. You did nothing wrong and this does not affect your rating.')}
             </Text>
           </View>
         )}

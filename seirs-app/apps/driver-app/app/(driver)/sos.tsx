@@ -14,6 +14,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { sosApi, apiRequest } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8: driver-side SOS. Mirrors customer SOS using the same
 // /sos/trigger backend endpoint. Optional ?deliveryId= when fired
@@ -249,16 +250,16 @@ export default function DriverSosScreen() {
     // dark, in trouble. A full-width row beats a 40px uppercase word in a
     // corner (2026-08-25 dialog sweep).
     setSheet({
-      title: 'Send SOS?',
-      message: 'This alerts SEIRS ops and shares your live location with them. Nobody else is told.',
+      title: tr('auto.sos.sendSos', 'Send SOS?'),
+      message: tr('auto.sos.thisAlertsSeirsOpsAnd', 'This alerts SEIRS ops and shares your live location with them. Nobody else is told.'),
       options: [{
-        label: 'Send SOS now',
-        sub: 'Ops are alerted immediately',
+        label: tr('auto.sos.sendSosNow', 'Send SOS now'),
+        sub: tr('auto.sos.opsAreAlertedImmediately', 'Ops are alerted immediately'),
         variant: 'destructive',
         icon: 'warning-outline',
         onPress: fireSOS,
       }],
-      cancelLabel: 'Not now',
+      cancelLabel: tr('auto.sos.notNow', 'Not now'),
     });
   };
 
@@ -334,7 +335,7 @@ export default function DriverSosScreen() {
                 <>
                   {noteSent && (
                     <Text style={styles.noteSentLine} numberOfLines={3}>
-                      Ops can see: “{noteText.trim()}”
+                      {tr('auto.sos.opsCanSee', 'Ops can see: “')}{noteText.trim()}”
                     </Text>
                   )}
                   <Pressable style={styles.detailBtn} onPress={() => setNoteOpen(true)}>
@@ -348,9 +349,9 @@ export default function DriverSosScreen() {
             </View>
           ) : (
             <View style={styles.idleState}>
-              <Text style={styles.idleTitle}>Vehicle trouble · Accident · Personal safety</Text>
+              <Text style={styles.idleTitle}>{tr('auto.sos.vehicleTroubleAccidentPersonalSafety', 'Vehicle trouble · Accident · Personal safety')}</Text>
               <Text style={styles.idleDesc}>
-                One tap shares your live location with SEIRS ops. Use this for real emergencies only.
+                {tr('auto.sos.oneTapSharesYourLive', 'One tap shares your live location with SEIRS ops. Use this for real emergencies only.')}
               </Text>
             </View>
           )}
@@ -359,7 +360,7 @@ export default function DriverSosScreen() {
             <Text style={styles.emergencySectionTitle}>{tx('auto.sos.quickDial', 'Quick Dial')}</Text>
             {contactsOffline && (
               <Text style={styles.emergencyOffline}>
-                Could not load the full directory. These national numbers still work.
+                {tr('auto.sos.couldNotLoadTheFull', 'Could not load the full directory. These national numbers still work.')}
               </Text>
             )}
             <View style={styles.emergencyRow}>
@@ -421,8 +422,7 @@ export default function DriverSosScreen() {
             <View style={styles.noteCard}>
               <Text style={styles.noteTitle}>{tx('auto.sos.whatIsHappening', 'What is happening?')}</Text>
               <Text style={styles.noteSub}>
-                Support is already alerted and your location is being shared.
-                This is optional: it just tells them what they are coming into.
+                {tr('auto.sos.supportIsAlreadyAlertedAnd', 'Support is already alerted and your location is being shared. This is optional: it just tells them what they are coming into.')}
               </Text>
               <TextInput
                 value={noteText}
@@ -441,7 +441,7 @@ export default function DriverSosScreen() {
                   onPress={() => setNoteOpen(false)}
                   disabled={noteSaving}
                 >
-                  <Text style={styles.noteSkipText}>Skip</Text>
+                  <Text style={styles.noteSkipText}>{tr('auto.sos.skip', 'Skip')}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.noteSendBtn, (!noteText.trim() || noteSaving) && styles.noteSendBtnOff]}

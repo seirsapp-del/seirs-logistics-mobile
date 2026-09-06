@@ -11,6 +11,7 @@ import { tint } from '@/constants/tint';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Recurring runs.
@@ -130,8 +131,8 @@ export default function RecurringScreen() {
       'Delete this schedule?',
       `"${t.name}" will stop. Runs already created stay in your deliveries. This cannot be undone.`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: async () => {
+        { text: tr('auto.payoutAccount.cancel', 'Cancel'), style: 'cancel' },
+        { text: tr('auto.deleteAccount.delete', 'Delete'), style: 'destructive', onPress: async () => {
           try { await businessApi.recurringTemplates.remove(t.id); load(); }
           catch (e: any) { alertDialog('Could not delete', e?.message ?? 'Try again.'); }
         } },
@@ -163,9 +164,7 @@ export default function RecurringScreen() {
           </View>
           <Text style={styles.heroTitle}>{tx('auto.recurring.repeatARunWithoutRepeating', 'Repeat a run without repeating the typing')}</Text>
           <Text style={styles.heroSub}>
-            Pick a past delivery and a schedule. {leadWords(leadMin)[0].toUpperCase() + leadWords(leadMin).slice(1)} before
-            each pickup we create the run at that day's price, mark it Awaiting payment and tell you. You pay through
-            checkout with your bank's OTP, and it goes out. Nothing is ever charged on its own.
+            {tr('auto.recurring.pickAPastDeliveryAnd', 'Pick a past delivery and a schedule.')} {leadWords(leadMin)[0].toUpperCase() + leadWords(leadMin).slice(1)} {tr('auto.recurring.beforeEachPickupWeCreate', 'before each pickup we create the run at that day\'s price, mark it Awaiting payment and tell you. You pay through checkout with your bank\'s OTP, and it goes out. Nothing is ever charged on its own.')}
           </Text>
         </View>
 
@@ -183,7 +182,7 @@ export default function RecurringScreen() {
             <Icon name="Calendar" size={36} color={colors.textThird} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>{tx('auto.recurring.noSchedulesYet', 'No schedules yet')}</Text>
             <Text style={[styles.emptySub, { color: colors.textSecond }]}>
-              Start from any past delivery. Monday refills, month-end runs, the daily drop to a client.
+              {tr('auto.recurring.startFromAnyPastDelivery', 'Start from any past delivery. Monday refills, month-end runs, the daily drop to a client.')}
             </Text>
           </View>
         ) : (
@@ -201,7 +200,7 @@ export default function RecurringScreen() {
                     <Text style={[styles.templateMeta, { color: colors.textSecond }]}>{cadenceFullLabel(t)}</Text>
                     {t.isActive ? (
                       <Text style={[styles.templateMeta, { color: colors.textThird }]}>
-                        Next run {fmtNext(t.nextRunAt)} · we ask you to pay from {fmtTime(askAt)}
+                        Next run {fmtNext(t.nextRunAt)} {tr('auto.recurring.weAskYouToPay', '· we ask you to pay from')} {fmtTime(askAt)}
                       </Text>
                     ) : (
                       <Text style={[styles.templateMeta, { color: colors.textThird }]}>{tx('auto.recurring.paused', 'Paused')}</Text>
@@ -363,7 +362,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={[styles.header, { paddingTop: 16, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 12, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <Pressable onPress={onClose} hitSlop={8}><Icon name="X" size={22} color={colors.text} /></Pressable>
           <Text style={[styles.title, { color: colors.text }]}>{tx('auto.recurring.newSchedule', 'New schedule')}</Text>
           <View style={{ width: 22 }} />
@@ -382,7 +381,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
             <ActivityIndicator color={colors.accent} />
           ) : recents.length === 0 ? (
             <Text style={{ color: colors.textSecond, paddingVertical: 12, lineHeight: 19 }}>
-              No past deliveries yet. Send one first, then come back here.
+              {tr('auto.recurring.noPastDeliveriesYetSend', 'No past deliveries yet. Send one first, then come back here.')}
             </Text>
           ) : (
             <View style={{ gap: 8 }}>
@@ -467,7 +466,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
 
           {cadence === 'monthly' && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
-              <Text style={{ color: colors.textSecond, fontSize: 13 }}>Day of the month (1 to 28)</Text>
+              <Text style={{ color: colors.textSecond, fontSize: 13 }}>{tr('auto.recurring.dayOfTheMonth1', 'Day of the month (1 to 28)')}</Text>
               <TextInput
                 value={String(dayOfMonth)}
                 onChangeText={t => setDayOfMonth(Math.max(1, Math.min(28, Number(t) || 1)))}
@@ -502,10 +501,10 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
               selectTextOnFocus
               style={[styles.input, { width: 70, textAlign: 'center', color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
             />
-            <Text style={{ color: colors.textSecond, fontSize: 13 }}>24-hour</Text>
+            <Text style={{ color: colors.textSecond, fontSize: 13 }}>{tr('auto.recurring.24Hour', '24-hour')}</Text>
           </View>
           <Text style={{ color: colors.textSecond, fontSize: 13, lineHeight: 18, marginTop: -6 }}>
-            We create the run and ask you to pay from {pad(((hour * 60 + minute - leadMin + 1440) % 1440) / 60 | 0)}:{pad((hour * 60 + minute - leadMin + 1440) % 60)}, at that day's price.
+            {tr('auto.recurring.weCreateTheRunAnd', 'We create the run and ask you to pay from')} {pad(((hour * 60 + minute - leadMin + 1440) % 1440) / 60 | 0)}:{pad((hour * 60 + minute - leadMin + 1440) % 60)}{tr('auto.recurring.atThatDaySPrice', ', at that day\'s price.')}
           </Text>
 
           {/* The same terms line the pay screens carry (founder 2026-09-06:
@@ -515,7 +514,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
               {agreed && <Icon name="Check" size={14} color="#fff" />}
             </View>
             <Text style={[styles.agreeText, { color: colors.text }]}>
-              I agree to the SEIRS Terms of Service. Each run is priced on the day and I pay it before pickup.{' '}
+              {tr('auto.recurring.iAgreeToTheSeirs', 'I agree to the SEIRS Terms of Service. Each run is priced on the day and I pay it before pickup.')}{' '}
               <Text onPress={() => Linking.openURL(TERMS_URL).catch(() => {})} style={{ color: colors.primary, fontWeight: '600' }}>{tx('auto.recurring.readThem', 'Read them')}</Text>
             </Text>
           </Pressable>

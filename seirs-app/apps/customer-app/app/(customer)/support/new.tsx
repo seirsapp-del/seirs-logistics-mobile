@@ -39,13 +39,14 @@ import { Avatar } from '@/components/ui/Avatar';
 import { supportApi, deliveriesApi, type TicketTopic } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
-const TOPICS: { key: TicketTopic; label: string; icon: any; hint: string }[] = [
-  { key: 'delivery', label: 'Delivery issue',      icon: Package,         hint: 'Package late, missing, damaged, wrong address' },
-  { key: 'billing',  label: 'Billing or refund',   icon: CreditCard,      hint: 'Charge questions, receipts, refunds' },
-  { key: 'driver',   label: 'About a driver',      icon: Bike,            hint: 'Feedback, complaints, safety concerns' },
-  { key: 'account',  label: 'My account',          icon: User,            hint: 'Sign-in, verification, profile changes' },
-  { key: 'other',    label: 'Something else',      icon: MoreHorizontal,  hint: 'Suggestions, feedback, general questions' },
+const TOPICS = (): { key: TicketTopic; label: string; icon: any; hint: string }[] => [
+  { key: 'delivery', label: tr('auto.new.deliveryIssue', 'Delivery issue'),      icon: Package,         hint: tr('auto.new.packageLateMissingDamagedWrong', 'Package late, missing, damaged, wrong address') },
+  { key: 'billing',  label: tr('auto.new.billingOrRefund', 'Billing or refund'),   icon: CreditCard,      hint: tr('auto.new.chargeQuestionsReceiptsRefunds', 'Charge questions, receipts, refunds') },
+  { key: 'driver',   label: tr('auto.new.aboutADriver', 'About a driver'),      icon: Bike,            hint: tr('auto.new.feedbackComplaintsSafetyConcerns', 'Feedback, complaints, safety concerns') },
+  { key: 'account',  label: tr('auto.new.myAccount', 'My account'),          icon: User,            hint: tr('auto.new.signInVerificationProfileChanges', 'Sign-in, verification, profile changes') },
+  { key: 'other',    label: tr('auto.new.somethingElse', 'Something else'),      icon: MoreHorizontal,  hint: tr('auto.new.suggestionsFeedbackGeneralQuestions', 'Suggestions, feedback, general questions') },
 ];
 
 function firstName(fullName?: string | null): string {
@@ -158,7 +159,7 @@ export default function NewSupportTicketScreen() {
               {/* Greeting */}
               <View style={styles.greetingWrap}>
                 <Text style={[styles.greeting, { color: theme.text }]}>
-                  Hi {firstName(user?.name)}, how can we help?
+                  Hi {firstName(user?.name)}{tr('auto.new.howCanWeHelp', ', how can we help?')}
                 </Text>
                 <View style={styles.responseRow}>
                   <Clock size={13} color={openHours ? '#16A34A' : '#D97706'} />
@@ -181,10 +182,10 @@ export default function NewSupportTicketScreen() {
 
               {/* Topic cards */}
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>
-                What is your question about?
+                {tr('auto.new.whatIsYourQuestionAbout', 'What is your question about?')}
               </Text>
               <View style={styles.topicList}>
-                {TOPICS.map(tp => {
+                {TOPICS().map(tp => {
                   const IconC = tp.icon;
                   const selected = topic === tp.key;
                   return (
@@ -218,7 +219,7 @@ export default function NewSupportTicketScreen() {
               <View style={styles.trustRow}>
                 <ShieldCheck size={13} color={theme.textThird} />
                 <Text style={[styles.trustText, { color: theme.textThird }]}>
-                  Conversations are private between you and the SEIRS support team.
+                  {tr('auto.new.conversationsArePrivateBetweenYou', 'Conversations are private between you and the SEIRS support team.')}
                 </Text>
               </View>
             </>
@@ -229,14 +230,14 @@ export default function NewSupportTicketScreen() {
                 <View style={[styles.topicRecap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                   <View style={[styles.topicRecapIcon, { backgroundColor: `${theme.primary}18` }]}>
                     {(() => {
-                      const IconC = TOPICS.find(t => t.key === topic)!.icon;
+                      const IconC = TOPICS().find(t => t.key === topic)!.icon;
                       return <IconC size={18} color={theme.primary} />;
                     })()}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.topicRecapLabel, { color: theme.textSecond }]}>{tx('auto.new.topic', 'Topic')}</Text>
                     <Text style={[styles.topicRecapText,  { color: theme.text }]}>
-                      {TOPICS.find(t => t.key === topic)?.label}
+                      {TOPICS().find(t => t.key === topic)?.label}
                     </Text>
                   </View>
                   <Pressable onPress={() => setStep('topic')} hitSlop={10}>
@@ -250,7 +251,7 @@ export default function NewSupportTicketScreen() {
                   powers the admin-side chat-reopen flow. */}
               {wantsAttachment && (
                 <View>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Related delivery (optional)</Text>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{tr('auto.new.relatedDeliveryOptional', 'Related delivery (optional)')}</Text>
                   {linkedDeliveryId ? (
                     <View style={[styles.attachedRow, { backgroundColor: theme.surface, borderColor: theme.primary }]}>
                       <Package size={18} color={theme.primary} />

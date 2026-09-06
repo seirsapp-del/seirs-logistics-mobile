@@ -15,6 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import { loyaltyApi, type ReferralHistoryItem } from '@/services/api';
 import { referralUrl } from '@/constants/config';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Universal/web fallback link: when the receiver doesn't have the app,
 // the page on seirs.co/r/<code> can show download links and forward
@@ -102,8 +103,7 @@ export default function ReferralScreen() {
           </View>
           <Text style={styles.heroTitle}>{tx('auto.referral.inviteFriendsEarnRewards', 'Invite friends, earn Rewards')}</Text>
           <Text style={styles.heroDesc}>
-            You earn {REFERRAL_POINTS} SEIRS Rewards points every time a friend signs up with your code
-            and completes their first paid delivery.
+            You earn {REFERRAL_POINTS} {tr('auto.referral.seirsRewardsPointsEveryTime', 'SEIRS Rewards points every time a friend signs up with your code and completes their first paid delivery.')}
           </Text>
         </LinearGradient>
 
@@ -129,9 +129,9 @@ export default function ReferralScreen() {
         {/* Stats */}
         <View style={[styles.statsRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {[
-            { label: 'Signups',         value: loading ? '-' : `${history.length}`, icon: 'people-outline', color: theme.primary },
-            { label: 'Bonuses paid',    value: loading ? '-' : `${completedCount}`, icon: 'checkmark-circle-outline', color: '#22C55E' },
-            { label: 'Points earned',   value: loading ? '-' : `${pointsEarned.toLocaleString()}`, icon: 'star-outline', color: '#FFBE0B' },
+            { label: tr('auto.referral.signups', 'Signups'),         value: loading ? '-' : `${history.length}`, icon: 'people-outline', color: theme.primary },
+            { label: tr('auto.referral.bonusesPaid', 'Bonuses paid'),    value: loading ? '-' : `${completedCount}`, icon: 'checkmark-circle-outline', color: '#22C55E' },
+            { label: tr('auto.wallet.pointsEarned', 'Points earned'),   value: loading ? '-' : `${pointsEarned.toLocaleString()}`, icon: 'star-outline', color: '#FFBE0B' },
           ].map((stat, i) => (
             <View key={stat.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
               <Ionicons name={stat.icon as any} size={20} color={stat.color} />
@@ -145,9 +145,9 @@ export default function ReferralScreen() {
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.referral.howItWorks', 'How it works')}</Text>
           {[
-            { step: '1', text: 'Share your referral code with friends' },
-            { step: '2', text: 'Friend signs up and completes their first delivery' },
-            { step: '3', text: 'You both get rewarded!' },
+            { step: '1', text: tr('auto.referral.shareYourReferralCodeWith', 'Share your referral code with friends') },
+            { step: '2', text: tr('auto.referral.friendSignsUpAndCompletes', 'Friend signs up and completes their first delivery') },
+            { step: '3', text: tr('auto.referral.youBothGetRewarded', 'You both get rewarded!') },
           ].map(s => (
             <View key={s.step} style={styles.howRow}>
               <View style={[styles.howStep, { backgroundColor: theme.primary }]}>
@@ -170,8 +170,7 @@ export default function ReferralScreen() {
             <Ionicons name="people-outline" size={32} color={theme.textThird} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.referral.noReferralsYet', 'No referrals yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Share your code with a friend. When they sign up and complete their first delivery,
-              you both start earning points.
+              {tr('auto.referral.shareYourCodeWithA', 'Share your code with a friend. When they sign up and complete their first delivery, you both start earning points.')}
             </Text>
           </View>
         ) : (

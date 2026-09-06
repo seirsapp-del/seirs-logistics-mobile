@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const LAST_UPDATED = '9 August 2026';
 const TERMS_URL = 'https://seirs-website.vercel.app/terms-of-service';
@@ -22,9 +23,9 @@ interface Section {
   points: string[];
 }
 
-const SECTIONS: Section[] = [
+const SECTIONS = (): Section[] => [
   {
-    title: '1. Who you are to SEIRS',
+    title: tr('auto.codeOfConduct.1WhoYouAreTo', '1. Who you are to SEIRS'),
     points: [
       'You are an independent contractor. Nothing in this Code, the app, or your acceptance of jobs creates an employment, agency, or partnership relationship with SEIRS Logistics.',
       'You choose when to go online and which jobs to accept. In return, you are personally responsible for how you work while online.',
@@ -32,7 +33,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '2. Your account is you',
+    title: tr('auto.codeOfConduct.2YourAccountIsYou', '2. Your account is you'),
     points: [
       'One person, one account. Never share, rent, sell, or transfer your account or let anyone else drive under it.',
       'Keep your login credentials secret. Everything done on your account is treated as done by you.',
@@ -41,7 +42,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '3. Road safety comes first',
+    title: tr('auto.codeOfConduct.3RoadSafetyComesFirst', '3. Road safety comes first'),
     points: [
       'Obey all traffic laws and Federal Road Safety Corps (FRSC) regulations at all times.',
       'Drivers must wear a certified helmet. Drivers must wear seat belts. No exceptions.',
@@ -52,7 +53,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '4. Every package, by the book',
+    title: tr('auto.codeOfConduct.4EveryPackageByThe', '4. Every package, by the book'),
     points: [
       'Verify the package code or scan the QR at every handoff: pickup, partner store, driver-to-driver transfer, and final delivery. No code, no handoff.',
       'Never open, unseal, or tamper with a package. If a package appears damaged or opened when you receive it, photograph it and report it in the app before moving it.',
@@ -61,7 +62,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '5. Refuse prohibited items',
+    title: tr('auto.codeOfConduct.5RefuseProhibitedItems', '5. Refuse prohibited items'),
     points: [
       'You must refuse and report: illegal drugs, firearms and ammunition, stolen goods, hazardous or flammable materials, live animals without arrangement, cash shipments, and any item you reasonably suspect is unlawful.',
       'SEIRS never asks you to carry people as cargo or packages as passengers.',
@@ -69,7 +70,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '6. Money moves through the app only',
+    title: tr('auto.codeOfConduct.6MoneyMovesThroughThe', '6. Money moves through the app only'),
     points: [
       'All delivery payments are processed inside SEIRS. Never collect cash from a customer for a delivery.',
       'Never solicit or accept off-platform deals with customers you met through SEIRS. It removes every protection the platform gives you.',
@@ -78,7 +79,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '7. Honest location, honest work',
+    title: tr('auto.codeOfConduct.7HonestLocationHonestWork', '7. Honest location, honest work'),
     points: [
       'Keep GPS on and accurate for the entire time you are online. Location powers your safety features as well as job matching.',
       'GPS spoofing tools, mock-location apps, or any manipulation of your reported position is treated as fraud.',
@@ -86,7 +87,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '8. Respect every customer',
+    title: tr('auto.codeOfConduct.8RespectEveryCustomer', '8. Respect every customer'),
     points: [
       'Be professional and courteous. No harassment, threats, or abusive language, ever.',
       'No discrimination against any customer on the basis of ethnicity, religion, gender, disability, or anything else.',
@@ -95,7 +96,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '9. Communicate inside the app',
+    title: tr('auto.codeOfConduct.9CommunicateInsideTheApp', '9. Communicate inside the app'),
     points: [
       'Use in-app chat and calls for delivery matters. This protects you: conversations are logged and become evidence if there is ever a dispute.',
       'Chats close shortly after a delivery ends. Do not attempt to continue contact through personal channels.',
@@ -103,7 +104,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '10. Accidents and emergencies',
+    title: tr('auto.codeOfConduct.10AccidentsAndEmergencies', '10. Accidents and emergencies'),
     points: [
       'If there is an accident: stop, secure yourself and others, and call emergency services if anyone is injured.',
       'Use the SOS button for immediate danger. It alerts SEIRS with your live location.',
@@ -112,7 +113,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '11. Your responsibility and SEIRS liability',
+    title: tr('auto.codeOfConduct.11YourResponsibilityAndSeirs', '11. Your responsibility and SEIRS liability'),
     points: [
       'You are responsible for your own acts and omissions while using the platform, including fines, penalties, and third-party claims arising from your conduct.',
       'You agree to indemnify SEIRS Logistics against claims, losses, and costs caused by your breach of this Code, your negligence, or your unlawful acts.',
@@ -120,7 +121,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '12. How this Code is enforced',
+    title: tr('auto.codeOfConduct.12HowThisCodeIs', '12. How this Code is enforced'),
     points: [
       'Most issues follow three steps: a documented warning, then temporary suspension, then permanent deactivation.',
       'Zero-tolerance violations skip the steps and end the account immediately: violence or threats, theft, prohibited items, fraud, GPS manipulation, harassment, discrimination, impersonation, and driving under the influence.',
@@ -130,7 +131,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '13. Changes and governing law',
+    title: tr('auto.codeOfConduct.13ChangesAndGoverningLaw', '13. Changes and governing law'),
     points: [
       'SEIRS may update this Code as the service and the law evolve. Material changes are announced in-app; continuing to drive after a change means you accept it.',
       'This Code is governed by the laws of the Federal Republic of Nigeria.',
@@ -159,12 +160,10 @@ export default function CodeOfConductScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={[styles.updated, { color: theme.textThird }]}>Last updated: {LAST_UPDATED}</Text>
         <Text style={[styles.intro, { color: theme.textSecond }]}>
-          This Code is the standard every SEIRS driver agrees to. It exists to keep you, your
-          customers, and every package safe, and it is part of the Terms of Service you accepted
-          when you registered.
+          {tr('auto.codeOfConduct.thisCodeIsTheStandard', 'This Code is the standard every SEIRS driver agrees to. It exists to keep you, your customers, and every package safe, and it is part of the Terms of Service you accepted when you registered.')}
         </Text>
 
-        {SECTIONS.map((s) => (
+        {SECTIONS().map((s) => (
           <View key={s.title} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>{s.title}</Text>
             {s.points.map((p, i) => (
@@ -178,7 +177,7 @@ export default function CodeOfConductScreen() {
 
         <Pressable onPress={() => Linking.openURL(TERMS_URL)} style={styles.termsLink}>
           <Text style={[styles.termsLinkText, { color: theme.primary }]}>
-            Read the full Terms of Service
+            {tr('auto.codeOfConduct.readTheFullTermsOf', 'Read the full Terms of Service')}
           </Text>
           <Ionicons name="open-outline" size={15} color={theme.primary} />
         </Pressable>

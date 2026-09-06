@@ -25,6 +25,7 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 interface Point { lat: number; lng: number }
 
@@ -74,7 +75,7 @@ export default function DeliveryTrackMap({
       <View style={[styles.empty, { backgroundColor: theme.surfaceSecond, height }]}>
         <Ionicons name="map-outline" size={20} color={theme.textThird} />
         <Text style={[styles.emptyText, { color: theme.textThird }]}>
-          No map for this delivery yet
+          {tr('auto.deliverytrackmap.noMapForThisDelivery', 'No map for this delivery yet')}
         </Text>
       </View>
     );
@@ -121,7 +122,7 @@ export default function DeliveryTrackMap({
       {drv && (
         <View style={styles.liveBadge}>
           <View style={styles.liveDot} />
-          <Text style={styles.liveText}>Live</Text>
+          <Text style={styles.liveText}>{tr('auto.deliverytrackmap.live', 'Live')}</Text>
         </View>
       )}
     </View>

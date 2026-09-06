@@ -17,6 +17,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §2.11: driver wind-down toggle. When enabled, the matching
 // service stops auto-assigning new jobs while the driver finishes the
@@ -90,16 +91,16 @@ export default function LastOrderScreen() {
       // One-way switch, so the row spells out the part a rider will
       // otherwise discover only when they try to undo it.
       setSheet({
-        title: 'Wind down for today?',
-        message: 'No new jobs will be assigned to you. You will still complete the ones you have already accepted.',
+        title: tr('auto.lastOrder.windDownForToday', 'Wind down for today?'),
+        message: tr('auto.lastOrder.noNewJobsWillBe', 'No new jobs will be assigned to you. You will still complete the ones you have already accepted.'),
         options: [{
-          label: 'Wind down',
-          sub: 'Cannot be turned off until you fully sign off',
+          label: tr('auto.lastOrder.windDown', 'Wind down'),
+          sub: tr('auto.lastOrder.cannotBeTurnedOffUntil', 'Cannot be turned off until you fully sign off'),
           variant: 'primary',
           icon: 'moon-outline',
           onPress: () => commitToggle(true),
         }],
-        cancelLabel: 'Keep taking jobs',
+        cancelLabel: tr('auto.lastOrder.keepTakingJobs', 'Keep taking jobs'),
       });
     } else {
       // No-op: Spec V8 says one-way until full sign-off
@@ -124,7 +125,7 @@ export default function LastOrderScreen() {
           <MoonStar size={28} color="#fff" />
           <Text style={styles.heroTitle}>{tx('auto.lastOrder.windDownForTheDay', 'Wind down for the day')}</Text>
           <Text style={styles.heroSub}>
-            Tell the dispatcher you&apos;re done after your current jobs. Cleanly stop accepting new orders without going offline mid-trip.
+            {tr('auto.lastOrder.tellTheDispatcherYouRe', 'Tell the dispatcher you\'re done after your current jobs. Cleanly stop accepting new orders without going offline mid-trip.')}
           </Text>
         </View>
 
@@ -158,7 +159,7 @@ export default function LastOrderScreen() {
                   <Clock size={18} color={theme.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardLabel, { color: theme.textSecond }]}>ACTIVE JOBS</Text>
+                  <Text style={[styles.cardLabel, { color: theme.textSecond }]}>{tr('auto.lastOrder.activeJobs', 'ACTIVE JOBS')}</Text>
                   <Text style={[styles.cardValue, { color: theme.text }]}>{activeJobs}</Text>
                   <Text style={[styles.cardSub, { color: theme.textSecond }]}>
                     {activeJobs === 0
@@ -181,12 +182,12 @@ export default function LastOrderScreen() {
                     }
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.cardLabel, { color: theme.textSecond }]}>TODAY&apos;S ACCEPTANCE RATE</Text>
+                    <Text style={[styles.cardLabel, { color: theme.textSecond }]}>{tr('auto.lastOrder.todaySAcceptanceRate', 'TODAY\'S ACCEPTANCE RATE')}</Text>
                     <Text style={[styles.cardValue, { color: meetsThreshold ? '#16A34A' : '#DC2626' }]}>
                       {acceptanceRate}%
                     </Text>
                     <Text style={[styles.cardSub, { color: theme.textSecond }]}>
-                      Last Order requires ≥80%. This stops drivers from gaming the toggle to skip undesirable orders.
+                      {tr('auto.lastOrder.lastOrderRequires80This', 'Last Order requires ≥80%. This stops drivers from gaming the toggle to skip undesirable orders.')}
                     </Text>
                   </View>
                 </View>

@@ -17,6 +17,7 @@ import { supportApi, uploadApi, type SupportThreadDTO } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 export default function BusinessSupportThreadScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
@@ -89,9 +90,9 @@ export default function BusinessSupportThreadScreen() {
   const attach = () => {
     if (uploading || sending) return;
     alertDialog('Attach photo', 'Choose where to attach from.', [
-      { text: 'Take photo',   onPress: pickCamera  },
-      { text: 'From gallery', onPress: pickGallery },
-      { text: 'Cancel',       style: 'cancel'      },
+      { text: tr('auto.sendPackage.takePhoto', 'Take photo'),   onPress: pickCamera  },
+      { text: tr('auto.supportDetail.fromGallery', 'From gallery'), onPress: pickGallery },
+      { text: tr('auto.payoutAccount.cancel', 'Cancel'),       style: 'cancel'      },
     ]);
   };
 

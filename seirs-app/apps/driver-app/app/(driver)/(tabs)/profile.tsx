@@ -27,6 +27,7 @@ import { naira, nairaShort } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { savePdf } from '@seirs/shared/utils/dataExport';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // The marketing site is the single home for FAQ and the legal documents:
 // it is edited without shipping a release, and it teaches people SEIRS
@@ -86,34 +87,34 @@ export default function DriverProfileScreen() {
   // the drawer (founder wants them reachable from both).
   const MENU_SECTIONS: MenuSection[] = [
     {
-      title: 'Account',
+      title: tr('auto.editProfile.account', 'Account'),
       items: [
-        { icon: 'person-outline',           label: 'Edit Profile',     sub: 'Name, photo, contact details', route: '/(driver)/edit-profile' },
+        { icon: 'person-outline',           label: tr('auto.editProfile.editProfile', 'Edit Profile'),     sub: tr('auto.profile.namePhotoContactDetails', 'Name, photo, contact details'), route: '/(driver)/edit-profile' },
         // One row, not two. Identity and vehicle were separate screens that
         // asked for three of the same documents, and a rider could not tell
         // which one wanted what (founder 2026-09-01). They are one screen now.
-        { icon: 'shield-checkmark-outline', label: 'KYC Verification', sub: `Documents, and ${vehicleSub}`, route: '/(driver)/vehicle' },
+        { icon: 'shield-checkmark-outline', label: tr('auto.vehicle.kycVerification', 'KYC Verification'), sub: `Documents, and ${vehicleSub}`, route: '/(driver)/vehicle' },
       ],
     },
     {
-      title: 'Earnings',
+      title: tr('auto.earnings.earnings', 'Earnings'),
       items: [
-        { icon: 'cash-outline',     label: 'Earnings & Wallet',   sub: 'Charts, calendar, history', route: '/(driver)/earnings' },
-        { icon: 'business-outline', label: 'Payout Bank Account', sub: 'Manage where you get paid', route: '/(driver)/add-bank' },
+        { icon: 'cash-outline',     label: tr('auto.profile.earningsWallet', 'Earnings & Wallet'),   sub: tr('auto.profile.chartsCalendarHistory', 'Charts, calendar, history'), route: '/(driver)/earnings' },
+        { icon: 'business-outline', label: tr('auto.addBank.payoutBankAccount', 'Payout Bank Account'), sub: tr('auto.profile.manageWhereYouGetPaid', 'Manage where you get paid'), route: '/(driver)/add-bank' },
       ],
     },
     {
-      title: 'Work',
+      title: tr('auto.profile.work', 'Work'),
       items: [
         // SEIRS Premium row removed: the program is paused platform-wide
         // (founder decision 2026-08-10).
-        { icon: 'calendar-outline',       label: 'My Schedule',   sub: 'Set working hours',           route: '/(driver)/schedule' },
-        { icon: 'receipt-outline',        label: 'Statement',     sub: 'What you earned, ready to download', route: '/(driver)/statement' },
-        { icon: 'document-text-outline',  label: 'Documents',     sub: 'Letters and documents from SEIRS', route: '/(driver)/documents' },
+        { icon: 'calendar-outline',       label: tr('auto.profile.mySchedule', 'My Schedule'),   sub: tr('auto.profile.setWorkingHours', 'Set working hours'),           route: '/(driver)/schedule' },
+        { icon: 'receipt-outline',        label: tr('auto.profile.statement', 'Statement'),     sub: tr('auto.profile.whatYouEarnedReadyTo', 'What you earned, ready to download'), route: '/(driver)/statement' },
+        { icon: 'document-text-outline',  label: tr('auto.documents.documents', 'Documents'),     sub: tr('auto.profile.lettersAndDocumentsFromSeirs', 'Letters and documents from SEIRS'), route: '/(driver)/documents' },
       ],
     },
     {
-      title: 'Preferences',
+      title: tr('auto.profile.preferences', 'Preferences'),
       items: [
         /*
          * No Notifications row here, matching business (founder 2026-08-16,
@@ -130,16 +131,16 @@ export default function DriverProfileScreen() {
          */
         {
           icon:  'contrast-outline',
-          label: 'Appearance',
+          label: tr('auto.profile.appearance', 'Appearance'),
           sub:   followSystem ? 'Following your phone' : (isDark ? 'Dark' : 'Light'),
           onPress: () => alertDialog(
             'Appearance',
             `How should the app look? Currently ${isDark ? 'Dark' : 'Light'}.`,
             [
-              { text: 'Follow my phone', onPress: () => setFollowSystem(true) },
-              { text: 'Light',           onPress: () => setTheme('light') },
-              { text: 'Dark',            onPress: () => setTheme('dark') },
-              { text: 'Cancel', style: 'cancel' },
+              { text: tr('auto.profile.followMyPhone', 'Follow my phone'), onPress: () => setFollowSystem(true) },
+              { text: tr('auto.profile.light', 'Light'),           onPress: () => setTheme('light') },
+              { text: tr('auto.profile.dark', 'Dark'),            onPress: () => setTheme('dark') },
+              { text: tr('auto.parcelRequests.cancel', 'Cancel'), style: 'cancel' },
             ],
           ),
         },
@@ -156,11 +157,11 @@ export default function DriverProfileScreen() {
        * edited without shipping a release, and it teaches riders SEIRS has
        * a site they can navigate on their own.
        */
-      title: 'Support',
+      title: tr('auto.profile.support', 'Support'),
       items: [
-        { icon: 'help-circle-outline',  label: 'Help & FAQ',      sub: 'Answers to the common questions', onPress: () => Linking.openURL(`${SITE}/faq`).catch(() => {}) },
-        { icon: 'chatbubble-outline',   label: 'Contact Support', sub: 'Raise a ticket with a person',    route: '/(driver)/support/new' },
-        { icon: 'alert-circle-outline', label: 'SOS Emergency',   sub: 'Immediate help with live location', route: '/(driver)/sos', danger: true },
+        { icon: 'help-circle-outline',  label: tr('auto.profile.helpFaq', 'Help & FAQ'),      sub: tr('auto.profile.answersToTheCommonQuestions', 'Answers to the common questions'), onPress: () => Linking.openURL(`${SITE}/faq`).catch(() => {}) },
+        { icon: 'chatbubble-outline',   label: tr('auto.profile.contactSupport', 'Contact Support'), sub: tr('auto.profile.raiseATicketWithA', 'Raise a ticket with a person'),    route: '/(driver)/support/new' },
+        { icon: 'alert-circle-outline', label: tr('auto.sos.sosEmergency', 'SOS Emergency'),   sub: tr('auto.profile.immediateHelpWithLiveLocation', 'Immediate help with live location'), route: '/(driver)/sos', danger: true },
       ],
     },
     {
@@ -171,11 +172,11 @@ export default function DriverProfileScreen() {
        * because it is the third thing a rider agrees to and it belongs
        * beside the other two rather than under Support.
        */
-      title: 'Legal',
+      title: tr('auto.profile.legal', 'Legal'),
       items: [
-        { icon: 'document-text-outline', label: 'Terms of Service', sub: 'The agreement you signed up under', onPress: () => Linking.openURL(`${SITE}/terms-of-service`).catch(() => {}) },
-        { icon: 'lock-closed-outline',   label: 'Privacy Policy',   sub: 'How SEIRS handles your data',      onPress: () => Linking.openURL(`${SITE}/privacy-policy`).catch(() => {}) },
-        { icon: 'book-outline',          label: 'Driver Code of Conduct', sub: 'The standard every SEIRS driver agrees to', route: '/(driver)/code-of-conduct' },
+        { icon: 'document-text-outline', label: tr('auto.driverRegister.termsOfService', 'Terms of Service'), sub: tr('auto.profile.theAgreementYouSignedUp', 'The agreement you signed up under'), onPress: () => Linking.openURL(`${SITE}/terms-of-service`).catch(() => {}) },
+        { icon: 'lock-closed-outline',   label: tr('auto.driverRegister.privacyPolicy', 'Privacy Policy'),   sub: tr('auto.profile.howSeirsHandlesYourData', 'How SEIRS handles your data'),      onPress: () => Linking.openURL(`${SITE}/privacy-policy`).catch(() => {}) },
+        { icon: 'book-outline',          label: tr('auto.codeOfConduct.driverCodeOfConduct', 'Driver Code of Conduct'), sub: tr('auto.profile.theStandardEverySeirsDriver', 'The standard every SEIRS driver agrees to'), route: '/(driver)/code-of-conduct' },
       ],
     },
     {
@@ -185,7 +186,7 @@ export default function DriverProfileScreen() {
        * findable, not merely present. The screen existed already, reachable
        * only from inside Privacy.
        */
-      title: 'Account actions',
+      title: tr('auto.profile.accountActions', 'Account actions'),
       items: [
         /*
          * Carried off the Privacy & Data screen when that screen was
@@ -194,8 +195,8 @@ export default function DriverProfileScreen() {
          * queues an export. Everything else there was a duplicate, a dead
          * link, or a toggle nothing honoured.
          */
-        { icon: 'download-outline', label: 'Download my data', sub: 'Saved to your Documents', onPress: () => handleExportData() },
-        { icon: 'trash-outline',    label: 'Delete Account',   sub: 'Close your SEIRS account for good', route: '/(driver)/delete-account', danger: true },
+        { icon: 'download-outline', label: tr('auto.profile.downloadMyData', 'Download my data'), sub: tr('auto.profile.savedToYourDocuments', 'Saved to your Documents'), onPress: () => handleExportData() },
+        { icon: 'trash-outline',    label: tr('auto.deleteAccount.deleteAccount', 'Delete Account'),   sub: tr('auto.profile.closeYourSeirsAccountFor', 'Close your SEIRS account for good'), route: '/(driver)/delete-account', danger: true },
       ],
     },
   ];
@@ -219,8 +220,8 @@ export default function DriverProfileScreen() {
         r?.ok ? 'Your data is ready' : 'Already prepared',
         r?.message ?? 'Open Documents to read or share it.',
         [
-          { text: 'Save as PDF',           onPress: () => void exportAsPdf() },
-          { text: 'Close', style: 'cancel' },
+          { text: tr('auto.profile.saveAsPdf', 'Save as PDF'),           onPress: () => void exportAsPdf() },
+          { text: tr('auto.documents.close', 'Close'), style: 'cancel' },
         ],
       );
     } catch {
@@ -242,10 +243,10 @@ export default function DriverProfileScreen() {
 
   const handleLogout = () => {
     setSheet({
-      title: 'Sign out?',
-      message: 'You will need your email and password to get back in.',
-      options: [{ label: 'Sign out', variant: 'destructive', icon: 'log-out-outline', onPress: logout }],
-      cancelLabel: 'Stay signed in',
+      title: tr('auto.profile.signOut2', 'Sign out?'),
+      message: tr('auto.profile.youWillNeedYourEmail', 'You will need your email and password to get back in.'),
+      options: [{ label: tr('auto.profile.signOut3', 'Sign out'), variant: 'destructive', icon: 'log-out-outline', onPress: logout }],
+      cancelLabel: tr('auto.profile.staySignedIn', 'Stay signed in'),
     });
   };
 
@@ -339,7 +340,7 @@ export default function DriverProfileScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.photoPromptTitle, { color: theme.text }]}>{tx('auto.profile.addYourPhoto', 'Add your photo')}</Text>
                 <Text style={[styles.photoPromptBody, { color: theme.textSecond }]}>
-                  Customers check your face before handing over a package. A clear photo gets you accepted faster.
+                  {tr('auto.profile.customersCheckYourFaceBefore', 'Customers check your face before handing over a package. A clear photo gets you accepted faster.')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
@@ -355,7 +356,7 @@ export default function DriverProfileScreen() {
               style={[styles.seirsIdRow, { borderTopColor: theme.border }]}
             >
               <View style={{ flex: 1 }}>
-                <Text style={[styles.seirsIdLabel, { color: theme.textSecond }]}>SEIRS ID · tap for QR</Text>
+                <Text style={[styles.seirsIdLabel, { color: theme.textSecond }]}>{tr('auto.profile.seirsIdTapForQr', 'SEIRS ID · tap for QR')}</Text>
                 <Text style={[styles.seirsIdValue, { color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }]}>
                   {(user as any).accountId}
                 </Text>
@@ -368,9 +369,9 @@ export default function DriverProfileScreen() {
               the old Trip History + My Ratings menu rows. */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
             {[
-              { label: 'Total Trips',  value: totalTrips.toLocaleString(), route: '/(driver)/history' },
-              { label: 'Rating',       value: ratingCount > 0 ? rating.toFixed(1) : '-', route: '/(driver)/ratings' },
-              { label: 'Total Earned', value: nairaShort(allTime), route: '/(driver)/earnings' },
+              { label: tr('auto.profile.totalTrips', 'Total Trips'),  value: totalTrips.toLocaleString(), route: '/(driver)/history' },
+              { label: tr('auto.index.rating', 'Rating'),       value: ratingCount > 0 ? rating.toFixed(1) : '-', route: '/(driver)/ratings' },
+              { label: tr('auto.profile.totalEarned', 'Total Earned'), value: nairaShort(allTime), route: '/(driver)/earnings' },
             ].map(s => (
               <Pressable
                 key={s.label}
@@ -475,7 +476,7 @@ export default function DriverProfileScreen() {
           >
             <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}>{tx('auto.profile.yourSeirsId', 'Your SEIRS ID')}</Text>
             <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, textAlign: 'center' }}>
-              Show this to a customer at handoff to prove you are the assigned driver.
+              {tr('auto.profile.showThisToACustomer', 'Show this to a customer at handoff to prove you are the assigned driver.')}
             </Text>
 
             <View style={{ padding: Spacing.md, backgroundColor: '#FFFFFF', borderRadius: Radius.lg }}>
@@ -500,13 +501,13 @@ export default function DriverProfileScreen() {
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.border, borderRadius: Radius.lg, paddingVertical: 12 }}
               >
                 <Ionicons name="copy-outline" size={16} color={theme.text} />
-                <Text style={{ color: theme.text, fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>Copy</Text>
+                <Text style={{ color: theme.text, fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>{tr('auto.profile.copy', 'Copy')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => setShowQrModal(false)}
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.primary, borderRadius: Radius.lg, paddingVertical: 12 }}
               >
-                <Text style={{ color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Done</Text>
+                <Text style={{ color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>{tr('auto.profile.done', 'Done')}</Text>
               </Pressable>
             </View>
           </Pressable>

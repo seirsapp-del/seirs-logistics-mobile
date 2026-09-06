@@ -15,6 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Business sign-in.
@@ -88,7 +89,7 @@ export default function LoginScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.container,
-          { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom },
+          { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xl, paddingBottom: Spacing.xl + insets.bottom },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -111,7 +112,7 @@ export default function LoginScreen() {
           <View style={styles.brandRow}>
             <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
             <Text style={[styles.brand,    { color: theme.primary }]}>SEIRS</Text>
-            <Text style={[styles.brandSub, { color: theme.textThird }]}>BUSINESS &amp; PARTNERS</Text>
+            <Text style={[styles.brandSub, { color: theme.textThird }]}>{tr('auto.forgotPassword.businessPartners', 'BUSINESS & PARTNERS')}</Text>
           </View>
           <Text style={[styles.title,    { color: theme.text }]}>{tx('auto.login.welcomeBack', 'Welcome back')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>{tx('auto.login.signInToContinue', 'Sign in to continue')}</Text>
@@ -209,7 +210,7 @@ export default function LoginScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>Don&apos;t have an account?</Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>{tr('auto.login.donTHaveAnAccount', 'Don\'t have an account?')}</Text>
           <Pressable onPress={() => router.push('/(auth)/register' as any)}>
             <Text style={[styles.footerLink, { color: theme.accent }]}> {tx('auto.login.signUp', 'Sign Up')}</Text>
           </Pressable>

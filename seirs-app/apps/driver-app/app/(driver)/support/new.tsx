@@ -24,13 +24,14 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { supportApi, type TicketTopic } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
-const TOPICS: { key: TicketTopic; label: string; icon: any }[] = [
-  { key: 'delivery', label: 'Delivery issue', icon: 'cube-outline' },
-  { key: 'account',  label: 'Account',        icon: 'person-outline' },
-  { key: 'billing',  label: 'Payout / fare',  icon: 'card-outline' },
-  { key: 'driver',   label: 'On the road',    icon: 'bicycle-outline' },
-  { key: 'other',    label: 'Other',          icon: 'ellipsis-horizontal-outline' },
+const TOPICS = (): { key: TicketTopic; label: string; icon: any }[] => [
+  { key: 'delivery', label: tr('auto.new.deliveryIssue', 'Delivery issue'), icon: 'cube-outline' },
+  { key: 'account',  label: tr('auto.editProfile.account', 'Account'),        icon: 'person-outline' },
+  { key: 'billing',  label: tr('auto.new.payoutFare', 'Payout / fare'),  icon: 'card-outline' },
+  { key: 'driver',   label: tr('auto.new.onTheRoad', 'On the road'),    icon: 'bicycle-outline' },
+  { key: 'other',    label: tr('auto.new.other', 'Other'),          icon: 'ellipsis-horizontal-outline' },
 ];
 
 export default function DriverNewSupportTicketScreen() {
@@ -78,7 +79,7 @@ export default function DriverNewSupportTicketScreen() {
           <View>
             <Text style={[styles.label, { color: theme.textSecond }]}>{t('support.topicLabel', { defaultValue: 'What is this about?' })}</Text>
             <View style={styles.topicRow}>
-              {TOPICS.map(tp => {
+              {TOPICS().map(tp => {
                 const active = tp.key === topic;
                 return (
                   <Pressable

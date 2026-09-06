@@ -31,6 +31,7 @@ import { businessApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const onlyDigits = (v: string) => v.replace(/[^0-9+]/g, '');
 const onlyName   = (v: string) => v.replace(/[^\p{L} .'\-]/gu, '');
@@ -111,7 +112,7 @@ export default function EditDelivery() {
         res?.priceChanged
           ? `The price changed from ${money(res.priceBeforeNgn)} to ${money(res.priceAfterNgn)}. Nothing has been charged yet.`
           : 'Your changes are saved.',
-        [{ text: 'Done', onPress: () => router.back() }],
+        [{ text: tr('auto.editDeliveryDetail.done', 'Done'), onPress: () => router.back() }],
       );
     } catch (e: any) {
       setError(e?.message ?? 'Could not save your changes.');

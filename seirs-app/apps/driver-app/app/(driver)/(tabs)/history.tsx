@@ -12,14 +12,15 @@ import { HamburgerButton } from '@/components/HamburgerButton';
 import { driversApi, earningsApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  delivered:  { label: 'Delivered',   color: '#16A34A', icon: 'checkmark-circle' },
-  in_transit: { label: 'En Route',    color: '#0F2B4C', icon: 'navigate' },
-  picked_up:  { label: 'Picked Up',   color: '#FF6B00', icon: 'cube-outline' },
-  assigned:   { label: 'Assigned',    color: '#3A7BD5', icon: 'navigate-outline' },
-  cancelled:  { label: 'Cancelled',   color: '#6B7280', icon: 'close-circle-outline' },
-};
+const STATUS_CONFIG = (): Record<string, { label: string; color: string; icon: string }> => ({
+  delivered:  { label: tr('auto.history.delivered', 'Delivered'),   color: '#16A34A', icon: 'checkmark-circle' },
+  in_transit: { label: tr('auto.history.enRoute', 'En Route'),    color: '#0F2B4C', icon: 'navigate' },
+  picked_up:  { label: tr('auto.history.pickedUp', 'Picked Up'),   color: '#FF6B00', icon: 'cube-outline' },
+  assigned:   { label: tr('auto.history.assigned', 'Assigned'),    color: '#3A7BD5', icon: 'navigate-outline' },
+  cancelled:  { label: tr('auto.history.cancelled', 'Cancelled'),   color: '#6B7280', icon: 'close-circle-outline' },
+});
 
 /**
  * There was a "Cancelled" tab here and it could never hold anything.
@@ -201,7 +202,7 @@ export default function DriverHistoryScreen() {
           )
         }
         renderItem={({ item }) => {
-          const sc = STATUS_CONFIG[item.status] ?? { label: item.status, color: '#9CA3AF', icon: 'ellipse-outline' };
+          const sc = STATUS_CONFIG()[item.status] ?? { label: item.status, color: '#9CA3AF', icon: 'ellipse-outline' };
           return (
             <Pressable
               style={({ pressed }) => [styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm, pressed && { opacity: 0.85 }]}

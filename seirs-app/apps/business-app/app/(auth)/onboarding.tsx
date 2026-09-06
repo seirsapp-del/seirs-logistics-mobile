@@ -12,6 +12,7 @@ import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Brought in line with the customer app (founder direction 2026-09-01).
@@ -33,12 +34,12 @@ import { tx } from '@/i18n/tx';
  */
 const SLIDE_DURATION = 4500;
 
-const SLIDES = [
+const SLIDES = () => [
   {
     key:     'bulk',
     icon:    'Package' as const,
-    title:   'Many Packages, One Booking',
-    body:    'Each with its own receiver, its own tracking code, and its own photo.',
+    title:   tr('auto.onboarding.manyPackagesOneBooking', 'Many Packages, One Booking'),
+    body:    tr('auto.onboarding.eachWithItsOwnReceiver', 'Each with its own receiver, its own tracking code, and its own photo.'),
     gradient: ['#0F2B4C', '#1A3A63'] as [string, string],
   },
   {
@@ -49,22 +50,22 @@ const SLIDES = [
     // the true part, so they stay.
     key:     'wallet',
     icon:    'Receipt' as const,
-    title:   'Pay As You Send',
-    body:    'Card, transfer or USSD per booking, with an itemised receipt each time.',
+    title:   tr('auto.onboarding.payAsYouSend', 'Pay As You Send'),
+    body:    tr('auto.onboarding.cardTransferOrUssdPer', 'Card, transfer or USSD per booking, with an itemised receipt each time.'),
     gradient: ['#0A1E36', '#235A9C'] as [string, string],
   },
   {
     key:     'tracking',
     icon:    'MapPin' as const,
-    title:   'See Every Package Land',
-    body:    'Live tracking, and a proof photo the moment each one is delivered.',
+    title:   tr('auto.onboarding.seeEveryPackageLand', 'See Every Package Land'),
+    body:    tr('auto.onboarding.liveTrackingAndAProof', 'Live tracking, and a proof photo the moment each one is delivered.'),
     gradient: ['#0F2B4C', '#1E4A80'] as [string, string],
   },
   {
     key:     'cargo',
     icon:    'Truck' as const,
-    title:   'Move A Full Load',
-    body:    'Farm produce, building materials or a house move, on a vehicle that fits.',
+    title:   tr('auto.onboarding.moveAFullLoad', 'Move A Full Load'),
+    body:    tr('auto.onboarding.farmProduceBuildingMaterialsOr', 'Farm produce, building materials or a house move, on a vehicle that fits.'),
     gradient: ['#0A1E36', '#2D72CC'] as [string, string],
   },
   {
@@ -78,22 +79,22 @@ const SLIDES = [
      */
     key:     'interstate',
     icon:    'Route' as const,
-    title:   'Send It To Another State',
-    body:    'Interstate runs priced up front, with the same tracking and proof.',
+    title:   tr('auto.onboarding.sendItToAnotherState', 'Send It To Another State'),
+    body:    tr('auto.onboarding.interstateRunsPricedUpFront', 'Interstate runs priced up front, with the same tracking and proof.'),
     gradient: ['#0F2B4C', '#1E4A80'] as [string, string],
   },
   {
     key:     'partner',
     icon:    'Store' as const,
-    title:   'Your Shop, Our Network',
-    body:    'Run a partner store: take packages in, scan them out, and earn on every one.',
+    title:   tr('auto.onboarding.yourShopOurNetwork', 'Your Shop, Our Network'),
+    body:    tr('auto.onboarding.runAPartnerStoreTake', 'Run a partner store: take packages in, scan them out, and earn on every one.'),
     gradient: ['#0F2B4C', '#1A3A63'] as [string, string],
   },
   {
     key:     'recurring',
     icon:    'Repeat' as const,
-    title:   'Send the Same Run Again',
-    body:    'Save a delivery you make often and repeat it in a couple of taps.',
+    title:   tr('auto.onboarding.sendTheSameRunAgain', 'Send the Same Run Again'),
+    body:    tr('auto.onboarding.saveADeliveryYouMake', 'Save a delivery you make often and repeat it in a couple of taps.'),
     gradient: ['#0A1E36', '#235A9C'] as [string, string],
   },
 ];
@@ -126,7 +127,7 @@ export default function OnboardingScreen() {
   useEffect(() => {
     if (!isFocused) return;
     timerRef.current = setTimeout(() => {
-      goToSlide((idx + 1) % SLIDES.length);
+      goToSlide((idx + 1) % SLIDES().length);
     }, SLIDE_DURATION);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [idx, isFocused]);
@@ -143,7 +144,7 @@ export default function OnboardingScreen() {
     Linking.openURL(url).catch(() => {});
   };
 
-  const slide   = SLIDES[idx];
+  const slide   = SLIDES()[idx];
   const sheetBg = isDark ? '#161B22' : '#FFFFFF';
 
   return (
@@ -171,7 +172,7 @@ export default function OnboardingScreen() {
                 forgot-password.tsx already say. Partner stores had no
                 presence in the lockup even though slide 6 sells them
                 (founder 2026-09-01). */}
-            <Text style={styles.logoSub}>BUSINESS &amp; PARTNERS</Text>
+            <Text style={styles.logoSub}>{tr('auto.forgotPassword.businessPartners', 'BUSINESS & PARTNERS')}</Text>
           </View>
         </SafeAreaView>
 
@@ -187,7 +188,7 @@ export default function OnboardingScreen() {
         {/* Dots sit under the copy, not stranded above the buttons, and are
             tappable so somebody can go back to a slide they missed. */}
         <View style={styles.dots}>
-          {SLIDES.map((_, i) => (
+          {SLIDES().map((_, i) => (
             <Pressable key={i} onPress={() => goToSlide(i)} hitSlop={8}>
               <View
                 style={[
@@ -223,7 +224,7 @@ export default function OnboardingScreen() {
           onPress={() => router.push('/(auth)/login' as any)}
         >
           <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
-            I Already Have an Account
+            {tr('auto.onboarding.iAlreadyHaveAnAccount', 'I Already Have an Account')}
           </Text>
         </Pressable>
 
@@ -234,7 +235,7 @@ export default function OnboardingScreen() {
           <View style={styles.secondaryRow}>
             <Icon name="Truck" size={16} color={theme.text} strokeWidth={2} />
             <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
-              Become a Driver
+              {tr('auto.onboarding.becomeADriver', 'Become a Driver')}
             </Text>
           </View>
         </Pressable>

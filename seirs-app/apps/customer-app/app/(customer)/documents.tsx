@@ -20,6 +20,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { documentsApi, type UserDocumentDTO } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const DOC_ICON: Record<string, string> = {
   statement: 'Receipt',
@@ -80,7 +81,7 @@ export default function CustomerDocumentsScreen() {
           }
           ListHeaderComponent={
             docs.length > 0
-              ? <Text style={[styles.sectionHead, { color: theme.textSecond }]}>FROM SEIRS</Text>
+              ? <Text style={[styles.sectionHead, { color: theme.textSecond }]}>{tr('auto.documents.fromSeirs', 'FROM SEIRS')}</Text>
               : null
           }
           ListEmptyComponent={
@@ -88,7 +89,7 @@ export default function CustomerDocumentsScreen() {
               <Icon name="FileText" size={44} color={theme.textSecond} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.documents.noDocumentsYet', 'No documents yet')}</Text>
               <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
-                Official letters and documents from SEIRS will appear here.
+                {tr('auto.documents.officialLettersAndDocumentsFrom', 'Official letters and documents from SEIRS will appear here.')}
               </Text>
             </View>
           }

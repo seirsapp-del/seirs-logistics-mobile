@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 
 export default function PartnerDashboard() {
@@ -150,7 +151,7 @@ export default function PartnerDashboard() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.scanLabel, { color: colors.text }]}>{tx('auto.index.releaseToRecipient', 'Release to Recipient')}</Text>
-                  <Text style={[styles.scanSub, { color: isDark ? '#86EFAC' : '#14532D' }]}>Hand a package to recipient with ID + OTP verification</Text>
+                  <Text style={[styles.scanSub, { color: isDark ? '#86EFAC' : '#14532D' }]}>{tr('auto.tabsIndex.handAPackageToRecipient', 'Hand a package to recipient with ID + OTP verification')}</Text>
                 </View>
                 <Icon name="ChevronRight" size={18} color="#9CA3AF" />
               </Pressable>

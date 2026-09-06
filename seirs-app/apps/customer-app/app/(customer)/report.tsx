@@ -12,6 +12,7 @@ import { Icon } from '@/components/Icon';
 import { supportApi, deliveriesApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Report an issue, rebuilt in the business design language (founder
@@ -100,14 +101,13 @@ export default function ReportScreen() {
           </View>
           <Text style={[styles.doneTitle, { color: theme.text }]}>{tx('auto.report.reportReceived', 'Report received')}</Text>
           <Text style={[styles.doneBody, { color: theme.textSecond }]}>
-            Support has your report and will reply in Messages. You can add
-            more detail there any time.
+            {tr('auto.report.supportHasYourReportAnd', 'Support has your report and will reply in Messages. You can add more detail there any time.')}
           </Text>
           <Pressable
             style={[styles.cta, { backgroundColor: theme.primary }]}
             onPress={() => router.back()}
           >
-            <Text style={styles.ctaText}>Done</Text>
+            <Text style={styles.ctaText}>{tr('auto.profile.done', 'Done')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -128,7 +128,7 @@ export default function ReportScreen() {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>WHAT HAPPENED?</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{tr('auto.report.whatHappened', 'WHAT HAPPENED?')}</Text>
           <View style={styles.chipWrap}>
             {CATEGORIES.map(c => {
               const active = category === c.id;
@@ -151,7 +151,7 @@ export default function ReportScreen() {
             })}
           </View>
 
-          <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>WHICH ORDER IS THIS ABOUT?</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{tr('auto.report.whichOrderIsThisAbout', 'WHICH ORDER IS THIS ABOUT?')}</Text>
           <Pressable
             onPress={() => setOrderId('all')}
             style={[
@@ -197,7 +197,7 @@ export default function ReportScreen() {
             );
           })}
 
-          <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>DESCRIBE THE ISSUE</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{tr('auto.report.describeTheIssue', 'DESCRIBE THE ISSUE')}</Text>
           <TextInput
             style={[styles.detailInput, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
             value={detail}

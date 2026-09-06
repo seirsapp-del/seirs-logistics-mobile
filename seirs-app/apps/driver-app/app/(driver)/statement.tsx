@@ -38,20 +38,21 @@ import { earningsApi, statementsApi, type DriverEarning } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type PresetKey = 'this_month' | 'last_month' | 'last_2_months' | 'last_90' | 'this_year' | 'last_year';
 
-const PRESETS: Array<{ key: PresetKey; label: string }> = [
-  { key: 'this_month',    label: 'This month' },
-  { key: 'last_month',    label: 'Last month' },
-  { key: 'last_2_months', label: 'Last 2 months' },
-  { key: 'last_90',       label: 'Last 90 days' },
+const PRESETS = (): Array<{ key: PresetKey; label: string }> => [
+  { key: 'this_month',    label: tr('auto.statement.thisMonth', 'This month') },
+  { key: 'last_month',    label: tr('auto.statement.lastMonth', 'Last month') },
+  { key: 'last_2_months', label: tr('auto.statement.last2Months', 'Last 2 months') },
+  { key: 'last_90',       label: tr('auto.statement.last90Days', 'Last 90 days') },
   // FIRS self-assessment is filed on a calendar year, so the year presets
   // are not a nicety: they are the reason a rider opens this screen in
   // January. The old tax-docs screen had a YEARLY (FOR FIRS) section and
   // this replaces it.
-  { key: 'this_year',     label: 'This year' },
-  { key: 'last_year',     label: 'Last year' },
+  { key: 'this_year',     label: tr('auto.statement.thisYear', 'This year') },
+  { key: 'last_year',     label: tr('auto.statement.lastYear', 'Last year') },
 ];
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -251,7 +252,7 @@ Sharing the figures as text instead.`);
           }
         >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-            {PRESETS.map(p => {
+            {PRESETS().map(p => {
               const on = preset === p.key;
               return (
                 <Pressable
@@ -278,7 +279,7 @@ Sharing the figures as text instead.`);
             </Text>
             <Text style={[styles.heroValue, { color: theme.text }]}>{naira(netNgn)}</Text>
             <Text style={[styles.heroSub, { color: theme.textSecond }]}>
-              yours in this period · {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
+              {tr('auto.statement.yoursInThisPeriod', 'yours in this period ·')} {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
               {carried.length > 0 ? ` · ${naira(carriedNgn)} carried forward` : ''}
             </Text>
           </View>
@@ -286,7 +287,7 @@ Sharing the figures as text instead.`);
           {entries.length === 0 ? (
             <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border, padding: 20 }]}>
               <Text style={[styles.rowSub, { color: theme.textSecond }]}>
-                Nothing settled in this period. Try a wider one.
+                {tr('auto.statement.nothingSettledInThisPeriod', 'Nothing settled in this period. Try a wider one.')}
               </Text>
             </View>
           ) : (
@@ -327,9 +328,7 @@ Sharing the figures as text instead.`);
           )}
 
           <Text style={[styles.footNote, { color: theme.textThird }]}>
-            Every figure covers the period shown above it, never your whole history
-            with SEIRS. Earnings still clearing are not counted here. The exported
-            copy carries a code anyone can check, so it works as proof of income.
+            {tr('auto.statement.everyFigureCoversThePeriod', 'Every figure covers the period shown above it, never your whole history with SEIRS. Earnings still clearing are not counted here. The exported copy carries a code anyone can check, so it works as proof of income.')}
             {carried.length > 0
               ? ' Money carried forward from an earlier payout is already yours and is counted in the total above.'
               : ''}

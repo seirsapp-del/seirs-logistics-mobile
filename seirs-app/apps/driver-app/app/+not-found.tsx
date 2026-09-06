@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 export default function NotFoundScreen() {
   const cs    = useColorScheme();
@@ -10,7 +11,7 @@ export default function NotFoundScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Not Found', headerShown: false }} />
+      <Stack.Screen options={{ title: tr('auto.notFound.notFound', 'Not Found'), headerShown: false }} />
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <Text style={[styles.code, { color: theme.textThird }]}>404</Text>
         <Text style={[styles.title, { color: theme.text }]}>{tx('auto.NotFound.screenNotFound', 'Screen not found')}</Text>

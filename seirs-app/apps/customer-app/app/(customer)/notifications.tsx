@@ -23,6 +23,7 @@ import { notificationsApi } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 interface Notif {
   id:    string;
   type:  string;
@@ -141,21 +142,21 @@ export default function CustomerNotificationsScreen() {
     // page. Android put it first; this dialog does not have to.
     alertDialog('Clear notifications', 'Which ones should go?', [
       {
-        text: 'Clear read only',
+        text: tr('auto.notifications.clearReadOnly', 'Clear read only'),
         onPress: async () => {
           setNotifs(prev => prev.filter(n => !n.read));
           try { await notificationsApi.removeAll(true); } catch {}
         },
       },
       {
-        text: 'Clear everything',
+        text: tr('auto.notifications.clearEverything', 'Clear everything'),
         style: 'destructive',
         onPress: async () => {
           setNotifs([]);
           try { await notificationsApi.removeAll(false); } catch {}
         },
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: tr('auto.AddressPicker.cancel', 'Cancel'), style: 'cancel' },
     ]);
   };
 
@@ -200,7 +201,7 @@ export default function CustomerNotificationsScreen() {
               <Icon name="BellOff" size={44} color={theme.textSecond} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.notifications.noNotifications', 'No notifications')}</Text>
               <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
-                Delivery updates and SEIRS announcements will appear here.
+                {tr('auto.notifications.deliveryUpdatesAndSeirsAnnouncements', 'Delivery updates and SEIRS announcements will appear here.')}
               </Text>
             </View>
           }

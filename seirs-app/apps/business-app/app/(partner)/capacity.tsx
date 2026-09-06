@@ -17,6 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §4.9: partner staff sees real-time store load + can pause
 // incoming bookings when overwhelmed. Backend enforces capacity preflight,
@@ -40,18 +41,18 @@ interface Dropoff {
   createdAt:     string;
 }
 
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  scheduled:           { label: 'Awaiting drop-off',      color: '#9CA3AF' },
-  received_at_store:   { label: 'Received',                color: '#3A7BD5' },
-  awaiting_driver:     { label: 'Waiting for driver',      color: '#D97706' },
-  driver_en_route:     { label: 'Driver en route',         color: '#3A7BD5' },
-  in_transit:          { label: 'In transit',              color: '#3A7BD5' },
-  at_dropoff_store:    { label: 'Ready for collection',    color: '#16A34A' },
-  awaiting_collection: { label: 'Awaiting collection',     color: '#16A34A' },
-  collected:           { label: 'Collected',               color: '#16A34A' },
-  return_triggered:    { label: 'Return-triggered',        color: '#DC2626' },
-  cancelled:           { label: 'Cancelled',               color: '#9CA3AF' },
-};
+const STATUS_LABEL = (): Record<string, { label: string; color: string }> => ({
+  scheduled:           { label: tr('auto.capacity.awaitingDropOff', 'Awaiting drop-off'),      color: '#9CA3AF' },
+  received_at_store:   { label: tr('auto.capacity.received', 'Received'),                color: '#3A7BD5' },
+  awaiting_driver:     { label: tr('auto.capacity.waitingForDriver', 'Waiting for driver'),      color: '#D97706' },
+  driver_en_route:     { label: tr('auto.capacity.driverEnRoute', 'Driver en route'),         color: '#3A7BD5' },
+  in_transit:          { label: tr('auto.capacity.inTransit', 'In transit'),              color: '#3A7BD5' },
+  at_dropoff_store:    { label: tr('auto.capacity.readyForCollection', 'Ready for collection'),    color: '#16A34A' },
+  awaiting_collection: { label: tr('auto.capacity.awaitingCollection', 'Awaiting collection'),     color: '#16A34A' },
+  collected:           { label: tr('auto.capacity.collected', 'Collected'),               color: '#16A34A' },
+  return_triggered:    { label: tr('auto.capacity.returnTriggered', 'Return-triggered'),        color: '#DC2626' },
+  cancelled:           { label: tr('auto.capacity.cancelled', 'Cancelled'),               color: '#9CA3AF' },
+});
 
 export default function PartnerCapacityScreen() {
   const insets   = useSafeAreaInsets();
@@ -119,7 +120,7 @@ export default function PartnerCapacityScreen() {
     return (
       <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <Icon name="Store" size={36} color={colors.textThird} />
-        <Text style={[styles.emptyText, { color: colors.textSecond }]}>This account isn&apos;t linked to a partner store.</Text>
+        <Text style={[styles.emptyText, { color: colors.textSecond }]}>{tr('auto.capacity.thisAccountIsnTLinked', 'This account isn\'t linked to a partner store.')}</Text>
       </View>
     );
   }
@@ -148,7 +149,7 @@ export default function PartnerCapacityScreen() {
         <>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.cardTopRow}>
-              <Text style={[styles.cardLabel, { color: colors.textSecond }]}>CURRENT LOAD</Text>
+              <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.capacity.currentLoad', 'CURRENT LOAD')}</Text>
               <Text style={[styles.bucketChip, { color: bucketColor, borderColor: bucketColor }]}>
                 {bucketLabel}
               </Text>
@@ -167,7 +168,7 @@ export default function PartnerCapacityScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.toggleTitle, { color: colors.text }]}>{tx('auto.capacity.acceptNewDropOffs', 'Accept new drop-offs')}</Text>
                 <Text style={[styles.toggleSub, { color: colors.textSecond }]}>
-                  When off, customers won&apos;t be able to schedule new drop-offs at this store. In-store packages and driver pickups continue normally.
+                  {tr('auto.capacity.whenOffCustomersWonT', 'When off, customers won\'t be able to schedule new drop-offs at this store. In-store packages and driver pickups continue normally.')}
                 </Text>
               </View>
               <Switch
@@ -199,7 +200,7 @@ export default function PartnerCapacityScreen() {
             {storeStatus === 'paused' && !pause?.reason && (
               <View style={styles.pauseBanner}>
                 <Icon name="AlertCircle" size={14} color="#92400E" />
-                <Text style={styles.pauseText}>Paused: customers can&apos;t book this store right now</Text>
+                <Text style={styles.pauseText}>{tr('auto.capacity.pausedCustomersCanTBook', 'Paused: customers can\'t book this store right now')}</Text>
               </View>
             )}
           </View>
@@ -220,7 +221,7 @@ export default function PartnerCapacityScreen() {
           </View>
 
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>In your store ({dropoffs.length})</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{tr('auto.capacity.inYourStore', 'In your store (')}{dropoffs.length})</Text>
             {dropoffs.length > 0 && (
               <Pressable onPress={onRefresh}>
                 <Icon name="RefreshCw" size={16} color={colors.textSecond} />
@@ -235,7 +236,7 @@ export default function PartnerCapacityScreen() {
             </View>
           ) : (
             dropoffs.map(d => {
-              const meta = STATUS_LABEL[d.status] ?? { label: d.status, color: '#9CA3AF' };
+              const meta = STATUS_LABEL()[d.status] ?? { label: d.status, color: '#9CA3AF' };
               return (
                 <View key={d.id} style={[styles.dropoffRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={[styles.dropoffIcon, { backgroundColor: meta.color + '18' }]}>

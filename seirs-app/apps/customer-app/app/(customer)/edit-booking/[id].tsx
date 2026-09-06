@@ -38,6 +38,7 @@ import { deliveriesApi, configApi, driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /* The same input filters the Send wizard uses. Typed on a phone, a
    decimal field will happily take "3Chidinma" unless something stops
@@ -46,10 +47,10 @@ const onlyDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g
 const onlyDigits  = (v: string) => v.replace(/[^0-9+]/g, '');
 const onlyName    = (v: string) => v.replace(/[^\p{L} .'\-]/gu, '');
 
-const LUGGAGE: Array<{ id: string; label: string; note: string }> = [
-  { id: 'none',  label: 'No luggage', note: 'Just you' },
-  { id: 'small', label: 'Small bag',  note: 'Rides free' },
-  { id: 'large', label: 'Large',      note: 'Adds a fee' },
+const LUGGAGE = (): Array<{ id: string; label: string; note: string }> => [
+  { id: 'none',  label: tr('auto.editBookingDetail.noLuggage', 'No luggage'), note: tr('auto.editBookingDetail.justYou', 'Just you') },
+  { id: 'small', label: tr('auto.editBookingDetail.smallBag', 'Small bag'),  note: tr('auto.editBookingDetail.ridesFree', 'Rides free') },
+  { id: 'large', label: tr('auto.editBookingDetail.large', 'Large'),      note: tr('auto.editBookingDetail.addsAFee', 'Adds a fee') },
 ];
 
 export default function EditBooking() {
@@ -214,7 +215,7 @@ export default function EditBooking() {
         res.priceChanged
           ? `The price changed from ${money(res.priceBeforeNgn)} to ${money(res.priceAfterNgn)}. Nothing has been charged yet.`
           : `Your changes are saved. The price is still ${money(res.priceAfterNgn)}.`,
-        [{ text: 'Done', onPress: () => router.back() }],
+        [{ text: tr('auto.profile.done', 'Done'), onPress: () => router.back() }],
       );
     } catch (e: any) {
       setError(e?.message ?? 'Could not save your changes.');
@@ -273,7 +274,7 @@ export default function EditBooking() {
                 {kindLabel} · {row?.trackingCode}
               </Text>
               <Text style={[styles.bannerNote, { color: theme.textSecond }]}>
-                Nothing has been paid yet, so this can still change. We work the price out again when you save.
+                {tr('auto.editBookingDetail.nothingHasBeenPaidYet', 'Nothing has been paid yet, so this can still change. We work the price out again when you save.')}
               </Text>
             </View>
           </View>
@@ -299,7 +300,7 @@ export default function EditBooking() {
               ))}
               {field('Luggage', (
                 <View style={styles.row}>
-                  {LUGGAGE.filter(l => luggageOk.includes(l.id)).map(l => (
+                  {LUGGAGE().filter(l => luggageOk.includes(l.id)).map(l => (
                     <Pressable
                       key={l.id}
                       onPress={() => setLuggage(l.id)}
@@ -371,7 +372,7 @@ export default function EditBooking() {
                   <View style={styles.noteRow}>
                     <Info size={14} color={theme.textThird} />
                     <Text style={[styles.note, { color: theme.textThird }]}>
-                      These are the driver's own stops, so the fare changes with the leg you pick. Agree the exact spot with them in chat.
+                      {tr('auto.editBookingDetail.theseAreTheDriverS', 'These are the driver\'s own stops, so the fare changes with the leg you pick. Agree the exact spot with them in chat.')}
                     </Text>
                   </View>
                 </>
@@ -379,7 +380,7 @@ export default function EditBooking() {
                 <View style={styles.noteRow}>
                   <Info size={14} color={theme.textThird} />
                   <Text style={[styles.note, { color: theme.textThird }]}>
-                    This trip runs straight through with no stops in between, so there is no other leg to ride. Cancel and search again to travel a different route.
+                    {tr('auto.editBookingDetail.thisTripRunsStraightThrough', 'This trip runs straight through with no stops in between, so there is no other leg to ride. Cancel and search again to travel a different route.')}
                   </Text>
                 </View>
               )}

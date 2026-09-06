@@ -16,6 +16,7 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 interface Props {
   label: string;
@@ -87,7 +88,7 @@ export function DocUploadTile({
             <View style={styles.doc}>
               <Ionicons name="document-text" size={tall ? 26 : 22} color={theme.success} />
               <Text style={[styles.docLabel, { color: theme.text }]} numberOfLines={1}>
-                PDF attached
+                {tx('auto.docuploadtile.pdfAttached', 'PDF attached')}
               </Text>
             </View>
           ) : (

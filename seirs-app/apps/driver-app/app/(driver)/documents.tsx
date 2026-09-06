@@ -15,6 +15,7 @@ import { savePdf } from '@seirs/shared/utils/dataExport';
 import { documentToHtml } from '@seirs/shared/utils/documentPdf';
 import { documentsApi, type UserDocumentDTO } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Icon per document category (admin-sent official docs).
 const DOC_ICON: Record<string, any> = {
@@ -88,7 +89,7 @@ export default function TaxDocsScreen() {
         {/* Official documents sent by SEIRS (contracts, letters, policies) */}
         {received.length > 0 && (
           <>
-            <Text style={[styles.sectionHead, { color: theme.textSecond }]}>FROM SEIRS</Text>
+            <Text style={[styles.sectionHead, { color: theme.textSecond }]}>{tr('auto.documents.fromSeirs', 'FROM SEIRS')}</Text>
             {received.map(d => {
               const DIcon = DOC_ICON[d.category] ?? File;
               return (
@@ -122,8 +123,7 @@ export default function TaxDocsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.introTitle, { color: theme.text }]}>{tx('auto.documents.allYourDocumentsOnePlace', 'All your documents, one place')}</Text>
               <Text style={[styles.introSub, { color: theme.textSecond }]}>
-                Official documents from SEIRS (contracts, letters, policies) will appear here when sent to you,
-                alongside your earnings statements below.
+                {tr('auto.documents.officialDocumentsFromSeirsContracts', 'Official documents from SEIRS (contracts, letters, policies) will appear here when sent to you, alongside your earnings statements below.')}
               </Text>
             </View>
           </View>
@@ -138,8 +138,7 @@ export default function TaxDocsScreen() {
         <View style={styles.footnote}>
           <AlertCircle size={12} color={theme.textThird} />
           <Text style={[styles.footnoteText, { color: theme.textThird }]}>
-            Contracts, letters and notices SEIRS has sent you. Your own earnings
-            statements live under Statement, on your profile.
+            {tr('auto.documents.contractsLettersAndNoticesSeirs', 'Contracts, letters and notices SEIRS has sent you. Your own earnings statements live under Statement, on your profile.')}
           </Text>
         </View>
       </ScrollView>

@@ -18,6 +18,7 @@ import { earningsApi } from '@/services/api';
 import { EarningsCalendar } from '@/components/EarningsCalendar';
 import { naira, nairaShort, nairaAxis } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -135,9 +136,9 @@ export default function EarningsScreen() {
   const displayLabel  = period === 'today' ? "Today's Earnings" : period === 'week' ? 'This Week' : 'This Month';
 
   const TABS: { id: Period; label: string }[] = [
-    { id: 'today', label: 'Today' },
-    { id: 'week',  label: 'Week'  },
-    { id: 'month', label: 'Month' },
+    { id: 'today', label: tr('auto.earnings.today', 'Today') },
+    { id: 'week',  label: tr('auto.earnings.week', 'Week')  },
+    { id: 'month', label: tr('auto.earnings.month', 'Month') },
   ];
 
   /*
@@ -161,11 +162,11 @@ export default function EarningsScreen() {
    * spans years belongs.
    */
   const STATS = [
-    { label: 'This Week',       value: naira(weekTotal),                                    Icon: Calendar,   color: theme.primary },
-    { label: 'Avg / Trip',      value: naira(monthTotal / Math.max(monthTrips, 1)),         Icon: TrendingUp, color: '#16A34A' },
+    { label: tr('auto.earnings.thisWeek', 'This Week'),       value: naira(weekTotal),                                    Icon: Calendar,   color: theme.primary },
+    { label: tr('auto.earnings.avgTrip', 'Avg / Trip'),      value: naira(monthTotal / Math.max(monthTrips, 1)),         Icon: TrendingUp, color: '#16A34A' },
     // Trips are a count, not money: they stay whole.
-    { label: 'Trips This Month', value: monthTrips.toLocaleString(),                        Icon: Receipt,    color: '#0F2B4C' },
-    { label: 'This Month',      value: nairaShort(monthTotal),                              Icon: Ribbon,     color: '#FFBE0B' },
+    { label: tr('auto.earnings.tripsThisMonth', 'Trips This Month'), value: monthTrips.toLocaleString(),                        Icon: Receipt,    color: '#0F2B4C' },
+    { label: tr('auto.earnings.thisMonth', 'This Month'),      value: nairaShort(monthTotal),                              Icon: Ribbon,     color: '#FFBE0B' },
   ];
 
   return (
@@ -247,12 +248,12 @@ export default function EarningsScreen() {
           </View>
           <View style={styles.goalBottom}>
             <Text style={[styles.goalCurrent, { color: theme.textSecond }]}>{naira(weekTotal)}</Text>
-            <Text style={[styles.goalTarget,  { color: theme.textThird }]}>Target {naira(goalTarget)} · tap to change</Text>
+            <Text style={[styles.goalTarget,  { color: theme.textThird }]}>Target {naira(goalTarget)} {tr('auto.earnings.tapToChange', '· tap to change')}</Text>
           </View>
           {goalPct >= 100 && (
             <View style={[styles.goalBanner, { backgroundColor: '#16A34A15' }]}>
               <Text style={[styles.goalBannerText, { color: '#16A34A' }]}>
-                Goal reached! You beat your {naira(goalTarget)} target. Raise it and see how far you can go.
+                {tr('auto.earnings.goalReachedYouBeatYour', 'Goal reached! You beat your')} {naira(goalTarget)} {tr('auto.earnings.targetRaiseItAndSee', 'target. Raise it and see how far you can go.')}
               </Text>
             </View>
           )}
@@ -270,7 +271,7 @@ export default function EarningsScreen() {
             <View style={[styles.goalModalCard, { backgroundColor: theme.surface }]}>
               <Text style={[styles.goalModalTitle, { color: theme.text }]}>{tx('auto.earnings.setYourWeeklyGoal', 'Set your weekly goal')}</Text>
               <Text style={[styles.goalModalSub, { color: theme.textSecond }]}>
-                Your personal target. Set it to match your hustle; you can change it any time.
+                {tr('auto.earnings.yourPersonalTargetSetIt', 'Your personal target. Set it to match your hustle; you can change it any time.')}
               </Text>
               <View style={[styles.goalInputWrap, { borderColor: theme.border, backgroundColor: theme.background }]}>
                 <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold as any, color: theme.text }}>₦</Text>
@@ -289,7 +290,7 @@ export default function EarningsScreen() {
                   <Text style={{ color: theme.text, fontWeight: FontWeight.semibold as any }}>{tx('auto.earnings.cancel', 'Cancel')}</Text>
                 </Pressable>
                 <Pressable style={[styles.goalModalBtn, { backgroundColor: theme.primary }]} onPress={saveGoal}>
-                  <Text style={{ color: '#fff', fontWeight: FontWeight.bold as any }}>Save</Text>
+                  <Text style={{ color: '#fff', fontWeight: FontWeight.bold as any }}>{tr('auto.earnings.save', 'Save')}</Text>
                 </Pressable>
               </View>
             </View>

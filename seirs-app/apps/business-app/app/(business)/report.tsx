@@ -11,6 +11,7 @@ import { useSeirsDialog } from '@/components/SeirsDialog';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { businessApi, supportApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Report an issue for business senders (founder 2026-08-22: the
@@ -22,12 +23,12 @@ import { tx } from '@/i18n/tx';
  * set when a specific order is chosen.
  */
 
-const CATEGORIES = [
-  { id: 'delivery', icon: 'Package',        label: 'Delivery issue', desc: 'A delivery went wrong or is stuck',   topic: 'delivery' },
-  { id: 'billing',  icon: 'Banknote',       label: 'Billing',        desc: 'Charged wrongly or a refund question', topic: 'billing' },
-  { id: 'driver',   icon: 'Bike',           label: 'Driver',         desc: 'A problem with a driver on a job',      topic: 'driver' },
-  { id: 'account',  icon: 'User',           label: 'Account',        desc: 'Access, team or business details',     topic: 'account' },
-  { id: 'other',    icon: 'MoreHorizontal', label: 'Other',          desc: 'Something else happened',              topic: 'other' },
+const CATEGORIES = () => [
+  { id: 'delivery', icon: 'Package',        label: tr('auto.report.deliveryIssue', 'Delivery issue'), desc: 'A delivery went wrong or is stuck',   topic: 'delivery' },
+  { id: 'billing',  icon: 'Banknote',       label: tr('auto.report.billing', 'Billing'),        desc: 'Charged wrongly or a refund question', topic: 'billing' },
+  { id: 'driver',   icon: 'Bike',           label: tr('auto.DeliveryTrackMap.driver', 'Driver'),         desc: 'A problem with a driver on a job',      topic: 'driver' },
+  { id: 'account',  icon: 'User',           label: tr('auto.settings.account', 'Account'),        desc: 'Access, team or business details',     topic: 'account' },
+  { id: 'other',    icon: 'MoreHorizontal', label: tr('auto.report.other', 'Other'),          desc: 'Something else happened',              topic: 'other' },
 ] as const;
 
 export default function BusinessReportScreen() {
@@ -65,7 +66,7 @@ export default function BusinessReportScreen() {
 
   const handleSubmit = async () => {
     if (!category) return;
-    const cat = CATEGORIES.find(c => c.id === category)!;
+    const cat = CATEGORIES().find(c => c.id === category)!;
     const order = orderId !== 'all' ? orders.find(d => d.id === orderId) : null;
     setLoading(true);
     try {
@@ -97,14 +98,13 @@ export default function BusinessReportScreen() {
           </View>
           <Text style={[styles.doneTitle, { color: colors.text }]}>{tx('auto.report.reportReceived', 'Report received')}</Text>
           <Text style={[styles.doneBody, { color: colors.textSecond }]}>
-            Support has your report and will reply in Messages. You can add
-            more detail there any time.
+            {tr('auto.report.supportHasYourReportAnd', 'Support has your report and will reply in Messages. You can add more detail there any time.')}
           </Text>
           <Pressable
             style={[styles.cta, { backgroundColor: colors.primary }]}
             onPress={() => router.back()}
           >
-            <Text style={styles.ctaText}>Done</Text>
+            <Text style={styles.ctaText}>{tr('auto.editDeliveryDetail.done', 'Done')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -125,9 +125,9 @@ export default function BusinessReportScreen() {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Text style={[styles.sectionLabel, { color: colors.textSecond }]}>WHAT HAPPENED?</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textSecond }]}>{tr('auto.report.whatHappened', 'WHAT HAPPENED?')}</Text>
           <View style={styles.chipWrap}>
-            {CATEGORIES.map(c => {
+            {CATEGORIES().map(c => {
               const active = category === c.id;
               return (
                 <Pressable
@@ -148,7 +148,7 @@ export default function BusinessReportScreen() {
             })}
           </View>
 
-          <Text style={[styles.sectionLabel, { color: colors.textSecond }]}>WHICH ORDER IS THIS ABOUT?</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textSecond }]}>{tr('auto.report.whichOrderIsThisAbout', 'WHICH ORDER IS THIS ABOUT?')}</Text>
           <Pressable
             onPress={() => setOrderId('all')}
             style={[
@@ -194,7 +194,7 @@ export default function BusinessReportScreen() {
             );
           })}
 
-          <Text style={[styles.sectionLabel, { color: colors.textSecond }]}>DESCRIBE THE ISSUE</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textSecond }]}>{tr('auto.report.describeTheIssue', 'DESCRIBE THE ISSUE')}</Text>
           <TextInput
             style={[styles.detailInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             value={detail}

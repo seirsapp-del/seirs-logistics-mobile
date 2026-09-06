@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Guarded camera require (live find 2026-08-11): a top-level
 // `import from 'expo-camera'` crashes the ENTIRE app bundle with
@@ -144,7 +145,7 @@ export function PackageCodeCapture({
               </Pressable>
             )}
             <Text style={styles.scanFallbackHint}>
-              You can still finish this hand-off: type the code below.
+              {tr('auto.packagecodecapture.youCanStillFinishThis', 'You can still finish this hand-off: type the code below.')}
             </Text>
           </View>
         )}

@@ -36,14 +36,15 @@ import { paymentsApi, statementsApi } from '@/services/api';
 import type { CustomerStatement, StatementEntry } from '@/services/api';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type PresetKey = 'this_month' | 'last_month' | 'last_2_months' | 'last_90';
 
-const PRESETS: Array<{ key: PresetKey; label: string }> = [
-  { key: 'this_month',    label: 'This month' },
-  { key: 'last_month',    label: 'Last month' },
-  { key: 'last_2_months', label: 'Last 2 months' },
-  { key: 'last_90',       label: 'Last 90 days' },
+const PRESETS = (): Array<{ key: PresetKey; label: string }> => [
+  { key: 'this_month',    label: tr('auto.statement.thisMonth', 'This month') },
+  { key: 'last_month',    label: tr('auto.statement.lastMonth', 'Last month') },
+  { key: 'last_2_months', label: tr('auto.statement.last2Months', 'Last 2 months') },
+  { key: 'last_90',       label: tr('auto.statement.last90Days', 'Last 90 days') },
 ];
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -191,7 +192,7 @@ export default function CustomerStatementScreen() {
           }
         >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-            {PRESETS.map(p => {
+            {PRESETS().map(p => {
               const on = preset === p.key;
               return (
                 <Pressable
@@ -218,14 +219,14 @@ export default function CustomerStatementScreen() {
             </Text>
             <Text style={[styles.heroValue, { color: theme.text }]}>{naira(totalNgn)}</Text>
             <Text style={[styles.heroSub, { color: theme.textSecond }]}>
-              spent in this period · {count} {count === 1 ? 'charge' : 'charges'}
+              {tr('auto.statement.spentInThisPeriod', 'spent in this period ·')} {count} {count === 1 ? 'charge' : 'charges'}
             </Text>
           </View>
 
           {entries.length === 0 ? (
             <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border, padding: 20 }]}>
               <Text style={[styles.rowSub, { color: theme.textSecond }]}>
-                Nothing settled in this period. Try a wider one.
+                {tr('auto.statement.nothingSettledInThisPeriod', 'Nothing settled in this period. Try a wider one.')}
               </Text>
             </View>
           ) : (
@@ -266,9 +267,7 @@ export default function CustomerStatementScreen() {
           )}
 
           <Text style={[styles.footNote, { color: theme.textThird }]}>
-            Tap any line for its receipt. Every figure covers the period shown above it,
-            never your whole history with SEIRS. Charges that have not settled are not
-            counted here.
+            {tr('auto.statement.tapAnyLineForIts', 'Tap any line for its receipt. Every figure covers the period shown above it, never your whole history with SEIRS. Charges that have not settled are not counted here.')}
           </Text>
         </ScrollView>
       )}

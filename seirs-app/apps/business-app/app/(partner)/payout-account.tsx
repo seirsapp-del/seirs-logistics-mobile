@@ -29,6 +29,7 @@ import { partnerApi, paymentsApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type Bank = { id: string; name: string; code: string };
 
@@ -135,15 +136,14 @@ export default function PayoutAccountScreen() {
             <View style={[styles.notice, { backgroundColor: colors.warning + '14', borderColor: colors.warning + '55' }]}>
               <Icon name="AlertTriangle" size={16} color={colors.warning} />
               <Text style={[styles.noticeText, { color: colors.text }]}>
-                We have no account for this shop, so there is nowhere to send what you earn.
-                Your application cannot be approved until you add one.
+                {tr('auto.payoutAccount.weHaveNoAccountFor', 'We have no account for this shop, so there is nowhere to send what you earn. Your application cannot be approved until you add one.')}
               </Text>
             </View>
           )}
 
           {current?.hasAccount && !editing && (
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.cardLabel, { color: colors.textSecond }]}>EARNINGS GO TO</Text>
+              <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.payoutAccount.earningsGoTo', 'EARNINGS GO TO')}</Text>
               <Text style={[styles.accountName, { color: colors.text }]}>{current.accountName}</Text>
               <Text style={[styles.accountLine, { color: colors.textSecond }]}>
                 {current.bankName}
@@ -155,9 +155,8 @@ export default function PayoutAccountScreen() {
               {current.pending ? (
                 <View style={[styles.pending, { backgroundColor: colors.warning + '14', borderColor: colors.warning + '55' }]}>
                   <Text style={[styles.pendingText, { color: colors.text }]}>
-                    You asked to change this to {current.pending.accountName} at{' '}
-                    {current.pending.bankName}. We are checking it. Until then your earnings keep
-                    going to the account above.
+                    {tr('auto.payoutAccount.youAskedToChangeThis', 'You asked to change this to')} {current.pending.accountName} at{' '}
+                    {current.pending.bankName}{tr('auto.payoutAccount.weAreCheckingItUntil', '. We are checking it. Until then your earnings keep going to the account above.')}
                   </Text>
                 </View>
               ) : null}
@@ -167,7 +166,7 @@ export default function PayoutAccountScreen() {
                 style={[styles.secondaryBtn, { borderColor: colors.border }]}
               >
                 <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>
-                  Change this account
+                  {tr('auto.payoutAccount.changeThisAccount', 'Change this account')}
                 </Text>
               </Pressable>
             </View>
@@ -208,22 +207,22 @@ export default function PayoutAccountScreen() {
                   ))}
                   {banks.length === 0 ? (
                     <Text style={[styles.hint, { color: colors.textSecond }]}>
-                      We could not load the bank list. Pull down to try again.
+                      {tr('auto.payoutAccount.weCouldNotLoadThe', 'We could not load the bank list. Pull down to try again.')}
                     </Text>
                   ) : query.trim().length < 2 ? (
                     <Text style={[styles.hint, { color: colors.textSecond }]}>
-                      Type two letters of your bank name, like GT or Access.
+                      {tr('auto.payoutAccount.typeTwoLettersOfYour', 'Type two letters of your bank name, like GT or Access.')}
                     </Text>
                   ) : matches.length === 0 ? (
                     <Text style={[styles.hint, { color: colors.textSecond }]}>
-                      No bank matches that. Check the spelling, or try a shorter word.
+                      {tr('auto.payoutAccount.noBankMatchesThatCheck', 'No bank matches that. Check the spelling, or try a shorter word.')}
                     </Text>
                   ) : null}
                 </>
               )}
 
               <Text style={[styles.fieldLabel, { color: colors.textSecond, marginTop: 14 }]}>
-                Account number
+                {tr('auto.payoutAccount.accountNumber', 'Account number')}
               </Text>
               <TextInput
                 value={number}
@@ -234,8 +233,7 @@ export default function PayoutAccountScreen() {
                 style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.background }]}
               />
               <Text style={[styles.hint, { color: colors.textThird }]}>
-                We check this with your bank and show you the name on the account before anything
-                is saved.
+                {tr('auto.payoutAccount.weCheckThisWithYour', 'We check this with your bank and show you the name on the account before anything is saved.')}
               </Text>
 
               <Pressable
@@ -265,8 +263,7 @@ export default function PayoutAccountScreen() {
               the screen. The token itself is a shared/theme problem and not
               mine to change; this stops repeating it here. */}
           <Text style={[styles.footNote, { color: colors.textSecond }]}>
-            Changing an account is checked by a person before it takes effect, so nobody else can
-            redirect your earnings. Your current account keeps paying while we look.
+            {tr('auto.payoutAccount.changingAnAccountIsChecked', 'Changing an account is checked by a person before it takes effect, so nobody else can redirect your earnings. Your current account keeps paying while we look.')}
           </Text>
         </ScrollView>
       )}

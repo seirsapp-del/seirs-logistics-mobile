@@ -18,6 +18,7 @@ import { Icon } from '@/components/Icon';
 import { useAuth } from '@/context/AuthContext';
 import { uploadApi, usersApi } from '@/services/api';
 import { useColors, useTheme } from '@/context/ThemeContext';
+import { tx } from '@/i18n/tx';
 
 const SITE = 'https://seirs-website.vercel.app';
 
@@ -88,8 +89,8 @@ export default function BusinessProfileTab() {
         r?.ok ? 'Your data is ready' : 'Already prepared',
         r?.message ?? 'Open Documents to read or share it.',
         [
-          { text: 'Save as PDF',           onPress: () => { void exportAsPdf(); } },
-          { text: 'Close', style: 'cancel' },
+          { text: tx('auto.profile.saveAsPdf', 'Save as PDF'),           onPress: () => { void exportAsPdf(); } },
+          { text: tx('auto.documents.close', 'Close'), style: 'cancel' },
         ],
       );
     } catch {
@@ -164,10 +165,10 @@ export default function BusinessProfileTab() {
               'Appearance',
               `How should the app look? Currently ${isDark ? 'Dark' : 'Light'}.`,
               [
-                { text: 'Follow my phone', onPress: () => { void useSystemTheme(); } },
-                { text: 'Light',           onPress: () => setTheme('light') },
-                { text: 'Dark',            onPress: () => setTheme('dark') },
-                { text: 'Cancel',          style: 'cancel' },
+                { text: tx('auto.profile.followMyPhone', 'Follow my phone'), onPress: () => { void useSystemTheme(); } },
+                { text: tx('auto.profile.light', 'Light'),           onPress: () => setTheme('light') },
+                { text: tx('auto.profile.dark', 'Dark'),            onPress: () => setTheme('dark') },
+                { text: tx('auto.payoutAccount.cancel', 'Cancel'),          style: 'cancel' },
               ],
               { cancelable: true },
             );

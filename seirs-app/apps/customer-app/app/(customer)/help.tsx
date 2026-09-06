@@ -18,6 +18,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { HELP_FAQS } from '@/constants/mockData';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Labels resolved via t() at render so language switches reflect live.
 // Chips map to the FAQ topic tags directly (audit 2026-08-10: the old
@@ -84,11 +85,11 @@ export default function HelpScreen() {
           {[
             // Straight to a NEW ticket (founder 2026-08-10: no bouncing
             // through the Messages tab). Brand palette: sky/green/navy.
-            { icon: 'chatbubble-ellipses-outline', label: 'Live Chat',  sub: '6am–10pm WAT reply', color: '#3A7BD5',
+            { icon: 'chatbubble-ellipses-outline', label: tr('auto.help.liveChat', 'Live Chat'),  sub: tr('auto.help.6am10pmWatReply', '6am–10pm WAT reply'), color: '#3A7BD5',
               onPress: () => router.push('/(customer)/support/new' as any) },
-            { icon: 'call-outline',                label: 'Call Us',    sub: '0700-SEIRS-01',    color: '#16A34A',
+            { icon: 'call-outline',                label: tr('auto.help.callUs', 'Call Us'),    sub: '0700-SEIRS-01',    color: '#16A34A',
               onPress: () => Linking.openURL('tel:07007347701').catch(() => alertDialog('Could not open dialer')) },
-            { icon: 'mail-outline',                label: 'Email',      sub: 'support@seirs.co', color: '#0F2B4C',
+            { icon: 'mail-outline',                label: tr('auto.editProfile.email', 'Email'),      sub: 'support@seirs.co', color: '#0F2B4C',
               onPress: () => Linking.openURL('mailto:support@seirs.co').catch(() => alertDialog('Could not open email')) },
           ].map(c => (
             <Pressable
@@ -142,7 +143,7 @@ export default function HelpScreen() {
             <Ionicons name="search-outline" size={36} color={theme.textThird} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.help.noResultsFound', 'No results found')}</Text>
             <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
-              Try a different search term or browse by topic.
+              {tr('auto.help.tryADifferentSearchTerm', 'Try a different search term or browse by topic.')}
             </Text>
           </View>
         ) : (

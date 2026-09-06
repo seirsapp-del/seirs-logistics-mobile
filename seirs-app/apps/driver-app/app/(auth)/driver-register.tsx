@@ -25,19 +25,20 @@ import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { validatePassword } from '@seirs/shared';
 import { isValidNigerianMobile, toE164Ng, toNationalInput, NG_PHONE_HINT } from '@/constants/phone';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type VehicleType = 'bicycle' | 'motorcycle' | 'tricycle' | 'car' | 'van' | 'truck_small' | 'truck_large';
 
 // D-6.3: labels must match app/(driver)/vehicle.tsx. Same app, one vocabulary,
 // and it is the Nigerian one: okada, keke, danfo.
-const VEHICLES: { id: VehicleType; label: string; desc: string; Icon: any }[] = [
-  { id: 'bicycle',     label: 'Bicycle',              desc: 'Up to 5 kg',      Icon: Bike  },
-  { id: 'motorcycle',  label: 'Okada (Motorcycle)',   desc: 'Up to 20 kg',     Icon: Bike  },
-  { id: 'tricycle',    label: 'Keke (Tricycle)',      desc: 'Up to 100 kg',    Icon: Truck },
-  { id: 'car',         label: 'Car',                  desc: 'Up to 200 kg',    Icon: Car   },
-  { id: 'van',         label: 'Van / Danfo',          desc: 'Up to 800 kg',    Icon: Van   },
-  { id: 'truck_small', label: 'Small Truck',          desc: 'Up to 3,000 kg',  Icon: Truck },
-  { id: 'truck_large', label: 'Large Truck',          desc: '3,000 kg+',       Icon: Truck },
+const VEHICLES = (): { id: VehicleType; label: string; desc: string; Icon: any }[] => [
+  { id: 'bicycle',     label: tr('auto.driverRegister.bicycle', 'Bicycle'),              desc: 'Up to 5 kg',      Icon: Bike  },
+  { id: 'motorcycle',  label: tr('auto.driverRegister.okadaMotorcycle', 'Okada (Motorcycle)'),   desc: 'Up to 20 kg',     Icon: Bike  },
+  { id: 'tricycle',    label: tr('auto.driverRegister.kekeTricycle', 'Keke (Tricycle)'),      desc: 'Up to 100 kg',    Icon: Truck },
+  { id: 'car',         label: tr('auto.driverRegister.car', 'Car'),                  desc: 'Up to 200 kg',    Icon: Car   },
+  { id: 'van',         label: tr('auto.driverRegister.vanDanfo', 'Van / Danfo'),          desc: 'Up to 800 kg',    Icon: Van   },
+  { id: 'truck_small', label: tr('auto.driverRegister.smallTruck', 'Small Truck'),          desc: 'Up to 3,000 kg',  Icon: Truck },
+  { id: 'truck_large', label: tr('auto.driverRegister.largeTruck', 'Large Truck'),          desc: '3,000 kg+',       Icon: Truck },
 ];
 
 
@@ -143,7 +144,7 @@ export default function DriverRegisterScreen() {
         vehicleType: vehicle!,
         // Required for drivers. Same jsonb shape the profile screen edits later.
         homeAddress: {
-          label:  'Home',
+          label:  tr('auto.driverRegister.home', 'Home'),
           street: addrStreet.trim(),
           city:   addrCity.trim(),
           state:  addrState,
@@ -184,7 +185,7 @@ export default function DriverRegisterScreen() {
           styles.container,
           // Keep the footer clear of the Android navigation bar
           // (live test 2026-08-10: "Sign In" sat under the nav buttons).
-          { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom },
+          { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xxl, paddingBottom: Spacing.xl + insets.bottom },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -238,7 +239,7 @@ export default function DriverRegisterScreen() {
 
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>
-              Middle name <Text style={[styles.optLabel, { color: theme.textThird }]}>(optional)</Text>
+              {tr('auto.driverRegister.middleName', 'Middle name')} <Text style={[styles.optLabel, { color: theme.textThird }]}>{tr('auto.driverRegister.optional', '(optional)')}</Text>
             </Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
@@ -307,7 +308,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field} onLayout={(e) => rememberY('city', e.nativeEvent.layout.y)}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>City / LGA<Text style={{ color: theme.textThird }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tr('auto.driverRegister.cityLga', 'City / LGA')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
@@ -360,7 +361,7 @@ export default function DriverRegisterScreen() {
           <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.driverRegister.vehicleType', 'Vehicle type')}<Text style={{ color: theme.textThird }}> *</Text></Text>
         </View>
         <View style={styles.vehicleGrid}>
-          {VEHICLES.map(v => {
+          {VEHICLES().map(v => {
             const selected = vehicle === v.id;
             return (
               <Pressable
@@ -395,12 +396,12 @@ export default function DriverRegisterScreen() {
             onToggle={() => setTermsConfirmed(v => !v)}
             label={
               <Text style={[styles.checkLabel, { color: theme.textSecond }]}>
-                I agree to the{' '}
+                {tr('auto.driverRegister.iAgreeToThe', 'I agree to the')}{' '}
                 <Text
                   style={[styles.linkText, { color: theme.primary }]}
                   onPress={() => Linking.openURL(TERMS_URL)}
                 >{tx('auto.driverRegister.termsOfService', 'Terms of Service')}</Text>
-                {' '}(including the Driver Code of Conduct) and{' '}
+                {' '}{tr('auto.driverRegister.includingTheDriverCodeOf', '(including the Driver Code of Conduct) and')}{' '}
                 <Text
                   style={[styles.linkText, { color: theme.primary }]}
                   onPress={() => Linking.openURL(PRIVACY_URL)}

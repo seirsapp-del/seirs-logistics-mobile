@@ -64,6 +64,7 @@ import { PasswordInput } from '@/components/PasswordInput';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 export default function RegisterScreen() {
   const router     = useRouter();
@@ -220,7 +221,7 @@ export default function RegisterScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xxl, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
@@ -243,12 +244,11 @@ export default function RegisterScreen() {
           <View style={styles.brandRow}>
             <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
             <Text style={[styles.brand,    { color: theme.primary }]}>SEIRS</Text>
-            <Text style={[styles.brandSub, { color: theme.textThird }]}>BUSINESS &amp; PARTNERS</Text>
+            <Text style={[styles.brandSub, { color: theme.textThird }]}>{tr('auto.forgotPassword.businessPartners', 'BUSINESS & PARTNERS')}</Text>
           </View>
           <Text style={[styles.title, { color: theme.text }]}>{tx('auto.register.createBusinessAccount', 'Create Business Account')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            Sign up as a Business Sender. You can apply to also become a Partner Store
-            from your Settings after signup.
+            {tr('auto.register.signUpAsABusiness', 'Sign up as a Business Sender. You can apply to also become a Partner Store from your Settings after signup.')}
           </Text>
         </View>
 
@@ -387,7 +387,7 @@ export default function RegisterScreen() {
             label={tx('auto.register.referralCode', 'Referral Code')} optional icon="Gift" placeholder={tx('auto.register.eGBiz4k2p9x', 'e.g. BIZ-4K2P9X')}
             autoCapitalize="characters"
             value={form.referralCode} onChangeText={(v) => set('referralCode', v.toUpperCase())}
-            hint="Someone shared SEIRS with you? Their code goes here."
+            hint={tr('auto.register.someoneSharedSeirsWithYou', 'Someone shared SEIRS with you? Their code goes here.')}
           />
 
           {/* Age */}
@@ -413,11 +413,11 @@ export default function RegisterScreen() {
                 <Text style={[styles.checkLabel, { color: theme.text }]}>
                   I accept the{' '}
                   <Text style={[styles.linkText, { color: theme.accent }]} onPress={() => Linking.openURL(TERMS_URL)}>
-                    Terms of Service
+                    {tr('auto.register.termsOfService', 'Terms of Service')}
                   </Text>
                   {' '}and{' '}
                   <Text style={[styles.linkText, { color: theme.accent }]} onPress={() => Linking.openURL(PRIVACY_URL)}>
-                    Privacy Policy
+                    {tr('auto.register.privacyPolicy', 'Privacy Policy')}
                   </Text>
                 </Text>
               }
@@ -447,7 +447,7 @@ export default function RegisterScreen() {
             </Pressable>
           ) : (
             <Text style={[styles.gateHint, { color: theme.textThird }]}>
-              We will email you a 6-digit code to confirm your address.
+              {tr('auto.register.weWillEmailYouA', 'We will email you a 6-digit code to confirm your address.')}
             </Text>
           )}
         </View>
@@ -486,7 +486,7 @@ function Field({ theme, label, optional, required, icon, hint, anchor, onAnchor,
       <Text style={[styles.label, { color: theme.textSecond }]}>
         {label}
         {required ? <Text style={{ color: theme.textThird }}> *</Text> : null}
-        {optional ? <Text style={{ fontWeight: FontWeight.regular as any, color: theme.textThird }}> (optional)</Text> : null}
+        {optional ? <Text style={{ fontWeight: FontWeight.regular as any, color: theme.textThird }}> {tr('auto.register.optional', '(optional)')}</Text> : null}
       </Text>
       <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
         {icon ? <Icon name={icon} size={15} color={theme.textThird} /> : null}

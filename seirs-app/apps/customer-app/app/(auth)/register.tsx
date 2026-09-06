@@ -24,6 +24,7 @@ import {
   ArrowLeft, ArrowRight, Truck, User, Mail, Phone, CheckSquare, Square,
 } from 'lucide-react-native';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Nigerian mobile validation lives in shared/utils/ngPhone.ts. This file
 // used to carry its own fixed prefix list, which meant a network code the
@@ -113,7 +114,7 @@ export default function RegisterScreen() {
         // Only sent when the sender actually filled it in.
         ...(addrState.trim() && addrCity.trim() && addrStreet.trim()
           ? { homeAddress: {
-              label:  'Home',
+              label:  tr('auto.register.home', 'Home'),
               street: addrStreet.trim(),
               city:   addrCity.trim(),
               state:  addrState.trim(),
@@ -155,7 +156,7 @@ export default function RegisterScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xxl, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -366,7 +367,7 @@ export default function RegisterScreen() {
               onToggle={() => setTermsAccepted(v => !v)}
               label={
                 <Text style={[styles.checkLabel, { color: theme.text }]}>
-                  I agree to the{' '}
+                  {tr('auto.register.iAgreeToThe', 'I agree to the')}{' '}
                   <Text
                     style={[styles.linkText, { color: theme.accent }]}
                     onPress={() => Linking.openURL(TERMS_URL)}

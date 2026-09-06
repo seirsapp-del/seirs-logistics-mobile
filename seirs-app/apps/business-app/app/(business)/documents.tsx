@@ -19,6 +19,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { documentsApi, businessApi, partnerApi, type UserDocumentDTO } from '@/services/api';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 
 interface SpendYear   { year: number; spentNgn: number; payments: number; toppedUpNgn: number }
@@ -177,7 +178,7 @@ export default function BusinessDocumentsScreen() {
             <>
               {(spend?.years?.length ?? 0) > 0 && (
                 <>
-                  <Text style={[styles.sectionHead, { color: theme.textSecond }]}>SPEND STATEMENTS</Text>
+                  <Text style={[styles.sectionHead, { color: theme.textSecond }]}>{tr('auto.documents.spendStatements', 'SPEND STATEMENTS')}</Text>
                   {spend!.years.map(y => (
                     <Pressable key={`spend-${y.year}`} onPress={() => shareSpendYear(y)} style={[styles.row, { borderBottomColor: theme.border }]}>
                       <View style={[styles.rowIcon, { backgroundColor: theme.surfaceSecond }]}>
@@ -196,7 +197,7 @@ export default function BusinessDocumentsScreen() {
               )}
               {(payoutStmt?.years?.length ?? 0) > 0 && (
                 <>
-                  <Text style={[styles.sectionHead, { color: theme.textSecond }]}>PAYOUT STATEMENTS</Text>
+                  <Text style={[styles.sectionHead, { color: theme.textSecond }]}>{tr('auto.documents.payoutStatements', 'PAYOUT STATEMENTS')}</Text>
                   {payoutStmt!.years.map(y => (
                     <Pressable key={`payout-${y.year}`} onPress={() => sharePayoutYear(y)} style={[styles.row, { borderBottomColor: theme.border }]}>
                       <View style={[styles.rowIcon, { backgroundColor: theme.surfaceSecond }]}>
@@ -214,7 +215,7 @@ export default function BusinessDocumentsScreen() {
                 </>
               )}
               {docs.length > 0 && (
-                <Text style={[styles.sectionHead, { color: theme.textSecond }]}>FROM SEIRS</Text>
+                <Text style={[styles.sectionHead, { color: theme.textSecond }]}>{tr('auto.documents.fromSeirs', 'FROM SEIRS')}</Text>
               )}
             </>
           }
@@ -223,7 +224,7 @@ export default function BusinessDocumentsScreen() {
               <Icon name="FileText" size={44} color={theme.textSecond} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.documents.noDocumentsYet', 'No documents yet')}</Text>
               <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
-                Contracts, official letters from SEIRS, and your statements will appear here.
+                {tr('auto.documents.contractsOfficialLettersFromSeirs', 'Contracts, official letters from SEIRS, and your statements will appear here.')}
               </Text>
             </View>
           }

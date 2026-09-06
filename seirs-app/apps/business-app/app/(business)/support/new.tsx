@@ -22,13 +22,14 @@ import { useTheme } from '@/context/ThemeContext';
 import { supportApi, type TicketTopic } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
-const TOPICS: { key: TicketTopic; label: string; icon: any }[] = [
-  { key: 'delivery', label: 'Delivery',      icon: 'Package' },
-  { key: 'billing',  label: 'Billing / invoice', icon: 'CreditCard' },
-  { key: 'account',  label: 'Account',       icon: 'User' },
-  { key: 'driver',   label: 'Driver / route',icon: 'Bike' },
-  { key: 'other',    label: 'Other',         icon: 'MoreHorizontal' },
+const TOPICS = (): { key: TicketTopic; label: string; icon: any }[] => [
+  { key: 'delivery', label: tr('auto.billing.delivery', 'Delivery'),      icon: 'Package' },
+  { key: 'billing',  label: tr('auto.new.billingInvoice', 'Billing / invoice'), icon: 'CreditCard' },
+  { key: 'account',  label: tr('auto.settings.account', 'Account'),       icon: 'User' },
+  { key: 'driver',   label: tr('auto.new.driverRoute', 'Driver / route'),icon: 'Bike' },
+  { key: 'other',    label: tr('auto.report.other', 'Other'),         icon: 'MoreHorizontal' },
 ];
 
 export default function BusinessNewTicketScreen() {
@@ -70,9 +71,9 @@ export default function BusinessNewTicketScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ padding: 16, gap: 20, paddingBottom: 40 }}>
           <View>
-            <Text style={[styles.label, { color: theme.textSecond }]}>WHAT IS THIS ABOUT?</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tr('auto.new.whatIsThisAbout', 'WHAT IS THIS ABOUT?')}</Text>
             <View style={styles.topicRow}>
-              {TOPICS.map(tp => {
+              {TOPICS().map(tp => {
                 const active = tp.key === topic;
                 return (
                   <Pressable
@@ -102,7 +103,7 @@ export default function BusinessNewTicketScreen() {
           </View>
 
           <View>
-            <Text style={[styles.label, { color: theme.textSecond }]}>DESCRIBE THE ISSUE</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tr('auto.report.describeTheIssue', 'DESCRIBE THE ISSUE')}</Text>
             <TextInput
               value={firstMessage}
               onChangeText={setFirstMessage}
@@ -122,7 +123,7 @@ export default function BusinessNewTicketScreen() {
           </Pressable>
 
           <Text style={[styles.hint, { color: theme.textSecond }]}>
-            Support hours: 6am-10pm WAT. Messages sent outside those hours get a reply once we open at 6am.
+            {tr('auto.new.supportHours6am10pmWat', 'Support hours: 6am-10pm WAT. Messages sent outside those hours get a reply once we open at 6am.')}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

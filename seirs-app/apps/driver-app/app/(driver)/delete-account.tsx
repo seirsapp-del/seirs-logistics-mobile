@@ -23,6 +23,7 @@ import { PasswordInput } from '@/components/PasswordInput';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 interface Readiness {
   ready:    boolean;
@@ -86,12 +87,12 @@ export default function DeleteAccountScreen() {
     // ledger, and that is the word every other money screen in this app
     // uses (2026-08-25 dialog sweep).
     setSheet({
-      title: 'Delete account',
-      message: 'Make sure you have withdrawn your cleared earnings and have no active deliveries. You can sign in within 30 days to cancel.',
+      title: tr('auto.deleteAccount.deleteAccount2', 'Delete account'),
+      message: tr('auto.deleteAccount.makeSureYouHaveWithdrawn', 'Make sure you have withdrawn your cleared earnings and have no active deliveries. You can sign in within 30 days to cancel.'),
       options: [
         {
-          label: 'Delete my account',
-          sub: 'Recoverable for 30 days, permanent after that',
+          label: tr('auto.deleteAccount.deleteMyAccount', 'Delete my account'),
+          sub: tr('auto.deleteAccount.recoverableFor30DaysPermanent', 'Recoverable for 30 days, permanent after that'),
           variant: 'destructive',
           icon: 'trash-outline',
           onPress: async () => {
@@ -114,7 +115,7 @@ export default function DeleteAccountScreen() {
           },
         },
       ],
-      cancelLabel: 'Keep my account',
+      cancelLabel: tr('auto.deleteAccount.keepMyAccount', 'Keep my account'),
     });
   };
 
@@ -136,7 +137,7 @@ export default function DeleteAccountScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.warnTitle}>{tx('auto.deleteAccount.permanentAfter30Days', 'Permanent after 30 days')}</Text>
               <Text style={styles.warnSub}>
-                Soft-deleted now; sign in within 30 days to cancel.
+                {tr('auto.deleteAccount.softDeletedNowSignIn', 'Soft-deleted now; sign in within 30 days to cancel.')}
               </Text>
             </View>
           </View>
@@ -146,7 +147,7 @@ export default function DeleteAccountScreen() {
           {readiness === null ? (
             <View style={[styles.readyBanner, { backgroundColor: theme.surfaceSecond }]}>
               <ActivityIndicator color={theme.primary} />
-              <Text style={[styles.readyTitle, { color: theme.textSecond }]}>Checking your account…</Text>
+              <Text style={[styles.readyTitle, { color: theme.textSecond }]}>{tr('auto.deleteAccount.checkingYourAccount', 'Checking your account…')}</Text>
             </View>
           ) : readiness.ready ? (
             <View style={[styles.readyBanner, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}>
@@ -211,13 +212,13 @@ export default function DeleteAccountScreen() {
               : <>
                   <Download size={16} color={theme.primary} />
                   <Text style={{ color: theme.primary, fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>
-                    Download my data first (recommended)
+                    {tr('auto.deleteAccount.downloadMyDataFirstRecommended', 'Download my data first (recommended)')}
                   </Text>
                 </>}
           </Pressable>
 
           <View style={{ marginTop: Spacing.lg, gap: 6 }}>
-            <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>CONFIRM YOUR PASSWORD</Text>
+            <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{tr('auto.deleteAccount.confirmYourPassword', 'CONFIRM YOUR PASSWORD')}</Text>
             <PasswordInput value={password} onChangeText={setPassword} placeholder={tx('auto.deleteAccount.enterCurrentPassword', 'Enter current password')} />
           </View>
 
@@ -253,7 +254,7 @@ export default function DeleteAccountScreen() {
               : <>
                   <Trash2 size={16} color={canSubmit ? '#fff' : theme.textThird} />
                   <Text style={[styles.dangerBtnText, { color: canSubmit ? '#fff' : theme.textThird }]}>
-                    Delete my account
+                    {tr('auto.deleteAccount.deleteMyAccount', 'Delete my account')}
                   </Text>
                 </>
             }

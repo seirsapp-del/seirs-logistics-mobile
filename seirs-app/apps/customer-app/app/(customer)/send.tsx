@@ -63,6 +63,7 @@ import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { TERMS_URL } from '@/constants/config';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const VEHICLES = PACKAGE_VEHICLES;
 // Business Vehicle step, ported verbatim (founder 2026-08-21: exactly).
@@ -1431,7 +1432,7 @@ export default function SendScreen() {
         });
         clearDraft();
         showDialog({
-          title: 'Request sent',
+          title: tr('auto.send.requestSent', 'Request sent'),
           message:
             'The driver will accept, decline, or offer a different drop-off point. '
             + 'Nothing has been charged, and nothing will be until you both agree.',
@@ -2737,12 +2738,10 @@ export default function SendScreen() {
                     <Ionicons name="construct-outline" size={20} color={theme.accent} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.needsQuoteTitle, { color: theme.text }]}>
-                        This one needs a quote from us
+                        {tr('auto.send.thisOneNeedsAQuote', 'This one needs a quote from us')}
                       </Text>
                       <Text style={[styles.needsQuoteBody, { color: theme.textSecond }]}>
-                        A load like this is priced by a person, not automatically, so we
-                        do not guess at it. Tell us about it and we will call you with a
-                        full breakdown. Nothing is charged until you accept.
+                        {tr('auto.send.aLoadLikeThisIs', 'A load like this is priced by a person, not automatically, so we do not guess at it. Tell us about it and we will call you with a full breakdown. Nothing is charged until you accept.')}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color={theme.accent} />

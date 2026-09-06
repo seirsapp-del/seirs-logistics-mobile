@@ -16,6 +16,7 @@ import { DocUploadTile } from '@/components/DocUploadTile';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * "Is this vehicle yours?" and, when it is not, the owner's recorded
@@ -66,13 +67,13 @@ export const EMPTY_OWNERSHIP: OwnershipValue = {
   ownerSignatureName: '',
 };
 
-const RELATIONSHIPS: { id: string; label: string; hint: string }[] = [
-  { id: 'hire_purchase', label: 'Hire purchase', hint: 'I am still paying for it' },
-  { id: 'daily_return',  label: 'Daily return',  hint: 'Owner gives it out, I pay daily' },
-  { id: 'family',        label: 'Family',        hint: 'Belongs to a relative' },
-  { id: 'employer',      label: 'Employer',      hint: 'Company or fleet vehicle' },
-  { id: 'friend',        label: 'Friend',        hint: 'Borrowed from a friend' },
-  { id: 'other',         label: 'Other',         hint: 'Something else' },
+const RELATIONSHIPS = (): { id: string; label: string; hint: string }[] => [
+  { id: 'hire_purchase', label: tr('auto.vehicleownershipform.hirePurchase', 'Hire purchase'), hint: tr('auto.vehicleownershipform.iAmStillPayingFor', 'I am still paying for it') },
+  { id: 'daily_return',  label: tr('auto.vehicleownershipform.dailyReturn', 'Daily return'),  hint: tr('auto.vehicleownershipform.ownerGivesItOutI', 'Owner gives it out, I pay daily') },
+  { id: 'family',        label: tr('auto.vehicleownershipform.family', 'Family'),        hint: tr('auto.vehicleownershipform.belongsToARelative', 'Belongs to a relative') },
+  { id: 'employer',      label: tr('auto.vehicleownershipform.employer', 'Employer'),      hint: tr('auto.vehicleownershipform.companyOrFleetVehicle', 'Company or fleet vehicle') },
+  { id: 'friend',        label: tr('auto.vehicleownershipform.friend', 'Friend'),        hint: tr('auto.vehicleownershipform.borrowedFromAFriend', 'Borrowed from a friend') },
+  { id: 'other',         label: tr('auto.new.other', 'Other'),         hint: tr('auto.vehicleownershipform.somethingElse', 'Something else') },
 ];
 
 /** Same key the backend compares with, so the two agree on what matches. */
@@ -128,13 +129,13 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
   const pick = (slot: 'consent' | 'ownerId') => {
     if (locked) return;
     setSheet({
-      title: 'Add the photo',
+      title: tr('auto.vehicleownershipform.addThePhoto', 'Add the photo'),
       message: slot === 'consent'
         ? 'The whole page of the letter the owner signed.'
         : "The owner's ID.",
       options: [
-        { label: 'Take a photo',        variant: 'primary', icon: 'camera-outline', onPress: () => doPick(slot, 'camera') },
-        { label: 'Choose from gallery', icon: 'images-outline',                     onPress: () => doPick(slot, 'library') },
+        { label: tr('auto.storeHandoff.takeAPhoto', 'Take a photo'),        variant: 'primary', icon: 'camera-outline', onPress: () => doPick(slot, 'camera') },
+        { label: tr('auto.storeHandoff.chooseFromGallery', 'Choose from gallery'), icon: 'images-outline',                     onPress: () => doPick(slot, 'library') },
       ],
     });
   };
@@ -177,15 +178,13 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
       <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
       <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.VehicleOwnershipForm.whoOwnsThisVehicle', 'Who owns this vehicle?')}</Text>
       <Text style={[styles.cardHint, { color: theme.textSecond }]}>
-        Plenty of riders work a vehicle that is not theirs. That is fine, and it is
-        not a problem for your application. We only need the owner to confirm
-        they are happy for you to use it.
+        {tr('auto.vehicleownershipform.plentyOfRidersWorkA', 'Plenty of riders work a vehicle that is not theirs. That is fine, and it is not a problem for your application. We only need the owner to confirm they are happy for you to use it.')}
       </Text>
 
       <View style={styles.choiceRow}>
         {([
-          { id: 'self',        label: 'I own it',            icon: 'person-outline' },
-          { id: 'third_party', label: 'Someone else owns it', icon: 'people-outline' },
+          { id: 'self',        label: tr('auto.vehicleownershipform.iOwnIt', 'I own it'),            icon: 'person-outline' },
+          { id: 'third_party', label: tr('auto.vehicleownershipform.someoneElseOwnsIt', 'Someone else owns it'), icon: 'people-outline' },
         ] as const).map(opt => {
           const active = value.ownership === opt.id;
           return (
@@ -213,7 +212,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
         <View style={[styles.note, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
           <Ionicons name="information-circle-outline" size={16} color={theme.textThird} />
           <Text style={[styles.noteText, { color: theme.textSecond }]}>
-            The ownership document you upload should be in your own name.
+            {tr('auto.vehicleownershipform.theOwnershipDocumentYouUpload', 'The ownership document you upload should be in your own name.')}
           </Text>
         </View>
       )}
@@ -237,14 +236,14 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
             editable={!locked}
             theme={theme}
             error={value.ownerPhone.length > 0 && !isValidNigerianMobile(value.ownerPhone) ? NG_MOBILE_HINT : undefined}
-            hint="Our team calls this number to confirm the owner agreed."
+            hint={tr('auto.vehicleownershipform.ourTeamCallsThisNumber', 'Our team calls this number to confirm the owner agreed.')}
           />
 
           <Text style={[styles.fieldLabel, { color: theme.textSecond, marginTop: Spacing.sm }]}>
-            How do you come to be riding it?
+            {tr('auto.vehicleownershipform.howDoYouComeTo', 'How do you come to be riding it?')}
           </Text>
           <View style={styles.relGrid}>
-            {RELATIONSHIPS.map(r => {
+            {RELATIONSHIPS().map(r => {
               const active = value.ownerRelationship === r.id;
               return (
                 <Pressable
@@ -269,13 +268,10 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
               owner signed by hand: the owner does not need this app, an
               email address, or a smartphone to produce it. */}
           <Text style={[styles.fieldLabel, { color: theme.textSecond, marginTop: Spacing.sm }]}>
-            Signed authorisation from the owner
+            {tr('auto.vehicleownershipform.signedAuthorisationFromTheOwner', 'Signed authorisation from the owner')}
           </Text>
           <Text style={[styles.fieldHint, { color: theme.textThird }]}>
-            A short letter is enough. It should say the owner's name, the vehicle
-            and plate number, your name, that you have permission to use it for
-            SEIRS work, and the date. The owner signs it by hand. Photograph the
-            whole page.
+            {tr('auto.vehicleownershipform.aShortLetterIsEnough', 'A short letter is enough. It should say the owner\'s name, the vehicle and plate number, your name, that you have permission to use it for SEIRS work, and the date. The owner signs it by hand. Photograph the whole page.')}
           </Text>
           <DocUploadTile
             label={tx('auto.VehicleOwnershipForm.authorisationLetter', 'Authorisation letter')}
@@ -286,7 +282,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
           />
 
           <Text style={[styles.fieldLabel, { color: theme.textSecond, marginTop: Spacing.sm }]}>
-            Owner's ID <Text style={{ color: theme.textThird }}>(optional, speeds up approval)</Text>
+            {tr('auto.vehicleownershipform.ownerSId', 'Owner\'s ID')} <Text style={{ color: theme.textThird }}>{tr('auto.vehicleownershipform.optionalSpeedsUpApproval', '(optional, speeds up approval)')}</Text>
           </Text>
           <DocUploadTile
             label={tx('auto.VehicleOwnershipForm.ownerSIdPhoto', 'Owner\'s ID photo')}
@@ -301,9 +297,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
           <View style={[styles.sigBox, { borderColor: theme.border, backgroundColor: theme.surfaceSecond }]}>
             <Text style={[styles.sigTitle, { color: theme.text }]}>{tx('auto.VehicleOwnershipForm.ownerSignsHere', 'Owner signs here')}</Text>
             <Text style={[styles.sigHint, { color: theme.textSecond }]}>
-              Hand your phone to the owner. Typing their full name here is a legal
-              signature in Nigeria, exactly like signing the paper. It has to match
-              the name above.
+              {tr('auto.vehicleownershipform.handYourPhoneToThe', 'Hand your phone to the owner. Typing their full name here is a legal signature in Nigeria, exactly like signing the paper. It has to match the name above.')}
             </Text>
             <TextInput
               style={[styles.sigInput, {
@@ -319,8 +313,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
               autoCapitalize="words"
             />
             <Text style={[styles.sigLegal, { color: theme.textThird }]}>
-              By typing their name the owner confirms they own this vehicle and
-              agree to you using it for SEIRS work. Nigerian Evidence Act, section 84.
+              {tr('auto.vehicleownershipform.byTypingTheirNameThe', 'By typing their name the owner confirms they own this vehicle and agree to you using it for SEIRS work. Nigerian Evidence Act, section 84.')}
             </Text>
           </View>
 

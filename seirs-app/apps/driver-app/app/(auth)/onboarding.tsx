@@ -15,6 +15,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -39,12 +40,12 @@ const { width: W, height: H } = Dimensions.get('window');
  *
  * The design, the slide count and the animation are untouched.
  */
-const SLIDES = [
+const SLIDES = () => [
   {
     id: 'brand',
     Icon: Truck,
-    headline: 'Drive with SEIRS.',
-    sub: 'Deliveries, rides and intercity runs. Prices set by us, so you never haggle.',
+    headline: tr('auto.onboarding.driveWithSeirs', 'Drive with SEIRS.'),
+    sub: tr('auto.onboarding.deliveriesRidesAndIntercityRuns', 'Deliveries, rides and intercity runs. Prices set by us, so you never haggle.'),
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -52,8 +53,8 @@ const SLIDES = [
   {
     id: 'earnings',
     Icon: Wallet,
-    headline: 'Paid to your bank.',
-    sub: 'Earnings clear, then go out to your account in the next payout run.',
+    headline: tr('auto.onboarding.paidToYourBank', 'Paid to your bank.'),
+    sub: tr('auto.onboarding.earningsClearThenGoOut', 'Earnings clear, then go out to your account in the next payout run.'),
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#58A6FF',
@@ -61,8 +62,8 @@ const SLIDES = [
   {
     id: 'flex',
     Icon: Clock,
-    headline: 'Online when you choose.',
-    sub: 'No shifts, no quotas. Finish the job in your hand, then go.',
+    headline: tr('auto.onboarding.onlineWhenYouChoose', 'Online when you choose.'),
+    sub: tr('auto.onboarding.noShiftsNoQuotasFinish', 'No shifts, no quotas. Finish the job in your hand, then go.'),
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1E4A80',
     accentColor:   '#79B8FF',
@@ -70,8 +71,8 @@ const SLIDES = [
   {
     id: 'routes',
     Icon: MapPin,
-    headline: 'Smart routing.',
-    sub: 'Your drops come sorted into the order that keeps the distance down.',
+    headline: tr('auto.onboarding.smartRouting', 'Smart routing.'),
+    sub: tr('auto.onboarding.yourDropsComeSortedInto', 'Your drops come sorted into the order that keeps the distance down.'),
     gradientStart: '#0A1E36',
     gradientEnd:   '#2D72CC',
     accentColor:   '#58A6FF',
@@ -79,8 +80,8 @@ const SLIDES = [
   {
     id: 'safety',
     Icon: Shield,
-    headline: 'Every job on the record.',
-    sub: 'Scans, photos and one-time codes at every handoff.',
+    headline: tr('auto.onboarding.everyJobOnTheRecord', 'Every job on the record.'),
+    sub: tr('auto.onboarding.scansPhotosAndOneTime', 'Scans, photos and one-time codes at every handoff.'),
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -88,8 +89,8 @@ const SLIDES = [
   {
     id: 'rewards',
     Icon: Award,
-    headline: 'Your record travels.',
-    sub: 'Ratings and completed trips follow you onto every job.',
+    headline: tr('auto.onboarding.yourRecordTravels', 'Your record travels.'),
+    sub: tr('auto.onboarding.ratingsAndCompletedTripsFollow', 'Ratings and completed trips follow you onto every job.'),
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#79B8FF',
@@ -124,13 +125,13 @@ export default function OnboardingScreen() {
   useEffect(() => {
     if (!isFocused) return;
     timerRef.current = setTimeout(() => {
-      const next = (current + 1) % SLIDES.length;
+      const next = (current + 1) % SLIDES().length;
       goToSlide(next);
     }, SLIDE_DURATION);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [current, isFocused]);
 
-  const slide = SLIDES[current];
+  const slide = SLIDES()[current];
   const SlideIcon = slide.Icon;
 
   // Cross-app conversion: someone downloaded the driver app but actually
@@ -178,7 +179,7 @@ export default function OnboardingScreen() {
 
           {/* Progress dots */}
           <View style={styles.dots}>
-            {SLIDES.map((_, i) => (
+            {SLIDES().map((_, i) => (
               <Pressable key={i} onPress={() => goToSlide(i)}>
                 <View
                   style={[
@@ -209,7 +210,7 @@ export default function OnboardingScreen() {
           onPress={() => router.push('/(auth)/login' as any)}
         >
           <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
-            I Already Have an Account
+            {tr('auto.onboarding.iAlreadyHaveAnAccount', 'I Already Have an Account')}
           </Text>
         </Pressable>
 
@@ -222,7 +223,7 @@ export default function OnboardingScreen() {
           <View style={styles.secondaryRow}>
             <Package size={16} color={theme.text} strokeWidth={2} />
             <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
-              I Just Want to Send a Package
+              {tr('auto.onboarding.iJustWantToSend', 'I Just Want to Send a Package')}
             </Text>
           </View>
         </Pressable>

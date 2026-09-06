@@ -35,6 +35,7 @@ import type { BusinessStatement, StatementEntry } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { naira as nairaFmt, nairaFromKobo } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type Payment = {
   id: string;
@@ -77,12 +78,12 @@ try {
  */
 type PresetKey = 'this_month' | 'last_month' | 'last_2_months' | 'last_90' | 'custom';
 
-const PRESETS: Array<{ key: PresetKey; label: string }> = [
-  { key: 'this_month',    label: 'This month' },
-  { key: 'last_month',    label: 'Last month' },
-  { key: 'last_2_months', label: 'Last 2 months' },
-  { key: 'last_90',       label: 'Last 90 days' },
-  { key: 'custom',        label: 'Custom' },
+const PRESETS = (): Array<{ key: PresetKey; label: string }> => [
+  { key: 'this_month',    label: tr('auto.billing.thisMonth2', 'This month') },
+  { key: 'last_month',    label: tr('auto.billing.lastMonth', 'Last month') },
+  { key: 'last_2_months', label: tr('auto.billing.last2Months', 'Last 2 months') },
+  { key: 'last_90',       label: tr('auto.billing.last90Days', 'Last 90 days') },
+  { key: 'custom',        label: tr('auto.billing.custom', 'Custom') },
 ];
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -362,7 +363,7 @@ export default function BillingScreen() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={22} color={colors.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Billing &amp; Invoices</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{tr('auto.billing.billingInvoices', 'Billing & Invoices')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -380,7 +381,7 @@ export default function BillingScreen() {
           }
         >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-            {PRESETS.map(p => {
+            {PRESETS().map(p => {
               const on = preset === p.key;
               return (
                 <Pressable
@@ -410,7 +411,7 @@ export default function BillingScreen() {
             </Text>
             <Text style={[styles.heroValue, { color: colors.text }]}>{nairaFmt(totalNgn)}</Text>
             <Text style={[styles.heroSub, { color: colors.textSecond }]}>
-              paid in this period · {count} {count === 1 ? 'charge' : 'charges'}
+              {tr('auto.billing.paidInThisPeriod', 'paid in this period ·')} {count} {count === 1 ? 'charge' : 'charges'}
             </Text>
             {preset === 'custom' && (
               <Pressable onPress={() => setCustomOpen(true)} style={styles.changeRange}>
@@ -423,7 +424,7 @@ export default function BillingScreen() {
           {entries.length === 0 ? (
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, padding: 20 }]}>
               <Text style={[styles.rowSub, { color: colors.textSecond }]}>
-                Nothing settled in this period. Try a wider one, or check unsettled charges below.
+                {tr('auto.billing.nothingSettledInThisPeriod', 'Nothing settled in this period. Try a wider one, or check unsettled charges below.')}
               </Text>
             </View>
           ) : (
@@ -465,7 +466,7 @@ export default function BillingScreen() {
 
           {unsettled.length > 0 && (
             <>
-              <Text style={[styles.sectionTitle, { color: colors.textThird }]}>UNSETTLED CHARGES</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textThird }]}>{tr('auto.billing.unsettledCharges', 'UNSETTLED CHARGES')}</Text>
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 {unsettled.map((p, i) => (
                   <View key={p.id} style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
@@ -485,15 +486,13 @@ export default function BillingScreen() {
                 ))}
               </View>
               <Text style={[styles.footNote, { color: colors.textThird }]}>
-                These are not in the statement above. A statement shows money that moved,
-                and these have not. They stay here until they settle or are cancelled.
+                {tr('auto.billing.theseAreNotInThe', 'These are not in the statement above. A statement shows money that moved, and these have not. They stay here until they settle or are cancelled.')}
               </Text>
             </>
           )}
 
           <Text style={[styles.footNote, { color: colors.textThird }]}>
-            Tap any line for its receipt. Every figure covers the period shown above it,
-            never your whole history with SEIRS.
+            {tr('auto.billing.tapAnyLineForIts', 'Tap any line for its receipt. Every figure covers the period shown above it, never your whole history with SEIRS.')}
           </Text>
         </ScrollView>
       )}
@@ -544,7 +543,7 @@ export default function BillingScreen() {
           >
             <Text style={[styles.sheetTitle, { color: colors.text }]}>{tx('auto.billing.chooseAPeriod', 'Choose a period')}</Text>
             <Text style={[styles.rowSub, { color: colors.textSecond, marginBottom: 16 }]}>
-              Whole months, from the start of the first to the end of the last.
+              {tr('auto.billing.wholeMonthsFromTheStart', 'Whole months, from the start of the first to the end of the last.')}
             </Text>
 
             <MonthStepper

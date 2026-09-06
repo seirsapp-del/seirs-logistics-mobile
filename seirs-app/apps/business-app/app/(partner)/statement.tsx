@@ -29,14 +29,15 @@ import type { PartnerStatement } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { naira as nairaFmt } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type PresetKey = 'this_month' | 'last_month' | 'last_2_months' | 'last_90';
 
-const PRESETS: Array<{ key: PresetKey; label: string }> = [
-  { key: 'this_month',    label: 'This month' },
-  { key: 'last_month',    label: 'Last month' },
-  { key: 'last_2_months', label: 'Last 2 months' },
-  { key: 'last_90',       label: 'Last 90 days' },
+const PRESETS = (): Array<{ key: PresetKey; label: string }> => [
+  { key: 'this_month',    label: tr('auto.billing.thisMonth2', 'This month') },
+  { key: 'last_month',    label: tr('auto.billing.lastMonth', 'Last month') },
+  { key: 'last_2_months', label: tr('auto.billing.last2Months', 'Last 2 months') },
+  { key: 'last_90',       label: tr('auto.billing.last90Days', 'Last 90 days') },
 ];
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -159,7 +160,7 @@ export default function PartnerStatementScreen() {
           }
         >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-            {PRESETS.map(p => {
+            {PRESETS().map(p => {
               const on = preset === p.key;
               return (
                 <Pressable
@@ -187,14 +188,14 @@ export default function PartnerStatementScreen() {
             </Text>
             <Text style={[styles.heroValue, { color: colors.text }]}>{nairaFmt(paidNgn)}</Text>
             <Text style={[styles.heroSub, { color: colors.textSecond }]}>
-              earned in this period · {paid.length} {paid.length === 1 ? 'payout' : 'payouts'}
+              {tr('auto.statement.earnedInThisPeriod', 'earned in this period ·')} {paid.length} {paid.length === 1 ? 'payout' : 'payouts'}
             </Text>
           </View>
 
           {paid.length === 0 ? (
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, padding: 20 }]}>
               <Text style={[styles.rowSub, { color: colors.textSecond }]}>
-                Nothing paid out in this period. Try a wider one, or check what is still owed below.
+                {tr('auto.statement.nothingPaidOutInThis', 'Nothing paid out in this period. Try a wider one, or check what is still owed below.')}
               </Text>
             </View>
           ) : (
@@ -230,7 +231,7 @@ export default function PartnerStatementScreen() {
 
           {owed.length > 0 && (
             <>
-              <Text style={[styles.sectionTitle, { color: colors.textThird }]}>EARNED, NOT YET PAID OUT</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textThird }]}>{tr('auto.statement.earnedNotYetPaidOut', 'EARNED, NOT YET PAID OUT')}</Text>
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 {owed.map((e, i) => (
                   <View key={e.id} style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
@@ -241,8 +242,7 @@ export default function PartnerStatementScreen() {
                 ))}
               </View>
               <Text style={[styles.footNote, { color: colors.textThird }]}>
-                These are not in the statement above. A statement shows money that has moved,
-                and these have not reached you yet.
+                {tr('auto.statement.theseAreNotInThe', 'These are not in the statement above. A statement shows money that has moved, and these have not reached you yet.')}
               </Text>
             </>
           )}
@@ -251,8 +251,7 @@ export default function PartnerStatementScreen() {
             <Text style={[styles.footNote, { color: colors.textThird }]}>{statement.openingNote}</Text>
           ) : null}
           <Text style={[styles.footNote, { color: colors.textThird }]}>
-            Every figure covers the period shown above it. An exported statement carries a
-            reference anyone can check against our records.
+            {tr('auto.statement.everyFigureCoversThePeriod', 'Every figure covers the period shown above it. An exported statement carries a reference anyone can check against our records.')}
           </Text>
         </ScrollView>
       )}

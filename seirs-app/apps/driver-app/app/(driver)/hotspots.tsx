@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { driversApi, dropoffApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Hotspots: full-screen demand map so drivers know where to position
@@ -121,7 +122,7 @@ export default function HotspotsScreen() {
           <Ionicons name="location-outline" size={44} color={theme.textThird} />
           <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.hotspots.noLocationYet', 'No location yet')}</Text>
           <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
-            Go online so SEIRS knows where you are, then check back for demand around you.
+            {tr('auto.hotspots.goOnlineSoSeirsKnows', 'Go online so SEIRS knows where you are, then check back for demand around you.')}
           </Text>
         </View>
       ) : (
@@ -168,7 +169,7 @@ export default function HotspotsScreen() {
                       </Text>
                     )}
                     <Text style={{ fontSize: 11, color: '#3A7BD5', marginTop: 4, fontWeight: '600' }}>
-                      Tap to navigate
+                      {tr('auto.hotspots.tapToNavigate', 'Tap to navigate')}
                     </Text>
                   </View>
                 </Callout>
@@ -197,7 +198,7 @@ export default function HotspotsScreen() {
             {ranked.length === 0 ? (
               <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
-                  No demand clusters right now. Stay online: this updates as orders come in.
+                  {tr('auto.hotspots.noDemandClustersRightNow', 'No demand clusters right now. Stay online: this updates as orders come in.')}
                 </Text>
               </View>
             ) : ranked.map((z, i) => (

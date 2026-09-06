@@ -12,6 +12,7 @@ import { useColors } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 // Spec V8 §3 / §4.7: partner staff scans incoming sender drop-off,
 // confirms details + photo + sender OTP, transitions to RECEIVED_AT_STORE.
 // Three steps: SCAN → DETAILS → CONFIRM.
@@ -133,9 +134,9 @@ export default function ReceiveDropoffScreen() {
 
   const pickPhoto = async () => {
     alertDialog('Package photo', 'How would you like to capture the package?', [
-      { text: 'Camera', onPress: () => launchPicker('camera') },
-      { text: 'Library', onPress: () => launchPicker('library') },
-      { text: 'Cancel', style: 'cancel' },
+      { text: tr('auto.receiveDropoff.camera', 'Camera'), onPress: () => launchPicker('camera') },
+      { text: tr('auto.receiveDropoff.library', 'Library'), onPress: () => launchPicker('library') },
+      { text: tr('auto.payoutAccount.cancel', 'Cancel'), style: 'cancel' },
     ]);
   };
 
@@ -226,8 +227,8 @@ export default function ReceiveDropoffScreen() {
         'Drop-off received',
         `Package from ${dropoff.recipientName} is now in your inventory and a driver will be dispatched within the SLA window.`,
         [
-          { text: 'Receive another', onPress: reset },
-          { text: 'Back to home', onPress: () => router.back() },
+          { text: tr('auto.receiveDropoff.receiveAnother', 'Receive another'), onPress: reset },
+          { text: tr('auto.receiveDropoff.backToHome', 'Back to home'), onPress: () => router.back() },
         ],
       );
     } catch (e: any) {
@@ -339,7 +340,7 @@ export default function ReceiveDropoffScreen() {
         {loading && scanning && (
           <View style={styles.finderWrap}>
             <ActivityIndicator color="#fff" size="large" />
-            <Text style={styles.finderHint}>Looking up drop-off…</Text>
+            <Text style={styles.finderHint}>{tr('auto.receiveDropoff.lookingUpDropOff', 'Looking up drop-off…')}</Text>
           </View>
         )}
       </View>
@@ -359,7 +360,7 @@ export default function ReceiveDropoffScreen() {
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>FOR DELIVERY TO</Text>
+            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.receiveDropoff.forDeliveryTo', 'FOR DELIVERY TO')}</Text>
             <Text style={[styles.cardValue, { color: colors.text }]}>{dropoff.recipientName}</Text>
             <Text style={[styles.cardSub, { color: colors.textSecond }]}>{dropoff.recipientPhone}</Text>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -367,7 +368,7 @@ export default function ReceiveDropoffScreen() {
             {/* Staff could see the recipient and the code but never the
                 destination, so they could not sort the shelf or answer
                 "where is it going" (founder, mid-QA 2026-08-18). */}
-            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>GOING TO</Text>
+            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.cargoSpace.goingTo', 'GOING TO')}</Text>
             <Text style={[styles.cardSub, { color: colors.text }]}>
               {dropoff.destinationStoreName
                 ? `Counter: ${dropoff.destinationStoreName}`
@@ -379,7 +380,7 @@ export default function ReceiveDropoffScreen() {
                 : 'Driver delivers to this address'}
             </Text>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>DROP-OFF CODE</Text>
+            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.receiveDropoff.dropOffCode', 'DROP-OFF CODE')}</Text>
             <Text style={[styles.codeChip, { color: colors.accent }]}>{dropoff.dropCode}</Text>
             {dropoff.packageDescription && (
               <>
@@ -391,7 +392,7 @@ export default function ReceiveDropoffScreen() {
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Measured weight (kg)</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{tr('auto.receiveDropoff.measuredWeightKg', 'Measured weight (kg)')}</Text>
             <TextInput
               keyboardType="decimal-pad"
               value={weightKg}
@@ -443,7 +444,7 @@ export default function ReceiveDropoffScreen() {
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>SENDER VERIFICATION</Text>
+            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.receiveDropoff.senderVerification', 'SENDER VERIFICATION')}</Text>
             <Text style={[styles.cardSubtle, { color: colors.textSecond }]}>
               {otpSentTo
                 ? `A 6-digit code was just sent to ${otpSentTo}. Ask the sender to read it out.`
@@ -474,7 +475,7 @@ export default function ReceiveDropoffScreen() {
               </Text>
             </Pressable>
             <Text style={[styles.helperText, { color: colors.textThird }]}>
-              The code expires after 10 minutes. It goes to the email on the sender&apos;s SEIRS account.
+              {tr('auto.receiveDropoff.theCodeExpiresAfter10', 'The code expires after 10 minutes. It goes to the email on the sender\'s SEIRS account.')}
             </Text>
           </View>
 
@@ -482,9 +483,9 @@ export default function ReceiveDropoffScreen() {
               store; this names the person, which is what a store denying
               it ever took the package in has to be answered with. */}
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>WHO IS ACCEPTING THIS</Text>
+            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.receiveDropoff.whoIsAcceptingThis', 'WHO IS ACCEPTING THIS')}</Text>
             <Text style={[styles.cardSubtle, { color: colors.textSecond }]}>
-              Type your own full name. It is recorded as your signature on this package.
+              {tr('auto.receiveDropoff.typeYourOwnFullName', 'Type your own full name. It is recorded as your signature on this package.')}
             </Text>
             <TextInput
               value={staffName}

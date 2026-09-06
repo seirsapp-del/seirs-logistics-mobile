@@ -11,11 +11,14 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { tx as tr } from '@/i18n/tx';
 
 const RESEND_COOLDOWN = 60;
 
 export default function VerifyOtpScreen() {
   const router      = useRouter();
+  const insets      = useSafeAreaInsets();
   const params      = useLocalSearchParams<{ email: string }>();
   const email       = params.email ?? '';
   const colorScheme = useColorScheme();
@@ -91,7 +94,7 @@ export default function VerifyOtpScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -113,7 +116,7 @@ export default function VerifyOtpScreen() {
           </View>
           <Text style={[styles.title, { color: theme.text }]}>{tx('auto.verifyOtp.checkYourEmail', 'Check your email')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            We sent a 6-digit code to{'\n'}
+            {tr('auto.verifyOtp.weSentA6Digit', 'We sent a 6-digit code to')}{'\n'}
             <Text style={{ color: theme.primary, fontWeight: FontWeight.semibold as any }}>{maskedEmail}</Text>
           </Text>
         </View>

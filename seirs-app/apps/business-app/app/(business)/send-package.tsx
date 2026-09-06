@@ -54,6 +54,7 @@ import { VEHICLE_LABEL } from '@/constants/vehicles';
 import { TERMS_URL } from '@/constants/config';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const STEPS = ['Packages', 'Pickup', 'Vehicle', 'Review'] as const;
 const STEP_SLOTS = ['send-package', 'send-address', 'send-vehicle', 'send-fare'] as const;
@@ -332,8 +333,8 @@ export default function SendPackageScreen() {
       'Start over?',
       'This clears every package, address and photo in this booking.',
       [
-        { text: 'Keep editing', style: 'cancel' },
-        { text: 'Start over', style: 'destructive', onPress: clearBooking },
+        { text: tr('auto.sendPackage.keepEditing', 'Keep editing'), style: 'cancel' },
+        { text: tr('auto.sendPackage.startOver', 'Start over'), style: 'destructive', onPress: clearBooking },
       ],
     );
   };
@@ -582,9 +583,9 @@ export default function SendPackageScreen() {
   const pickPhoto = (idx: number) => {
     if ((draft.stops[idx]?.photoUris ?? []).length >= 5) return;
     dialog.alert('Package photo', 'Photograph the parcel now, or pick one you already have.', [
-      { text: 'Take photo',      onPress: () => { addPhotoFromCamera(idx); } },
-      { text: 'Choose existing', onPress: () => { addPhotoFromLibrary(idx); } },
-      { text: 'Cancel', style: 'cancel' },
+      { text: tr('auto.sendPackage.takePhoto', 'Take photo'),      onPress: () => { addPhotoFromCamera(idx); } },
+      { text: tr('auto.sendPackage.chooseExisting', 'Choose existing'), onPress: () => { addPhotoFromLibrary(idx); } },
+      { text: tr('auto.payoutAccount.cancel', 'Cancel'), style: 'cancel' },
     ]);
   };
   const removePhoto = (idx: number, photoIdx: number) => {
@@ -835,9 +836,9 @@ export default function SendPackageScreen() {
     }
     if (step === 1) {
       if (draft.pickupMode === 'store' && !draft.pickupStoreId)
-        return { message: 'Choose the counter you will drop the packages at.' };
-      if (draft.pickupLat == null || draft.pickupLng == null) return { message: 'Pick the pickup address from the suggestions.' };
-      if (!scheduleNow && scheduledHour == null) return { message: 'Pick a pickup hour, or switch to Send now.' };
+        return { message: tr('auto.sendPackage.chooseTheCounterYouWill', 'Choose the counter you will drop the packages at.') };
+      if (draft.pickupLat == null || draft.pickupLng == null) return { message: tr('auto.sendPackage.pickThePickupAddressFrom', 'Pick the pickup address from the suggestions.') };
+      if (!scheduleNow && scheduledHour == null) return { message: tr('auto.sendPackage.pickAPickupHourOr', 'Pick a pickup hour, or switch to Send now.') };
       // You cannot walk packages into a counter that is shut. Sending a
       // driver there now would strand the run (found on device
       // 2026-08-16: a Mon-Sat counter offered "Send now" on a Sunday).
@@ -868,7 +869,7 @@ export default function SendPackageScreen() {
       return null;
     }
     if (step === 2) {
-      if (!draft.vehicleType) return { message: 'Pick a vehicle.' };
+      if (!draft.vehicleType) return { message: tr('auto.sendPackage.pickAVehicle', 'Pick a vehicle.') };
       {
         // Belongs HERE, on the step where the ride can be changed. The
         // first cut sat in the pickup validation and deadlocked the
@@ -947,8 +948,8 @@ export default function SendPackageScreen() {
           'Price could not be worked out',
           `${quoteError} Nothing has been booked. Tap Try again to price this run.`,
           [
-            { text: 'Not now', style: 'cancel' },
-            { text: 'Try again', onPress: () => setQuoteReloadKey(k => k + 1) },
+            { text: tr('auto.deliveryDetail.notNow', 'Not now'), style: 'cancel' },
+            { text: tr('auto.sendPackage.tryAgain', 'Try again'), onPress: () => setQuoteReloadKey(k => k + 1) },
           ],
         );
       } else {
@@ -1089,7 +1090,7 @@ export default function SendPackageScreen() {
           // SEIRS. Only partner counters and drivers have wallets, and
           // those show EARNINGS (founder, restated 2026-08-16).
           `Tracking: ${trackingCode}\nEach package has its own code: receivers can track theirs on seirs.`,
-          [{ text: 'Done', onPress: () => router.replace('/(business)/(tabs)/deliveries' as any) }],
+          [{ text: tr('auto.editDeliveryDetail.done', 'Done'), onPress: () => router.replace('/(business)/(tabs)/deliveries' as any) }],
         );
       }
     } catch (e: any) {
@@ -1163,7 +1164,7 @@ export default function SendPackageScreen() {
                       Unfinished booking{draftAge ? ` from ${draftAge}` : ''}
                     </Text>
                     <Text style={[styles.resumeSub, { color: colors.textSecond }]}>
-                      {draft.stops.length} package{draft.stops.length === 1 ? '' : 's'} saved on this phone. Continue where you stopped, or start fresh.
+                      {draft.stops.length} package{draft.stops.length === 1 ? '' : 's'} {tr('auto.sendPackage.savedOnThisPhoneContinue', 'saved on this phone. Continue where you stopped, or start fresh.')}
                     </Text>
                   </View>
                   <View style={{ gap: 6 }}>
@@ -1199,8 +1200,8 @@ export default function SendPackageScreen() {
                   </View>
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>
-                    Photos <Text style={{ color: '#DC2626' }}>*</Text>
-                    <Text style={{ color: colors.textThird }}>  at least 1, up to 5</Text>
+                    {tr('auto.sendPackage.photos', 'Photos')} <Text style={{ color: '#DC2626' }}>*</Text>
+                    <Text style={{ color: colors.textThird }}>  {tr('auto.sendPackage.atLeast1UpTo', 'at least 1, up to 5')}</Text>
                   </Text>
                   <View style={styles.photoRow}>
                     {(s.photoUris ?? []).map((uri, pi) => (
@@ -1217,7 +1218,7 @@ export default function SendPackageScreen() {
                         onPress={() => pickPhoto(i)}
                       >
                         <Icon name="Camera" size={20} color={colors.accent} />
-                        <Text style={[styles.photoHint, { color: colors.textSecond }]}>Add</Text>
+                        <Text style={[styles.photoHint, { color: colors.textSecond }]}>{tr('auto.sendPackage.add', 'Add')}</Text>
                       </Pressable>
                     )}
                   </View>
@@ -1235,7 +1236,7 @@ export default function SendPackageScreen() {
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.label, { color: colors.textSecond }]}>
-                        Weight (kg) <Text style={{ color: '#DC2626' }}>*</Text>
+                        {tr('auto.sendPackage.weightKg', 'Weight (kg)')} <Text style={{ color: '#DC2626' }}>*</Text>
                       </Text>
                       <TextInput
                         style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
@@ -1253,7 +1254,7 @@ export default function SendPackageScreen() {
                   </View>
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>
-                    Category <Text style={{ color: '#DC2626' }}>*</Text>
+                    {tr('auto.sendPackage.category', 'Category')} <Text style={{ color: '#DC2626' }}>*</Text>
                   </Text>
                   <View style={styles.chipWrap}>
                     {catalog.map((cat) => {
@@ -1273,7 +1274,7 @@ export default function SendPackageScreen() {
                   </View>
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>
-                    Who is receiving? <Text style={{ color: '#DC2626' }}>*</Text>
+                    {tr('auto.sendPackage.whoIsReceiving', 'Who is receiving?')} <Text style={{ color: '#DC2626' }}>*</Text>
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TextInput
@@ -1294,7 +1295,7 @@ export default function SendPackageScreen() {
                     />
                   </View>
                   <Text style={[styles.hint, { color: colors.textThird }]}>
-                    The driver confirms this first name at handoff. Anyone the receiver trusts can collect.
+                    {tr('auto.sendPackage.theDriverConfirmsThisFirst', 'The driver confirms this first name at handoff. Anyone the receiver trusts can collect.')}
                   </Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
@@ -1307,12 +1308,12 @@ export default function SendPackageScreen() {
                   />
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>
-                    Where is it going? <Text style={{ color: '#DC2626' }}>*</Text>
+                    {tr('auto.sendPackage.whereIsItGoing', 'Where is it going?')} <Text style={{ color: '#DC2626' }}>*</Text>
                   </Text>
                   <View style={styles.destRow}>
                     {([
-                      { key: 'address', label: 'To an address', icon: 'MapPin' },
-                      { key: 'store',   label: 'To a partner store', icon: 'Store' },
+                      { key: 'address', label: tr('auto.sendPackage.toAnAddress', 'To an address'), icon: 'MapPin' },
+                      { key: 'store',   label: tr('auto.sendPackage.toAPartnerStore', 'To a partner store'), icon: 'Store' },
                     ] as const).map((opt) => {
                       const active = (s.destinationMode ?? 'address') === opt.key;
                       return (
@@ -1378,7 +1379,7 @@ export default function SendPackageScreen() {
                       ) : (nearby[i]?.length ?? 0) > 0 ? (
                         <>
                           <Text style={[styles.hint, { color: colors.textThird }]}>
-                            {nearby[i].length} counter{nearby[i].length === 1 ? '' : 's'} near there. Tap one to send this package to it.
+                            {nearby[i].length} counter{nearby[i].length === 1 ? '' : 's'} {tr('auto.sendPackage.nearThereTapOneTo', 'near there. Tap one to send this package to it.')}
                           </Text>
                           {nearby[i].map((store: any) => (
                             <Pressable
@@ -1420,10 +1421,10 @@ export default function SendPackageScreen() {
                   <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.sendPackage.ifNobodyIsAvailable', 'If nobody is available')}</Text>
                   <View style={styles.chipWrap}>
                     {([
-                      { key: 'hand_only', label: 'Hand to receiver only' },
-                      { key: 'neighbour', label: 'Leave with neighbour' },
-                      { key: 'gate',      label: 'Leave at gate' },
-                      { key: 'store',     label: 'Drop at partner store' },
+                      { key: 'hand_only', label: tr('auto.sendPackage.handToReceiverOnly', 'Hand to receiver only') },
+                      { key: 'neighbour', label: tr('auto.sendPackage.leaveWithNeighbour', 'Leave with neighbour') },
+                      { key: 'gate',      label: tr('auto.sendPackage.leaveAtGate', 'Leave at gate') },
+                      { key: 'store',     label: tr('auto.sendPackage.dropAtPartnerStore', 'Drop at partner store') },
                     ] as const).map((opt) => {
                       const hv = Number(s.declaredValueNgn ?? 0) >= highValueNgn;
                       const blocked = hv && (opt.key === 'gate' || opt.key === 'neighbour');
@@ -1444,7 +1445,7 @@ export default function SendPackageScreen() {
                   </View>
                   {Number(s.declaredValueNgn ?? 0) >= highValueNgn && (
                     <Text style={[styles.hint, { color: colors.textThird }]}>
-                      High-value packages cannot be left at the gate or with a neighbour.
+                      {tr('auto.sendPackage.highValuePackagesCannotBe', 'High-value packages cannot be left at the gate or with a neighbour.')}
                     </Text>
                   )}
                   {s.fallbackPref === 'neighbour' && (
@@ -1458,7 +1459,7 @@ export default function SendPackageScreen() {
                     />
                   )}
 
-                  <Text style={[styles.label, { color: colors.textSecond }]}>Package value in NGN (optional)</Text>
+                  <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.sendPackage.packageValueInNgnOptional', 'Package value in NGN (optional)')}</Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={s.declaredValueNgn != null ? String(s.declaredValueNgn) : ''}
@@ -1472,10 +1473,10 @@ export default function SendPackageScreen() {
                     keyboardType="numeric"
                   />
                   <Text style={[styles.hint, { color: colors.textThird }]}>
-                    High-value packages get ID-verified handoff.
+                    {tr('auto.sendPackage.highValuePackagesGetId', 'High-value packages get ID-verified handoff.')}
                   </Text>
 
-                  <Text style={[styles.label, { color: colors.textSecond }]}>How to find this spot, and anything else the rider should know (optional)</Text>
+                  <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.sendPackage.howToFindThisSpot', 'How to find this spot, and anything else the rider should know (optional)')}</Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={s.note ?? ''}
@@ -1499,12 +1500,12 @@ export default function SendPackageScreen() {
                   </Pressable>
                   <Text style={[styles.capNote, { color: colors.textThird }]}>
                     {draft.stops.length} package{draft.stops.length === 1 ? '' : 's'} so far
-                    {totalWeight > 0 ? ` · ${totalWeight}kg` : ''}. We suggest the right vehicle next.
+                    {totalWeight > 0 ? ` · ${totalWeight}kg` : ''}{tr('auto.sendPackage.weSuggestTheRightVehicle', '. We suggest the right vehicle next.')}
                   </Text>
                 </>
               ) : (
                 <Text style={[styles.capNote, { color: colors.textSecond }]}>
-                  {absoluteMaxPackages} packages is the most a single run can carry. Book the rest as a second run.
+                  {absoluteMaxPackages} {tr('auto.sendPackage.packagesIsTheMostA', 'packages is the most a single run can carry. Book the rest as a second run.')}
                 </Text>
               )}
             </View>
@@ -1519,13 +1520,13 @@ export default function SendPackageScreen() {
                   there. Combined with a package's own "to a partner store"
                   choice, a run can go counter to counter. */}
               <Text style={[styles.label, { color: colors.textSecond, marginTop: 0 }]}>
-                How do we get the packages? <Text style={{ color: '#DC2626' }}>*</Text>
+                {tr('auto.sendPackage.howDoWeGetThe', 'How do we get the packages?')} <Text style={{ color: '#DC2626' }}>*</Text>
               </Text>
               {([
-                { key: 'door',  title: 'A driver collects from me', sub: 'Driver comes to your address', icon: 'Bike' },
+                { key: 'door',  title: tr('auto.sendPackage.aDriverCollectsFromMe', 'A driver collects from me'), sub: tr('auto.sendPackage.driverComesToYourAddress', 'Driver comes to your address'), icon: 'Bike' },
                 // Founder 2026-08-16: say what actually happens, not what
                 // it costs. "Cheaper" is a claim; this is the instruction.
-                { key: 'store', title: "I'll drop them at a counter", sub: 'You drop them off, a driver collects from the counter', icon: 'Store' },
+                { key: 'store', title: tr('auto.sendPackage.iLlDropThemAt', 'I\'ll drop them at a counter'), sub: tr('auto.sendPackage.youDropThemOffA', 'You drop them off, a driver collects from the counter'), icon: 'Store' },
               ] as const).map((opt) => {
                 const active = (draft.pickupMode ?? 'door') === opt.key;
                 return (
@@ -1591,7 +1592,7 @@ export default function SendPackageScreen() {
                           {draft.pickupStoreInfo ? storeMetaLine(draft.pickupStoreInfo) : ''}
                         </Text>
                         <Text style={[styles.detailsLink, { color: colors.primary }]}>
-                          Hours, phone and directions
+                          {tr('auto.sendPackage.hoursPhoneAndDirections', 'Hours, phone and directions')}
                         </Text>
                       </View>
                       {/* Clearing the pick has to bring the list back.
@@ -1615,7 +1616,7 @@ export default function SendPackageScreen() {
                   ) : (nearby[-1]?.length ?? 0) > 0 ? (
                     <>
                       <Text style={[styles.hint, { color: colors.textThird }]}>
-                        {nearby[-1].length} counter{nearby[-1].length === 1 ? '' : 's'} near you. Tap the one you will drop at.
+                        {nearby[-1].length} counter{nearby[-1].length === 1 ? '' : 's'} {tr('auto.sendPackage.nearYouTapTheOne', 'near you. Tap the one you will drop at.')}
                       </Text>
                       {nearby[-1].map((store: any) => (
                         <Pressable
@@ -1661,8 +1662,8 @@ export default function SendPackageScreen() {
                   properly designed so they can see it"). */}
               <Text style={[styles.label, { color: colors.textSecond, marginTop: 14 }]}>{tx('auto.sendPackage.whenShouldTheDriverCome', 'When should the driver come?')}</Text>
               {([
-                { now: true,  title: 'Send now',      sub: 'We match a driver straight away', icon: 'Zap' },
-                { now: false, title: 'Schedule it',   sub: 'Pick a pickup hour, today or tomorrow', icon: 'Clock' },
+                { now: true,  title: tr('auto.sendPackage.sendNow', 'Send now'),      sub: tr('auto.sendPackage.weMatchADriverStraight', 'We match a driver straight away'), icon: 'Zap' },
+                { now: false, title: tr('auto.sendPackage.scheduleIt', 'Schedule it'),   sub: tr('auto.sendPackage.pickAPickupHourToday', 'Pick a pickup hour, today or tomorrow'), icon: 'Clock' },
               ] as const).map((opt) => {
                 const active = scheduleNow === opt.now;
                 return (
@@ -1687,11 +1688,11 @@ export default function SendPackageScreen() {
 
               {!scheduleNow && (
                 <View style={[styles.schedPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={[styles.label, { color: colors.textSecond, marginTop: 0 }]}>Day</Text>
+                  <Text style={[styles.label, { color: colors.textSecond, marginTop: 0 }]}>{tr('auto.sendPackage.day', 'Day')}</Text>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     {([
-                      { key: 0, label: 'Today' },
-                      { key: 1, label: 'Tomorrow' },
+                      { key: 0, label: tr('auto.wallet.today', 'Today') },
+                      { key: 1, label: tr('auto.sendPackage.tomorrow', 'Tomorrow') },
                     ] as const).map((d) => {
                       const active = scheduledDayOffset === d.key;
                       return (
@@ -1929,7 +1930,7 @@ export default function SendPackageScreen() {
                 ))}
                 {!!quoteError && (
                   <Pressable onPress={() => setQuoteReloadKey((k) => k + 1)} style={styles.quoteErrBox}>
-                    <Text style={styles.quoteErrTxt}>{quoteError} Tap to try again.</Text>
+                    <Text style={styles.quoteErrTxt}>{quoteError} {tr('auto.sendPackage.tapToTryAgain', 'Tap to try again.')}</Text>
                   </Pressable>
                 )}
                 {/* Refused, not failed. Shown where the price would be, so a
@@ -1943,12 +1944,10 @@ export default function SendPackageScreen() {
                     <Icon name="Truck" size={20} color={colors.primary} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.needsQuoteTitle, { color: colors.text }]}>
-                        This load needs a quote from us
+                        {tr('auto.sendPackage.thisLoadNeedsAQuote', 'This load needs a quote from us')}
                       </Text>
                       <Text style={[styles.needsQuoteBody, { color: colors.textSecond }]}>
-                        A generator, a transformer, anything needing lifting hands: priced
-                        by a person, not automatically, so we do not guess at it. Tell us
-                        about it and we will call you with a full breakdown.
+                        {tr('auto.sendPackage.aGeneratorATransformerAnything', 'A generator, a transformer, anything needing lifting hands: priced by a person, not automatically, so we do not guess at it. Tell us about it and we will call you with a full breakdown.')}
                       </Text>
                     </View>
                     <Icon name="ChevronRight" size={18} color={colors.primary} />
@@ -1958,10 +1957,10 @@ export default function SendPackageScreen() {
                   <View style={styles.lineRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.lineName, { color: colors.text }]} numberOfLines={1}>
-                        Partner counter handling
+                        {tr('auto.sendPackage.partnerCounterHandling', 'Partner counter handling')}
                       </Text>
                       <Text style={[styles.lineSub, { color: colors.textThird }]} numberOfLines={2}>
-                        Paid to the counter for every parcel it takes in or hands over.
+                        {tr('auto.sendPackage.paidToTheCounterFor', 'Paid to the counter for every parcel it takes in or hands over.')}
                       </Text>
                     </View>
                     <Text style={[styles.linePrice, { color: colors.textSecond }]}>
@@ -1970,7 +1969,7 @@ export default function SendPackageScreen() {
                   </View>
                 )}
                 <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
-                  <Text style={[styles.totalLabel, { color: colors.text }]}>Total · one payment</Text>
+                  <Text style={[styles.totalLabel, { color: colors.text }]}>{tr('auto.sendPackage.totalOnePayment', 'Total · one payment')}</Text>
                   <Text style={[styles.totalValue, { color: colors.primary }]}>
                     {quote?.customer?.total != null
                       ? naira(quote.customer.total)
@@ -1978,7 +1977,7 @@ export default function SendPackageScreen() {
                   </Text>
                 </View>
                 <Text style={[styles.capNote, { color: colors.textThird }]}>
-                  Final fare uses the road distance at booking. Every package gets its own tracking code for its receiver.
+                  {tr('auto.sendPackage.finalFareUsesTheRoad', 'Final fare uses the road distance at booking. Every package gets its own tracking code for its receiver.')}
                 </Text>
               </View>
 
@@ -1991,8 +1990,7 @@ export default function SendPackageScreen() {
                   <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start', paddingVertical: 8 }}>
                     <Icon name="Truck" size={15} color={colors.primary} />
                     <Text style={[styles.lineSub, { color: colors.textSecond, fontSize: 13, flex: 1 }]}>
-                      Offered first to the {postToTripLabel ?? 'selected'} trip. The driver can accept or
-                      decline, and you are refunded in full if nobody takes it.
+                      {tr('auto.sendPackage.offeredFirstToThe', 'Offered first to the')} {postToTripLabel ?? 'selected'} {tr('auto.sendPackage.tripTheDriverCanAccept', 'trip. The driver can accept or decline, and you are refunded in full if nobody takes it.')}
                     </Text>
                   </View>
                 )}
@@ -2048,12 +2046,12 @@ export default function SendPackageScreen() {
                   {tcAgreed && <Icon name="Check" size={13} color="#fff" />}
                 </View>
                 <Text style={[styles.lineSub, { color: colors.textSecond, flex: 1, lineHeight: 18 }]}>
-                  I agree to the SEIRS Terms of Service, including what happens if a delivery fails.{' '}
+                  {tr('auto.sendPackage.iAgreeToTheSeirs', 'I agree to the SEIRS Terms of Service, including what happens if a delivery fails.')}{' '}
                   <Text
                     style={{ color: colors.primary, fontWeight: '600' }}
                     onPress={() => Linking.openURL(TERMS_URL)}
                   >
-                    Read them
+                    {tr('auto.recurring.readThem', 'Read them')}
                   </Text>
                 </Text>
               </Pressable>
@@ -2114,7 +2112,7 @@ export default function SendPackageScreen() {
                         style={[styles.sheetBtn, { backgroundColor: colors.surfaceSecond }]}
                         onPress={() => Linking.openURL(`tel:${storeSheet.phone}`)}
                       >
-                        <Text style={[styles.sheetBtnTxt, { color: colors.primary }]}>Call</Text>
+                        <Text style={[styles.sheetBtnTxt, { color: colors.primary }]}>{tr('auto.sendPackage.call', 'Call')}</Text>
                       </Pressable>
                     </View>
                   )}
@@ -2163,7 +2161,7 @@ export default function SendPackageScreen() {
                       style={[styles.sheetAction, { backgroundColor: colors.primary }]}
                       onPress={() => setStoreSheet(null)}
                     >
-                      <Text style={[styles.sheetActionTxt, { color: '#fff' }]}>Done</Text>
+                      <Text style={[styles.sheetActionTxt, { color: '#fff' }]}>{tr('auto.editDeliveryDetail.done', 'Done')}</Text>
                     </Pressable>
                   </View>
                 </>

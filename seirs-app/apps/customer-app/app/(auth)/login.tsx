@@ -18,9 +18,11 @@ import {
   ArrowLeft, Mail, ArrowRight, Truck,
 } from 'lucide-react-native';
 import { tx } from '@/i18n/tx';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
   const router      = useRouter();
+  const insets      = useSafeAreaInsets();
   const cs          = useColorScheme();
   const theme       = Colors[cs ?? 'light'];
   const isDark      = cs === 'dark';
@@ -104,7 +106,7 @@ export default function LoginScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xl }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

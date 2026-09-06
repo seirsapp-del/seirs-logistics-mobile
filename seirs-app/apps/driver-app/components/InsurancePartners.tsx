@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const PARTNERS = [
   { name: 'AXA Mansard',          desc: 'Vehicle and third-party cover',   url: 'https://axamansard.com' },
@@ -65,7 +66,7 @@ export function InsurancePartners() {
             </Pressable>
           ))}
           <Text style={[styles.note, { color: theme.textThird }]}>
-            SEIRS earns a referral fee when you buy through a partner. It does not change what you pay.
+            {tr('auto.insurancepartners.seirsEarnsAReferralFee', 'SEIRS earns a referral fee when you buy through a partner. It does not change what you pay.')}
           </Text>
         </View>
       )}

@@ -15,6 +15,7 @@ import { naira, nairaAmount } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 // My Trips rebuilt as the business Deliveries screen, exactly (founder
 // 2026-08-22: "the exact same as deliveries on the business app, that's
 // what I wanted"). Layout, rail, card and style values are copied from
@@ -194,9 +195,9 @@ export default function HistoryScreen() {
         ? `Tracking ${trip.trackingCode}. A cancellation fee of NGN ${nairaAmount(feeNgn)} applies and the rest is refunded.`
         : `Tracking ${trip.trackingCode}. No cancellation fee applies.`,
       [
-        { text: 'Keep', style: 'cancel' },
+        { text: tr('auto.history.keep', 'Keep'), style: 'cancel' },
         {
-          text: 'Cancel booking', style: 'destructive',
+          text: tr('auto.history.cancelBooking', 'Cancel booking'), style: 'destructive',
           onPress: async () => {
             try {
               await deliveriesApi.cancel(trip.id);
@@ -291,7 +292,7 @@ export default function HistoryScreen() {
                 hitSlop={8}
                 style={[styles.payLink, { borderColor: theme.border }]}
               >
-                <Text style={[styles.payLinkText, { color: theme.text }]}>Edit</Text>
+                <Text style={[styles.payLinkText, { color: theme.text }]}>{tr('auto.history.edit', 'Edit')}</Text>
               </Pressable>
             )}
             {isActive && (

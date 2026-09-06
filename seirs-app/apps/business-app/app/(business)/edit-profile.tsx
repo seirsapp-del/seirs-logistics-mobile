@@ -23,6 +23,7 @@ import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { normaliseRc, isValidRc, canonicalRc, RC_ERROR } from '@seirs/shared/utils/rcNumber';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §4. business / partner profile editor. Edits both the User
 // row (name, phone) AND the BusinessAccount row (companyName, RC,
@@ -229,36 +230,36 @@ export default function BusinessEditProfileScreen() {
               (business owners typically use the dashboard, not phone). */}
           {(user as any)?.accountId && (
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.label, { color: colors.textSecond }]}>SEIRS ID</Text>
+              <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.editProfile.seirsId', 'SEIRS ID')}</Text>
               <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: 1, marginTop: 2 }}>
                 {(user as any).accountId}
               </Text>
               <Text style={{ fontSize: 12, color: colors.textThird, marginTop: 4 }}>
-                Use this when contacting support. Identifies your account without needing to share your email.
+                {tr('auto.editProfile.useThisWhenContactingSupport', 'Use this when contacting support. Identifies your account without needing to share your email.')}
               </Text>
             </View>
           )}
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.label, { color: colors.textSecond }]}>EMAIL (READ-ONLY)</Text>
+            <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.editProfile.emailReadOnly', 'EMAIL (READ-ONLY)')}</Text>
             <Text style={[styles.email, { color: colors.textSecond }]}>{user?.email ?? '-'}</Text>
           </View>
 
           {/* Legal name: split for privacy and identity cross-check.
               Owner's legal name is separate from the company name below. */}
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.label, { color: colors.textSecond }]}>FIRST NAME</Text>
+            <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.editProfile.firstName', 'FIRST NAME')}</Text>
             <TextInput
               onFocus={onFieldFocus}
               value={firstName} onChangeText={setFirstName}
               style={[styles.input, { borderColor: errors.firstName ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder={tx('auto.editProfile.adebayo', 'Adebayo')} placeholderTextColor={colors.textThird} />
             {errors.firstName && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.firstName}</Text>}
-            <Text style={{ fontSize: 12, color: colors.textThird }}>30-day change limit</Text>
+            <Text style={{ fontSize: 12, color: colors.textThird }}>{tr('auto.editProfile.30DayChangeLimit', '30-day change limit')}</Text>
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.label, { color: colors.textSecond }]}>MIDDLE NAME (OPTIONAL)</Text>
+            <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.editProfile.middleNameOptional', 'MIDDLE NAME (OPTIONAL)')}</Text>
             <TextInput
               onFocus={onFieldFocus}
               value={middleName} onChangeText={setMiddleName}
@@ -268,14 +269,14 @@ export default function BusinessEditProfileScreen() {
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.label, { color: colors.textSecond }]}>LAST NAME</Text>
+            <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.editProfile.lastName', 'LAST NAME')}</Text>
             <TextInput
               onFocus={onFieldFocus}
               value={lastName} onChangeText={setLastName}
               style={[styles.input, { borderColor: errors.lastName ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder={tx('auto.editProfile.ogunlana', 'Ogunlana')} placeholderTextColor={colors.textThird} />
             {errors.lastName && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.lastName}</Text>}
-            <Text style={{ fontSize: 12, color: colors.textThird }}>30-day change limit</Text>
+            <Text style={{ fontSize: 12, color: colors.textThird }}>{tr('auto.editProfile.30DayChangeLimit', '30-day change limit')}</Text>
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -299,7 +300,7 @@ export default function BusinessEditProfileScreen() {
               style={[styles.input, { borderColor: errors.phone ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="08012345678" placeholderTextColor={colors.textThird} />
             {errors.phone && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.phone}</Text>}
-            <Text style={{ fontSize: 12, color: colors.textThird }}>90-day change limit</Text>
+            <Text style={{ fontSize: 12, color: colors.textThird }}>{tr('auto.editProfile.90DayChangeLimit', '90-day change limit')}</Text>
           </View>
 
           {/* Emergency contact: escalation contact for the account. */}
@@ -307,11 +308,11 @@ export default function BusinessEditProfileScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.editProfile.emergencyContact', 'Emergency contact')}</Text>
           </View>
           <Text style={{ fontSize: 12, color: colors.textThird, marginTop: -4 }}>
-            Who should we call if there is a critical issue with your account (unauthorised access, urgent dispute)? Update any time.
+            {tr('auto.editProfile.whoShouldWeCallIf', 'Who should we call if there is a critical issue with your account (unauthorised access, urgent dispute)? Update any time.')}
           </Text>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.label, { color: colors.textSecond }]}>CONTACT NAME</Text>
+            <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.editProfile.contactName', 'CONTACT NAME')}</Text>
             <TextInput
               onFocus={onFieldFocus}
               value={emergencyName} onChangeText={setEmergencyName}
@@ -321,7 +322,7 @@ export default function BusinessEditProfileScreen() {
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.label, { color: colors.textSecond }]}>CONTACT PHONE</Text>
+            <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.editProfile.contactPhone', 'CONTACT PHONE')}</Text>
             <TextInput
               onFocus={onFieldFocus}
               value={emergencyPhone} onChangeText={setEmergencyPhone} keyboardType="phone-pad"
@@ -349,13 +350,13 @@ export default function BusinessEditProfileScreen() {
                 <View style={styles.note}>
                   <Icon name="Lock" size={12} color={colors.textThird} />
                   <Text style={[styles.noteText, { color: colors.textSecond }]}>
-                    Business fields are owner-only. Contact your account owner to update them.
+                    {tr('auto.editProfile.businessFieldsAreOwnerOnly', 'Business fields are owner-only. Contact your account owner to update them.')}
                   </Text>
                 </View>
               )}
 
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.label, { color: colors.textSecond }]}>COMPANY NAME</Text>
+                <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.editProfile.companyName', 'COMPANY NAME')}</Text>
                 <TextInput
               onFocus={onFieldFocus}
                   value={companyName} onChangeText={setCompanyName} editable={isOwner}
@@ -364,7 +365,7 @@ export default function BusinessEditProfileScreen() {
               </View>
 
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.label, { color: colors.textSecond }]}>RC NUMBER</Text>
+                <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.editProfile.rcNumber', 'RC NUMBER')}</Text>
                 <TextInput
               onFocus={onFieldFocus}
                   value={rcNumber} onChangeText={(v) => setRcNumber(normaliseRc(v))} editable={isOwner}

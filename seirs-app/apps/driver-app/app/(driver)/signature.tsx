@@ -20,6 +20,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { identityApi, uploadApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §1.17: driver door-to-door handoff signature. Two methods:
 // physical ID + email OTP, or SEIRS ID + typed-name signature. Mirrors
@@ -29,12 +30,12 @@ import { tx } from '@/i18n/tx';
 
 type Method = 'physical_id' | 'seirs_id';
 
-const ID_TYPES = [
-  { key: 'national_id',     label: 'National ID' },
-  { key: 'drivers_license', label: 'Driver Licence' },
-  { key: 'voter_card',      label: 'Voter Card' },
-  { key: 'nin_slip',        label: 'NIN Slip' },
-  { key: 'passport',        label: 'Passport' },
+const ID_TYPES = () => [
+  { key: 'national_id',     label: tr('auto.signature.nationalId', 'National ID') },
+  { key: 'drivers_license', label: tr('auto.signature.driverLicence', 'Driver Licence') },
+  { key: 'voter_card',      label: tr('auto.signature.voterCard', 'Voter Card') },
+  { key: 'nin_slip',        label: tr('auto.signature.ninSlip', 'NIN Slip') },
+  { key: 'passport',        label: tr('auto.signature.passport', 'Passport') },
 ];
 
 export default function DriverSignatureScreen() {
@@ -136,7 +137,7 @@ export default function DriverSignatureScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl }}>
         <Text style={{ color: theme.text, textAlign: 'center' }}>
-          No delivery selected. Open a job first then tap &ldquo;Verify Recipient&rdquo;.
+          {tr('auto.signature.noDeliverySelectedOpenA', 'No delivery selected. Open a job first then tap “Verify Recipient”.')}
         </Text>
       </SafeAreaView>
     );
@@ -156,7 +157,7 @@ export default function DriverSignatureScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
           {/* Method picker */}
-          <Text style={[styles.label, { color: theme.textSecond }]}>VERIFICATION METHOD</Text>
+          <Text style={[styles.label, { color: theme.textSecond }]}>{tr('auto.signature.verificationMethod', 'VERIFICATION METHOD')}</Text>
           <Pressable
             onPress={() => setMethod('physical_id')}
             style={[styles.methodCard, { backgroundColor: theme.surface, borderColor: method === 'physical_id' ? theme.primary : theme.border }]}
@@ -165,7 +166,7 @@ export default function DriverSignatureScreen() {
               {method === 'physical_id' && <View style={[styles.radioInner, { backgroundColor: theme.primary }]} />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.methodTitle, { color: theme.text }]}>Physical ID + Email OTP</Text>
+              <Text style={[styles.methodTitle, { color: theme.text }]}>{tr('auto.signature.physicalIdEmailOtp', 'Physical ID + Email OTP')}</Text>
               <Text style={[styles.methodSub,   { color: theme.textSecond }]}>{tx('auto.signature.nationalIdLicenceVoterCard', 'National ID, licence, voter card, NIN slip, or passport')}</Text>
             </View>
           </Pressable>
@@ -177,7 +178,7 @@ export default function DriverSignatureScreen() {
               {method === 'seirs_id' && <View style={[styles.radioInner, { backgroundColor: theme.primary }]} />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.methodTitle, { color: theme.text }]}>SEIRS ID + Typed Signature</Text>
+              <Text style={[styles.methodTitle, { color: theme.text }]}>{tr('auto.signature.seirsIdTypedSignature', 'SEIRS ID + Typed Signature')}</Text>
               <Text style={[styles.methodSub,   { color: theme.textSecond }]}>{tx('auto.signature.recipientShowsAppQrSpeaks', 'Recipient shows app QR, speaks their name, you type to verify')}</Text>
             </View>
           </Pressable>
@@ -187,7 +188,7 @@ export default function DriverSignatureScreen() {
             <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Text style={[styles.fieldLabel, { color: theme.text }]}>{tx('auto.signature.idType', 'ID Type')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 4 }} contentContainerStyle={{ gap: 6 }}>
-                {ID_TYPES.map(t => (
+                {ID_TYPES().map(t => (
                   <Pressable
                     key={t.key}
                     onPress={() => setIdType(t.key)}
@@ -233,7 +234,7 @@ export default function DriverSignatureScreen() {
             </View>
           ) : (
             <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>Recipient&apos;s SEIRS ID</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>{tr('auto.signature.recipientSSeirsId', 'Recipient\'s SEIRS ID')}</Text>
               <TextInput
                 value={seirsCode}
                 onChangeText={setSeirsCode}
@@ -246,10 +247,10 @@ export default function DriverSignatureScreen() {
 
               {expectedName && (
                 <>
-                  <Text style={[styles.label, { color: theme.textSecond, marginTop: 8 }]}>EXPECTED NAME</Text>
+                  <Text style={[styles.label, { color: theme.textSecond, marginTop: 8 }]}>{tr('auto.signature.expectedName', 'EXPECTED NAME')}</Text>
                   <Text style={[styles.expected, { color: theme.text }]}>{expectedName}</Text>
                   <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, marginTop: 4 }}>
-                    Ask the recipient to speak their full name. Type EXACTLY what they say below.
+                    {tr('auto.signature.askTheRecipientToSpeak', 'Ask the recipient to speak their full name. Type EXACTLY what they say below.')}
                   </Text>
                   <TextInput
                     value={typedName}
@@ -279,7 +280,7 @@ export default function DriverSignatureScreen() {
               <Pressable onPress={pickPhoto} style={[styles.photoBox, { borderColor: theme.primary }]}>
                 <Camera size={28} color={theme.primary} />
                 <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, textAlign: 'center', paddingHorizontal: 16 }}>
-                  Photo of recipient with package (with ID held up if high-value)
+                  {tr('auto.signature.photoOfRecipientWithPackage', 'Photo of recipient with package (with ID held up if high-value)')}
                 </Text>
               </Pressable>
             )}

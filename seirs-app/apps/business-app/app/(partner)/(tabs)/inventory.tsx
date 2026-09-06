@@ -9,6 +9,7 @@ import { useColors } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 const STATUSES = ['all', 'in_store', 'awaiting_pickup', 'collected', 'returned'];
 
 const STATUS_COLOR: Record<string, string> = {
@@ -57,9 +58,9 @@ export default function InventoryScreen() {
       'Mark as Collected',
       `Confirm ${pkg.recipientName} has collected their package?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: tr('auto.payoutAccount.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Confirm', onPress: async () => {
+          text: tr('auto.inventory.confirm', 'Confirm'), onPress: async () => {
             setCollecting(pkg.id);
             try {
               await partnerApi.markCollected(pkg.id);

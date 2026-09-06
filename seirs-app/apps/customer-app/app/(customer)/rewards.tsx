@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { loyaltyApi, deliveriesApi, type LoyaltyTier } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Tier thresholds MUST mirror the backend (loyalty.service.ts:TIER_THRESHOLDS).
 // Keep in sync manually. The tier chip shown to the user is otherwise a lie.
@@ -64,10 +65,10 @@ interface Redemption {
   live: boolean;
 }
 
-const REDEMPTIONS: Redemption[] = [
-  { type: 'insurance',    label: '₦500 insurance cover',  desc: 'Insure a single delivery up to ₦50,000',            cost: 200,  icon: 'shield-checkmark-outline', live: false },
-  { type: 'discount_500', label: '₦500 off',              desc: '₦500 discount on your next delivery',              cost: 500,  icon: 'pricetag-outline', live: true },
-  { type: 'free_delivery',label: 'Free delivery',          desc: 'One free delivery up to ₦2,000',                   cost: 1000, icon: 'gift-outline', live: true },
+const REDEMPTIONS = (): Redemption[] => [
+  { type: 'insurance',    label: tr('auto.rewards.500InsuranceCover', '₦500 insurance cover'),  desc: 'Insure a single delivery up to ₦50,000',            cost: 200,  icon: 'shield-checkmark-outline', live: false },
+  { type: 'discount_500', label: tr('auto.paymentDetail.500Off', '₦500 off'),              desc: '₦500 discount on your next delivery',              cost: 500,  icon: 'pricetag-outline', live: true },
+  { type: 'free_delivery',label: tr('auto.paymentDetail.freeDelivery', 'Free delivery'),          desc: 'One free delivery up to ₦2,000',                   cost: 1000, icon: 'gift-outline', live: true },
 ];
 
 // Helpers
@@ -178,11 +179,11 @@ export default function RewardsScreen() {
     // has none, guide them to book one instead of silently deducting points.
     if (activeDeliveries.length === 0) {
       showDialog({
-        title: 'Book a delivery first',
+        title: tr('auto.rewards.bookADeliveryFirst', 'Book a delivery first'),
         message: `You don't have any active deliveries to apply this reward to. Book a delivery, then come back here to redeem.`,
         actions: [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Book delivery', style: 'primary', onPress: () => router.push('/(customer)/send' as any) },
+          { text: tr('auto.AddressPicker.cancel', 'Cancel'), style: 'cancel' },
+          { text: tr('auto.rewards.bookDelivery', 'Book delivery'), style: 'primary', onPress: () => router.push('/(customer)/send' as any) },
         ],
       });
       return;
@@ -205,13 +206,13 @@ export default function RewardsScreen() {
     // and scrolls, so the cap is gone along with the bug.
     showDialog({
       title: `Apply ${r.label} to which delivery?`,
-      message: 'Pick the delivery you want this reward to apply to.',
+      message: tr('auto.rewards.pickTheDeliveryYouWant', 'Pick the delivery you want this reward to apply to.'),
       actions: [
         ...activeDeliveries.map((d: any) => ({
           text: `${d.trackingCode} (${String(d.status).replace('_', ' ')})`,
           onPress: () => confirmAndRedeem(r, d),
         })),
-        { text: 'Cancel', style: 'cancel' as const },
+        { text: tr('auto.AddressPicker.cancel', 'Cancel'), style: 'cancel' as const },
       ],
     });
   };
@@ -225,7 +226,7 @@ export default function RewardsScreen() {
       message: `This will deduct ${r.cost.toLocaleString()} points from your balance and apply the reward to delivery ${delivery.trackingCode}. Cannot be undone.`,
       actions: [
         {
-          text: 'Redeem',
+          text: tr('auto.rewards.redeem', 'Redeem'),
           style: 'primary',
           onPress: async () => {
             setRedeemingType(r.type);
@@ -233,18 +234,18 @@ export default function RewardsScreen() {
               const res = await loyaltyApi.redeem(r.type, delivery.id);
               setPoints(res.newBalance ?? points - r.cost);
               showDialog({
-                title: 'Redeemed',
+                title: tr('auto.rewards.redeemed', 'Redeemed'),
                 message: `${r.label} applied to ${delivery.trackingCode}. New balance: ${(res.newBalance ?? points - r.cost).toLocaleString()} pts.`,
               });
               load();
             } catch (e: any) {
-              showDialog({ title: 'Redemption failed', message: e?.message ?? 'Please try again.' });
+              showDialog({ title: tr('auto.rewards.redemptionFailed', 'Redemption failed'), message: e?.message ?? 'Please try again.' });
             } finally {
               setRedeemingType(null);
             }
           },
         },
-        { text: 'Cancel', style: 'cancel' },
+        { text: tr('auto.AddressPicker.cancel', 'Cancel'), style: 'cancel' },
       ],
     });
   };
@@ -317,7 +318,7 @@ export default function RewardsScreen() {
           <View style={[styles.expiryCard, { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' }]}>
             <Ionicons name="time-outline" size={16} color="#92400E" />
             <Text style={[styles.expiryText, { color: '#92400E' }]}>
-              {expiring.toLocaleString()} points expire in the next 30 days. Redeem or book a delivery to keep them.
+              {expiring.toLocaleString()} {tr('auto.rewards.pointsExpireInTheNext', 'points expire in the next 30 days. Redeem or book a delivery to keep them.')}
             </Text>
           </View>
         )}
@@ -374,7 +375,7 @@ export default function RewardsScreen() {
 
         {/* Redeem rewards: sorted cheapest first so users see something achievable */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.rewards.redeemYourPoints', 'Redeem your points')}</Text>
-        {REDEMPTIONS.map(r => {
+        {REDEMPTIONS().map(r => {
           // A reward that delivers nothing cannot be redeemable, however
           // many points the customer has. See Redemption.live.
           const canRedeem = r.live && points >= r.cost;
@@ -401,7 +402,7 @@ export default function RewardsScreen() {
                   <Text style={[styles.rewardPoints, { color: theme.textSecond }]}>{r.cost.toLocaleString()} pts</Text>
                   {!r.live && (
                     <Text style={[styles.rewardPoints, { color: theme.textThird }]}>
-                      · Not available yet
+                      {tr('auto.rewards.notAvailableYet', '· Not available yet')}
                     </Text>
                   )}
                 </View>
@@ -490,7 +491,7 @@ export default function RewardsScreen() {
             <Ionicons name="star-outline" size={28} color={theme.textThird} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.rewards.noActivityYet', 'No activity yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Complete a delivery to start earning points.
+              {tr('auto.rewards.completeADeliveryToStart', 'Complete a delivery to start earning points.')}
             </Text>
           </View>
         ) : (
@@ -530,11 +531,11 @@ export default function RewardsScreen() {
         <View style={[styles.earnCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.earnTitle, { color: theme.text }]}>{tx('auto.rewards.howToEarn', 'How to earn')}</Text>
           {[
-            { pts: '10 pts',  text: 'per ₦1,000 spent on a delivery' },
-            { pts: '+5 pts',  text: 'bonus when you pay by bank transfer' },
-            { pts: '200 pts', text: 'per friend who signs up and completes a delivery' },
-            { pts: '5 pts',   text: 'for rating a driver' },
-            { pts: '50 pts',  text: 'bonus on your 5th delivery each month' },
+            { pts: '10 pts',  text: tr('auto.rewards.per1000SpentOn', 'per ₦1,000 spent on a delivery') },
+            { pts: '+5 pts',  text: tr('auto.rewards.bonusWhenYouPayBy', 'bonus when you pay by bank transfer') },
+            { pts: '200 pts', text: tr('auto.rewards.perFriendWhoSignsUp', 'per friend who signs up and completes a delivery') },
+            { pts: '5 pts',   text: tr('auto.rewards.forRatingADriver', 'for rating a driver') },
+            { pts: '50 pts',  text: tr('auto.rewards.bonusOnYour5thDelivery', 'bonus on your 5th delivery each month') },
           ].map(item => (
             <View key={item.text} style={styles.earnRow}>
               <Text style={[styles.earnPts, { color: theme.primary }]}>{item.pts}</Text>
@@ -542,7 +543,7 @@ export default function RewardsScreen() {
             </View>
           ))}
           <Text style={[styles.earnFine, { color: theme.textThird }]}>
-            Points expire 24 months after they're earned. Tier is based on points earned in the last 12 months.
+            {tr('auto.rewards.pointsExpire24MonthsAfter', 'Points expire 24 months after they\'re earned. Tier is based on points earned in the last 12 months.')}
           </Text>
         </View>
 

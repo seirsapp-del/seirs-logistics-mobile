@@ -39,6 +39,7 @@ import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 import { CitySearchField } from '@/components/CitySearchField';
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * The corridors a trader is most likely to want, so the common case is
@@ -289,7 +290,7 @@ export default function CargoSpaceScreen() {
           <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.cargoSpace.cargoSpace', 'Cargo Space')}</Text>
           {/* Says what it is for in the first line (founder 2026-09-06). */}
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
-            Interstate trips: room on a run somebody is already making
+            {tr('auto.cargoSpace.interstateTripsRoomOnA', 'Interstate trips: room on a run somebody is already making')}
           </Text>
         </View>
       </View>
@@ -307,10 +308,7 @@ export default function CargoSpaceScreen() {
           * was built to remove.
           */}
         <Text style={[styles.intro, { color: theme.textSecond }]}>
-          Drivers declare intercity trips in advance and say how much weight
-          they can still take. Ask one to carry your load and nothing is
-          charged while they decide. You pay only after they accept, so a no
-          costs you nothing.
+          {tr('auto.cargoSpace.driversDeclareIntercityTripsIn', 'Drivers declare intercity trips in advance and say how much weight they can still take. Ask one to carry your load and nothing is charged while they decide. You pay only after they accept, so a no costs you nothing.')}
         </Text>
 
         {/* A shipment is a route, a day and a weight. The board asked only
@@ -387,7 +385,7 @@ export default function CargoSpaceScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               {!!dayISO && (
                 <Text onPress={() => { setDayISO(null); setCalOpen(false); }} style={[styles.dayClear, { color: theme.primary }]}>
-                  Any date
+                  {tr('auto.cargoSpace.anyDate', 'Any date')}
                 </Text>
               )}
               <Icon name="Calendar" size={18} color={theme.textSecond} />
@@ -428,7 +426,7 @@ export default function CargoSpaceScreen() {
 
         {!searched && (
           <View style={{ gap: 8, marginTop: 4 }}>
-            <Text style={[styles.routesLabel, { color: theme.textSecond }]}>COMMON ROUTES</Text>
+            <Text style={[styles.routesLabel, { color: theme.textSecond }]}>{tr('auto.cargoSpace.commonRoutes', 'COMMON ROUTES')}</Text>
             <View style={styles.routesRow}>
               {COMMON_ROUTES.map(([a, b]) => (
                 <Pressable
@@ -462,7 +460,7 @@ export default function CargoSpaceScreen() {
                 <View style={[styles.alertDone, { borderColor: theme.border, backgroundColor: theme.surface }]}>
                   <Icon name="CheckCircle2" size={17} color={theme.primary} />
                   <Text style={[styles.alertDoneTxt, { color: theme.text }]}>
-                    We will tell you when a driver declares {from.trim()} to {to.trim()}.
+                    {tr('auto.cargoSpace.weWillTellYouWhen', 'We will tell you when a driver declares')} {from.trim()} to {to.trim()}.
                   </Text>
                 </View>
               ) : (
@@ -472,13 +470,13 @@ export default function CargoSpaceScreen() {
                 >
                   <Icon name="Bell" size={16} color={theme.primary} />
                   <Text style={[styles.alertBtnTxt, { color: theme.primary }]}>
-                    Alert me when a driver runs this route
+                    {tr('auto.cargoSpace.alertMeWhenADriver', 'Alert me when a driver runs this route')}
                   </Text>
                 </Pressable>
               )
             )}
 
-            <Text style={[styles.routesLabel, { color: theme.textSecond, marginTop: 18 }]}>OR TRY</Text>
+            <Text style={[styles.routesLabel, { color: theme.textSecond, marginTop: 18 }]}>{tr('auto.cargoSpace.orTry', 'OR TRY')}</Text>
             <View style={styles.routesRow}>
               {COMMON_ROUTES.map(([a, b]) => (
                 <Pressable
@@ -533,8 +531,7 @@ export default function CargoSpaceScreen() {
                 than letting it read as "no lorries run this route". */}
             {visibleTrips.length === 0 && (
               <Text style={[styles.intro, { color: theme.textSecond }]}>
-                {trips.length} {trips.length === 1 ? 'trip' : 'trips'} on this route, none in that window.
-                Try Any time.
+                {trips.length} {trips.length === 1 ? 'trip' : 'trips'} {tr('auto.cargoSpace.onThisRouteNoneIn', 'on this route, none in that window. Try Any time.')}
               </Text>
             )}
           </View>
@@ -610,7 +607,7 @@ export default function CargoSpaceScreen() {
                     : `Loads along the route, unloads at ${trip.toCity}`}
               </Text>
               <Text style={[styles.tripMeta, { color: theme.textThird }]}>
-                Exact spot once the driver accepts your load
+                {tr('auto.cargoSpace.exactSpotOnceTheDriver', 'Exact spot once the driver accepts your load')}
               </Text>
 
               <View style={styles.tripFacts}>

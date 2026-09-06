@@ -23,6 +23,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 
 type Segment = 'rewards' | 'earnings';
@@ -32,9 +33,9 @@ type Segment = 'rewards' | 'earnings';
  * and parcel cover are refused by loyalty.service with the points left
  * untouched, because neither is a real product yet.
  */
-const POINT_USES = [
-  { cost: 500,  label: '₦500 off a delivery', desc: 'Comes off the price before you pay.' },
-  { cost: 1000, label: 'A free delivery',       desc: 'Covers one booking up to the reward cap.' },
+const POINT_USES = () => [
+  { cost: 500,  label: tr('auto.wallet.500OffADelivery', '₦500 off a delivery'), desc: 'Comes off the price before you pay.' },
+  { cost: 1000, label: tr('auto.wallet.aFreeDelivery', 'A free delivery'),       desc: 'Covers one booking up to the reward cap.' },
 ];
 
 // The ledger's reason codes in the sender's words, identical to the
@@ -218,14 +219,19 @@ export default function WalletScreen() {
     .reduce((sum: number, p: any) => sum + Number(p.amount ?? 0), 0);
 
   const segments: Array<{ key: Segment; label: string; locked?: boolean }> = [
-    { key: 'rewards', label: 'Rewards' },
-    { key: 'earnings', label: 'Earnings', locked: !canPartner },
+    { key: 'rewards', label: tr('auto.rewards.rewards', 'Rewards') },
+    { key: 'earnings', label: tr('auto.earnings.earnings', 'Earnings'), locked: !canPartner },
   ];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Drawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* The status bar sits on the PAGE colour, not on the navy hero.
+            In light mode the hero's navy made the phone's own clock and
+            battery invisible (founder, on device 2026-09-06). Same rule as
+            the home tab: the phone's bar is always readable. */}
+        <View style={{ height: insets.top, backgroundColor: colors.background }} />
         <LinearGradient
           /*
            * One gradient served both themes, so the hero sat at the same
@@ -236,7 +242,7 @@ export default function WalletScreen() {
            * money screens read as one product.
            */
           colors={isDark ? ['#0A1F38', '#16406E'] : ['#0F2B4C', '#1a3a5c']}
-          style={[styles.hero, { paddingTop: insets.top + 16 }]}
+          style={[styles.hero, { paddingTop: 16 }]}
         >
           <View style={styles.heroTop}>
             <Pressable onPress={() => setDrawerOpen(true)} hitSlop={10}>
@@ -330,7 +336,7 @@ export default function WalletScreen() {
               <Text style={styles.heroLabel}>{tx('auto.wallet.seirsOwesYourStore', 'SEIRS owes your store')}</Text>
               <Text style={styles.heroBig}>{naira(pendingOwed)}</Text>
               <Text style={styles.heroNote}>
-                Paid out so far: {naira(paidOut)} · settled weekly to your business bank account.
+                {tr('auto.wallet.paidOutSoFar', 'Paid out so far:')} {naira(paidOut)} {tr('auto.wallet.settledWeeklyToYourBusiness', '· settled weekly to your business bank account.')}
               </Text>
             </View>
           )}
@@ -354,7 +360,7 @@ export default function WalletScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.teaserTitle, { color: colors.primary }]}>{tx('auto.wallet.earnWithSeirs', 'Earn with SEIRS')}</Text>
                   <Text style={[styles.teaserSub, { color: colors.textSecond }]}>
-                    Partner stores hold packages at their counter and get weekly payouts.
+                    {tr('auto.wallet.partnerStoresHoldPackagesAt', 'Partner stores hold packages at their counter and get weekly payouts.')}
                   </Text>
                 </View>
                 <Icon name="ChevronRight" size={18} color={colors.primary} />
@@ -445,7 +451,7 @@ export default function WalletScreen() {
                 <ActivityIndicator color={colors.accent} />
               ) : history.length === 0 ? (
                 <Text style={[styles.emptyText, { color: colors.textThird, textAlign: 'left' }]}>
-                  Points you earn and spend will be listed here, newest first.
+                  {tr('auto.wallet.pointsYouEarnAndSpend', 'Points you earn and spend will be listed here, newest first.')}
                 </Text>
               ) : (
                 history.slice(0, 6).map((h: any, i: number) => {
@@ -485,9 +491,9 @@ export default function WalletScreen() {
                 uses works on a business booking too.
               */}
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                What your points are for
+                {tr('auto.wallet.whatYourPointsAreFor', 'What your points are for')}
               </Text>
-              {POINT_USES.map((u, i) => {
+              {POINT_USES().map((u, i) => {
                 const ready = points >= u.cost;
                 return (
                   <View key={u.label} style={[styles.ledgerRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
@@ -505,8 +511,7 @@ export default function WalletScreen() {
                 );
               })}
               <Text style={[styles.rowSub, { color: colors.textSecond, marginTop: 10, lineHeight: 18 }]}>
-                Open a booking you have not paid for yet and redeem there. The reward comes off
-                that booking before you pay, and the points leave your balance at the same moment.
+                {tr('auto.wallet.openABookingYouHave', 'Open a booking you have not paid for yet and redeem there. The reward comes off that booking before you pay, and the points leave your balance at the same moment.')}
               </Text>
             </View>
           </>
@@ -519,8 +524,7 @@ export default function WalletScreen() {
               <View style={styles.empty}>
                 <Icon name="Banknote" size={32} color={colors.textThird} />
                 <Text style={[styles.emptyText, { color: colors.textThird }]}>
-                  No payouts yet. Packages handled at your counter earn a fee;
-                  fees settle weekly to your business bank account.
+                  {tr('auto.wallet.noPayoutsYetPackagesHandled', 'No payouts yet. Packages handled at your counter earn a fee; fees settle weekly to your business bank account.')}
                 </Text>
               </View>
             ) : (

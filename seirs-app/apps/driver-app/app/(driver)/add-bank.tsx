@@ -22,6 +22,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { paymentsApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Payout bank account setup: fully live.
@@ -123,19 +124,19 @@ export default function AddBankScreen() {
       // app. The consequence goes on the row itself, where it cannot be
       // skimmed past (2026-08-25 dialog sweep).
       setSheet({
-        title: 'Replace payout account?',
+        title: tr('auto.addBank.replacePayoutAccount', 'Replace payout account?'),
         message:
           'Your withdrawals will PAUSE until our team reviews and approves this change (up to 3 business days). ' +
           'This protects your earnings if someone else gets into your account.\n\n' +
           `New account: ${selectedBank.name} · ${accountName} · ${accountNumber}`,
         options: [{
-          label: 'Submit for review',
-          sub: 'Withdrawals pause until it is approved',
+          label: tr('auto.vehicle.submitForReview', 'Submit for review'),
+          sub: tr('auto.addBank.withdrawalsPauseUntilItIs', 'Withdrawals pause until it is approved'),
           variant: 'destructive',
           icon: 'shield-checkmark-outline',
           onPress: submitSave,
         }],
-        cancelLabel: 'Keep my current account',
+        cancelLabel: tr('auto.addBank.keepMyCurrentAccount', 'Keep my current account'),
       });
       return;
     }
@@ -162,7 +163,7 @@ export default function AddBankScreen() {
             : `${selectedBank?.name} account ending in ${accountNumber.slice(-4)} is now your payout account.`}
         </Text>
         <Pressable style={[styles.doneBtn, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
-          <Text style={styles.doneBtnText}>Done</Text>
+          <Text style={styles.doneBtnText}>{tr('auto.profile.done', 'Done')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -209,8 +210,7 @@ export default function AddBankScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.currentLabel, { color: theme.warning }]}>{tx('auto.addBank.changeUnderReview', 'Change under review')}</Text>
                 <Text style={[styles.currentValue, { color: theme.text }]}>
-                  {current.pendingBankName ?? 'New bank'} account ending {String(current.pendingBankAccountNumber).slice(-4)}.
-                  Review takes up to 3 business days.
+                  {current.pendingBankName ?? 'New bank'} account ending {String(current.pendingBankAccountNumber).slice(-4)}{tr('auto.addBank.reviewTakesUpTo3', '. Review takes up to 3 business days.')}
                 </Text>
               </View>
             </View>
@@ -218,7 +218,7 @@ export default function AddBankScreen() {
 
           {/* Bank selector */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Bank</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tr('auto.addBank.bank', 'Bank')}</Text>
             <Pressable
               style={[styles.selectBtn, { backgroundColor: theme.surface, borderColor: selectedBank ? theme.primary : theme.border }, Shadows.xs]}
               onPress={() => setBankModalOpen(true)}
@@ -269,7 +269,7 @@ export default function AddBankScreen() {
           <View style={[styles.infoNote, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <Ionicons name="shield-checkmark-outline" size={16} color={theme.textThird} />
             <Text style={[styles.infoText, { color: theme.textSecond }]}>
-              The account name is confirmed directly with the bank. Your details are encrypted and used only for paying you.
+              {tr('auto.addBank.theAccountNameIsConfirmed', 'The account name is confirmed directly with the bank. Your details are encrypted and used only for paying you.')}
               {current?.bankAccountNumber
                 ? ' Replacing your account pauses withdrawals until support approves the change (up to 3 business days). This protects your earnings if someone else gets into your account.'
                 : ''}

@@ -9,6 +9,7 @@ import { useColors } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 type ScanResult = { trackingNumber: string; recipientName: string; status: string };
 
 export default function ScanScreen() {
@@ -70,7 +71,7 @@ export default function ScanScreen() {
       alertDialog(
         'Collection Confirmed',
         `${result.recipientName}'s package has been marked as collected.`,
-        [{ text: 'Scan Another', onPress: reset }, { text: 'Go to Inventory', onPress: () => router.push('/(partner)/inventory' as any) }],
+        [{ text: tr('auto.scan.scanAnother', 'Scan Another'), onPress: reset }, { text: tr('auto.scan.goToInventory', 'Go to Inventory'), onPress: () => router.push('/(partner)/inventory' as any) }],
       );
     } catch (e: any) {
       alertDialog('Error', e.message ?? 'Could not mark as collected.');
@@ -122,7 +123,7 @@ export default function ScanScreen() {
       {loading && (
         <View style={styles.finderWrap}>
           <ActivityIndicator color="#fff" size="large" />
-          <Text style={styles.finderHint}>Looking up package…</Text>
+          <Text style={styles.finderHint}>{tr('auto.scan.lookingUpPackage', 'Looking up package…')}</Text>
         </View>
       )}
 
@@ -152,7 +153,7 @@ export default function ScanScreen() {
             </Text>
           </View>
           <Text style={[styles.resultSub, { color: colors.textSecond }]}>
-            Confirm this customer has presented valid ID and is collecting their package.
+            {tr('auto.scan.confirmThisCustomerHasPresented', 'Confirm this customer has presented valid ID and is collecting their package.')}
           </Text>
           <View style={styles.resultBtns}>
             <Pressable style={[styles.cancelBtn, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={reset}>

@@ -80,7 +80,7 @@ export default function LoginScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.container,
-          { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom },
+          { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xl, paddingBottom: Spacing.xl + insets.bottom },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

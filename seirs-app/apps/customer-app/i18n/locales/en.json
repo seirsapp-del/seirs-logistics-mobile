@@ -1054,7 +1054,21 @@
       "signUp": "Sign Up"
     },
     "onboarding": {
-      "createAnAccount": "Create an Account"
+      "createAnAccount": "Create an Account",
+      "sendRideTravel": "Send, ride, travel.",
+      "parcelsInCityRidesAnd": "Parcels, in-city rides and intercity seats, all in one app.",
+      "carriedByAVerifiedDriver": "Carried by a verified driver.",
+      "documentsParcelsHotFoodOr": "Documents, parcels, hot food or fragile goods, each on the right vehicle.",
+      "seeWhereItIs": "See where it is.",
+      "liveMapTrackingAndA": "Live map tracking, and a proof photo the moment it lands.",
+      "travellingBetweenCities": "Travelling between cities?",
+      "buyASeatWithA": "Buy a seat with a driver already going, and pay for the leg you ride.",
+      "farmLoadsToHouseMoves": "Farm loads to house moves.",
+      "produceBuildingMaterialsAndMachine": "Produce, building materials and machine parts, on a vehicle that fits.",
+      "collectOnYourTime": "Collect on your time.",
+      "dropOffOrPickUp": "Drop off or pick up at a partner store, whenever it suits you.",
+      "iAlreadyHaveAnAccount": "I Already Have an Account",
+      "becomeADriver": "Become a Driver"
     },
     "register": {
       "termsOfService": "Terms of Service",
@@ -1064,16 +1078,31 @@
       "yusuf": "Yusuf",
       "eGIkejaSurulereLekki": "e.g. Ikeja, Surulere, Lekki",
       "15AdeolaOdekuStreetVictoria": "15 Adeola Odeku Street, Victoria Island",
-      "atLeast8Characters": "At least 8 characters"
+      "atLeast8Characters": "At least 8 characters",
+      "home": "Home",
+      "iAgreeToThe": "I agree to the"
     },
     "history": {
       "trackLive": "Track live",
       "rateThisTrip": "Rate this trip",
-      "searchByTrackingNumber": "Search by tracking number…"
+      "searchByTrackingNumber": "Search by tracking number…",
+      "keep": "Keep",
+      "cancelBooking": "Cancel booking",
+      "edit": "Edit"
     },
     "profile": {
       "verified": "Verified",
-      "yourSeirsId": "Your SEIRS ID"
+      "yourSeirsId": "Your SEIRS ID",
+      "saveAsPdf": "Save as PDF",
+      "lettersAndDocumentsFromSeirs": "Letters and documents from SEIRS",
+      "appearance": "Appearance",
+      "followMyPhone": "Follow my phone",
+      "light": "Light",
+      "dark": "Dark",
+      "seirsIdTapForQr": "SEIRS ID · tap for QR",
+      "showThisToADriver": "Show this to a driver or support agent to identify yourself. No personal info is encoded, just your unique account handle.",
+      "copy": "Copy",
+      "done": "Done"
     },
     "wallet": {
       "totalRewards": "Total rewards",
@@ -1088,7 +1117,21 @@
       "redeemPoints": "Redeem points",
       "startEarning": "Start earning",
       "bookADelivery": "Book a delivery",
-      "seirsId": "SEIRS ID"
+      "seirsId": "SEIRS ID",
+      "500OffADelivery": "₦500 off a delivery",
+      "aFreeDelivery": "A free delivery",
+      "firstDelivery": "First delivery",
+      "regular": "Regular",
+      "champion": "Champion",
+      "silverTier": "Silver tier",
+      "goldTier": "Gold tier",
+      "platinumTier": "Platinum tier",
+      "4WeekStreak": "4-week streak",
+      "referralHero": "Referral hero",
+      "ptsThisMonth": "pts this month",
+      "pointsYouEarnAndSpend": "Points you earn and spend will be listed here, newest first.",
+      "bookADeliveryFirstThen": "Book a delivery first, then redeem. The reward comes off that booking before you pay, and the points leave your balance at the same moment.",
+      "bookYourFirstDeliveryTo": "Book your first delivery to unlock achievements and start earning SEIRS Rewards points."
     },
     "id": {
       "readThisOnTheSeirs": "Read this on the SEIRS website",
@@ -1114,20 +1157,32 @@
     "confirmRide": {
       "orderSummary": "Order Summary",
       "pickup": "Pickup",
-      "destination": "Destination"
+      "destination": "Destination",
+      "priceRefreshed": "Price refreshed",
+      "youTookAMomentSo": "You took a moment, so the price was re-checked. Pick your ride again to see the current number.",
+      "aDriverIsMatchedThe": "A driver is matched the moment your payment lands. Your driver greets you by name; chat opens once they accept.",
+      "iAgreeToTheSeirs": "I agree to the SEIRS Terms of Service, including the cancellation policy.",
+      "readThem": "Read them",
+      "nothingIsChargedUntilThe": "Nothing is charged until the payment screen. Cancelling an unpaid booking is free."
     },
     "deleteAccount": {
       "deleteAccount": "Delete Account",
       "permanentAfter30Days": "Permanent after 30 days",
       "whatGetsDeleted": "What gets deleted",
       "whatStays": "What stays",
-      "enterCurrentPassword": "Enter current password"
+      "enterCurrentPassword": "Enter current password",
+      "softDeletedNowSignIn": "Soft-deleted now; sign in within 30 days to cancel. After that, all your data is permanently removed.",
+      "downloadMyDataFirstRecommended": "Download my data first (recommended)",
+      "confirmYourPassword": "CONFIRM YOUR PASSWORD",
+      "deleteMyAccount": "Delete my account"
     },
     "documents": {
       "documents": "Documents",
       "noDocumentsYet": "No documents yet",
       "close": "Close",
-      "back": "Back"
+      "back": "Back",
+      "fromSeirs": "FROM SEIRS",
+      "officialLettersAndDocumentsFrom": "Official letters and documents from SEIRS will appear here."
     },
     "editProfile": {
       "saveChanges": "Save changes",
@@ -1153,12 +1208,20 @@
       "12AdeolaOdekuStreet": "12 Adeola Odeku Street",
       "city": "City",
       "lagos": "Lagos",
-      "state": "State"
+      "state": "State",
+      "giveThisToSupportInstead": "Give this to support instead of your email or name. It identifies you uniquely and privately.",
+      "90DayChangeLimit": "90-day change limit",
+      "30DayChangeLimit": "30-day change limit",
+      "someFieldsHaveChangeLimits": "Some fields have change limits to prevent impersonation and abuse. Every change is logged for your safety. View your history under Profile then Privacy."
     },
     "help": {
       "noResultsFound": "No results found",
       "reportATripIssue": "Report a Trip Issue",
-      "lostItemDriverComplaintOvercharge": "Lost item, driver complaint, overcharge"
+      "lostItemDriverComplaintOvercharge": "Lost item, driver complaint, overcharge",
+      "liveChat": "Live Chat",
+      "6am10pmWatReply": "6am–10pm WAT reply",
+      "callUs": "Call Us",
+      "tryADifferentSearchTerm": "Try a different search term or browse by topic."
     },
     "notifications": {
       "notifications": "Notifications",
@@ -1166,11 +1229,21 @@
       "noNotifications": "No notifications",
       "dismiss": "Dismiss",
       "back": "Back",
-      "clearNotifications": "Clear notifications"
+      "clearNotifications": "Clear notifications",
+      "clearReadOnly": "Clear read only",
+      "clearEverything": "Clear everything",
+      "deliveryUpdatesAndSeirsAnnouncements": "Delivery updates and SEIRS announcements will appear here."
     },
     "packageQr": {
       "packageQr": "Package QR",
-      "sendCode": "Send code"
+      "sendCode": "Send code",
+      "noTrackingCode": "No tracking code",
+      "openThisFromAPackage": "Open this from a package on your trip or tracking screen and the code comes with it.",
+      "packageQr2": "PACKAGE QR",
+      "trackingCode": "TRACKING CODE",
+      "showThisToYourSeirs": "Show this to your SEIRS driver at handover",
+      "screenshotThisAndSendIt": "Screenshot this and send it to whoever is receiving the package. They do not need the SEIRS app: the driver scans it off their screen, or types the code in.",
+      "safeToForwardTheCode": "Safe to forward. The code is all this QR carries: no name, address or phone number travels with it."
     },
     "parcelRequests": {
       "yourTripRequests": "Your trip requests",
@@ -1180,7 +1253,27 @@
       "withdraw": "Withdraw",
       "track": "Track",
       "acceptAndPay": "Accept and pay",
-      "payNow": "Pay now"
+      "payNow": "Pay now",
+      "waitingForTheDriver": "Waiting for the driver",
+      "driverOfferedAnotherSpot": "Driver offered another spot",
+      "agreedPaymentDue": "Agreed, payment due",
+      "driverSaidNo": "Driver said no",
+      "youWithdrewThis": "You withdrew this",
+      "noAnswerInTime": "No answer in time",
+      "driverSaidYesPayTo": "Driver said yes, pay to hold",
+      "seatHeld": "Seat held",
+      "onBoard": "On board",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "markedAsNoShow": "Marked as no-show",
+      "couldNotWithdraw": "Could not withdraw",
+      "couldNotAccept": "Could not accept",
+      "couldNotStartPayment": "Could not start payment",
+      "findADriverAlreadyGoing": "Find a driver already going your way under Travel Buddy and ask for a seat or for them to carry your parcel. Nothing is charged until they agree.",
+      "thePlateTheVehiclePhoto": "The plate, the vehicle photo and the exact meeting spot are on the booking once paid. Pay to hold the seat.",
+      "whereToMeet": "WHERE TO MEET",
+      "whereYouGetOff": "WHERE YOU GET OFF",
+      "theyCanDropItAt": "They can drop it at"
     },
     "deliveryId": {
       "payment": "Payment",
@@ -1206,14 +1299,32 @@
       "applyCode": "Apply Code"
     },
     "recipientId": {
-      "twoWaysToVerify": "Two ways to verify"
+      "twoWaysToVerify": "Two ways to verify",
+      "codeSent": "Code sent",
+      "couldNotSendCode": "Could not send code",
+      "yourSeirsVerifiedIdIs": "Your SEIRS Verified ID is being provisioned. Try again shortly.",
+      "showThisIdAtAny": "Show this ID at any handoff so the driver or partner staff can verify it's really you.",
+      "readyForCollection": "READY FOR COLLECTION",
+      "loading": "Loading…",
+      "noIncomingPackagesWhenSomething": "No incoming packages. When something is on its way to you, request a verification code from here.",
+      "1PhysicalIdEmailCode": "1. Physical ID + Email Code",
+      "showStaffYourNationalId": "Show staff your National ID, driver's licence, voter card, NIN slip, or passport: plus the 6-digit code we email when you tap above.",
+      "2SeirsIdSpokenName": "2. SEIRS ID + Spoken Name",
+      "showStaffYourQrCode": "Show staff your QR code above, then say your full name. They'll see your registered name and type what you say to confirm a match."
     },
     "referral": {
       "inviteFriendsEarnRewards": "Invite friends, earn Rewards",
       "howItWorks": "How it works",
       "referralHistory": "Referral History",
       "noReferralsYet": "No referrals yet",
-      "pending": "Pending"
+      "pending": "Pending",
+      "seirsRewardsPointsEveryTime": "SEIRS Rewards points every time a friend signs up with your code and completes their first paid delivery.",
+      "signups": "Signups",
+      "bonusesPaid": "Bonuses paid",
+      "shareYourReferralCodeWith": "Share your referral code with friends",
+      "friendSignsUpAndCompletes": "Friend signs up and completes their first delivery",
+      "youBothGetRewarded": "You both get rewarded!",
+      "shareYourCodeWithA": "Share your code with a friend. When they sign up and complete their first delivery, you both start earning points."
     },
     "report": {
       "reportReceived": "Report received",
@@ -1221,7 +1332,11 @@
       "allOrders": "All orders",
       "notAboutOneSpecificDelivery": "Not about one specific delivery",
       "sendReport": "Send report",
-      "includeTimesNamesOrAnything": "Include times, names, or anything that helps us sort it out."
+      "includeTimesNamesOrAnything": "Include times, names, or anything that helps us sort it out.",
+      "supportHasYourReportAnd": "Support has your report and will reply in Messages. You can add more detail there any time.",
+      "whatHappened": "WHAT HAPPENED?",
+      "whichOrderIsThisAbout": "WHICH ORDER IS THIS ABOUT?",
+      "describeTheIssue": "DESCRIBE THE ISSUE"
     },
     "rewards": {
       "yourPoints": "Your points",
@@ -1232,13 +1347,37 @@
       "current": "Current",
       "recentActivity": "Recent activity",
       "noActivityYet": "No activity yet",
-      "howToEarn": "How to earn"
+      "howToEarn": "How to earn",
+      "500InsuranceCover": "₦500 insurance cover",
+      "bookADeliveryFirst": "Book a delivery first",
+      "bookDelivery": "Book delivery",
+      "pickTheDeliveryYouWant": "Pick the delivery you want this reward to apply to.",
+      "redeemed": "Redeemed",
+      "redemptionFailed": "Redemption failed",
+      "pointsExpireInTheNext": "points expire in the next 30 days. Redeem or book a delivery to keep them.",
+      "notAvailableYet": "· Not available yet",
+      "completeADeliveryToStart": "Complete a delivery to start earning points.",
+      "per1000SpentOn": "per ₦1,000 spent on a delivery",
+      "bonusWhenYouPayBy": "bonus when you pay by bank transfer",
+      "perFriendWhoSignsUp": "per friend who signs up and completes a delivery",
+      "forRatingADriver": "for rating a driver",
+      "bonusOnYour5thDelivery": "bonus on your 5th delivery each month",
+      "pointsExpire24MonthsAfter": "Points expire 24 months after they're earned. Tier is based on points earned in the last 12 months."
     },
     "seirsId": {
       "mySeirsId": "My SEIRS ID",
       "howHandoffVerificationWorks": "How handoff verification works",
       "receivingAPackage": "Receiving a package?",
-      "keepThisCodePrivate": "Keep this code private"
+      "keepThisCodePrivate": "Keep this code private",
+      "settingUpYourSeirsId": "Setting up your SEIRS ID",
+      "yourIdShouldBeReady": "Your ID should be ready. If this message stays, signing out and back in usually clears it.",
+      "showThisCodeWhenCollecting": "Show this code when collecting a package from a partner store, or at the door if you don't have a physical ID. It is your SEIRS Verified ID.",
+      "registeredName": "REGISTERED NAME",
+      "partnerStaffOrYourDriver": "Partner staff (or your driver) scans this QR, or types the SEIRS ID shown above.",
+      "theySeeYourRegisteredName": "They see your registered name on their screen.",
+      "sayYourFullNameOut": "Say your full name out loud: they type it to confirm the match.",
+      "theHandoffIsLoggedIn": "The handoff is logged in your delivery audit trail.",
+      "openYourCollectionPassId": "Open your collection pass: ID + email code, or SEIRS ID + typed name."
     },
     "sos": {
       "quickDial": "Quick Dial"
@@ -1264,14 +1403,29 @@
       "dropOff": "Drop-off",
       "gettingItInStairsLift": "Getting it in: stairs, lift, loading bay, gate width?",
       "whenWouldYouLikeIt": "WHEN WOULD YOU LIKE IT MOVED?",
-      "tellUsWhatSuitsYou": "Tell us what suits you and we will say what is possible."
+      "tellUsWhatSuitsYou": "Tell us what suits you and we will say what is possible.",
+      "couldNotSendThat": "Could not send that",
+      "forLoadsOurNormalPricing": "For loads our normal pricing cannot cover: a transformer, a generator, anything that needs lifting hands or special handling. Tell us about it and we will call you and send a full breakdown. Nothing is charged until you accept the quote.",
+      "medicalLoadsAreReviewedCase": "Medical loads are reviewed case by case before we can accept them, and we will tell you either way. We do not promise arrival times.",
+      "weWillTellYouWhat": "We will tell you what is realistic before you accept anything. We do not promise arrival times.",
+      "bySendingThisYouConfirm": "By sending this you confirm the load is legal to move and described honestly. Responsibility for anything illegal or misdeclared rests with whoever booked it.",
+      "nothingIsChargedNowWe": "Nothing is charged now. We will call you, then send a full breakdown."
     },
     "statement": {
       "spendingStatement": "Spending Statement",
-      "runningTotal": "Running total"
+      "runningTotal": "Running total",
+      "thisMonth": "This month",
+      "lastMonth": "Last month",
+      "last2Months": "Last 2 months",
+      "last90Days": "Last 90 days",
+      "spentInThisPeriod": "spent in this period ·",
+      "nothingSettledInThisPeriod": "Nothing settled in this period. Try a wider one.",
+      "tapAnyLineForIts": "Tap any line for its receipt. Every figure covers the period shown above it, never your whole history with SEIRS. Charges that have not settled are not counted here."
     },
     "stories": {
-      "readTheStory": "Read the story"
+      "readTheStory": "Read the story",
+      "storiesOffers": "Stories & Offers",
+      "noStoriesYetNewOffers": "No stories yet. New offers and updates land here."
     },
     "new": {
       "ourSupportTeamIsStanding": "Our support team is standing by",
@@ -1284,7 +1438,21 @@
       "describeWhatHappened": "Describe what happened",
       "sendToSupport": "Send to support",
       "aShortSummaryOfThe": "A short summary of the issue",
-      "includeTrackingCodesTimesOr": "Include tracking codes, times, or amounts when relevant. The more detail, the faster we can help."
+      "includeTrackingCodesTimesOr": "Include tracking codes, times, or amounts when relevant. The more detail, the faster we can help.",
+      "deliveryIssue": "Delivery issue",
+      "packageLateMissingDamagedWrong": "Package late, missing, damaged, wrong address",
+      "billingOrRefund": "Billing or refund",
+      "chargeQuestionsReceiptsRefunds": "Charge questions, receipts, refunds",
+      "aboutADriver": "About a driver",
+      "feedbackComplaintsSafetyConcerns": "Feedback, complaints, safety concerns",
+      "myAccount": "My account",
+      "signInVerificationProfileChanges": "Sign-in, verification, profile changes",
+      "somethingElse": "Something else",
+      "suggestionsFeedbackGeneralQuestions": "Suggestions, feedback, general questions",
+      "howCanWeHelp": ", how can we help?",
+      "whatIsYourQuestionAbout": "What is your question about?",
+      "conversationsArePrivateBetweenYou": "Conversations are private between you and the SEIRS support team.",
+      "relatedDeliveryOptional": "Related delivery (optional)"
     },
     "ticketId": {
       "tapToOpen": "Tap to open"
@@ -1308,7 +1476,50 @@
       "cancel": "Cancel",
       "eGSrsAb12cd34": "e.g. SRS-AB12CD34",
       "newDeliveryAddress": "New delivery address",
-      "startTypingTheAddress": "Start typing the address"
+      "startTypingTheAddress": "Start typing the address",
+      "theDriverHasAcceptedThe": "The driver has accepted. The seat is yours once payment lands.",
+      "weStartFindingADriver": "We start finding a driver the moment payment lands",
+      "yourDriverLeavesAtThe": "Your driver leaves at the declared time",
+      "nobodyIsCarryingItYet": "Nobody is carrying it yet",
+      "pleaseTryAgainInA": "Please try again in a moment.",
+      "returnThisPackage": "Return this package?",
+      "couldNotRequestThat": "Could not request that",
+      "notNow": "Not now",
+      "couldNotPriceAReturn": "Could not price a return",
+      "sentToSupport": "Sent to support",
+      "redirectToThisStore": "Redirect to this store?",
+      "redirect": "Redirect",
+      "redirected": "Redirected",
+      "couldNotRedirect": "Could not redirect",
+      "enterYourTrackingCode": "Enter your tracking code",
+      "noDeliveryFoundWithThat": "No delivery found with that code.",
+      "screenshotItForWhoeverIs": "Screenshot it for whoever is receiving. The driver scans it at handover.",
+      "completePayment": "Complete payment",
+      "checkThePlateBeforeYou": "Check the plate before you get in",
+      "driverLocationUpdatingLive": "Driver location updating live",
+      "seeWhereYourDriverIs": "See where your driver is on Google Maps",
+      "driverIsAtTheDoor": "Driver is at the door: nobody to receive",
+      "chooseWithin5MinutesOr": "Choose within 5 minutes or your booked fallback applies automatically.",
+      "receiverIsComingWait": "Receiver is coming: wait",
+      "leaveWithNeighbour": "Leave with neighbour",
+      "leaveAtGate": "Leave at gate",
+      "sendToPartnerStore": "Send to partner store",
+      "driverNotified": "Driver notified",
+      "yourChoiceWentStraightTo": "Your choice went straight to the driver's chat.",
+      "couldNotSend": "Could not send",
+      "packageWaitingAtAPartner": "Package waiting at a partner store",
+      "nobodyWasAvailableAtThe": "Nobody was available at the door, so your package is safe at a nearby SEIRS partner store. A redirect fee of",
+      "plusAnyStorageDaysApplies": "(plus any storage days) applies. Settle it to reveal the pickup location and collection details.",
+      "sendTheCollectionLinkTo": "Send the collection link to the receiver instead",
+      "toStartTheReturn": "to start the return",
+      "supportCanMoveItPriced": "Support can move it, priced from where your driver is now",
+      "pricedFromWhereItIs": "Priced from where it is now, back to your pickup address",
+      "redirectTheDropOffTo": "Redirect the drop-off to a partner store near the destination.",
+      "enterATrackingCodeAbove": "Enter a tracking code above to see live status and driver location.",
+      "forWhenTheRecipientCannot": "For when the recipient cannot receive the package. Stores are sorted nearest to the delivery address. One redirect per delivery.",
+      "noPartnerStoresAvailableNear": "No partner stores available near the destination right now.",
+      "correctTheDeliveryAddress": "Correct the delivery address",
+      "yourDriverIsAlreadyCarrying": "Your driver is already carrying this package, so support has to approve the change. You will be quoted for the distance from where they are now, and you only pay if it is approved."
     },
     "travelBuddy": {
       "travelBuddy": "Travel Buddy",
@@ -1317,7 +1528,29 @@
       "sendAParcel": "Send a parcel",
       "from": "FROM",
       "whereYouAreLeaving": "Where you are leaving",
-      "whereYouAreGoing": "Where you are going"
+      "whereYouAreGoing": "Where you are going",
+      "locationIsOff": "Location is off",
+      "turnOnLocationForSeirs": "Turn on location for SEIRS, or type the town instead. Both work.",
+      "couldNotFindYou": "Could not find you",
+      "bothCitiesNeeded": "Both cities needed",
+      "whereAreYouLeavingFrom": "Where are you leaving from, and where to?",
+      "searchFailed": "Search failed",
+      "couldNotSetThatAlert": "Could not set that alert",
+      "anyLuggage": "Any luggage?",
+      "aSmallBagRidesFree": "A small bag rides free. Large luggage adds a small fee.",
+      "howManySeats": "How many seats?",
+      "viewRequests": "View requests",
+      "couldNotSendRequest": "Could not send request",
+      "driversAlreadyMakingAnIntercity": "Drivers already making an intercity trip sell their real spare seats. Cheaper than the park, fully identified drivers, and the system never lets a vehicle be overloaded.",
+      "anyDate": "Any date",
+      "popularRoutes": "POPULAR ROUTES",
+      "tapOneToFillThe": "Tap one to fill the boxes, then Find trips. Any other route works too: type it in.",
+      "weWillTellYouWhen": "We will tell you when a driver declares",
+      "alertMeWhenSomeoneDeclares": "Alert me when someone declares this route",
+      "orTry": "OR TRY",
+      "onThisRouteNoneIn": "on this route, none in that window. Try Any time.",
+      "exactSpotOnceTheDriver": "Exact spot once the driver accepts you",
+      "thePlateIsShownOnce": "The plate is shown once the driver accepts you"
     },
     "verifyIdentity": {
       "verifyIdentity": "Verify Identity",
@@ -1330,7 +1563,42 @@
       "underReview": "Under review",
       "pdfAttached": "PDF attached",
       "replace": "Replace",
-      "yyyyMmDd": "YYYY-MM-DD"
+      "yyyyMmDd": "YYYY-MM-DD",
+      "ninSlip": "NIN slip",
+      "nationalIdentificationNumber": "National Identification Number",
+      "driverSLicence": "Driver’s licence",
+      "nigerianLicenceStillInDate": "Nigerian licence, still in date",
+      "internationalPassport": "International passport",
+      "bioDataPageStillIn": "Bio-data page, still in date",
+      "voterSCardPvc": "Voter’s card (PVC)",
+      "permanentVoterSCard": "Permanent Voter’s Card",
+      "loadingYourStatus": "Loading your status…",
+      "youDoNotHaveTo": "You do not have to. SEIRS works fully on just your email.",
+      "verifyingPutsAVerifiedBadge": "Verifying puts a Verified badge on your profile, so the people you send to know who you are. More unlocks are coming.",
+      "takesUpTo3Business": "Takes up to 3 business days.",
+      "fixTheIssueAndRe": "Fix the issue and re-submit below.",
+      "yourVerifiedStatusWasReversed": "Your verified status was reversed by our compliance team.",
+      "youCanReSubmitBelow": "You can re-submit below. Contact support if you believe this was in error.",
+      "verifiedStatusHasBeenPaused": "Verified status has been paused. Submit a current, unexpired ID below to restore it.",
+      "1PickYourId": "1. Pick your ID",
+      "2FrontOfYourId": "2. Front of your ID",
+      "wellLitNoGlareAll": "Well-lit, no glare, all four corners visible.",
+      "frontOfYourId": "Front of your ID",
+      "3BackOfYourId": "3. Back of your ID",
+      "backOfYourId": "Back of your ID",
+      "4SelfieHoldingTheId": "4. Selfie holding the ID next to your face",
+      "yourFaceTheIdBoth": "Your face + the ID both visible. This proves the ID is yours.",
+      "selfieWithYourId": "Selfie with your ID",
+      "5ExpiryDateOptional": "5. Expiry date (optional)",
+      "helpsUsReVerifyYou": "Helps us re-verify you before your ID expires. Leave blank if unsure.",
+      "howDoYouWantTo": "How do you want to add it?",
+      "takeAPhoto": "Take a photo",
+      "chooseFromGallery": "Choose from gallery",
+      "attachAPdf": "Attach a PDF",
+      "aFileYouDownloadedLike": "A file you downloaded, like your NIN slip",
+      "thePeopleYouSendTo": "The people you send to can now see that SEIRS has checked who you are.",
+      "reviewsTakeUpTo3": ". Reviews take up to 3 business days.",
+      "youLlGetANotification": "You’ll get a notification when a decision is made. Meanwhile you can keep using the app normally."
     },
     "NotFound": {
       "screenNotFound": "Screen not found",
@@ -1369,14 +1637,24 @@
     },
     "request": {
       "pickup": "Pickup",
-      "dropoff": "Dropoff"
+      "dropoff": "Dropoff",
+      "discardThisTrip": "Discard this trip?",
+      "yourPickupAndDestinationWill": "Your pickup and destination will be cleared.",
+      "discard": "Discard",
+      "keepEditing": "Keep editing"
     },
     "send": {
-      "pickup": "Pickup"
+      "pickup": "Pickup",
+      "requestSent": "Request sent",
+      "thisOneNeedsAQuote": "This one needs a quote from us",
+      "aLoadLikeThisIs": "A load like this is priced by a person, not automatically, so we do not guess at it. Tell us about it and we will call you with a full breakdown. Nothing is charged until you accept."
     },
     "vehicleSelect": {
       "pickup": "Pickup",
-      "dropoff": "Dropoff"
+      "dropoff": "Dropoff",
+      "travellingWithLuggage": "TRAVELLING WITH LUGGAGE?",
+      "largeLuggageAddsASmall": "Large luggage adds a small fee (already in the prices below) and can't go on an okada.",
+      "weCouldnTPriceThis": "We couldn't price this trip. Tap to try again."
     },
     "MessagesInbox": {
       "openMenu": "Open menu",
@@ -1386,6 +1664,116 @@
       "pickup": "Pickup",
       "dropOff": "Drop-off",
       "driver": "Driver"
+    },
+    "addresses": {
+      "suggestedFromYourTrips": "Suggested from your trips",
+      "syncedAcrossYourSeirsDevices": "Synced across your SEIRS devices. Coordinates saved so the driver has an exact pickup pin."
+    },
+    "changePassword": {
+      "youLlNeedYourCurrent": "You'll need your current password to confirm. Forgot it? Sign out and use the “Forgot password” link instead."
+    },
+    "editBookingDetail": {
+      "noLuggage": "No luggage",
+      "justYou": "Just you",
+      "smallBag": "Small bag",
+      "ridesFree": "Rides free",
+      "large": "Large",
+      "addsAFee": "Adds a fee",
+      "nothingHasBeenPaidYet": "Nothing has been paid yet, so this can still change. We work the price out again when you save.",
+      "theseAreTheDriverS": "These are the driver's own stops, so the fare changes with the leg you pick. Agree the exact spot with them in chat.",
+      "thisTripRunsStraightThrough": "This trip runs straight through with no stops in between, so there is no other leg to ride. Cancel and search again to travel a different route."
+    },
+    "paymentDetail": {
+      "500Off": "₦500 off",
+      "comesOffThisBooking": "Comes off this booking.",
+      "freeDelivery": "Free delivery",
+      "coversThisBookingUpTo": "Covers this booking up to the reward cap.",
+      "back": "← Back",
+      "thisBookingIsAlreadyPaid": "This booking is already paid. Nothing more to do here.",
+      "youWillBeTakenTo": "You will be taken to our secure checkout to pay by card, bank transfer, USSD and more. Your bank confirms it with a one-time code, and any processing cost is shown there before you pay. Come back to the app afterwards and we confirm it automatically.",
+      "couldNotLoadTheBooking": "Could not load the booking details. The amount still comes from the booking when you pay.",
+      "yourPaymentIsHeldBy": "Your payment is held by SEIRS and only released to the driver after delivery is confirmed. If the delivery cannot be completed, refunds follow the Terms of Service: work already done, like distance covered, can be deducted.",
+      "verifyingYourPayment": "Verifying your payment..."
+    },
+    "receiptDetail": {
+      "receiptNotAvailableTheTrip": "Receipt not available. The trip may not be completed yet.",
+      "baseFare": "Base fare",
+      "distanceFee": "Distance fee",
+      "timeFee": "Time fee",
+      "serviceFee": "Service fee"
+    },
+    "specialRequestDetail": {
+      "weHaveIt": "We have it",
+      "someoneWillReadThisAnd": "Someone will read this and call you. Nothing is charged yet.",
+      "beingWorkedOut": "Being worked out",
+      "weArePricingTheVehicle": "We are pricing the vehicle, the hands and the handling. We may ring you with questions.",
+      "yourQuoteIsReady": "Your quote is ready",
+      "everyLineIsBelowAccept": "Every line is below. Accept it and we will assign a named driver and vehicle before you pay.",
+      "accepted": "Accepted",
+      "weAreAssigningTheDriver": "We are assigning the driver and vehicle now.",
+      "driverAssigned": "Driver assigned",
+      "yourDriverAndVehicleAre": "Your driver and vehicle are set. Payment comes next.",
+      "paid": "Paid",
+      "thisIsNowANormal": "This is now a normal booking and you can track it like any other.",
+      "onItsWay": "On its way",
+      "trackItFromYourBookings": "Track it from your bookings.",
+      "weCannotTakeThisOne": "We cannot take this one",
+      "theReasonIsBelowIf": "The reason is below. If something changes, send it again.",
+      "withASeniorColleague": "With a senior colleague",
+      "someoneMoreSeniorIsLooking": "Someone more senior is looking at it. This usually means we want to get it right rather than quickly.",
+      "theQuoteRanOut": "The quote ran out",
+      "dieselAndHaulageMoveSo": "Diesel and haulage move, so quotes do not last forever. Ask us for a fresh one.",
+      "youCancelledThis": "You cancelled this",
+      "nothingWasCharged": "Nothing was charged.",
+      "acceptThisQuote": "Accept this quote?",
+      "accept": "Accept",
+      "notYet": "Not yet",
+      "cancelThisRequest": "Cancel this request?",
+      "nothingHasBeenChargedSo": "Nothing has been charged, so this costs you nothing. You can always send it again.",
+      "cancelIt": "Cancel it",
+      "couldNotCancel": "Could not cancel",
+      "keepIt": "Keep it",
+      "whatYouSentUs": "WHAT YOU SENT US"
+    },
+    "tripDetail": {
+      "waitingForPayment": "Waiting for payment",
+      "weMatchADriverThe": "We match a driver the moment this is paid. Nothing has been charged yet.",
+      "somethingWrongEditThisBooking": "Something wrong? Edit this booking",
+      "nobodyAvailableToReceive": "Nobody available to receive",
+      "theDriverIsAtThe": "The driver is at the drop-off and cannot hand the package over. If we do not hear from you it will follow your booked fallback.",
+      "waitingAtAPartnerStore": "Waiting at a partner store",
+      "nobodyWasAvailableSoThis": "Nobody was available, so this is being kept safe at a SEIRS partner store.",
+      "settlesItAndRevealsThe": "settles it and reveals the pickup location.",
+      "sendTheCollectionLinkTo": "Send the collection link to the recipient",
+      "needThisPackageBack": "Need this package back?",
+      "whatYouSent": "WHAT YOU SENT",
+      "proofOfDelivery": "PROOF OF DELIVERY",
+      "send": "Send",
+      "sendAgain": "Send again",
+      "sameRoutePricedFresh": "Same route, priced fresh",
+      "liveStatusDriverPositionAnd": "Live status, driver position and updates"
+    },
+    "notFound": {
+      "notFound": "Not Found"
+    },
+    "addresspicker": {
+      "openSettings": "Open Settings"
+    },
+    "messagesinbox": {
+      "seirsSupport": "SEIRS Support"
+    },
+    "deletionpendingbanner": {
+      "keepDeleting": "Keep deleting",
+      "cancelDeletion": "Cancel deletion",
+      "accountDeletionPending": "Account deletion pending",
+      "yourAccountWillBePermanently": "Your account will be permanently deleted on"
+    },
+    "deliverytrackmap": {
+      "noMapForThisDelivery": "No map for this delivery yet",
+      "live": "Live"
+    },
+    "statepicker": {
+      "noStateMatches": "No state matches “"
     }
   }
 }

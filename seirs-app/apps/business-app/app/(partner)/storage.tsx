@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §4.10: partner sees overstayed packages with accruing storage
 // fees. Packages enter the list once they cross 24hr in-store. Tier_1
@@ -33,14 +34,14 @@ interface Overstay {
   tier:                  'free' | 'tier_1' | 'tier_2' | 'return_eligible';
 }
 
-const TIER_META: Record<string, { label: string; color: string; sub: string }> = {
-  tier_1:           { label: '24-48 hrs',  color: '#D97706', sub: '₦200/day accruing' },
-  tier_2:           { label: '48-72 hrs',  color: '#EA580C', sub: '₦200/day + return imminent' },
-  return_eligible:  { label: '>72 hrs',    color: '#DC2626', sub: 'Return triggered' },
-};
+const TIER_META = (): Record<string, { label: string; color: string; sub: string }> => ({
+  tier_1:           { label: tr('auto.storage.2448Hrs', '24-48 hrs'),  color: '#D97706', sub: tr('auto.storage.200DayAccruing', '₦200/day accruing') },
+  tier_2:           { label: tr('auto.storage.4872Hrs', '48-72 hrs'),  color: '#EA580C', sub: tr('auto.storage.200DayReturnImminent', '₦200/day + return imminent') },
+  return_eligible:  { label: tr('auto.storage.72Hrs', '>72 hrs'),    color: '#DC2626', sub: tr('auto.storage.returnTriggered', 'Return triggered') },
+});
 
-const TABS: Array<{ key: TierKey; label: string }> = [
-  { key: 'all',             label: 'All' },
+const TABS = (): Array<{ key: TierKey; label: string }> => [
+  { key: 'all',             label: tr('auto.storage.all', 'All') },
   { key: 'tier_1',          label: '24-48h' },
   { key: 'tier_2',          label: '48-72h' },
   { key: 'return_eligible', label: '>72h' },
@@ -95,15 +96,15 @@ export default function PartnerStorageScreen() {
       </View>
 
       <View style={styles.summary}>
-        <Text style={styles.summaryLabel}>OVERSTAY FEES THIS PERIOD</Text>
+        <Text style={styles.summaryLabel}>{tr('auto.storage.overstayFeesThisPeriod', 'OVERSTAY FEES THIS PERIOD')}</Text>
         <Text style={styles.summaryAmount}>{naira(totalAccrued)}</Text>
         <Text style={styles.summarySub}>
-          Across {items.length} package{items.length === 1 ? '' : 's'} that have crossed the 24-hour free window.
+          Across {items.length} package{items.length === 1 ? '' : 's'} {tr('auto.storage.thatHaveCrossedThe24', 'that have crossed the 24-hour free window.')}
         </Text>
       </View>
 
       <View style={styles.tabRow}>
-        {TABS.map(t => {
+        {TABS().map(t => {
           const count = t.key === 'all'
             ? items.length
             : items.filter(i => i.tier === t.key).length;
@@ -148,7 +149,7 @@ export default function PartnerStorageScreen() {
         </View>
       ) : (
         filtered.map(item => {
-          const meta = TIER_META[item.tier] ?? { label: item.tier, color: '#9CA3AF', sub: '' };
+          const meta = TIER_META()[item.tier] ?? { label: item.tier, color: '#9CA3AF', sub: '' };
           return (
             <View key={item.id} style={[styles.itemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.itemTop}>
@@ -166,7 +167,7 @@ export default function PartnerStorageScreen() {
 
               <View style={[styles.itemMid, { backgroundColor: colors.surfaceSecond }]}>
                 <View style={styles.midItem}>
-                  <Text style={[styles.midLabel, { color: colors.textSecond }]}>HOURS IN STORE</Text>
+                  <Text style={[styles.midLabel, { color: colors.textSecond }]}>{tr('auto.storage.hoursInStore', 'HOURS IN STORE')}</Text>
                   <Text style={[styles.midValue, { color: colors.text }]}>{Math.floor(item.hoursInStore)}h</Text>
                 </View>
                 <View style={[styles.midDivider, { backgroundColor: colors.border }]} />
@@ -176,7 +177,7 @@ export default function PartnerStorageScreen() {
                 </View>
                 <View style={[styles.midDivider, { backgroundColor: colors.border }]} />
                 <View style={styles.midItem}>
-                  <Text style={[styles.midLabel, { color: colors.textSecond }]}>FEES ACCRUED</Text>
+                  <Text style={[styles.midLabel, { color: colors.textSecond }]}>{tr('auto.storage.feesAccrued', 'FEES ACCRUED')}</Text>
                   <Text style={[styles.midValue, { color: meta.color }]}>{naira(item.storageFeesAccruedNgn)}</Text>
                 </View>
               </View>
@@ -190,7 +191,7 @@ export default function PartnerStorageScreen() {
       <View style={styles.footnote}>
         <Icon name="Info" size={12} color={colors.textThird} />
         <Text style={[styles.footnoteText, { color: colors.textThird }]}>
-          Storage fees accrue daily at 1 AM via automated job. Sender is billed when collected or returned.
+          {tr('auto.storage.storageFeesAccrueDailyAt', 'Storage fees accrue daily at 1 AM via automated job. Sender is billed when collected or returned.')}
         </Text>
       </View>
     </ScrollView>

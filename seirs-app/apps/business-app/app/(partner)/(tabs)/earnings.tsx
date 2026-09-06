@@ -10,6 +10,7 @@ import { useColors } from '@/context/ThemeContext';
 
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const PERIODS = ['week', 'month'] as const;
 type Period = typeof PERIODS[number];
@@ -100,7 +101,7 @@ export default function EarningsScreen() {
                 {naira(data?.perPackageRate ?? 0)}
               </Text>
               <Text style={[styles.summaryMetaText, { color: colors.textThird }]}>
-                your share, by weight
+                {tr('auto.earnings.yourShareByWeight', 'your share, by weight')}
               </Text>
             </View>
           </View>
@@ -139,7 +140,7 @@ export default function EarningsScreen() {
           >
             <Icon name="Banknote" size={18} color={colors.textSecond} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.destLabel, { color: colors.textSecond }]}>PAID INTO</Text>
+              <Text style={[styles.destLabel, { color: colors.textSecond }]}>{tr('auto.earnings.paidInto', 'PAID INTO')}</Text>
               <Text style={[styles.destValue, { color: colors.text }]}>
                 {(data as any)?.payoutAccountLabel ?? 'Your payout account'}
               </Text>

@@ -17,6 +17,7 @@ import { deliveriesApi , pricingApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // UI presentation for the rate-card package vehicles: keyed by the
 // canonical id calcPackageFare looks up. Keeping this here (not on the
@@ -389,7 +390,7 @@ export default function VehicleSelectScreen() {
           {isRide && (
             <View style={{ marginTop: 10 }}>
               <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.6, color: theme.textThird, marginBottom: 6 }}>
-                TRAVELLING WITH LUGGAGE?
+                {tr('auto.vehicleSelect.travellingWithLuggage', 'TRAVELLING WITH LUGGAGE?')}
               </Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {([['none', 'None'], ['small', 'Small bag'], ['large', 'Large']] as const).map(([k, label]) => (
@@ -415,7 +416,7 @@ export default function VehicleSelectScreen() {
               </View>
               {luggage === 'large' && (
                 <Text style={{ color: theme.textThird, fontSize: FontSize.xs, marginTop: 6 }}>
-                  Large luggage adds a small fee (already in the prices below) and can't go on an okada.
+                  {tr('auto.vehicleSelect.largeLuggageAddsASmall', 'Large luggage adds a small fee (already in the prices below) and can\'t go on an okada.')}
                 </Text>
               )}
             </View>
@@ -428,7 +429,7 @@ export default function VehicleSelectScreen() {
             >
               <Ionicons name="cloud-offline-outline" size={18} color="#B91C1C" />
               <Text style={[styles.warnText, { color: '#991B1B' }]}>
-                We couldn't price this trip. Tap to try again.
+                {tr('auto.vehicleSelect.weCouldnTPriceThis', 'We couldn\'t price this trip. Tap to try again.')}
               </Text>
             </Pressable>
           )}

@@ -47,32 +47,33 @@ import {
   VehicleOwnershipForm, ownershipProblems, EMPTY_OWNERSHIP, type OwnershipValue,
 } from '@/components/VehicleOwnershipForm';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Canonical backend taxonomy, with the names Nigerians actually use.
  * Truck is cargo, never a ride, and the labels say so.
  */
-const VEHICLE_TYPES = [
-  { id: 'bicycle',     label: 'Bicycle',            icon: 'bicycle-outline'   },
-  { id: 'motorcycle',  label: 'Okada (Motorcycle)', icon: 'bicycle'           },
-  { id: 'tricycle',    label: 'Keke (Tricycle)',    icon: 'car-outline'       },
-  { id: 'car',         label: 'Car',                icon: 'car-sport-outline' },
-  { id: 'van',         label: 'Van / Danfo',        icon: 'bus-outline'       },
-  { id: 'truck_small', label: 'Small Truck',        icon: 'cube-outline'      },
-  { id: 'truck_large', label: 'Large Truck',        icon: 'construct-outline' },
+const VEHICLE_TYPES = () => [
+  { id: 'bicycle',     label: tr('auto.driverRegister.bicycle', 'Bicycle'),            icon: 'bicycle-outline'   },
+  { id: 'motorcycle',  label: tr('auto.driverRegister.okadaMotorcycle', 'Okada (Motorcycle)'), icon: 'bicycle'           },
+  { id: 'tricycle',    label: tr('auto.driverRegister.kekeTricycle', 'Keke (Tricycle)'),    icon: 'car-outline'       },
+  { id: 'car',         label: tr('auto.driverRegister.car', 'Car'),                icon: 'car-sport-outline' },
+  { id: 'van',         label: tr('auto.driverRegister.vanDanfo', 'Van / Danfo'),        icon: 'bus-outline'       },
+  { id: 'truck_small', label: tr('auto.driverRegister.smallTruck', 'Small Truck'),        icon: 'cube-outline'      },
+  { id: 'truck_large', label: tr('auto.driverRegister.largeTruck', 'Large Truck'),        icon: 'construct-outline' },
 ];
 
 type PhotoSlot = 'exterior' | 'interior' | 'plate' | 'ownershipProof' | 'insuranceCert';
 
-const VEHICLE_PHOTOS: { key: PhotoSlot; label: string; hint: string }[] = [
-  { key: 'exterior', label: 'Outside',      hint: 'Full side view' },
-  { key: 'interior', label: 'Inside',       hint: 'Seat / cargo area' },
-  { key: 'plate',    label: 'Plate Number', hint: 'Close-up, readable' },
+const VEHICLE_PHOTOS = (): { key: PhotoSlot; label: string; hint: string }[] => [
+  { key: 'exterior', label: tr('auto.vehicle.outside', 'Outside'),      hint: tr('auto.vehicle.fullSideView', 'Full side view') },
+  { key: 'interior', label: tr('auto.vehicle.inside', 'Inside'),       hint: tr('auto.vehicle.seatCargoArea', 'Seat / cargo area') },
+  { key: 'plate',    label: tr('auto.vehicle.plateNumber', 'Plate Number'), hint: tr('auto.vehicle.closeUpReadable', 'Close-up, readable') },
 ];
 
-const PAPERS: { key: PhotoSlot; label: string; hint: string }[] = [
-  { key: 'ownershipProof', label: 'Vehicle ownership papers', hint: "Registration papers, even if they are in the owner's name" },
-  { key: 'insuranceCert',  label: 'Insurance certificate',    hint: 'Must be valid and cover this vehicle' },
+const PAPERS = (): { key: PhotoSlot; label: string; hint: string }[] => [
+  { key: 'ownershipProof', label: tr('auto.vehicle.vehicleOwnershipPapers', 'Vehicle ownership papers'), hint: tr('auto.vehicle.registrationPapersEvenIfThey', 'Registration papers, even if they are in the owner\'s name') },
+  { key: 'insuranceCert',  label: tr('auto.vehicle.insuranceCertificate', 'Insurance certificate'),    hint: tr('auto.vehicle.mustBeValidAndCover', 'Must be valid and cover this vehicle') },
 ];
 
 const EMPTY_PHOTOS: Record<PhotoSlot, string | null> = {
@@ -159,16 +160,16 @@ export default function VehicleScreen() {
   // ── Photos ────────────────────────────────────────────────────────────
   const choosePhoto = (slot: PhotoSlot, label: string) => setSheet({
     title: label,
-    message: 'How do you want to add it?',
+    message: tr('auto.vehicle.howDoYouWantTo', 'How do you want to add it?'),
     options: [
-      { label: 'Take a photo',        variant: 'primary', icon: 'camera-outline', onPress: () => grab(slot, 'camera') },
-      { label: 'Choose from gallery', icon: 'images-outline',                     onPress: () => grab(slot, 'library') },
+      { label: tr('auto.storeHandoff.takeAPhoto', 'Take a photo'),        variant: 'primary', icon: 'camera-outline', onPress: () => grab(slot, 'camera') },
+      { label: tr('auto.storeHandoff.chooseFromGallery', 'Choose from gallery'), icon: 'images-outline',                     onPress: () => grab(slot, 'library') },
       // Only where a PDF makes sense, and only on a build that can honour
       // it, so nobody taps a row that ends in an apology.
       ...(PDF_SLOTS.has(slot) && canAttachFiles()
         ? [{
-            label: 'Attach a PDF',
-            sub: 'A file from your email or your insurer',
+            label: tr('auto.vehicle.attachAPdf', 'Attach a PDF'),
+            sub: tr('auto.vehicle.aFileFromYourEmail', 'A file from your email or your insurer'),
             icon: 'document-text-outline' as const,
             onPress: () => grab(slot, 'document'),
           }]
@@ -216,7 +217,7 @@ export default function VehicleScreen() {
     const out: string[] = [];
     if (!type) out.push('Which kind of vehicle it is.');
     if (!plate.trim() && type !== 'bicycle') out.push('The plate number.');
-    const missingPhotos = VEHICLE_PHOTOS.filter(p => !photos[p.key]);
+    const missingPhotos = VEHICLE_PHOTOS().filter(p => !photos[p.key]);
     if (missingPhotos.length) {
       out.push(`Photo of the ${missingPhotos.map(p => p.label.toLowerCase()).join(', ')}.`);
     }
@@ -245,23 +246,23 @@ export default function VehicleScreen() {
    * dispatch, and pretending otherwise is what produces the one-star.
    */
   const confirmSubmit = () => setSheet({
-    title: 'Do you still have your current vehicle?',
-    message: 'It changes what we do while your new one is being reviewed, so it is worth getting right.',
+    title: tr('auto.vehicle.doYouStillHaveYour', 'Do you still have your current vehicle?'),
+    message: tr('auto.vehicle.itChangesWhatWeDo', 'It changes what we do while your new one is being reviewed, so it is worth getting right.'),
     options: [
       {
-        label: 'Yes, I can still ride it',
+        label: tr('auto.vehicle.yesICanStillRide', 'Yes, I can still ride it'),
         variant: 'primary',
         icon: 'checkmark-circle-outline',
         onPress: () => doSubmit(true),
       },
       {
-        label: 'No, it has gone',
+        label: tr('auto.vehicle.noItHasGone', 'No, it has gone'),
         variant: 'default',
         icon: 'close-circle-outline',
         onPress: () => doSubmit(false),
       },
     ],
-    cancelLabel: 'Not yet',
+    cancelLabel: tr('auto.vehicle.notYet', 'Not yet'),
   });
 
   const doSubmit = async (currentVehicleUsable: boolean) => {
@@ -297,10 +298,10 @@ export default function VehicleScreen() {
       setPending(res.change);
       setPhotos(EMPTY_PHOTOS);
       setSheet({
-        title: 'Sent for review',
+        title: tr('auto.vehicle.sentForReview', 'Sent for review'),
         message: res.message
           || 'Our team has it. You will hear back through your support messages. Keep riding your current vehicle in the meantime.',
-        options: [{ label: 'Got it', variant: 'primary' }],
+        options: [{ label: tr('auto.active.gotIt', 'Got it'), variant: 'primary' }],
         cancelLabel: null,
       });
     } catch (e: any) {
@@ -311,12 +312,12 @@ export default function VehicleScreen() {
   };
 
   const confirmWithdraw = () => setSheet({
-    title: 'Withdraw this request?',
-    message: 'It stops the review. Nothing about your current vehicle changes, and you can submit again whenever you are ready.',
+    title: tr('auto.vehicle.withdrawThisRequest', 'Withdraw this request?'),
+    message: tr('auto.vehicle.itStopsTheReviewNothing', 'It stops the review. Nothing about your current vehicle changes, and you can submit again whenever you are ready.'),
     options: [
-      { label: 'Withdraw it', variant: 'destructive', icon: 'close-circle-outline', onPress: doWithdraw },
+      { label: tr('auto.vehicle.withdrawIt', 'Withdraw it'), variant: 'destructive', icon: 'close-circle-outline', onPress: doWithdraw },
     ],
-    cancelLabel: 'Keep it under review',
+    cancelLabel: tr('auto.vehicle.keepItUnderReview', 'Keep it under review'),
   });
 
   const doWithdraw = async () => {
@@ -334,7 +335,7 @@ export default function VehicleScreen() {
   };
 
   const liveTitle = [record?.make, record?.model, record?.year].filter(Boolean).join(' ')
-    || VEHICLE_TYPES.find(v => v.id === record?.vehicleType)?.label
+    || VEHICLE_TYPES().find(v => v.id === record?.vehicleType)?.label
     || 'Vehicle on file';
   const liveSub = [record?.color, record?.vehiclePlate].filter(Boolean).join(' · ');
   /**
@@ -348,7 +349,7 @@ export default function VehicleScreen() {
   /** The documents to redo, in the order the form asks for them. */
   const faultedSlots: PhotoSlot[] = (lastDecision?.rejectedItems ?? [])
     .filter((s): s is PhotoSlot => s in EMPTY_PHOTOS);
-  const faultedLabels = [...VEHICLE_PHOTOS, ...PAPERS]
+  const faultedLabels = [...VEHICLE_PHOTOS(), ...PAPERS()]
     .filter(p => faultedSlots.includes(p.key))
     .map(p => p.label.toLowerCase());
 
@@ -384,7 +385,7 @@ export default function VehicleScreen() {
                 <Ionicons name="car-sport-outline" size={32} color={theme.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.liveLabel, { color: theme.textThird }]}>WHAT YOU RIDE TODAY</Text>
+                <Text style={[styles.liveLabel, { color: theme.textThird }]}>{tr('auto.vehicle.whatYouRideToday', 'WHAT YOU RIDE TODAY')}</Text>
                 <Text style={[styles.liveTitle, { color: theme.text }]}>{liveTitle}</Text>
                 {!!liveSub && <Text style={[styles.liveSub, { color: theme.textSecond }]}>{liveSub}</Text>}
                 {record?.ownership?.declared && record.ownership.ownership === 'third_party' && (
@@ -418,8 +419,7 @@ export default function VehicleScreen() {
                   <Text style={[styles.pendingTitle, { color: theme.warning }]}>{tx('auto.vehicle.changeUnderReview', 'Change under review')}</Text>
                 </View>
                 <Text style={[styles.pendingText, { color: theme.textSecond }]}>
-                  Our team has your submission. You keep working with your current vehicle
-                  until it is approved, and you will hear back through your support messages.
+                  {tr('auto.vehicle.ourTeamHasYourSubmission', 'Our team has your submission. You keep working with your current vehicle until it is approved, and you will hear back through your support messages.')}
                 </Text>
                 <View style={[styles.pendingRow, { borderTopColor: theme.border }]}>
                   <Text style={[styles.pendingKey, { color: theme.textThird }]}>{tx('auto.vehicle.submitted', 'Submitted')}</Text>
@@ -431,7 +431,7 @@ export default function VehicleScreen() {
                   <Text style={[styles.pendingKey, { color: theme.textThird }]}>{tx('auto.vehicle.vehicle', 'Vehicle')}</Text>
                   <Text style={[styles.pendingVal, { color: theme.text }]}>
                     {[
-                      VEHICLE_TYPES.find(v => v.id === pending.vehicleType)?.label ?? pending.vehicleType,
+                      VEHICLE_TYPES().find(v => v.id === pending.vehicleType)?.label ?? pending.vehicleType,
                       pending.vehiclePlate,
                     ].filter(Boolean).join(' · ')}
                   </Text>
@@ -517,8 +517,7 @@ export default function VehicleScreen() {
                 <View style={[styles.note, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                   <Ionicons name="shield-checkmark-outline" size={16} color={theme.textThird} />
                   <Text style={[styles.noteText, { color: theme.textSecond }]}>
-                    Same proof you gave for the vehicle at sign-up, nothing about you personally.
-                    Your ID, licence and selfie stay as they are.
+                    {tr('auto.vehicle.sameProofYouGaveFor', 'Same proof you gave for the vehicle at sign-up, nothing about you personally. Your ID, licence and selfie stay as they are.')}
                   </Text>
                 </View>
 
@@ -532,7 +531,7 @@ export default function VehicleScreen() {
                 <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                   <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.vehicle.vehicleType', 'Vehicle type')}</Text>
                   <View style={styles.typeGrid}>
-                    {VEHICLE_TYPES.map(t => {
+                    {VEHICLE_TYPES().map(t => {
                       const active = type === t.id;
                       return (
                         <Pressable
@@ -552,8 +551,7 @@ export default function VehicleScreen() {
                   </View>
                   {type !== '' && record?.vehicleType && type !== record.vehicleType && (
                     <Text style={[styles.typeWarn, { color: theme.warning }]}>
-                      This changes what jobs you are offered and what they pay, which is why an
-                      admin has to approve it.
+                      {tr('auto.vehicle.thisChangesWhatJobsYou', 'This changes what jobs you are offered and what they pay, which is why an admin has to approve it.')}
                     </Text>
                   )}
                 </View>
@@ -562,11 +560,11 @@ export default function VehicleScreen() {
                 <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                   <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.vehicle.vehicleInformation', 'Vehicle information')}</Text>
                   {([
-                    { label: 'Plate number', value: plate,  set: setPlate,  placeholder: 'e.g. LND 423 GH', cap: 'characters' as const },
-                    { label: 'Make',         value: make,   set: setMake,   placeholder: 'e.g. Bajaj',      cap: 'words' as const },
-                    { label: 'Model',        value: model,  set: setModel,  placeholder: 'e.g. Boxer 100',  cap: 'words' as const },
-                    { label: 'Year',         value: year,   set: setYear,   placeholder: 'e.g. 2022',       cap: 'none' as const, numeric: true },
-                    { label: 'Colour',       value: color,  set: setColor,  placeholder: 'e.g. Red',        cap: 'words' as const },
+                    { label: tr('auto.vehicle.plateNumber2', 'Plate number'), value: plate,  set: setPlate,  placeholder: tr('auto.vehicle.eGLnd423Gh', 'e.g. LND 423 GH'), cap: 'characters' as const },
+                    { label: tr('auto.vehicle.make', 'Make'),         value: make,   set: setMake,   placeholder: tr('auto.vehicle.eGBajaj', 'e.g. Bajaj'),      cap: 'words' as const },
+                    { label: tr('auto.vehicle.model', 'Model'),        value: model,  set: setModel,  placeholder: tr('auto.vehicle.eGBoxer100', 'e.g. Boxer 100'),  cap: 'words' as const },
+                    { label: tr('auto.vehicle.year', 'Year'),         value: year,   set: setYear,   placeholder: 'e.g. 2022',       cap: 'none' as const, numeric: true },
+                    { label: tr('auto.vehicle.colour', 'Colour'),       value: color,  set: setColor,  placeholder: tr('auto.vehicle.eGRed', 'e.g. Red'),        cap: 'words' as const },
                   ]).map(f => (
                     <View key={f.label} style={styles.fieldGroup}>
                       <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{f.label}</Text>
@@ -587,10 +585,10 @@ export default function VehicleScreen() {
                 <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                   <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.vehicle.photosOfTheVehicle', 'Photos of the vehicle')}</Text>
                   <Text style={[styles.cardHint, { color: theme.textSecond }]}>
-                    Fresh photos of the vehicle you are registering now, not the old one.
+                    {tr('auto.vehicle.freshPhotosOfTheVehicle', 'Fresh photos of the vehicle you are registering now, not the old one.')}
                   </Text>
                   <View style={styles.photoRow}>
-                    {VEHICLE_PHOTOS.map(slot => (
+                    {VEHICLE_PHOTOS().map(slot => (
                       <DocUploadTile
                         key={slot.key}
                         tall
@@ -608,7 +606,7 @@ export default function VehicleScreen() {
                 {/* Papers */}
                 <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                   <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.vehicle.papers', 'Papers')}</Text>
-                  {PAPERS.map(p => (
+                  {PAPERS().map(p => (
                     <View key={p.key} style={{ gap: 6 }}>
                       <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{p.label}</Text>
                       <Text style={[styles.cardHint, { color: theme.textThird }]}>{p.hint}</Text>
@@ -638,7 +636,7 @@ export default function VehicleScreen() {
                     one reading a form with no story attached. */}
                 <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                   <Text style={[styles.cardTitle, { color: theme.text }]}>
-                    Why are you changing? <Text style={{ color: theme.textThird, fontWeight: FontWeight.medium as any }}>(optional)</Text>
+                    {tr('auto.vehicle.whyAreYouChanging', 'Why are you changing?')} <Text style={{ color: theme.textThird, fontWeight: FontWeight.medium as any }}>{tr('auto.driverRegister.optional', '(optional)')}</Text>
                   </Text>
                   <TextInput
                     style={[styles.reasonInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}

@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows, Palette } from 
 import { authApi } from '@/services/api';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 export default function ForgotPasswordScreen() {
   const router      = useRouter();
@@ -66,7 +67,7 @@ export default function ForgotPasswordScreen() {
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xxl, paddingBottom: Spacing.xl + insets.bottom }]} showsVerticalScrollIndicator={false}>
           {/* Holds the space the back arrow occupies on the form state.
               This screen does not need an arrow (the full-width "Back to
               Sign In" button is right there), but without reserving its
@@ -97,8 +98,7 @@ export default function ForgotPasswordScreen() {
             </View>
             <Text style={[styles.sentTitle, { color: theme.text }]}>{tx('auto.forgotPassword.checkYourInbox', 'Check your inbox')}</Text>
             <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
-              If an account exists for <Text style={{ fontWeight: FontWeight.semibold, color: theme.text }}>{email.trim().toLowerCase()}</Text>,
-              we sent a reset link. It expires in 15 minutes. Check spam if you do not see it.
+              {tr('auto.forgotPassword.ifAnAccountExistsFor', 'If an account exists for')} <Text style={{ fontWeight: FontWeight.semibold, color: theme.text }}>{email.trim().toLowerCase()}</Text>{tr('auto.forgotPassword.weSentAResetLink', ', we sent a reset link. It expires in 15 minutes. Check spam if you do not see it.')}
             </Text>
           </View>
           <Pressable
@@ -123,7 +123,7 @@ export default function ForgotPasswordScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xxl, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -143,7 +143,7 @@ export default function ForgotPasswordScreen() {
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>{tx('auto.forgotPassword.forgotPassword', 'Forgot password?')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            Enter your email and we'll send you a link to reset your password.
+            {tr('auto.forgotPassword.enterYourEmailAndWe', 'Enter your email and we\'ll send you a link to reset your password.')}
           </Text>
         </View>
 

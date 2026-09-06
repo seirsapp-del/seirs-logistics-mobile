@@ -26,6 +26,7 @@ import { useSeirsDialog } from '@/components/SeirsDialog';
 import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type Req = {
   id: string;
@@ -44,14 +45,14 @@ type Req = {
 };
 
 /** Plain words for each state, from the sender's side of it. */
-const STATE_COPY: Record<string, { label: string; tone: 'wait' | 'act' | 'done' | 'dead' }> = {
-  requested: { label: 'Waiting for the driver',      tone: 'wait' },
-  countered: { label: 'Driver offered another spot', tone: 'act'  },
-  accepted:  { label: 'Agreed, payment due',         tone: 'done' },
-  declined:  { label: 'Driver said no',              tone: 'dead' },
-  withdrawn: { label: 'You withdrew this',           tone: 'dead' },
-  expired:   { label: 'No answer in time',           tone: 'dead' },
-};
+const STATE_COPY = (): Record<string, { label: string; tone: 'wait' | 'act' | 'done' | 'dead' }> => ({
+  requested: { label: tr('auto.tripRequests.waitingForTheDriver', 'Waiting for the driver'),      tone: 'wait' },
+  countered: { label: tr('auto.tripRequests.driverOfferedAnotherSpot', 'Driver offered another spot'), tone: 'act'  },
+  accepted:  { label: tr('auto.tripRequests.agreedPaymentDue', 'Agreed, payment due'),         tone: 'done' },
+  declined:  { label: tr('auto.tripRequests.driverSaidNo', 'Driver said no'),              tone: 'dead' },
+  withdrawn: { label: tr('auto.tripRequests.youWithdrewThis', 'You withdrew this'),           tone: 'dead' },
+  expired:   { label: tr('auto.tripRequests.noAnswerInTime', 'No answer in time'),           tone: 'dead' },
+});
 
 export default function TripRequestsScreen() {
   const router = useRouter();
@@ -123,7 +124,7 @@ export default function TripRequestsScreen() {
         <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.tripRequests.tripRequests', 'Trip requests')}</Text>
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
-            Loads you have asked drivers to carry
+            {tr('auto.tripRequests.loadsYouHaveAskedDrivers', 'Loads you have asked drivers to carry')}
           </Text>
         </View>
       </View>
@@ -141,14 +142,13 @@ export default function TripRequestsScreen() {
             <Icon name="Truck" size={40} color={theme.textSecond} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.tripRequests.nothingAskedYet', 'Nothing asked yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Find a driver already making your route under Cargo Space and ask
-              them to carry your load. Nothing is charged until they agree.
+              {tr('auto.tripRequests.findADriverAlreadyMaking', 'Find a driver already making your route under Cargo Space and ask them to carry your load. Nothing is charged until they agree.')}
             </Text>
           </View>
         )}
 
         {rows.map((r) => {
-          const meta = STATE_COPY[r.status] ?? { label: r.status, tone: 'wait' as const };
+          const meta = STATE_COPY()[r.status] ?? { label: r.status, tone: 'wait' as const };
           const open = r.status === 'requested' || r.status === 'countered';
           return (
             <View key={r.id} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -182,7 +182,7 @@ export default function TripRequestsScreen() {
               {r.status === 'countered' && (
                 <View style={[styles.counter, { backgroundColor: '#B4530918', borderColor: '#B45309' }]}>
                   <Text style={[styles.counterTitle, { color: '#B45309' }]}>
-                    They can drop it at {r.counterDropAddress}
+                    {tr('auto.tripRequests.theyCanDropItAt', 'They can drop it at')} {r.counterDropAddress}
                   </Text>
                   {!!r.counterNote && (
                     <Text style={[styles.counterNote, { color: theme.textSecond }]}>{r.counterNote}</Text>
@@ -200,7 +200,7 @@ export default function TripRequestsScreen() {
 
               {r.status === 'requested' && (
                 <Text style={[styles.fact, { color: theme.textThird }]}>
-                  Nothing is charged while you wait.
+                  {tr('auto.tripRequests.nothingIsChargedWhileYou', 'Nothing is charged while you wait.')}
                 </Text>
               )}
 

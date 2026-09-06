@@ -42,6 +42,7 @@ import { partnerApi, uploadApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /** Matches the server. A reading looser than this is offered for a retry. */
 const ACCURACY_LIMIT_M = 50;
@@ -185,9 +186,9 @@ export default function PartnerMoveScreen() {
       'Cancel this move?',
       'Your shop stays at its current address. You can ask again at any time.',
       [
-        { text: 'Keep it' },
+        { text: tr('auto.specialRequestDetail.keepIt', 'Keep it') },
         {
-          text: 'Cancel move',
+          text: tr('auto.move.cancelMove', 'Cancel move'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -230,13 +231,12 @@ export default function PartnerMoveScreen() {
 
         {/* Where they are now. Never editable here. */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.cardLabel, { color: colors.textSecond }]}>YOUR ADDRESS TODAY</Text>
+          <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.move.yourAddressToday', 'YOUR ADDRESS TODAY')}</Text>
           <Text style={[styles.address, { color: colors.text }]}>
             {data?.currentAddress || 'No address on file'}
           </Text>
           <Text style={[styles.note, { color: colors.textSecond }]}>
-            This is where customers and riders are sent. It only changes once our team has
-            approved your new shop.
+            {tr('auto.move.thisIsWhereCustomersAnd', 'This is where customers and riders are sent. It only changes once our team has approved your new shop.')}
           </Text>
         </View>
 
@@ -244,16 +244,14 @@ export default function PartnerMoveScreen() {
           <>
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.rowBetween}>
-                <Text style={[styles.cardLabel, { color: colors.textSecond }]}>UNDER REVIEW</Text>
+                <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.move.underReview', 'UNDER REVIEW')}</Text>
                 <View style={[styles.pill, { backgroundColor: colors.warning + '22' }]}>
                   <Text style={[styles.pillText, { color: colors.warning }]}>{tx('auto.move.waitingOnUs', 'Waiting on us')}</Text>
                 </View>
               </View>
               <Text style={[styles.address, { color: colors.text }]}>{req.newStoreAddress}</Text>
               <Text style={[styles.note, { color: colors.textSecond }]}>
-                New parcels have been paused until we confirm your new address. Please still
-                hand back anything you are already holding: those customers were told to
-                collect at your current shop.
+                {tr('auto.move.newParcelsHaveBeenPaused', 'New parcels have been paused until we confirm your new address. Please still hand back anything you are already holding: those customers were told to collect at your current shop.')}
               </Text>
             </View>
 
@@ -263,17 +261,15 @@ export default function PartnerMoveScreen() {
                   You are holding {held} {held === 1 ? 'parcel' : 'parcels'}
                 </Text>
                 <Text style={[styles.note, { color: colors.textSecond }]}>
-                  These belong to customers who were told to collect them at your old address.
-                  Do not move them until our team has spoken to you.
+                  {tr('auto.move.theseBelongToCustomersWho', 'These belong to customers who were told to collect them at your old address. Do not move them until our team has spoken to you.')}
                 </Text>
               </View>
             )}
 
             {/* The premises photos, and only those. */}
-            <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>PHOTOS OF THE NEW SHOP</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>{tr('auto.move.photosOfTheNewShop', 'PHOTOS OF THE NEW SHOP')}</Text>
             <Text style={[styles.note, { color: colors.textSecond, marginBottom: 12 }]}>
-              We do not ask for your ID or your CAC certificate again. Those are about you and
-              your business, and neither has changed. Only the building has.
+              {tr('auto.move.weDoNotAskFor', 'We do not ask for your ID or your CAC certificate again. Those are about you and your business, and neither has changed. Only the building has.')}
             </Text>
 
             {(data?.allPremisesDocs ?? []).map((docId: string) => {
@@ -336,9 +332,9 @@ export default function PartnerMoveScreen() {
             )}
 
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.cardLabel, { color: colors.textSecond }]}>YOUR NEW SHOP</Text>
+              <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.move.yourNewShop', 'YOUR NEW SHOP')}</Text>
 
-              <Text style={[styles.label, { color: colors.textSecond }]}>City / LGA</Text>
+              <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.register.cityLga', 'City / LGA')}</Text>
               <TextInput
                 style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                 value={city}
@@ -366,12 +362,12 @@ export default function PartnerMoveScreen() {
 
               {!coords && street.length > 0 && (
                 <Text style={[styles.note, { color: colors.warning }]}>
-                  Pick the street from the suggestions so we can put your shop on the map.
+                  {tr('auto.move.pickTheStreetFromThe', 'Pick the street from the suggestions so we can put your shop on the map.')}
                 </Text>
               )}
 
               <Text style={[styles.label, { color: colors.textSecond, marginTop: 12 }]}>
-                Why are you moving? (optional)
+                {tr('auto.move.whyAreYouMovingOptional', 'Why are you moving? (optional)')}
               </Text>
               <TextInput
                 style={[styles.input, styles.multiline, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
@@ -388,7 +384,7 @@ export default function PartnerMoveScreen() {
               <View style={styles.rowBetween}>
                 <View style={{ flex: 1, paddingRight: 12 }}>
                   <Text style={[styles.docLabel, { color: colors.text }]}>
-                    Can people still reach you at your current shop?
+                    {tr('auto.move.canPeopleStillReachYou', 'Can people still reach you at your current shop?')}
                   </Text>
                   <Text style={[styles.docHint, { color: colors.textSecond }]}>
                     {stillTrading
@@ -406,8 +402,7 @@ export default function PartnerMoveScreen() {
 
               {held > 0 && (
                 <Text style={[styles.note, { color: colors.warning, marginTop: 10 }]}>
-                  You are holding {held} {held === 1 ? 'parcel' : 'parcels'} right now. Whatever you
-                  answer, do not move them: our team will call you about them.
+                  You are holding {held} {held === 1 ? 'parcel' : 'parcels'} {tr('auto.move.rightNowWhateverYouAnswer', 'right now. Whatever you answer, do not move them: our team will call you about them.')}
                 </Text>
               )}
             </View>
@@ -423,8 +418,7 @@ export default function PartnerMoveScreen() {
             </Pressable>
 
             <Text style={[styles.note, { color: colors.textSecond, textAlign: 'center', marginTop: 10 }]}>
-              After you send this we will ask for photos of the new shop. New parcels stop
-              coming to you until the new address is approved, so send the photos quickly.
+              {tr('auto.move.afterYouSendThisWe', 'After you send this we will ask for photos of the new shop. New parcels stop coming to you until the new address is approved, so send the photos quickly.')}
             </Text>
           </>
         )}

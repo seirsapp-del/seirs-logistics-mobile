@@ -25,6 +25,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { userVerificationApi, uploadApi, type IdentityDocType } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Customer identity verification. Optional trust-tier upgrade.
@@ -38,11 +39,11 @@ import { tx } from '@/i18n/tx';
  * about the wait. See policy at project_seirs_identity_policy.
  */
 
-const DOC_OPTIONS: Array<{ value: IdentityDocType; label: string; note: string }> = [
-  { value: 'nin',             label: 'NIN slip',                note: 'National Identification Number' },
-  { value: 'drivers_licence', label: 'Driver’s licence',        note: 'Nigerian licence, still in date' },
-  { value: 'passport',        label: 'International passport',  note: 'Bio-data page, still in date' },
-  { value: 'pvc',             label: 'Voter’s card (PVC)',      note: 'Permanent Voter’s Card' },
+const DOC_OPTIONS = (): Array<{ value: IdentityDocType; label: string; note: string }> => [
+  { value: 'nin',             label: tr('auto.verifyIdentity.ninSlip', 'NIN slip'),                note: tr('auto.verifyIdentity.nationalIdentificationNumber', 'National Identification Number') },
+  { value: 'drivers_licence', label: tr('auto.verifyIdentity.driverSLicence', 'Driver’s licence'),        note: tr('auto.verifyIdentity.nigerianLicenceStillInDate', 'Nigerian licence, still in date') },
+  { value: 'passport',        label: tr('auto.verifyIdentity.internationalPassport', 'International passport'),  note: tr('auto.verifyIdentity.bioDataPageStillIn', 'Bio-data page, still in date') },
+  { value: 'pvc',             label: tr('auto.verifyIdentity.voterSCardPvc', 'Voter’s card (PVC)'),      note: tr('auto.verifyIdentity.permanentVoterSCard', 'Permanent Voter’s Card') },
 ];
 
 
@@ -214,7 +215,7 @@ export default function VerifyIdentityScreen() {
           {loadingStatus ? (
             <View style={{ padding: Spacing.xl, alignItems: 'center' }}>
               <ActivityIndicator color={theme.primary} />
-              <Text style={{ color: theme.textSecond, marginTop: Spacing.sm }}>Loading your status…</Text>
+              <Text style={{ color: theme.textSecond, marginTop: Spacing.sm }}>{tr('auto.verifyIdentity.loadingYourStatus', 'Loading your status…')}</Text>
             </View>
           ) : verified ? (
             <VerifiedCard theme={theme} verifiedAt={status!.verifiedAt!} docType={status!.verifiedDocType} />
@@ -232,16 +233,15 @@ export default function VerifyIdentityScreen() {
                     Asking for a NIN in exchange for things that do not exist
                     is the problem; the tick list was only how it looked. */}
                 <Text style={[styles.benefitsSub, { color: theme.textSecond }]}>
-                  You do not have to. SEIRS works fully on just your email.
+                  {tr('auto.verifyIdentity.youDoNotHaveTo', 'You do not have to. SEIRS works fully on just your email.')}
                 </Text>
                 <Text style={[styles.benefitsSub, { color: theme.textSecond, marginTop: Spacing.sm }]}>
-                  Verifying puts a Verified badge on your profile, so the people you
-                  send to know who you are. More unlocks are coming.
+                  {tr('auto.verifyIdentity.verifyingPutsAVerifiedBadge', 'Verifying puts a Verified badge on your profile, so the people you send to know who you are. More unlocks are coming.')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm }}>
                   <Clock size={13} color={theme.textThird} />
                   <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
-                    Takes up to 3 business days.
+                    {tr('auto.verifyIdentity.takesUpTo3Business', 'Takes up to 3 business days.')}
                   </Text>
                 </View>
               </View>
@@ -255,7 +255,7 @@ export default function VerifyIdentityScreen() {
                   </View>
                   <Text style={{ color: theme.text, fontSize: FontSize.xs, lineHeight: 18 }}>{status.latest.rejectionReason}</Text>
                   <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginTop: 2 }}>
-                    Fix the issue and re-submit below.
+                    {tr('auto.verifyIdentity.fixTheIssueAndRe', 'Fix the issue and re-submit below.')}
                   </Text>
                 </View>
               )}
@@ -271,11 +271,11 @@ export default function VerifyIdentityScreen() {
                     <Text style={{ color: theme.text, fontSize: FontSize.xs, lineHeight: 18 }}>{status.latest.revokedReason}</Text>
                   ) : (
                     <Text style={{ color: theme.text, fontSize: FontSize.xs, lineHeight: 18 }}>
-                      Your verified status was reversed by our compliance team.
+                      {tr('auto.verifyIdentity.yourVerifiedStatusWasReversed', 'Your verified status was reversed by our compliance team.')}
                     </Text>
                   )}
                   <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginTop: 2 }}>
-                    You can re-submit below. Contact support if you believe this was in error.
+                    {tr('auto.verifyIdentity.youCanReSubmitBelow', 'You can re-submit below. Contact support if you believe this was in error.')}
                   </Text>
                 </View>
               )}
@@ -288,15 +288,15 @@ export default function VerifyIdentityScreen() {
                     <Text style={{ color: '#92400E', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>{tx('auto.verifyIdentity.yourIdHasExpired', 'Your ID has expired')}</Text>
                   </View>
                   <Text style={{ color: '#92400E', fontSize: FontSize.xs, lineHeight: 18 }}>
-                    Verified status has been paused. Submit a current, unexpired ID below to restore it.
+                    {tr('auto.verifyIdentity.verifiedStatusHasBeenPaused', 'Verified status has been paused. Submit a current, unexpired ID below to restore it.')}
                   </Text>
                 </View>
               )}
 
               {/* Step 1: pick doc type */}
-              <Text style={[styles.stepLabel, { color: theme.textSecond }]}>1. Pick your ID</Text>
+              <Text style={[styles.stepLabel, { color: theme.textSecond }]}>{tr('auto.verifyIdentity.1PickYourId', '1. Pick your ID')}</Text>
               <View style={{ gap: Spacing.sm }}>
-                {DOC_OPTIONS.map(opt => (
+                {DOC_OPTIONS().map(opt => (
                   <Pressable
                     key={opt.value}
                     onPress={() => setDocType(opt.value)}
@@ -320,38 +320,38 @@ export default function VerifyIdentityScreen() {
               {/* Steps 2, 3, 4: upload photos (unlocked once doc type is picked) */}
               {docType && (
                 <>
-                  <Text style={[styles.stepLabel, { color: theme.textSecond }]}>2. Front of your ID</Text>
+                  <Text style={[styles.stepLabel, { color: theme.textSecond }]}>{tr('auto.verifyIdentity.2FrontOfYourId', '2. Front of your ID')}</Text>
                   <UploadRow
                     theme={theme}
                     url={docUrl}
                     busy={uploadingDoc}
-                    hint="Well-lit, no glare, all four corners visible."
-                    onPress={() => setSheetSlot({ title: 'Front of your ID', setter: setDocUrl, setBusy: setUploadingDoc })}
+                    hint={tr('auto.verifyIdentity.wellLitNoGlareAll', 'Well-lit, no glare, all four corners visible.')}
+                    onPress={() => setSheetSlot({ title: tr('auto.verifyIdentity.frontOfYourId', 'Front of your ID'), setter: setDocUrl, setBusy: setUploadingDoc })}
                   />
 
-                  <Text style={[styles.stepLabel, { color: theme.textSecond }]}>3. Back of your ID</Text>
+                  <Text style={[styles.stepLabel, { color: theme.textSecond }]}>{tr('auto.verifyIdentity.3BackOfYourId', '3. Back of your ID')}</Text>
                   <UploadRow
                     theme={theme}
                     url={docBackUrl}
                     busy={uploadingDocBack}
                     hint={backOfIdHint(docType)}
-                    onPress={() => setSheetSlot({ title: 'Back of your ID', setter: setDocBackUrl, setBusy: setUploadingDocBack })}
+                    onPress={() => setSheetSlot({ title: tr('auto.verifyIdentity.backOfYourId', 'Back of your ID'), setter: setDocBackUrl, setBusy: setUploadingDocBack })}
                   />
 
-                  <Text style={[styles.stepLabel, { color: theme.textSecond }]}>4. Selfie holding the ID next to your face</Text>
+                  <Text style={[styles.stepLabel, { color: theme.textSecond }]}>{tr('auto.verifyIdentity.4SelfieHoldingTheId', '4. Selfie holding the ID next to your face')}</Text>
                   <UploadRow
                     theme={theme}
                     url={selfieUrl}
                     busy={uploadingSelfie}
-                    hint="Your face + the ID both visible. This proves the ID is yours."
-                    onPress={() => setSheetSlot({ title: 'Selfie with your ID', setter: setSelfieUrl, setBusy: setUploadingSelfie })}
+                    hint={tr('auto.verifyIdentity.yourFaceTheIdBoth', 'Your face + the ID both visible. This proves the ID is yours.')}
+                    onPress={() => setSheetSlot({ title: tr('auto.verifyIdentity.selfieWithYourId', 'Selfie with your ID'), setter: setSelfieUrl, setBusy: setUploadingSelfie })}
                   />
 
                   {/* Expiry date: only relevant for docs that actually expire.
                       NIN slip has no expiry, so skip the field entirely. */}
                   {docType !== 'nin' && (
                     <>
-                      <Text style={[styles.stepLabel, { color: theme.textSecond }]}>5. Expiry date (optional)</Text>
+                      <Text style={[styles.stepLabel, { color: theme.textSecond }]}>{tr('auto.verifyIdentity.5ExpiryDateOptional', '5. Expiry date (optional)')}</Text>
                       <TextInput
                         value={docExpiryDate}
                         onChangeText={(v) => { setDocExpiryDate(v); if (expiryError) setExpiryError(null); }}
@@ -375,7 +375,7 @@ export default function VerifyIdentityScreen() {
                         <Text style={{ color: '#DC2626', fontSize: FontSize.xs }}>{expiryError}</Text>
                       ) : (
                         <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, lineHeight: 16 }}>
-                          Helps us re-verify you before your ID expires. Leave blank if unsure.
+                          {tr('auto.verifyIdentity.helpsUsReVerifyYou', 'Helps us re-verify you before your ID expires. Leave blank if unsure.')}
                         </Text>
                       )}
                     </>
@@ -411,16 +411,16 @@ export default function VerifyIdentityScreen() {
         snapHeight="auto"
       >
         <Text style={{ color: theme.textSecond, fontSize: FontSize.sm, marginBottom: Spacing.md }}>
-          How do you want to add it?
+          {tr('auto.verifyIdentity.howDoYouWantTo', 'How do you want to add it?')}
         </Text>
         {([
-          { label: 'Take a photo',        sub: null,                                    Icon: Camera,   source: 'camera'   as const, primary: true  },
-          { label: 'Choose from gallery', sub: null,                                    Icon: Images,   source: 'library'  as const, primary: false },
+          { label: tr('auto.verifyIdentity.takeAPhoto', 'Take a photo'),        sub: null,                                    Icon: Camera,   source: 'camera'   as const, primary: true  },
+          { label: tr('auto.verifyIdentity.chooseFromGallery', 'Choose from gallery'), sub: null,                                    Icon: Images,   source: 'library'  as const, primary: false },
           // Only on a build that carries the native picker, so nobody taps a
           // row that ends in an apology. A NIN slip is a PDF from the NIMC
           // portal, which is why this row exists at all.
           ...(canAttachFiles()
-            ? [{ label: 'Attach a PDF', sub: 'A file you downloaded, like your NIN slip', Icon: FileText, source: 'document' as const, primary: false }]
+            ? [{ label: tr('auto.verifyIdentity.attachAPdf', 'Attach a PDF'), sub: tr('auto.verifyIdentity.aFileYouDownloadedLike', 'A file you downloaded, like your NIN slip'), Icon: FileText, source: 'document' as const, primary: false }]
             : []),
         ]).map(({ label, sub, Icon, source, primary }) => (
           <Pressable
@@ -473,7 +473,7 @@ function VerifiedCard({ theme, verifiedAt, docType }: any) {
         Verified on {new Date(verifiedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })} using your {label}.
       </Text>
       <Text style={{ color: '#14532D', fontSize: FontSize.xs, opacity: 0.7, textAlign: 'center', marginTop: 4 }}>
-        The people you send to can now see that SEIRS has checked who you are.
+        {tr('auto.verifyIdentity.thePeopleYouSendTo', 'The people you send to can now see that SEIRS has checked who you are.')}
       </Text>
     </View>
   );
@@ -488,10 +488,10 @@ function PendingCard({ theme, submittedAt }: any) {
       </View>
       <Text style={{ color: '#92400E', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>{tx('auto.verifyIdentity.underReview', 'Under review')}</Text>
       <Text style={{ color: '#92400E', fontSize: FontSize.sm, textAlign: 'center' }}>
-        Submitted {hoursAgo === 0 ? 'just now' : `${hoursAgo} hour${hoursAgo === 1 ? '' : 's'} ago`}. Reviews take up to 3 business days.
+        Submitted {hoursAgo === 0 ? 'just now' : `${hoursAgo} hour${hoursAgo === 1 ? '' : 's'} ago`}{tr('auto.verifyIdentity.reviewsTakeUpTo3', '. Reviews take up to 3 business days.')}
       </Text>
       <Text style={{ color: '#92400E', fontSize: FontSize.xs, opacity: 0.7, textAlign: 'center', marginTop: 4 }}>
-        You’ll get a notification when a decision is made. Meanwhile you can keep using the app normally.
+        {tr('auto.verifyIdentity.youLlGetANotification', 'You’ll get a notification when a decision is made. Meanwhile you can keep using the app normally.')}
       </Text>
     </View>
   );

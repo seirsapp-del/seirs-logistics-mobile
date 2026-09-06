@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { loyaltyApi } from '@/services/api';
 import { WEB_BASE } from '@/constants/config';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Refer & Earn, for business accounts.
@@ -106,13 +107,12 @@ export default function BusinessReferralScreen() {
           </View>
           <Text style={styles.heroTitle}>{tx('auto.referral.inviteABusinessEarnRewards', 'Invite a business, earn Rewards')}</Text>
           <Text style={styles.heroSub}>
-            You earn 200 SEIRS points every time a business signs up with your code and
-            completes their first paid delivery.
+            {tr('auto.referral.youEarn200SeirsPoints', 'You earn 200 SEIRS points every time a business signs up with your code and completes their first paid delivery.')}
           </Text>
         </LinearGradient>
 
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.label, { color: colors.textThird }]}>YOUR REFERRAL CODE</Text>
+          <Text style={[styles.label, { color: colors.textThird }]}>{tr('auto.referral.yourReferralCode', 'YOUR REFERRAL CODE')}</Text>
           <View style={styles.codeRow}>
             <View style={[styles.codeBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
               <Text style={[styles.code, { color: colors.text }]} numberOfLines={1}>
@@ -134,9 +134,9 @@ export default function BusinessReferralScreen() {
           {/* Colour-coded like the customer app: three grey glyphs said the
               three numbers were the same kind of thing. */}
           {[
-            { icon: 'Users'         as const, value: rows.length, label: 'Signups',       tint: colors.primary },
-            { icon: 'CheckCircle2'  as const, value: paid,        label: 'Bonuses paid',  tint: '#22C55E' },
-            { icon: 'Star'          as const, value: points,      label: 'Points earned', tint: '#FFBE0B' },
+            { icon: 'Users'         as const, value: rows.length, label: tr('auto.referral.signups', 'Signups'),       tint: colors.primary },
+            { icon: 'CheckCircle2'  as const, value: paid,        label: tr('auto.referral.bonusesPaid', 'Bonuses paid'),  tint: '#22C55E' },
+            { icon: 'Star'          as const, value: points,      label: tr('auto.referral.pointsEarned', 'Points earned'), tint: '#FFBE0B' },
           ].map((s) => (
             <View key={s.label} style={styles.stat}>
               <Icon name={s.icon} size={20} color={s.tint} />
@@ -170,8 +170,7 @@ export default function BusinessReferralScreen() {
             <Icon name="Users" size={28} color={colors.textThird} />
             <Text style={[styles.cardTitle, { color: colors.text }]}>{tx('auto.referral.noReferralsYet', 'No referrals yet')}</Text>
             <Text style={[styles.emptySub, { color: colors.textSecond }]}>
-              Share your code. When they sign up and complete their first delivery, you both
-              start earning points.
+              {tr('auto.referral.shareYourCodeWhenThey', 'Share your code. When they sign up and complete their first delivery, you both start earning points.')}
             </Text>
           </View>
         ) : (

@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const RATING_THRESHOLD = 3.5;
 
@@ -86,8 +87,7 @@ export default function DriverRatingsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.warnTitle, { color: '#EF4444' }]}>{tx('auto.ratings.ratingBelowMinimumThreshold', 'Rating below minimum threshold')}</Text>
               <Text style={[styles.warnBody, { color: theme.textSecond }]}>
-                Your average ({average.toFixed(1)}) is below {RATING_THRESHOLD}. Sustained low ratings may result in
-                account review. See tips below to improve.
+                Your average ({average.toFixed(1)}) is below {RATING_THRESHOLD}{tr('auto.ratings.sustainedLowRatingsMayResult', '. Sustained low ratings may result in account review. See tips below to improve.')}
               </Text>
             </View>
           </View>

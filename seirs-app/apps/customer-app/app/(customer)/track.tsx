@@ -26,6 +26,7 @@ import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { collectUrl, trackUrl } from '@/constants/config';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Labels looked up via t(`tracking.step${cap}`) at render so language
 // switches reflect live.
@@ -149,20 +150,20 @@ function custodyOf(d: any, driverName?: string | null) {
       if (d?.tripId) {
         return {
           who:    'Pay to hold your seat',
-          detail: 'The driver has accepted. The seat is yours once payment lands.',
+          detail: tr('auto.track.theDriverHasAcceptedThe', 'The driver has accepted. The seat is yours once payment lands.'),
           where:  null,
         };
       }
       return {
         who:    'Waiting for payment',
-        detail: 'We start finding a driver the moment payment lands',
+        detail: tr('auto.track.weStartFindingADriver', 'We start finding a driver the moment payment lands'),
         where:  null,
       };
     }
     if (d?.tripId) {
-      return { who: 'Seat held', detail: 'Your driver leaves at the declared time', where: null };
+      return { who: 'Seat held', detail: tr('auto.track.yourDriverLeavesAtThe', 'Your driver leaves at the declared time'), where: null };
     }
-    return { who: 'Looking for a driver', detail: 'Nobody is carrying it yet', where: null };
+    return { who: 'Looking for a driver', detail: tr('auto.track.nobodyIsCarryingItYet', 'Nobody is carrying it yet'), where: null };
   }
   if (IN_FLIGHT.includes(status)) {
     const named = driverName ? `With ${driverName}` : 'With your driver';
@@ -219,10 +220,10 @@ export default function TrackScreen() {
       if (res?.authorizationUrl) {
         await Linking.openURL(res.authorizationUrl);
       } else {
-        showDialog({ title: 'Could not start payment', message: 'Please try again in a moment.' });
+        showDialog({ title: tr('auto.parcelRequests.couldNotStartPayment', 'Could not start payment'), message: tr('auto.track.pleaseTryAgainInA', 'Please try again in a moment.') });
       }
     } catch (e: any) {
-      showDialog({ title: 'Could not start payment', message: e?.message ?? 'Please try again.' });
+      showDialog({ title: tr('auto.parcelRequests.couldNotStartPayment', 'Could not start payment'), message: e?.message ?? 'Please try again.' });
     } finally {
       setPayingFee(false);
     }
@@ -262,7 +263,7 @@ export default function TrackScreen() {
     try {
       const q = await deliveriesApi.getReturnQuote(deliveryId);
       showDialog({
-        title: 'Return this package?',
+        title: tr('auto.track.returnThisPackage', 'Return this package?'),
         message:
           `${q.note}\n\nBack to: ${q.returnTo}\n` +
           `${q.km} km by road\n` +
@@ -286,15 +287,15 @@ export default function TrackScreen() {
                     : 'Pay in the app and we will bring it back to your pickup address.',
                 });
               } catch (e: any) {
-                showDialog({ title: 'Could not request that', message: e?.message ?? 'Please try again.' });
+                showDialog({ title: tr('auto.track.couldNotRequestThat', 'Could not request that'), message: e?.message ?? 'Please try again.' });
               }
             },
           },
-          { text: 'Not now', style: 'cancel' },
+          { text: tr('auto.track.notNow', 'Not now'), style: 'cancel' },
         ],
       });
     } catch (e: any) {
-      showDialog({ title: 'Could not price a return', message: e?.message ?? 'Please try again.' });
+      showDialog({ title: tr('auto.track.couldNotPriceAReturn', 'Could not price a return'), message: e?.message ?? 'Please try again.' });
     }
   };
 
@@ -304,7 +305,7 @@ export default function TrackScreen() {
       const res = await deliveriesApi.payReturn(deliveryId);
       if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
     } catch (e: any) {
-      showDialog({ title: 'Could not start payment', message: e?.message ?? 'Please try again.' });
+      showDialog({ title: tr('auto.parcelRequests.couldNotStartPayment', 'Could not start payment'), message: e?.message ?? 'Please try again.' });
     }
   };
 
@@ -327,13 +328,13 @@ export default function TrackScreen() {
       setAddrText('');
       setAddrCoords(null);
       showDialog({
-        title: 'Sent to support',
+        title: tr('auto.track.sentToSupport', 'Sent to support'),
         message:
           `We quoted ${naira(res.quoteNgn)} for the ${Number(res.km).toFixed(1)} km ` +
           `from where your driver is now. Support will approve or decline, and you only pay if they approve.`,
       });
     } catch (e: any) {
-      showDialog({ title: 'Could not send that', message: e?.message ?? 'Please try again.' });
+      showDialog({ title: tr('auto.specialRequest.couldNotSendThat', 'Could not send that'), message: e?.message ?? 'Please try again.' });
     } finally {
       setAddrBusy(false);
     }
@@ -354,30 +355,30 @@ export default function TrackScreen() {
 
   const confirmRedirect = (store: any) => {
     showDialog({
-      title: 'Redirect to this store?',
+      title: tr('auto.track.redirectToThisStore', 'Redirect to this store?'),
       message:
         `${store.storeName}\n${store.storeAddress}\n\nUse this only when the recipient cannot receive the package. ` +
         `The driver will deliver to this store instead, and the recipient collects it with their code. ` +
         `You can only redirect once per delivery.`,
       actions: [
         {
-          text: 'Redirect',
+          text: tr('auto.track.redirect', 'Redirect'),
           style: 'primary',
           onPress: async () => {
             setRedirectBusy(true);
             try {
               await deliveriesApi.redirectToStore(deliveryData.id, store.id);
               setRedirectOpen(false);
-              showDialog({ title: 'Redirected', message: `The driver now delivers to ${store.storeName}. The recipient collects with their code.` });
+              showDialog({ title: tr('auto.track.redirected', 'Redirected'), message: `The driver now delivers to ${store.storeName}. The recipient collects with their code.` });
               handleSearch();
             } catch (e: any) {
-              showDialog({ title: 'Could not redirect', message: e?.message ?? 'Please try again or contact support.' });
+              showDialog({ title: tr('auto.track.couldNotRedirect', 'Could not redirect'), message: e?.message ?? 'Please try again or contact support.' });
             } finally {
               setRedirectBusy(false);
             }
           },
         },
-        { text: 'Cancel', style: 'cancel' },
+        { text: tr('auto.AddressPicker.cancel', 'Cancel'), style: 'cancel' },
       ],
     });
   };
@@ -477,7 +478,7 @@ export default function TrackScreen() {
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>{tx('auto.track.trackPackage', 'Track Package')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            Enter your tracking code
+            {tr('auto.track.enterYourTrackingCode', 'Enter your tracking code')}
           </Text>
         </View>
 
@@ -509,7 +510,7 @@ export default function TrackScreen() {
           <View style={[styles.notFoundBox, { backgroundColor: theme.error + '15', borderColor: theme.error + '30' }]}>
             <Ionicons name="alert-circle-outline" size={16} color={theme.error} />
             <Text style={[styles.notFoundText, { color: theme.error }]}>
-              No delivery found with that code.
+              {tr('auto.track.noDeliveryFoundWithThat', 'No delivery found with that code.')}
             </Text>
           </View>
         )}
@@ -580,7 +581,7 @@ export default function TrackScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.redirectTitle, { color: theme.text }]}>{tx('auto.track.showPackageQr', 'Show package QR')}</Text>
                   <Text style={[styles.redirectSub, { color: theme.textSecond }]}>
-                    Screenshot it for whoever is receiving. The driver scans it at handover.
+                    {tr('auto.track.screenshotItForWhoeverIs', 'Screenshot it for whoever is receiving. The driver scans it at handover.')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
@@ -645,7 +646,7 @@ export default function TrackScreen() {
                   >
                     {/* Navy on brand yellow: white on #FFBE0B is unreadable. */}
                     <Text style={{ color: '#0F2B4C', fontSize: 14, fontWeight: '700' }}>
-                      Complete payment
+                      {tr('auto.track.completePayment', 'Complete payment')}
                     </Text>
                   </Pressable>
                 )}
@@ -727,7 +728,7 @@ export default function TrackScreen() {
                           </Text>
                         </View>
                         <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
-                          Check the plate before you get in
+                          {tr('auto.track.checkThePlateBeforeYou', 'Check the plate before you get in')}
                         </Text>
                       </View>
                     ) : null}
@@ -763,7 +764,7 @@ export default function TrackScreen() {
                     <Ionicons name="location" size={14} color={theme.primary} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.liveLocationText, { color: theme.textSecond }]}>
-                        Driver location updating live
+                        {tr('auto.track.driverLocationUpdatingLive', 'Driver location updating live')}
                       </Text>
                       {/* The actual position, not just a promise that one
                           exists. A customer waiting at a gate can read
@@ -789,7 +790,7 @@ export default function TrackScreen() {
                   >
                     <Ionicons name="open-outline" size={14} color={theme.primary} />
                     <Text style={[styles.liveMapsText, { color: theme.primary }]}>
-                      See where your driver is on Google Maps
+                      {tr('auto.track.seeWhereYourDriverIs', 'See where your driver is on Google Maps')}
                     </Text>
                   </Pressable>
                 )}
@@ -803,17 +804,17 @@ export default function TrackScreen() {
               deliveryData?.senderResponseBy && new Date(deliveryData.senderResponseBy) > new Date() && (
               <View style={[styles.card, { backgroundColor: '#FEF3C7', borderWidth: 1.5, borderColor: '#F59E0B' }]}>
                 <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold as any, color: '#92400E', marginBottom: 4 }}>
-                  Driver is at the door: nobody to receive
+                  {tr('auto.track.driverIsAtTheDoor', 'Driver is at the door: nobody to receive')}
                 </Text>
                 <Text style={{ fontSize: FontSize.sm, color: '#92400E', marginBottom: Spacing.md, lineHeight: 19 }}>
-                  Choose within 5 minutes or your booked fallback applies automatically.
+                  {tr('auto.track.chooseWithin5MinutesOr', 'Choose within 5 minutes or your booked fallback applies automatically.')}
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
                   {([
-                    { key: 'wait',      label: 'Receiver is coming: wait' },
-                    { key: 'neighbour', label: 'Leave with neighbour' },
-                    { key: 'gate',      label: 'Leave at gate' },
-                    { key: 'store',     label: 'Send to partner store' },
+                    { key: 'wait',      label: tr('auto.track.receiverIsComingWait', 'Receiver is coming: wait') },
+                    { key: 'neighbour', label: tr('auto.track.leaveWithNeighbour', 'Leave with neighbour') },
+                    { key: 'gate',      label: tr('auto.track.leaveAtGate', 'Leave at gate') },
+                    { key: 'store',     label: tr('auto.track.sendToPartnerStore', 'Send to partner store') },
                   ] as const)
                     .filter(o => !(deliveryData?.requiresRecipientVerification && (o.key === 'gate' || o.key === 'neighbour')))
                     .map(o => (
@@ -823,10 +824,10 @@ export default function TrackScreen() {
                         onPress={async () => {
                           try {
                             await deliveriesApi.arrivalResponse(deliveryData.id, o.key);
-                            showDialog({ title: 'Driver notified', message: 'Your choice went straight to the driver\'s chat.' });
+                            showDialog({ title: tr('auto.track.driverNotified', 'Driver notified'), message: tr('auto.track.yourChoiceWentStraightTo', 'Your choice went straight to the driver\'s chat.') });
                             handleSearch();
                           } catch (e: any) {
-                            showDialog({ title: 'Could not send', message: e?.message ?? 'Try again.' });
+                            showDialog({ title: tr('auto.track.couldNotSend', 'Could not send'), message: e?.message ?? 'Try again.' });
                           }
                         }}
                       >
@@ -841,12 +842,10 @@ export default function TrackScreen() {
             {deliveryData?.redirectFeeOwedNgn > 0 && (
               <View style={[styles.card, { backgroundColor: theme.surface, borderWidth: 1.5, borderColor: '#F59E0B' }, Shadows.sm]}>
                 <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold as any, color: theme.text, marginBottom: 4 }}>
-                  Package waiting at a partner store
+                  {tr('auto.track.packageWaitingAtAPartner', 'Package waiting at a partner store')}
                 </Text>
                 <Text style={{ fontSize: FontSize.sm, color: theme.textSecond, lineHeight: 19 }}>
-                  Nobody was available at the door, so your package is safe at a nearby SEIRS partner store.
-                  A redirect fee of {naira(deliveryData.redirectFeeOwedNgn)} (plus any storage days)
-                  applies. Settle it to reveal the pickup location and collection details.
+                  {tr('auto.track.nobodyWasAvailableAtThe', 'Nobody was available at the door, so your package is safe at a nearby SEIRS partner store. A redirect fee of')} {naira(deliveryData.redirectFeeOwedNgn)} {tr('auto.track.plusAnyStorageDaysApplies', '(plus any storage days) applies. Settle it to reveal the pickup location and collection details.')}
                 </Text>
 
                 {/* This used to say "contact support to settle it" while a
@@ -870,7 +869,7 @@ export default function TrackScreen() {
                     lets them settle it themselves. */}
                 <Pressable onPress={shareCollectLink} style={{ marginTop: 8, paddingVertical: 8, alignItems: 'center' }}>
                   <Text style={{ color: theme.primary, fontWeight: FontWeight.semibold as any, fontSize: FontSize.sm }}>
-                    Send the collection link to the receiver instead
+                    {tr('auto.track.sendTheCollectionLinkTo', 'Send the collection link to the receiver instead')}
                   </Text>
                 </Pressable>
               </View>
@@ -893,7 +892,7 @@ export default function TrackScreen() {
                     style={{ marginTop: 12, borderRadius: Radius.lg, paddingVertical: 12, alignItems: 'center', backgroundColor: '#7C3AED' }}
                   >
                     <Text style={{ color: '#FFFFFF', fontWeight: FontWeight.bold as any, fontSize: FontSize.sm }}>
-                      Pay {naira(deliveryData.returnQuoteNgn ?? 0)} to start the return
+                      Pay {naira(deliveryData.returnQuoteNgn ?? 0)} {tr('auto.track.toStartTheReturn', 'to start the return')}
                     </Text>
                   </Pressable>
                 )}
@@ -913,7 +912,7 @@ export default function TrackScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.redirectTitle, { color: theme.text }]}>{tx('auto.track.wrongAddress', 'Wrong address?')}</Text>
                       <Text style={{ fontSize: FontSize.xs, color: theme.textThird }}>
-                        Support can move it, priced from where your driver is now
+                        {tr('auto.track.supportCanMoveItPriced', 'Support can move it, priced from where your driver is now')}
                       </Text>
                     </View>
                   </Pressable>
@@ -928,7 +927,7 @@ export default function TrackScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.redirectTitle, { color: theme.text }]}>{tx('auto.track.needItBack', 'Need it back?')}</Text>
                       <Text style={{ fontSize: FontSize.xs, color: theme.textThird }}>
-                        Priced from where it is now, back to your pickup address
+                        {tr('auto.track.pricedFromWhereItIs', 'Priced from where it is now, back to your pickup address')}
                       </Text>
                     </View>
                   </Pressable>
@@ -947,7 +946,7 @@ export default function TrackScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.redirectTitle, { color: theme.text }]}>{tx('auto.track.recipientNotAvailable', 'Recipient not available?')}</Text>
                   <Text style={[styles.redirectSub, { color: theme.textSecond }]}>
-                    Redirect the drop-off to a partner store near the destination.
+                    {tr('auto.track.redirectTheDropOffTo', 'Redirect the drop-off to a partner store near the destination.')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
@@ -1011,7 +1010,7 @@ export default function TrackScreen() {
             </View>
             <Text style={[styles.placeholderTitle, { color: theme.text }]}>{tx('auto.track.trackYourDelivery', 'Track your delivery')}</Text>
             <Text style={[styles.placeholderDesc, { color: theme.textSecond }]}>
-              Enter a tracking code above to see live status and driver location.
+              {tr('auto.track.enterATrackingCodeAbove', 'Enter a tracking code above to see live status and driver location.')}
             </Text>
           </View>
         )}
@@ -1032,13 +1031,12 @@ export default function TrackScreen() {
             <View style={styles.redirectHandle} />
             <Text style={[styles.redirectModalTitle, { color: theme.text }]}>{tx('auto.track.redirectToAPartnerStore', 'Redirect to a partner store')}</Text>
             <Text style={[styles.redirectModalSub, { color: theme.textSecond }]}>
-              For when the recipient cannot receive the package. Stores are sorted nearest to the delivery address.
-              One redirect per delivery.
+              {tr('auto.track.forWhenTheRecipientCannot', 'For when the recipient cannot receive the package. Stores are sorted nearest to the delivery address. One redirect per delivery.')}
             </Text>
             <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
               {redirectStores.length === 0 ? (
                 <Text style={[styles.redirectModalSub, { color: theme.textThird, paddingVertical: 20, textAlign: 'center' }]}>
-                  No partner stores available near the destination right now.
+                  {tr('auto.track.noPartnerStoresAvailableNear', 'No partner stores available near the destination right now.')}
                 </Text>
               ) : redirectStores.map(s => (
                 <Pressable
@@ -1075,12 +1073,10 @@ export default function TrackScreen() {
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34 }}>
             <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold as any, color: theme.text }}>
-              Correct the delivery address
+              {tr('auto.track.correctTheDeliveryAddress', 'Correct the delivery address')}
             </Text>
             <Text style={{ fontSize: FontSize.sm, color: theme.textSecond, marginTop: 6, lineHeight: 19 }}>
-              Your driver is already carrying this package, so support has to approve
-              the change. You will be quoted for the distance from where they are now,
-              and you only pay if it is approved.
+              {tr('auto.track.yourDriverIsAlreadyCarrying', 'Your driver is already carrying this package, so support has to approve the change. You will be quoted for the distance from where they are now, and you only pay if it is approved.')}
             </Text>
 
             <View style={{ marginTop: 16 }}>

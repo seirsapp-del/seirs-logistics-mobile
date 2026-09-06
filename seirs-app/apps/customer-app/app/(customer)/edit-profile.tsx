@@ -24,6 +24,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usersApi, uploadApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // ─── Validation (must stay in sync with backend UpdateProfileDto) ───────────
 
@@ -152,7 +153,7 @@ export default function EditProfileScreen() {
       if (emergencyPhone.trim()) payload.emergencyContactPhone = emergencyPhone.trim();
       if (homeStreet.trim() || homeCity.trim() || homeState.trim()) {
         payload.homeAddress = {
-          label:  'Home',
+          label:  tr('auto.register.home', 'Home'),
           street: homeStreet.trim(),
           city:   homeCity.trim(),
           state:  homeState.trim(),
@@ -203,13 +204,13 @@ export default function EditProfileScreen() {
             <View style={[styles.idCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: theme.textSecond, letterSpacing: 0.5 }}>
-                  SEIRS ID
+                  {tr('auto.wallet.seirsId', 'SEIRS ID')}
                 </Text>
                 <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginTop: 2, letterSpacing: 1 }}>
                   {user.accountId}
                 </Text>
                 <Text style={{ fontSize: FontSize.xs, color: theme.textThird, marginTop: 4 }}>
-                  Give this to support instead of your email or name. It identifies you uniquely and privately.
+                  {tr('auto.editProfile.giveThisToSupportInstead', 'Give this to support instead of your email or name. It identifies you uniquely and privately.')}
                 </Text>
               </View>
             </View>
@@ -232,7 +233,7 @@ export default function EditProfileScreen() {
               icon={<Phone size={15} color={theme.textThird} />}
               theme={theme}
               error={errors.phone}
-              hint="90-day change limit"
+              hint={tr('auto.editProfile.90DayChangeLimit', '90-day change limit')}
             />
           </Section>
 
@@ -245,7 +246,7 @@ export default function EditProfileScreen() {
               icon={<User size={15} color={theme.textThird} />}
               theme={theme}
               error={errors.firstName}
-              hint="30-day change limit"
+              hint={tr('auto.editProfile.30DayChangeLimit', '30-day change limit')}
             />
             <Field
               label={tx('auto.editProfile.middleNameOptional', 'Middle name (optional)')}
@@ -262,7 +263,7 @@ export default function EditProfileScreen() {
               icon={<User size={15} color={theme.textThird} />}
               theme={theme}
               error={errors.lastName}
-              hint="30-day change limit"
+              hint={tr('auto.editProfile.30DayChangeLimit', '30-day change limit')}
             />
           </Section>
 
@@ -350,7 +351,7 @@ export default function EditProfileScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: Spacing.md }}>
             <Info size={12} color={theme.textThird} style={{ marginTop: 3 }} />
             <Text style={{ flex: 1, fontSize: FontSize.xs, color: theme.textThird, lineHeight: 16 }}>
-              Some fields have change limits to prevent impersonation and abuse. Every change is logged for your safety. View your history under Profile then Privacy.
+              {tr('auto.editProfile.someFieldsHaveChangeLimits', 'Some fields have change limits to prevent impersonation and abuse. Every change is logged for your safety. View your history under Profile then Privacy.')}
             </Text>
           </View>
         </ScrollView>

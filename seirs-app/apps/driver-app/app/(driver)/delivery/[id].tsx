@@ -34,6 +34,7 @@ import { driversApi, uploadApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 interface Stop {
   id:             string;
@@ -93,13 +94,13 @@ interface DeliveryDetail {
   stops:             Stop[];
 }
 
-const STATUS_META: Record<string, { label: string; color: string }> = {
-  pending:   { label: 'Pending',     color: '#D97706' },
-  en_route:  { label: 'En route',    color: '#3A7BD5' },
-  arrived:   { label: 'Arrived',     color: '#0F2B4C' },
-  delivered: { label: 'Delivered',   color: '#16A34A' },
-  failed:    { label: 'Failed',      color: '#DC2626' },
-};
+const STATUS_META = (): Record<string, { label: string; color: string }> => ({
+  pending:   { label: tr('auto.deliveryDetail.pending', 'Pending'),     color: '#D97706' },
+  en_route:  { label: tr('auto.deliveryDetail.enRoute', 'En route'),    color: '#3A7BD5' },
+  arrived:   { label: tr('auto.deliveryDetail.arrived', 'Arrived'),     color: '#0F2B4C' },
+  delivered: { label: tr('auto.history.delivered', 'Delivered'),   color: '#16A34A' },
+  failed:    { label: tr('auto.deliveryDetail.failed', 'Failed'),      color: '#DC2626' },
+});
 
 /**
  * The engine's zone tiers, in a rider's words. Shorter than the sender
@@ -146,11 +147,11 @@ export default function DeliveryDetailScreen() {
     // different Navigate dialogs on the same run. This one also sat at
     // Android's three-button ceiling (2026-08-25 dialog sweep).
     setSheet({
-      title: 'Navigate there',
-      message: 'Which app should take you?',
+      title: tr('auto.deliveryDetail.navigateThere', 'Navigate there'),
+      message: tr('auto.deliveryDetail.whichAppShouldTakeYou', 'Which app should take you?'),
       options: [
-        { label: 'Google Maps', variant: 'primary', icon: 'navigate-outline', onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}`) },
-        { label: 'Waze',        icon: 'car-outline', onPress: () => Linking.openURL(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`) },
+        { label: tr('auto.deliveryDetail.googleMaps', 'Google Maps'), variant: 'primary', icon: 'navigate-outline', onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}`) },
+        { label: tr('auto.deliveryDetail.waze', 'Waze'),        icon: 'car-outline', onPress: () => Linking.openURL(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`) },
       ],
     });
   };
@@ -272,7 +273,7 @@ export default function DeliveryDetailScreen() {
         <Ionicons name="alert-circle-outline" size={48} color={theme.textThird} />
         <Text style={[styles.errorText, { color: theme.textSecond }]}>{error ?? 'Trip not found'}</Text>
         <Pressable style={[styles.backLink, { backgroundColor: theme.accent }]} onPress={() => router.back()}>
-          <Text style={styles.backLinkText}>Back</Text>
+          <Text style={styles.backLinkText}>{tr('auto.deliveryDetail.back', 'Back')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -361,7 +362,7 @@ export default function DeliveryDetailScreen() {
             >
               <Ionicons name="navigate-circle" size={16} color="#fff" />
               <Text style={styles.navBtnText}>
-                Navigate the rest of the run ({pending + arrived} stops)
+                {tr('auto.deliveryDetail.navigateTheRestOfThe', 'Navigate the rest of the run (')}{pending + arrived} stops)
               </Text>
             </Pressable>
           </>
@@ -386,7 +387,7 @@ export default function DeliveryDetailScreen() {
         {/* Stops list (multi-stop) OR single dropoff */}
         {delivery.stops.length > 0 ? (
           delivery.stops.map((stop, idx) => {
-            const meta = STATUS_META[stop.status] ?? STATUS_META.pending;
+            const meta = STATUS_META()[stop.status] ?? STATUS_META().pending;
             const isCurrent = idx === delivery.stops.findIndex(s => s.status !== 'delivered');
             return (
               <View
@@ -435,7 +436,7 @@ export default function DeliveryDetailScreen() {
                   <View style={[styles.storeFlag, { backgroundColor: theme.accent + '18' }]}>
                     <Ionicons name="storefront-outline" size={13} color={theme.accent} />
                     <Text style={[styles.storeFlagText, { color: theme.accent }]}>
-                      Hand to the counter staff, not a customer
+                      {tr('auto.deliveryDetail.handToTheCounterStaff', 'Hand to the counter staff, not a customer')}
                     </Text>
                   </View>
                 )}
@@ -466,7 +467,7 @@ export default function DeliveryDetailScreen() {
                     onPress={() => Linking.openURL(`tel:${stop.recipientPhone}`)}
                   >
                     <Ionicons name="call" size={14} color={theme.text} />
-                    <Text style={[styles.stopActionText, { color: theme.text }]}>Call</Text>
+                    <Text style={[styles.stopActionText, { color: theme.text }]}>{tr('auto.active.call', 'Call')}</Text>
                   </Pressable>
                 </View>
 
@@ -481,7 +482,7 @@ export default function DeliveryDetailScreen() {
                       ? <ActivityIndicator color="#fff" />
                       : <>
                           <Ionicons name="flag" size={16} color="#fff" />
-                          <Text style={styles.primaryBtnText}>I've arrived</Text>
+                          <Text style={styles.primaryBtnText}>{tr('auto.deliveryDetail.iVeArrived', 'I\'ve arrived')}</Text>
                         </>}
                   </Pressable>
                 ) : stop.status === 'arrived' ? (
@@ -533,7 +534,7 @@ export default function DeliveryDetailScreen() {
         {delivery.priceBreakdown?.driver && (
           <View style={[styles.locationCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <Text style={[styles.locationLabel, { color: theme.textSecond, marginBottom: Spacing.sm }]}>
-              Earnings breakdown
+              {tr('auto.deliveryDetail.earningsBreakdown', 'Earnings breakdown')}
             </Text>
             <BreakdownLine theme={theme} label={tx('auto.id.baseFare', 'Base fare')}        value={delivery.priceBreakdown.driver.base} />
             <BreakdownLine theme={theme} label={tx('auto.id.distanceLabour', 'Distance labour')}  value={delivery.priceBreakdown.driver.distanceLabour} />

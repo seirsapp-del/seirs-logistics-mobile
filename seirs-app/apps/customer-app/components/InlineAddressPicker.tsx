@@ -22,6 +22,7 @@ import { mapsApi } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 // Places and geocoding go through our backend (security review
 // 2026-08-12): the Google key is no longer shipped inside the app.
 
@@ -103,8 +104,8 @@ export default function InlineAddressPicker({ label, dotColor, value, onSelect, 
             'Location permission denied',
             'Location is off for SEIRS in your phone Settings. Turn it on to auto-fill your address.',
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+              { text: tr('auto.AddressPicker.cancel', 'Cancel'), style: 'cancel' },
+              { text: tr('auto.addresspicker.openSettings', 'Open Settings'), onPress: () => Linking.openSettings() },
             ],
           );
         } else {

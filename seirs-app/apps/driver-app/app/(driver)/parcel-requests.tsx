@@ -37,6 +37,7 @@ import { driversApi, deliveriesApi, mapsApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type Req = {
   id: string;
@@ -234,8 +235,7 @@ export default function ParcelRequestsScreen() {
             <Package size={40} color={theme.textThird} strokeWidth={1.5} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.parcelRequests.noTripsTakingRequests', 'No trips taking requests')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Declare an intercity trip with seats or packages on, and people going
-              your way can ask to ride or to have theirs carried.
+              {tr('auto.parcelRequests.declareAnIntercityTripWith', 'Declare an intercity trip with seats or packages on, and people going your way can ask to ride or to have theirs carried.')}
             </Text>
           </View>
         )}
@@ -245,8 +245,7 @@ export default function ParcelRequestsScreen() {
             <Package size={40} color={theme.textThird} strokeWidth={1.5} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.parcelRequests.nobodyHasAskedYet', 'Nobody has asked yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-              Seat and parcel requests show up here. Nothing is charged until you
-              accept, so you can say no without costing anybody money.
+              {tr('auto.parcelRequests.seatAndParcelRequestsShow', 'Seat and parcel requests show up here. Nothing is charged until you accept, so you can say no without costing anybody money.')}
             </Text>
           </View>
         )}
@@ -356,8 +355,7 @@ export default function ParcelRequestsScreen() {
                       <View style={[styles.instr, { backgroundColor: '#B4530918' }]}>
                         <Text style={[styles.instrTxt, { color: '#B45309' }]}>
                           You offered {r.counterDropAddress}
-                          {r.counterQuotedNgn != null ? ` at ${naira(Number(r.counterQuotedNgn))}` : ''}.
-                          Waiting for the sender to answer.
+                          {r.counterQuotedNgn != null ? ` at ${naira(Number(r.counterQuotedNgn))}` : ''}{tr('auto.parcelRequests.waitingForTheSenderTo', '. Waiting for the sender to answer.')}
                         </Text>
                       </View>
                     ) : (
@@ -406,9 +404,7 @@ export default function ParcelRequestsScreen() {
           <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
             <Text style={[styles.sheetTitle, { color: theme.text }]}>{tx('auto.parcelRequests.offerAnotherDropOff', 'Offer another drop-off')}</Text>
             <Text style={[styles.sheetSub, { color: theme.textSecond }]}>
-              Name a place on your route you can actually reach. The sender sees
-              it with a fresh price and can accept or say no. Nothing is charged
-              either way.
+              {tr('auto.parcelRequests.nameAPlaceOnYour', 'Name a place on your route you can actually reach. The sender sees it with a fresh price and can accept or say no. Nothing is charged either way.')}
             </Text>
 
             <TextInput

@@ -24,6 +24,7 @@ import { usersApi, uploadApi } from '@/services/api';
 import { isValidNigerianMobile, toE164Ng } from '@/constants/phone';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8: driver standalone profile editor. Mirrors the customer version.
 // Vehicle fields are NOT exposed here; those live on the KYC re-submission
@@ -188,13 +189,13 @@ export default function EditProfileScreen() {
             <View style={[styles.idCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: theme.textSecond, letterSpacing: 0.5 }}>
-                  SEIRS ID
+                  {tr('auto.storeHandoff.seirsId', 'SEIRS ID')}
                 </Text>
                 <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginTop: 2, letterSpacing: 1 }}>
                   {user.accountId}
                 </Text>
                 <Text style={{ fontSize: FontSize.xs, color: theme.textThird, marginTop: 4 }}>
-                  Give this to support instead of your email or name. It identifies you privately and uniquely.
+                  {tr('auto.editProfile.giveThisToSupportInstead', 'Give this to support instead of your email or name. It identifies you privately and uniquely.')}
                 </Text>
               </View>
             </View>
@@ -210,14 +211,14 @@ export default function EditProfileScreen() {
               icon={<Phone size={15} color={theme.textThird} />}
               theme={theme}
               error={errors.phone}
-              hint="90-day change limit"
+              hint={tr('auto.editProfile.90DayChangeLimit', '90-day change limit')}
             />
           </Section>
 
           <Section title={tx('auto.editProfile.legalName', 'Legal name')} subtitle={tx('auto.editProfile.shownOnYourKycDocument', 'Shown on your KYC document. Only your first name is shown to customers during a delivery.')}>
-            <Field label={tx('auto.editProfile.firstName', 'First name')} value={firstName} onChange={setFirstName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.firstName} hint="30-day change limit" />
+            <Field label={tx('auto.editProfile.firstName', 'First name')} value={firstName} onChange={setFirstName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.firstName} hint={tr('auto.editProfile.30DayChangeLimit', '30-day change limit')} />
             <Field label={tx('auto.editProfile.middleNameOptional', 'Middle name (optional)')} value={middleName} onChange={setMiddleName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.middleName} />
-            <Field label={tx('auto.editProfile.lastName', 'Last name')} value={lastName} onChange={setLastName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.lastName} hint="30-day change limit" />
+            <Field label={tx('auto.editProfile.lastName', 'Last name')} value={lastName} onChange={setLastName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.lastName} hint={tr('auto.editProfile.30DayChangeLimit', '30-day change limit')} />
           </Section>
 
           <Section title={tx('auto.editProfile.dateOfBirth', 'Date of birth')} subtitle={dobLocked ? 'Locked once set. Contact support to correct a typo.' : 'Must match your KYC document. Locked once you save.'}>
@@ -282,7 +283,7 @@ export default function EditProfileScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: Spacing.md }}>
             <Info size={12} color={theme.textThird} style={{ marginTop: 3 }} />
             <Text style={{ flex: 1, fontSize: FontSize.xs, color: theme.textThird, lineHeight: 16 }}>
-              Some fields have change limits to prevent impersonation. Every change is logged for your safety. Vehicle info is updated via the KYC re-submission flow.
+              {tr('auto.editProfile.someFieldsHaveChangeLimits', 'Some fields have change limits to prevent impersonation. Every change is logged for your safety. Vehicle info is updated via the KYC re-submission flow.')}
             </Text>
           </View>
         </ScrollView>

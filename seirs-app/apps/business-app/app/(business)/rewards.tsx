@@ -10,6 +10,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 import { FontWeight, Shadows } from '@/constants/theme';
 import { businessApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Redeem, for business accounts.
@@ -33,10 +34,10 @@ import { tx } from '@/i18n/tx';
  * untouched, so it is shown as unavailable rather than as a button that
  * errors.
  */
-const REDEMPTIONS = [
-  { key: 'insurance',     icon: 'Shield' as const, label: '₦500 parcel cover', desc: 'Cover a single delivery up to ₦50,000', cost: 200,  live: false },
-  { key: 'discount_500',  icon: 'Gift'   as const, label: '₦500 off',          desc: '₦500 off your next booking',            cost: 500,  live: true  },
-  { key: 'free_delivery', icon: 'Star'   as const, label: 'Free delivery',     desc: 'One booking covered up to the reward cap', cost: 1000, live: true  },
+const REDEMPTIONS = () => [
+  { key: 'insurance',     icon: 'Shield' as const, label: tr('auto.rewards.500ParcelCover', '₦500 parcel cover'), desc: 'Cover a single delivery up to ₦50,000', cost: 200,  live: false },
+  { key: 'discount_500',  icon: 'Gift'   as const, label: tr('auto.deliveryDetail.500Off', '₦500 off'),          desc: '₦500 off your next booking',            cost: 500,  live: true  },
+  { key: 'free_delivery', icon: 'Star'   as const, label: tr('auto.deliveryDetail.freeDelivery', 'Free delivery'),     desc: 'One booking covered up to the reward cap', cost: 1000, live: true  },
 ];
 
 const HOW_TO_EARN = [
@@ -114,7 +115,7 @@ export default function BusinessRewardsScreen() {
           {!!nextTierAt && (
             <>
               <View style={styles.progressTop}>
-                <Text style={styles.progressText}>{toNext.toLocaleString()} pts to the next tier</Text>
+                <Text style={styles.progressText}>{toNext.toLocaleString()} {tr('auto.rewards.ptsToTheNextTier', 'pts to the next tier')}</Text>
                 <Text style={styles.progressText}>{pct}%</Text>
               </View>
               <View style={styles.track}>
@@ -125,7 +126,7 @@ export default function BusinessRewardsScreen() {
         </LinearGradient>
 
         <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.rewards.redeemYourPoints', 'Redeem your points')}</Text>
-        {REDEMPTIONS.map((r) => {
+        {REDEMPTIONS().map((r) => {
           const afford = r.live && points >= r.cost;
           return (
             <View
@@ -177,8 +178,7 @@ export default function BusinessRewardsScreen() {
             </View>
           ))}
           <Text style={[styles.fine, { color: colors.textThird }]}>
-            Points expire 24 months after they are earned. Your tier is based on the points
-            earned in the last 12 months.
+            {tr('auto.rewards.pointsExpire24MonthsAfter', 'Points expire 24 months after they are earned. Your tier is based on the points earned in the last 12 months.')}
           </Text>
         </View>
 

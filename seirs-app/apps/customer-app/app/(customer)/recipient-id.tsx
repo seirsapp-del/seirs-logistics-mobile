@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { deliveriesApi, dropoffApi, identityApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §1.17: recipient-side handoff identity surface. Used when the
 // customer is collecting a package (door delivery from driver, or pickup
@@ -107,11 +108,11 @@ export default function RecipientIdScreen() {
     try {
       const res = await identityApi.issueHandoffOtp(deliveryId, user.id);
       showDialog({
-        title: 'Code sent',
+        title: tr('auto.recipientId.codeSent', 'Code sent'),
         message: `A 6-digit verification code has been emailed to you. It expires in ${res.expiresInMinutes} minutes. Check your inbox and read it aloud to the staff or driver at handoff.`,
       });
     } catch (e: any) {
-      showDialog({ title: 'Could not send code', message: e?.message ?? 'Try again in a moment.' });
+      showDialog({ title: tr('auto.recipientId.couldNotSendCode', 'Could not send code'), message: e?.message ?? 'Try again in a moment.' });
     } finally {
       setIssuing(null);
     }
@@ -121,7 +122,7 @@ export default function RecipientIdScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl }}>
         <Text style={{ color: theme.text, fontSize: FontSize.base, textAlign: 'center' }}>
-          Your SEIRS Verified ID is being provisioned. Try again shortly.
+          {tr('auto.recipientId.yourSeirsVerifiedIdIs', 'Your SEIRS Verified ID is being provisioned. Try again shortly.')}
         </Text>
       </SafeAreaView>
     );
@@ -144,7 +145,7 @@ export default function RecipientIdScreen() {
         <View style={[styles.intro, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           <Shield size={18} color={theme.primary} strokeWidth={1.75} />
           <Text style={[styles.introText, { color: theme.textSecond }]}>
-            Show this ID at any handoff so the driver or partner staff can verify it&apos;s really you.
+            {tr('auto.recipientId.showThisIdAtAny', 'Show this ID at any handoff so the driver or partner staff can verify it\'s really you.')}
           </Text>
         </View>
 
@@ -178,14 +179,14 @@ export default function RecipientIdScreen() {
         </View>
 
         {/* Active items needing OTP */}
-        <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>READY FOR COLLECTION</Text>
+        <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{tr('auto.recipientId.readyForCollection', 'READY FOR COLLECTION')}</Text>
         {loading ? (
-          <Text style={[styles.helperCenter, { color: theme.textThird }]}>Loading…</Text>
+          <Text style={[styles.helperCenter, { color: theme.textThird }]}>{tr('auto.recipientId.loading', 'Loading…')}</Text>
         ) : items.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Package size={28} color={theme.textThird} strokeWidth={1.5} />
             <Text style={[styles.emptyText, { color: theme.textSecond }]}>
-              No incoming packages. When something is on its way to you, request a verification code from here.
+              {tr('auto.recipientId.noIncomingPackagesWhenSomething', 'No incoming packages. When something is on its way to you, request a verification code from here.')}
             </Text>
           </View>
         ) : (
@@ -221,16 +222,16 @@ export default function RecipientIdScreen() {
           <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.recipientId.twoWaysToVerify', 'Two ways to verify')}</Text>
 
           <View style={styles.howSection}>
-            <Text style={[styles.howMethod, { color: theme.primary }]}>1. Physical ID + Email Code</Text>
+            <Text style={[styles.howMethod, { color: theme.primary }]}>{tr('auto.recipientId.1PhysicalIdEmailCode', '1. Physical ID + Email Code')}</Text>
             <Text style={[styles.howText, { color: theme.textSecond }]}>
-              Show staff your National ID, driver&apos;s licence, voter card, NIN slip, or passport: plus the 6-digit code we email when you tap above.
+              {tr('auto.recipientId.showStaffYourNationalId', 'Show staff your National ID, driver\'s licence, voter card, NIN slip, or passport: plus the 6-digit code we email when you tap above.')}
             </Text>
           </View>
 
           <View style={styles.howSection}>
-            <Text style={[styles.howMethod, { color: theme.primary }]}>2. SEIRS ID + Spoken Name</Text>
+            <Text style={[styles.howMethod, { color: theme.primary }]}>{tr('auto.recipientId.2SeirsIdSpokenName', '2. SEIRS ID + Spoken Name')}</Text>
             <Text style={[styles.howText, { color: theme.textSecond }]}>
-              Show staff your QR code above, then say your full name. They&apos;ll see your registered name and type what you say to confirm a match.
+              {tr('auto.recipientId.showStaffYourQrCode', 'Show staff your QR code above, then say your full name. They\'ll see your registered name and type what you say to confirm a match.')}
             </Text>
           </View>
         </View>

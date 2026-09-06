@@ -12,6 +12,7 @@ import { useColors } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 // Spec V8 §3 / §4.8: partner staff releases a package to the recipient
 // after identity verification. Two methods supported per Spec V8 §1.17:
 //   - PHYSICAL_ID + email OTP (primary path for recipients with ID)
@@ -32,12 +33,12 @@ interface Dropoff {
   declaredValueNgn: number;
 }
 
-const ID_TYPES = [
-  { key: 'national_id',     label: 'National ID' },
-  { key: 'drivers_license', label: 'Driver\'s Licence' },
-  { key: 'voter_card',      label: 'Voter Card' },
-  { key: 'nin_slip',        label: 'NIN Slip' },
-  { key: 'passport',        label: 'International Passport' },
+const ID_TYPES = () => [
+  { key: 'national_id',     label: tr('auto.releasePickup.nationalId', 'National ID') },
+  { key: 'drivers_license', label: tr('auto.releasePickup.driverSLicence', 'Driver\'s Licence') },
+  { key: 'voter_card',      label: tr('auto.releasePickup.voterCard', 'Voter Card') },
+  { key: 'nin_slip',        label: tr('auto.releasePickup.ninSlip', 'NIN Slip') },
+  { key: 'passport',        label: tr('auto.releasePickup.internationalPassport', 'International Passport') },
 ];
 
 export default function ReleasePickupScreen() {
@@ -150,13 +151,13 @@ export default function ReleasePickupScreen() {
 
   const pickPhoto = async () => {
     alertDialog('Collection photo', 'Capture a photo of the recipient with the package.', [
-      { text: 'Camera', onPress: async () => {
+      { text: tr('auto.receiveDropoff.camera', 'Camera'), onPress: async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') { alertDialog('Camera access required'); return; }
         const r = await ImagePicker.launchCameraAsync({ quality: 0.85 });
         if (!r.canceled) setPhotoUri(r.assets[0].uri);
       }},
-      { text: 'Cancel', style: 'cancel' },
+      { text: tr('auto.payoutAccount.cancel', 'Cancel'), style: 'cancel' },
     ]);
   };
 
@@ -199,8 +200,8 @@ export default function ReleasePickupScreen() {
         'Released',
         `Package handed over to ${dropoff.recipientName}. Audit trail recorded.`,
         [
-          { text: 'Release another', onPress: reset },
-          { text: 'Done', onPress: () => router.back() },
+          { text: tr('auto.releasePickup.releaseAnother', 'Release another'), onPress: reset },
+          { text: tr('auto.editDeliveryDetail.done', 'Done'), onPress: () => router.back() },
         ],
       );
     } catch (e: any) {
@@ -311,7 +312,7 @@ export default function ReleasePickupScreen() {
         {loading && scanning && (
           <View style={styles.finderWrap}>
             <ActivityIndicator color="#fff" size="large" />
-            <Text style={styles.finderHint}>Looking up…</Text>
+            <Text style={styles.finderHint}>{tr('auto.releasePickup.lookingUp', 'Looking up…')}</Text>
           </View>
         )}
       </View>
@@ -331,7 +332,7 @@ export default function ReleasePickupScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>RELEASING TO</Text>
+          <Text style={styles.cardLabel}>{tr('auto.releasePickup.releasingTo', 'RELEASING TO')}</Text>
           <Text style={styles.cardValue}>{dropoff.recipientName}</Text>
           <Text style={styles.cardSub}>{dropoff.recipientPhone}</Text>
           <View style={styles.divider} />
@@ -357,8 +358,8 @@ export default function ReleasePickupScreen() {
               {method === 'physical_id' && <View style={styles.radioInner} />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.methodTitle}>Physical ID + Email OTP</Text>
-              <Text style={styles.methodSub}>National ID, driver&apos;s licence, voter card, NIN slip, or passport</Text>
+              <Text style={styles.methodTitle}>{tr('auto.releasePickup.physicalIdEmailOtp', 'Physical ID + Email OTP')}</Text>
+              <Text style={styles.methodSub}>{tr('auto.releasePickup.nationalIdDriverSLicence', 'National ID, driver\'s licence, voter card, NIN slip, or passport')}</Text>
             </View>
           </Pressable>
 
@@ -370,8 +371,8 @@ export default function ReleasePickupScreen() {
               {method === 'seirs_id' && <View style={styles.radioInner} />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.methodTitle}>SEIRS Verified ID + Typed Signature</Text>
-              <Text style={styles.methodSub}>Recipient shows app QR code (CUST-XXXX), speaks their name, you type to verify</Text>
+              <Text style={styles.methodTitle}>{tr('auto.releasePickup.seirsVerifiedIdTypedSignature', 'SEIRS Verified ID + Typed Signature')}</Text>
+              <Text style={styles.methodSub}>{tr('auto.releasePickup.recipientShowsAppQrCode', 'Recipient shows app QR code (CUST-XXXX), speaks their name, you type to verify')}</Text>
             </View>
           </Pressable>
         </View>
@@ -400,7 +401,7 @@ export default function ReleasePickupScreen() {
             <View style={styles.card}>
               <Text style={styles.fieldLabel}>{tx('auto.releasePickup.idType', 'ID Type')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }} contentContainerStyle={{ gap: 8 }}>
-                {ID_TYPES.map(t => (
+                {ID_TYPES().map(t => (
                   <Pressable
                     key={t.key}
                     onPress={() => setIdType(t.key)}
@@ -429,12 +430,12 @@ export default function ReleasePickupScreen() {
                 <Pressable style={styles.secondaryBtn} onPress={requestOtp} disabled={loading}>
                   {loading
                     ? <ActivityIndicator color="#3A7BD5" />
-                    : <Text style={styles.secondaryBtnText}>Send 6-digit OTP to recipient&apos;s email</Text>
+                    : <Text style={styles.secondaryBtnText}>{tr('auto.releasePickup.send6DigitOtpTo', 'Send 6-digit OTP to recipient\'s email')}</Text>
                   }
                 </Pressable>
               ) : (
                 <>
-                  <Text style={styles.helperText}>Code emailed: expires in {otpExpiryMin} minutes.</Text>
+                  <Text style={styles.helperText}>{tr('auto.releasePickup.codeEmailedExpiresIn', 'Code emailed: expires in')} {otpExpiryMin} minutes.</Text>
                   <TextInput
                     keyboardType="number-pad"
                     value={otp}
@@ -452,7 +453,7 @@ export default function ReleasePickupScreen() {
             </View>
           ) : (
             <View style={styles.card}>
-              <Text style={styles.fieldLabel}>Recipient&apos;s SEIRS ID</Text>
+              <Text style={styles.fieldLabel}>{tr('auto.releasePickup.recipientSSeirsId', 'Recipient\'s SEIRS ID')}</Text>
               <TextInput
                 value={seirsCode}
                 onChangeText={setSeirsCode}
@@ -467,11 +468,11 @@ export default function ReleasePickupScreen() {
               {expectedName && (
                 <>
                   <View style={styles.divider} />
-                  <Text style={styles.cardLabel}>EXPECTED NAME ON FILE</Text>
+                  <Text style={styles.cardLabel}>{tr('auto.releasePickup.expectedNameOnFile', 'EXPECTED NAME ON FILE')}</Text>
                   <Text style={styles.cardValue}>{expectedName}</Text>
                   <Text style={styles.helperText}>{tx('auto.releasePickup.askTheRecipientToSpeak', 'Ask the recipient to speak their full name. Type EXACTLY what they say below.')}</Text>
 
-                  <Text style={styles.fieldLabel}>Recipient&apos;s typed name (signature)</Text>
+                  <Text style={styles.fieldLabel}>{tr('auto.releasePickup.recipientSTypedNameSignature', 'Recipient\'s typed name (signature)')}</Text>
                   <TextInput
                     value={typedName}
                     onChangeText={setTypedName}
@@ -497,7 +498,7 @@ export default function ReleasePickupScreen() {
             ) : (
               <Pressable onPress={pickPhoto} style={styles.photoBox}>
                 <Icon name="Camera" size={28} color="#3A7BD5" />
-                <Text style={styles.photoHint}>Photo of recipient with package (with ID held up if high-value)</Text>
+                <Text style={styles.photoHint}>{tr('auto.releasePickup.photoOfRecipientWithPackage', 'Photo of recipient with package (with ID held up if high-value)')}</Text>
               </Pressable>
             )}
           </View>

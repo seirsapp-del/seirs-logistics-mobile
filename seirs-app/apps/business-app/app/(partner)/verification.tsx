@@ -32,6 +32,7 @@ import type { PartnerDocument, PartnerDocGroup } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Above this many metres of reported uncertainty the fix is too vague to
@@ -41,36 +42,36 @@ import { tx } from '@/i18n/tx';
 const ACCURACY_LIMIT_M = 50;
 
 /** The order a shop works through them, and why each group exists. */
-const GROUPS: Array<{ key: PartnerDocGroup; title: string; note: string }> = [
-  { key: 'owner',    title: 'About you',      note: 'Asked once. These do not change if the shop moves.' },
-  { key: 'premises', title: 'About the shop', note: 'Taken at the shop, so we can see it is really there.' },
-  { key: 'business', title: 'Registration',   note: 'Only if your shop is registered. Not required.' },
-  { key: 'trust',    title: 'Someone who vouches for you', note: 'Not required, but it helps.' },
+const GROUPS = (): Array<{ key: PartnerDocGroup; title: string; note: string }> => [
+  { key: 'owner',    title: tr('auto.verification.aboutYou', 'About you'),      note: tr('auto.verification.askedOnceTheseDoNot', 'Asked once. These do not change if the shop moves.') },
+  { key: 'premises', title: tr('auto.verification.aboutTheShop', 'About the shop'), note: tr('auto.verification.takenAtTheShopSo', 'Taken at the shop, so we can see it is really there.') },
+  { key: 'business', title: tr('auto.verification.registration', 'Registration'),   note: tr('auto.verification.onlyIfYourShopIs', 'Only if your shop is registered. Not required.') },
+  { key: 'trust',    title: tr('auto.verification.someoneWhoVouchesForYou', 'Someone who vouches for you'), note: tr('auto.verification.notRequiredButItHelps', 'Not required, but it helps.') },
 ];
 
 /** What each state says to the shop, in its own words. */
-const STATE: Record<string, { label: string; tone: 'good' | 'wait' | 'warn' | 'bad'; help: string }> = {
+const STATE = (): Record<string, { label: string; tone: 'good' | 'wait' | 'warn' | 'bad'; help: string }> => ({
   approved: {
-    label: 'Approved', tone: 'good',
+    label: tr('auto.verification.approved', 'Approved'), tone: 'good',
     help: 'Checked and accepted. Nothing else is needed for this one.',
   },
   submitted: {
-    label: 'Being checked', tone: 'wait',
+    label: tr('auto.verification.beingChecked', 'Being checked'), tone: 'wait',
     help: 'With our team. You do not need to do anything while it is here.',
   },
   needs_replacing: {
-    label: 'Needs replacing', tone: 'warn',
+    label: tr('auto.verification.needsReplacing', 'Needs replacing'), tone: 'warn',
     help: 'Nothing is wrong with what you sent. It has run out, so we need the current one.',
   },
   rejected: {
-    label: 'Send it again', tone: 'bad',
+    label: tr('auto.verification.sendItAgain', 'Send it again'), tone: 'bad',
     help: 'This one could not be accepted. The reason is below.',
   },
   missing: {
-    label: 'Not sent yet', tone: 'wait',
+    label: tr('auto.verification.notSentYet', 'Not sent yet'), tone: 'wait',
     help: '',
   },
-};
+});
 
 const dmy = (iso?: string | null) => {
   if (!iso) return '';
@@ -229,7 +230,7 @@ export default function PartnerDocumentsScreen() {
       ) : !data ? (
         <View style={{ padding: 20 }}>
           <Text style={[styles.help, { color: colors.textSecond }]}>
-            We could not load your documents just now. Pull down to try again.
+            {tr('auto.verification.weCouldNotLoadYour', 'We could not load your documents just now. Pull down to try again.')}
           </Text>
         </View>
       ) : (
@@ -261,11 +262,10 @@ export default function PartnerDocumentsScreen() {
           </View>
 
           <Text style={[styles.intro, { color: colors.textSecond }]}>
-            Each one is checked on its own. If one needs sending again, only that one does: the rest
-            keep their decisions and your application stays where it is.
+            {tr('auto.verification.eachOneIsCheckedOn', 'Each one is checked on its own. If one needs sending again, only that one does: the rest keep their decisions and your application stays where it is.')}
           </Text>
 
-          {GROUPS.map((g) => {
+          {GROUPS().map((g) => {
             const inGroup = docs.filter(d => d.group === g.key);
             if (inGroup.length === 0) return null;
             return (
@@ -275,7 +275,7 @@ export default function PartnerDocumentsScreen() {
 
                 {inGroup.map((d) => {
                   const status = effectiveStatus(d);
-                  const st = STATE[status] ?? STATE.missing;
+                  const st = STATE()[status] ?? STATE().missing;
                   const canSend = status !== 'submitted';
                   return (
                     <View key={d.docId} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -332,7 +332,7 @@ export default function PartnerDocumentsScreen() {
 
                       {d.needsLocation && canSend ? (
                         <Text style={[styles.liveNote, { color: colors.textThird }]}>
-                          Taken with the camera, at the shop. We record where it was taken.
+                          {tr('auto.verification.takenWithTheCameraAt', 'Taken with the camera, at the shop. We record where it was taken.')}
                         </Text>
                       ) : null}
                     </View>
@@ -343,8 +343,7 @@ export default function PartnerDocumentsScreen() {
           })}
 
           <Text style={[styles.footNote, { color: colors.textThird }]}>
-            Nothing stops because a document runs out. We will tell you, and our team decides what
-            happens next. Your shop keeps taking packages while you sort it.
+            {tr('auto.verification.nothingStopsBecauseADocument', 'Nothing stops because a document runs out. We will tell you, and our team decides what happens next. Your shop keeps taking packages while you sort it.')}
           </Text>
         </ScrollView>
       )}

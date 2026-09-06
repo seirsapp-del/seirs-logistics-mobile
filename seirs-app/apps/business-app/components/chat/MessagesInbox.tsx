@@ -27,6 +27,7 @@ import {
   type ChatConversationDTO, type SupportTicketDTO,
 } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Unified inbox row: delivery chat OR support ticket, merged + sorted
 // by recency so the tab shows one coherent conversation surface.
@@ -178,7 +179,7 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(busin
                   <View style={{ flex: 1 }}>
                     <View style={styles.rowTop}>
                       <Text style={[styles.name, { color: theme.text }, needsReply && { fontWeight: '700' }]} numberOfLines={1}>
-                        SEIRS Support
+                        {tr('auto.messagesinbox.seirsSupport', 'SEIRS Support')}
                       </Text>
                       <Text style={[styles.time, { color: theme.textSecond }]}>
                         {formatRelativeTime(tk.lastMessageAt)}

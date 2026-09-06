@@ -21,6 +21,7 @@ import { earningsApi, paymentsApi, type EarningsDashboard } from '@/services/api
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Withdraw screen: THE single real money-out path for drivers.
@@ -157,7 +158,7 @@ export default function WithdrawalScreen() {
     // itself names the amount rather than saying a bare "Withdraw"
     // (2026-08-25 dialog sweep).
     setSheet({
-      title: 'Confirm withdrawal',
+      title: tr('auto.withdrawal.confirmWithdrawal', 'Confirm withdrawal'),
       message:
         `Withdraw up to ${naira(numericAmount)} to ${bank?.bankName ?? 'your bank'} ` +
         `(${bank?.bankAccountNumber}).\n\n` +
@@ -186,7 +187,7 @@ export default function WithdrawalScreen() {
           },
         },
       ],
-      cancelLabel: 'Not now',
+      cancelLabel: tr('auto.sos.notNow', 'Not now'),
     });
   };
 
@@ -198,8 +199,7 @@ export default function WithdrawalScreen() {
         </View>
         <Text style={[styles.successTitle, { color: theme.text }]}>{tx('auto.withdrawal.withdrawalSent', 'Withdrawal Sent!')}</Text>
         <Text style={[styles.successSub, { color: theme.textSecond }]}>
-          {naira(paidAmount)} is on its way to {bank?.bankName ?? 'your bank'} ({bank?.bankAccountNumber}).
-          Arrival time depends on your bank.
+          {naira(paidAmount)} {tr('auto.withdrawal.isOnItsWayTo', 'is on its way to')} {bank?.bankName ?? 'your bank'} ({bank?.bankAccountNumber}{tr('auto.withdrawal.arrivalTimeDependsOnYour', '). Arrival time depends on your bank.')}
         </Text>
         {paidAmount < numericAmount && (
           <Text style={[styles.successNote, { color: theme.textThird }]}>
@@ -222,7 +222,7 @@ export default function WithdrawalScreen() {
           </Text>
         )}
         <Pressable style={[styles.doneBtn, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
-          <Text style={styles.doneBtnText}>Done</Text>
+          <Text style={styles.doneBtnText}>{tr('auto.profile.done', 'Done')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -259,8 +259,7 @@ export default function WithdrawalScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.frozenTitle, { color: '#D97706' }]}>{tx('auto.withdrawal.withdrawalsPaused', 'Withdrawals paused')}</Text>
                 <Text style={[styles.frozenText, { color: theme.textSecond }]}>
-                  Your bank account change ({bank?.pendingBankName ?? 'new bank'}, ending {String(bank?.pendingBankAccountNumber ?? '').slice(-4)})
-                  is under review. For your protection, withdrawals resume once support confirms it (up to 3 business days).
+                  {tr('auto.withdrawal.yourBankAccountChange', 'Your bank account change (')}{bank?.pendingBankName ?? 'new bank'}, ending {String(bank?.pendingBankAccountNumber ?? '').slice(-4)}{tr('auto.withdrawal.isUnderReviewForYour', ') is under review. For your protection, withdrawals resume once support confirms it (up to 3 business days).')}
                 </Text>
               </View>
             </View>
@@ -276,7 +275,7 @@ export default function WithdrawalScreen() {
               <View style={styles.pendingRow}>
                 <Ionicons name="time-outline" size={13} color={theme.textThird} />
                 <Text style={[styles.balPending, { color: theme.textThird }]}>
-                  {naira(pending)} clearing ({clearanceDays} business days after each delivery)
+                  {naira(pending)} clearing ({clearanceDays} {tr('auto.withdrawal.businessDaysAfterEachDelivery', 'business days after each delivery)')}
                 </Text>
               </View>
             )}
@@ -309,7 +308,7 @@ export default function WithdrawalScreen() {
                 onPress={() => setAmount(allAmountText())}
                 disabled={available < MIN_WITHDRAWAL}
               >
-                <Text style={[styles.quickText, { color: available >= MIN_WITHDRAWAL ? theme.primary : theme.textThird, fontWeight: FontWeight.bold }]}>All</Text>
+                <Text style={[styles.quickText, { color: available >= MIN_WITHDRAWAL ? theme.primary : theme.textThird, fontWeight: FontWeight.bold }]}>{tr('auto.withdrawal.all', 'All')}</Text>
               </Pressable>
               {QUICK_AMOUNTS.map(q => {
                 const affordable = q <= available;
@@ -359,7 +358,7 @@ export default function WithdrawalScreen() {
               >
                 <Ionicons name="alert-circle-outline" size={20} color="#D97706" />
                 <Text style={[styles.noBankText, { color: theme.textSecond }]}>
-                  No payout account yet. Add your bank account to withdraw.
+                  {tr('auto.withdrawal.noPayoutAccountYetAdd', 'No payout account yet. Add your bank account to withdraw.')}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
               </Pressable>
@@ -370,8 +369,7 @@ export default function WithdrawalScreen() {
           <View style={[styles.infoNote, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <Ionicons name="information-circle-outline" size={16} color={theme.textThird} />
             <Text style={[styles.infoText, { color: theme.textSecond }]}>
-              Earnings clear {clearanceDays} business days after each delivery, then withdraw free any time.
-              Withdrawals are matched to whole deliveries and sent as a bank transfer; arrival time depends on your bank.
+              Earnings clear {clearanceDays} {tr('auto.withdrawal.businessDaysAfterEachDelivery2', 'business days after each delivery, then withdraw free any time. Withdrawals are matched to whole deliveries and sent as a bank transfer; arrival time depends on your bank.')}
             </Text>
           </View>
 

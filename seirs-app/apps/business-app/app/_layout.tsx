@@ -84,13 +84,8 @@ function NavigationGuard() {
     if (isLoading) return;
 
     const inAuth    = segments[0] === '(auth)';
-    // Deep-linked from the password-reset email (seirsbusiness://
-    // reset-password?token=...). Must stay reachable while signed out.
-    // Cast: expo-router's generated route union lags new files until
-    // the dev server regenerates .expo/types.
-    const inReset   = (segments[0] as string) === 'reset-password';
 
-    if (!isAuthenticated && !inAuth && !inReset) {
+    if (!isAuthenticated && !inAuth) {
       router.replace('/(auth)/onboarding');
       return;
     }
@@ -102,7 +97,7 @@ function NavigationGuard() {
     // authenticated fine, and stayed on the login screen with no error
     // (found on device 2026-08-16). Anything that is not a partner lands
     // on the business side, which is home for every business account.
-    if (isAuthenticated && !inReset && inAuth) {
+    if (isAuthenticated && inAuth) {
       router.replace(businessRole === 'partner' ? '/(partner)' as any : '/(business)' as any);
     }
     // Deliberately no business <-> partner bouncing once inside: partner

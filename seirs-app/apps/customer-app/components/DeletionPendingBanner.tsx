@@ -6,6 +6,7 @@ import { Colors, Spacing, FontSize, FontWeight, Radius } from '@/constants/theme
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 // Amber banner rendered above the main tab stack whenever the current user
 // has a pending deletion. Tapping Cancel hits the backend, clears the
 // AuthContext state, and the banner disappears. No banner = no deletion
@@ -28,9 +29,9 @@ export function DeletionPendingBanner() {
       'Cancel account deletion?',
       'Your account will stay active and none of your data will be removed.',
       [
-        { text: 'Keep deleting', style: 'cancel' },
+        { text: tx('auto.deletionpendingbanner.keepDeleting', 'Keep deleting'), style: 'cancel' },
         {
-          text: 'Cancel deletion',
+          text: tx('auto.deletionpendingbanner.cancelDeletion', 'Cancel deletion'),
           style: 'default',
           onPress: async () => {
             setBusy(true);
@@ -52,10 +53,10 @@ export function DeletionPendingBanner() {
       <AlertTriangle size={16} color="#92400E" strokeWidth={2.5} />
       <View style={{ flex: 1, marginLeft: 8 }}>
         <Text style={styles.title}>
-          Account deletion pending
+          {tx('auto.deletionpendingbanner.accountDeletionPending', 'Account deletion pending')}
         </Text>
         <Text style={styles.sub}>
-          Your account will be permanently deleted on {dateLabel}
+          {tx('auto.deletionpendingbanner.yourAccountWillBePermanently', 'Your account will be permanently deleted on')} {dateLabel}
           {daysLeft > 0 ? ` (${daysLeft} day${daysLeft === 1 ? '' : 's'} left)` : ''}.
         </Text>
       </View>

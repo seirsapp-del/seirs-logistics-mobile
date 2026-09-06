@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Briefcase, Receipt, Wallet, MessageCircle, User } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 /**
  * Inner Tabs navigator: only the 5 bottom-bar screens.
@@ -56,23 +57,23 @@ export default function DriverTabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Jobs', tabBarIcon: ({ color }) => <Briefcase size={22} color={color} strokeWidth={1.75} /> }}
+        options={{ title: tx('auto.layout.jobs', 'Jobs'), tabBarIcon: ({ color }) => <Briefcase size={22} color={color} strokeWidth={1.75} /> }}
       />
       <Tabs.Screen
         name="history"
-        options={{ title: 'Trips', tabBarIcon: ({ color }) => <Receipt size={22} color={color} strokeWidth={1.75} /> }}
+        options={{ title: tx('auto.layout.trips', 'Trips'), tabBarIcon: ({ color }) => <Receipt size={22} color={color} strokeWidth={1.75} /> }}
       />
       <Tabs.Screen
         name="earnings"
-        options={{ title: 'Earnings', tabBarIcon: ({ color }) => <Wallet size={22} color={color} strokeWidth={1.75} /> }}
+        options={{ title: tx('auto.earnings.earnings', 'Earnings'), tabBarIcon: ({ color }) => <Wallet size={22} color={color} strokeWidth={1.75} /> }}
       />
       <Tabs.Screen
         name="messages"
-        options={{ tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined, title: 'Messages', tabBarIcon: ({ color }) => <MessageCircle size={22} color={color} strokeWidth={1.75} /> }}
+        options={{ tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined, title: tx('auto.layout.messages', 'Messages'), tabBarIcon: ({ color }) => <MessageCircle size={22} color={color} strokeWidth={1.75} /> }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profile', tabBarIcon: ({ color }) => <User size={22} color={color} strokeWidth={1.75} /> }}
+        options={{ title: tx('auto.profile.profile', 'Profile'), tabBarIcon: ({ color }) => <User size={22} color={color} strokeWidth={1.75} /> }}
       />
     </Tabs>
   );

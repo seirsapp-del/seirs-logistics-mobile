@@ -11,6 +11,7 @@ import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { notificationsApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 type NotifType = 'job' | 'payment' | 'system' | 'rating';
 
@@ -111,12 +112,12 @@ export default function DriverNotificationsScreen() {
     // to ever grow a fourth choice. A sheet has no ceiling and gives each
     // option a subtitle saying what it actually removes.
     setSheet({
-      title: 'Clear notifications',
-      message: 'Which ones should go?',
+      title: tr('auto.notifications.clearNotifications', 'Clear notifications'),
+      message: tr('auto.notifications.whichOnesShouldGo', 'Which ones should go?'),
       options: [
         {
-          label: 'Clear read only',
-          sub: 'Keeps anything you have not opened yet',
+          label: tr('auto.notifications.clearReadOnly', 'Clear read only'),
+          sub: tr('auto.notifications.keepsAnythingYouHaveNot', 'Keeps anything you have not opened yet'),
           icon: 'checkmark-done-outline',
           onPress: async () => {
             setNotifs(prev => prev.filter(n => !n.read));
@@ -124,8 +125,8 @@ export default function DriverNotificationsScreen() {
           },
         },
         {
-          label: 'Clear everything',
-          sub: 'Unread ones go too, and this cannot be undone',
+          label: tr('auto.notifications.clearEverything', 'Clear everything'),
+          sub: tr('auto.notifications.unreadOnesGoTooAnd', 'Unread ones go too, and this cannot be undone'),
           variant: 'destructive',
           icon: 'trash-outline',
           onPress: async () => {
@@ -134,7 +135,7 @@ export default function DriverNotificationsScreen() {
           },
         },
       ],
-      cancelLabel: 'Keep them',
+      cancelLabel: tr('auto.notifications.keepThem', 'Keep them'),
     });
   };
 
@@ -166,12 +167,12 @@ export default function DriverNotificationsScreen() {
        * three words crowded into a corner (2026-08-25 dialog sweep).
        */
       setSheet({
-        title: 'Are you OK?',
-        message: 'We could not see your location for a while. If everything is fine just confirm; if not, get help now.',
+        title: tr('auto.notifications.areYouOk', 'Are you OK?'),
+        message: tr('auto.notifications.weCouldNotSeeYour', 'We could not see your location for a while. If everything is fine just confirm; if not, get help now.'),
         options: [
-          { label: "I'm OK", sub: 'Nothing is wrong, carry on', variant: 'primary', icon: 'checkmark-circle-outline' },
-          { label: 'Contact support', sub: 'Talk to a person about it', icon: 'chatbubble-ellipses-outline', onPress: () => router.push('/(driver)/support/new' as any) },
-          { label: 'SOS emergency', sub: 'Alert ops and share my live location now', variant: 'destructive', icon: 'warning-outline', onPress: () => router.push('/(driver)/sos' as any) },
+          { label: tr('auto.notifications.iMOk', 'I\'m OK'), sub: tr('auto.notifications.nothingIsWrongCarryOn', 'Nothing is wrong, carry on'), variant: 'primary', icon: 'checkmark-circle-outline' },
+          { label: tr('auto.notifications.contactSupport', 'Contact support'), sub: tr('auto.notifications.talkToAPersonAbout', 'Talk to a person about it'), icon: 'chatbubble-ellipses-outline', onPress: () => router.push('/(driver)/support/new' as any) },
+          { label: tr('auto.notifications.sosEmergency', 'SOS emergency'), sub: tr('auto.notifications.alertOpsAndShareMy', 'Alert ops and share my live location now'), variant: 'destructive', icon: 'warning-outline', onPress: () => router.push('/(driver)/sos' as any) },
         ],
         cancelLabel: null,
       });

@@ -22,6 +22,7 @@ import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { mapsApi, deliveriesApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Places and geocoding go through our backend (security review
 // 2026-08-12): the Google key is no longer shipped inside the app.
@@ -97,12 +98,12 @@ export default function RequestDriverScreen() {
       if (!pickup && !dropoff) return;
       e.preventDefault();
       showDialog({
-        title: 'Discard this trip?',
-        message: 'Your pickup and destination will be cleared.',
+        title: tr('auto.request.discardThisTrip', 'Discard this trip?'),
+        message: tr('auto.request.yourPickupAndDestinationWill', 'Your pickup and destination will be cleared.'),
         actions: [
-          { text: 'Discard', style: 'destructive',
+          { text: tr('auto.request.discard', 'Discard'), style: 'destructive',
             onPress: () => (navigation as any).dispatch(e.data.action) },
-          { text: 'Keep editing', style: 'cancel' },
+          { text: tr('auto.request.keepEditing', 'Keep editing'), style: 'cancel' },
         ],
       });
     });

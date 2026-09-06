@@ -23,6 +23,8 @@ import { notificationsApi } from '../services/api';
  *
  * @param enabled : only attempt registration when true (e.g. after login)
  */
+let handlerInstalled = false;
+
 export function usePushRegistration(enabled: boolean) {
   const registered = useRef(false);
 
@@ -48,6 +50,26 @@ export function usePushRegistration(enabled: boolean) {
         // require throws and we silently bail. No build-time dependency.
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const Notifications = require('expo-notifications');
+
+        // Foreground delivery (found on device 2026-09-06). Android hands a
+        // push to the APP when the app is open instead of posting it to the
+        // tray, and expo-notifications then drops it unless a handler says
+        // to show it. The first live push (a recurring run, 20:04) reached
+        // the phone, updated the in-app banner and bell, and never appeared
+        // in the shade. This makes an open app behave like WhatsApp does:
+        // banner, sound, listed in the shade.
+        if (!handlerInstalled && typeof Notifications.setNotificationHandler === 'function') {
+          Notifications.setNotificationHandler({
+            handleNotification: async () => ({
+              shouldShowAlert: true,   // SDK <= 52 name, kept for the type union
+              shouldShowBanner: true,
+              shouldShowList: true,
+              shouldPlaySound: true,
+              shouldSetBadge: false,
+            }),
+          });
+          handlerInstalled = true;
+        }
 
         // Permission gate: iOS prompts the user, Android grants by default
         // until SDK 33+ where it also prompts.

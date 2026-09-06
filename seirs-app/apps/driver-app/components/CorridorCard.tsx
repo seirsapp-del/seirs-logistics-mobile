@@ -22,6 +22,7 @@ import { Colors, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme
 import { driversApi, mapsApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 interface Props {
   driver: any;
@@ -100,14 +101,13 @@ export function CorridorCard({ driver, onChanged }: Props) {
               : (
                 <>
                   <X size={13} color="#DC2626" />
-                  <Text style={styles.endText}>End</Text>
+                  <Text style={styles.endText}>{tr('auto.corridorcard.end', 'End')}</Text>
                 </>
               )}
           </Pressable>
         </View>
         <Text style={[styles.sub, { color: theme.textSecond }]} numberOfLines={2}>
-          Heading to {driver.corridorLabel || 'your destination'} until {until}.
-          Jobs along your line reach you first.
+          Heading to {driver.corridorLabel || 'your destination'} until {until}{tr('auto.corridorcard.jobsAlongYourLineReach', '. Jobs along your line reach you first.')}
         </Text>
       </View>
     );
@@ -120,8 +120,7 @@ export function CorridorCard({ driver, onChanged }: Props) {
         <Text style={[styles.title, { color: theme.text }]}>{tx('auto.CorridorCard.headingSomewhere', 'Heading somewhere?')}</Text>
       </View>
       <Text style={[styles.sub, { color: theme.textSecond }]}>
-        Tell us where you&apos;re going and packages along your way find you.
-        Get paid for a trip you were making anyway.
+        {tr('auto.corridorcard.tellUsWhereYouRe', 'Tell us where you\'re going and packages along your way find you. Get paid for a trip you were making anyway.')}
       </Text>
       <TextInput
         style={[styles.input, { backgroundColor: theme.surfaceSecond, color: theme.text, borderColor: theme.border }]}

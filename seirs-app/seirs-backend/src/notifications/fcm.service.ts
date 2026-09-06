@@ -67,8 +67,10 @@ export class FcmService implements OnModuleInit {
     /**
      * Expo tokens go to Expo, not Firebase (2026-09-06).
      *
-     * All three apps register with getExpoPushTokenAsync, which yields
-     * ExponentPushToken[...]. Firebase Admin rejects that shape as an
+     * Until 2026-09-06 all three apps registered getExpoPushTokenAsync
+     * tokens (ExponentPushToken[...]); they now register the native FCM
+     * token first and fall back to Expo's. Firebase Admin rejects the
+     * Expo shape as an
      * invalid registration token, this method then reported it STALE,
      * and the caller deleted it. So every phone was silently
      * unregistered on the first push it should have received, which is

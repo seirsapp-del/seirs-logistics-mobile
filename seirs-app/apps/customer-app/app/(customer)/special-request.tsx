@@ -38,6 +38,7 @@ import { showDialog } from '@/components/SeirsDialog';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
 import { type PickedAddress } from '@/components/AddressPicker';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * The kinds of job that actually turn up, in the sender's words rather
@@ -128,7 +129,7 @@ export default function SpecialRequestScreen() {
       });
       router.replace({ pathname: '/(customer)/special-request/[id]', params: { id: res.id } } as any);
     } catch (e: any) {
-      showDialog({ title: 'Could not send that', message: e?.message ?? 'Try again in a moment.' });
+      showDialog({ title: tr('auto.specialRequest.couldNotSendThat', 'Could not send that'), message: e?.message ?? 'Try again in a moment.' });
     } finally {
       setBusy(false);
     }
@@ -158,10 +159,7 @@ export default function SpecialRequestScreen() {
         <View style={[styles.intro, { backgroundColor: theme.primary + '12' }]}>
           <Ionicons name="construct-outline" size={20} color={theme.primary} />
           <Text style={[styles.introText, { color: theme.textSecond }]}>
-            For loads our normal pricing cannot cover: a transformer, a generator,
-            anything that needs lifting hands or special handling. Tell us about it
-            and we will call you and send a full breakdown. Nothing is charged until
-            you accept the quote.
+            {tr('auto.specialRequest.forLoadsOurNormalPricing', 'For loads our normal pricing cannot cover: a transformer, a generator, anything that needs lifting hands or special handling. Tell us about it and we will call you and send a full breakdown. Nothing is charged until you accept the quote.')}
           </Text>
         </View>
 
@@ -199,8 +197,7 @@ export default function SpecialRequestScreen() {
                as a service: the insurance position is not settled, and it
                collides with our rule against promising arrival times. */
             <Text style={[styles.note, { color: '#92400E' }]}>
-              Medical loads are reviewed case by case before we can accept them, and
-              we will tell you either way. We do not promise arrival times.
+              {tr('auto.specialRequest.medicalLoadsAreReviewedCase', 'Medical loads are reviewed case by case before we can accept them, and we will tell you either way. We do not promise arrival times.')}
             </Text>
           )}
         </Field>
@@ -288,14 +285,12 @@ export default function SpecialRequestScreen() {
               promise arrival times, and a deadline field beside a quote
               becomes one whether we meant it to or not. */}
           <Text style={[styles.note, { color: theme.textThird }]}>
-            We will tell you what is realistic before you accept anything. We do not
-            promise arrival times.
+            {tr('auto.specialRequest.weWillTellYouWhat', 'We will tell you what is realistic before you accept anything. We do not promise arrival times.')}
           </Text>
         </Field>
 
         <Text style={[styles.legal, { color: theme.textThird }]}>
-          By sending this you confirm the load is legal to move and described honestly.
-          Responsibility for anything illegal or misdeclared rests with whoever booked it.
+          {tr('auto.specialRequest.bySendingThisYouConfirm', 'By sending this you confirm the load is legal to move and described honestly. Responsibility for anything illegal or misdeclared rests with whoever booked it.')}
         </Text>
 
         <Pressable
@@ -308,7 +303,7 @@ export default function SpecialRequestScreen() {
             : <Text style={styles.submitText}>{tx('auto.specialRequest.sendForAQuote', 'Send for a quote')}</Text>}
         </Pressable>
         <Text style={[styles.note, { color: theme.textThird, textAlign: 'center' }]}>
-          Nothing is charged now. We will call you, then send a full breakdown.
+          {tr('auto.specialRequest.nothingIsChargedNowWe', 'Nothing is charged now. We will call you, then send a full breakdown.')}
         </Text>
       </ScrollView>
     </SafeAreaView>

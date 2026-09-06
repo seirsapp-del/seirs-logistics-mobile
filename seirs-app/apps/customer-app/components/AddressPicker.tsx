@@ -21,6 +21,7 @@ import { mapsApi } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 // Places and geocoding now go through our backend (security review
 // 2026-08-12). The Google key used to sit in this file, which meant it
 // shipped inside the installed app where anyone could extract it and
@@ -129,8 +130,8 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
             'Location permission denied',
             'Location is off for SEIRS in your phone Settings. Turn it on to auto-fill your address.',
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+              { text: tr('auto.AddressPicker.cancel', 'Cancel'), style: 'cancel' },
+              { text: tr('auto.addresspicker.openSettings', 'Open Settings'), onPress: () => Linking.openSettings() },
             ],
           );
         } else {
@@ -199,7 +200,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
             <Text style={[styles.modalTitle, { color: theme.text }]}>{label}</Text>
             {pinned ? (
               <Pressable onPress={confirm} style={styles.doneBtn}>
-                <Text style={[styles.doneText, { color: theme.primary }]}>Done</Text>
+                <Text style={[styles.doneText, { color: theme.primary }]}>{tr('auto.profile.done', 'Done')}</Text>
               </Pressable>
             ) : (
               <View style={{ width: 50 }} />

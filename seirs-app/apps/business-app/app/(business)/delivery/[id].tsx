@@ -32,6 +32,7 @@ import DeliveryTrackMap from '@/components/DeliveryTrackMap';
 import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
 import { Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Status colour now comes from constants/tint.ts (2026-08-24), shared
@@ -48,9 +49,9 @@ import { tx } from '@/i18n/tx';
  * honour: priority and parcel cover are refused with the points left
  * untouched, because neither is a real product yet.
  */
-const POINT_REWARDS = [
-  { type: 'discount_500' as const,  cost: 500,  label: '₦500 off' },
-  { type: 'free_delivery' as const, cost: 1000, label: 'Free delivery' },
+const POINT_REWARDS = () => [
+  { type: 'discount_500' as const,  cost: 500,  label: tr('auto.deliveryDetail.500Off', '₦500 off') },
+  { type: 'free_delivery' as const, cost: 1000, label: tr('auto.deliveryDetail.freeDelivery', 'Free delivery') },
 ];
 
 export default function DeliveryDetailScreen() {
@@ -327,7 +328,7 @@ export default function DeliveryDetailScreen() {
         `Total: ${naira(q.totalNgn)}` +
         (q.needsSupport ? '\n\nSupport has to approve this before you can pay.' : ''),
         [
-          { text: 'Not now', style: 'cancel' },
+          { text: tr('auto.deliveryDetail.notNow', 'Not now'), style: 'cancel' },
           {
             text: q.needsSupport ? 'Ask support' : 'Request return',
             onPress: async () => {
@@ -404,7 +405,7 @@ export default function DeliveryDetailScreen() {
             />
             {driverLocation && (
               <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
-                <Text style={[styles.cardLabel, { color: colors.textThird }]}>RIDER RIGHT NOW</Text>
+                <Text style={[styles.cardLabel, { color: colors.textThird }]}>{tr('auto.deliveryDetail.riderRightNow', 'RIDER RIGHT NOW')}</Text>
                 {/* Numbers, not just a dot. Ops reads these to a
                     receiving branch down a phone line. */}
                 <Text style={{ color: colors.text, fontSize: FontSize.sm, fontWeight: FontWeight.bold, fontVariant: ['tabular-nums'], marginTop: 2 }}>
@@ -420,7 +421,7 @@ export default function DeliveryDetailScreen() {
                 >
                   <Icon name="ExternalLink" size={14} color={colors.primary} />
                   <Text style={{ color: colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
-                    See where your driver is on Google Maps
+                    {tr('auto.deliveryDetail.seeWhereYourDriverIs', 'See where your driver is on Google Maps')}
                   </Text>
                 </Pressable>
               </View>
@@ -428,7 +429,7 @@ export default function DeliveryDetailScreen() {
           </View>
         )}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.cardLabel, { color: colors.textThird }]}>COLLECTED FROM</Text>
+          <Text style={[styles.cardLabel, { color: colors.textThird }]}>{tr('auto.deliveryDetail.collectedFrom', 'COLLECTED FROM')}</Text>
           <Text style={[styles.cardValue, { color: colors.text }]}>{d.pickupAddress}</Text>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.rowBetween}>
@@ -439,7 +440,7 @@ export default function DeliveryDetailScreen() {
           </View>
           {Number(d.partnerHandlingNgn ?? 0) > 0 && (
             <View style={styles.rowBetween}>
-              <Text style={[styles.cardLabel, { color: colors.textThird }]}>COUNTER HANDLING</Text>
+              <Text style={[styles.cardLabel, { color: colors.textThird }]}>{tr('auto.deliveryDetail.counterHandling', 'COUNTER HANDLING')}</Text>
               <Text style={[styles.cardValue, { color: colors.textSecond }]}>{naira(d.partnerHandlingNgn)}</Text>
             </View>
           )}
@@ -455,7 +456,7 @@ export default function DeliveryDetailScreen() {
               </Text>
               {procPct !== null && (
                 <Text style={{ color: colors.textSecond, fontSize: FontSize.xs, marginTop: 4, lineHeight: 17 }}>
-                  Card processing of about {naira(Number(d.price) * procPct / 100 + procFlat)} ({procPct}%{procFlat ? ` + ${naira(procFlat)}` : ''}) is added at checkout, then your bank asks for its OTP.
+                  {tr('auto.deliveryDetail.cardProcessingOfAbout', 'Card processing of about')} {naira(Number(d.price) * procPct / 100 + procFlat)} ({procPct}%{procFlat ? ` + ${naira(procFlat)}` : ''}{tr('auto.deliveryDetail.isAddedAtCheckoutThen', ') is added at checkout, then your bank asks for its OTP.')}
                 </Text>
               )}
 
@@ -479,12 +480,12 @@ export default function DeliveryDetailScreen() {
               {points !== null && points >= 500 && (
                 <View style={{ gap: 8, marginTop: 10 }}>
                   <View style={styles.rowBetween}>
-                    <Text style={[styles.cardLabel, { color: colors.textThird }]}>USE YOUR POINTS</Text>
+                    <Text style={[styles.cardLabel, { color: colors.textThird }]}>{tr('auto.deliveryDetail.useYourPoints', 'USE YOUR POINTS')}</Text>
                     <Text style={[styles.cardLabel, { color: colors.textSecond }]}>
                       {points.toLocaleString()} points
                     </Text>
                   </View>
-                  {POINT_REWARDS.filter(r => points >= r.cost).map(r => (
+                  {POINT_REWARDS().filter(r => points >= r.cost).map(r => (
                     <Pressable
                       key={r.type}
                       disabled={!!redeeming}
@@ -526,7 +527,7 @@ export default function DeliveryDetailScreen() {
                 hitSlop={8}
               >
                 <Text style={{ color: colors.textSecond, fontWeight: '600', fontSize: FontSize.sm }}>
-                  Something wrong? Edit this order
+                  {tr('auto.deliveryDetail.somethingWrongEditThisOrder', 'Something wrong? Edit this order')}
                 </Text>
               </Pressable>
             </>
@@ -538,11 +539,10 @@ export default function DeliveryDetailScreen() {
         {d.arrivalIssueAt && !d.arrivalResolution && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#F59E0B', borderWidth: 1.5 }]}>
             <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
-              Nobody available to receive
+              {tr('auto.deliveryDetail.nobodyAvailableToReceive', 'Nobody available to receive')}
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
-              The driver is at the drop-off and cannot hand the package over. If we do
-              not hear from you it will follow your booked fallback.
+              {tr('auto.deliveryDetail.theDriverIsAtThe', 'The driver is at the drop-off and cannot hand the package over. If we do not hear from you it will follow your booked fallback.')}
             </Text>
           </View>
         )}
@@ -551,12 +551,10 @@ export default function DeliveryDetailScreen() {
         {Number(d.redirectFeeOwedNgn ?? 0) > 0 && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#F59E0B', borderWidth: 1.5 }]}>
             <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
-              Waiting at a partner store
+              {tr('auto.deliveryDetail.waitingAtAPartnerStore', 'Waiting at a partner store')}
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
-              Nobody was available, so this is being kept safe at a SEIRS partner
-              store. {naira(d.redirectFeeOwedNgn)} settles it and reveals the pickup
-              location.
+              {tr('auto.deliveryDetail.nobodyWasAvailableSoThis', 'Nobody was available, so this is being kept safe at a SEIRS partner store.')} {naira(d.redirectFeeOwedNgn)} {tr('auto.deliveryDetail.settlesItAndRevealsThe', 'settles it and reveals the pickup location.')}
             </Text>
             <Pressable
               onPress={payRedirectFee}
@@ -568,7 +566,7 @@ export default function DeliveryDetailScreen() {
             </Pressable>
             <Pressable onPress={shareCollectLink} style={{ marginTop: 8, paddingVertical: 8, alignItems: 'center' }}>
               <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>
-                Send the collection link to the recipient
+                {tr('auto.deliveryDetail.sendTheCollectionLinkTo', 'Send the collection link to the recipient')}
               </Text>
             </Pressable>
           </View>
@@ -591,7 +589,7 @@ export default function DeliveryDetailScreen() {
                 style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#7C3AED' }}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
-                  Pay {naira(d.returnQuoteNgn)} to start the return
+                  Pay {naira(d.returnQuoteNgn)} {tr('auto.deliveryDetail.toStartTheReturn', 'to start the return')}
                 </Text>
               </Pressable>
             )}
@@ -605,10 +603,10 @@ export default function DeliveryDetailScreen() {
             style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}
           >
             <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>
-              Need this package back?
+              {tr('auto.deliveryDetail.needThisPackageBack', 'Need this package back?')}
             </Text>
             <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
-              Priced from where it is now, back to your pickup address
+              {tr('auto.deliveryDetail.pricedFromWhereItIs', 'Priced from where it is now, back to your pickup address')}
             </Text>
           </Pressable>
         )}
@@ -663,7 +661,7 @@ export default function DeliveryDetailScreen() {
                     </Pressable>
                     <Pressable onPress={() => shareCode(code, st.receiverFirstName)} hitSlop={8} style={styles.codeBtn}>
                       <Icon name="Share2" size={14} color={colors.primary} />
-                      <Text style={[styles.codeBtnText, { color: colors.primary }]}>Send</Text>
+                      <Text style={[styles.codeBtnText, { color: colors.primary }]}>{tr('auto.deliveryDetail.send', 'Send')}</Text>
                     </Pressable>
                   </View>
 
@@ -699,7 +697,7 @@ export default function DeliveryDetailScreen() {
 
               {Array.isArray(st.packagePhotoUrls) && st.packagePhotoUrls.length > 0 && (
                 <View style={styles.photoBlock}>
-                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>WHAT YOU SENT</Text>
+                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>{tr('auto.deliveryDetail.whatYouSent', 'WHAT YOU SENT')}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                     {st.packagePhotoUrls.map((u: string, k: number) => (
                       <Image key={k} source={{ uri: u }} style={[styles.photoThumb, { borderColor: colors.border }]} resizeMode="cover" />
@@ -710,7 +708,7 @@ export default function DeliveryDetailScreen() {
 
               {Array.isArray(st.proofPhotoUrls) && st.proofPhotoUrls.length > 0 && (
                 <View style={styles.photoBlock}>
-                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>PROOF OF DELIVERY</Text>
+                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>{tr('auto.deliveryDetail.proofOfDelivery', 'PROOF OF DELIVERY')}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                     {st.proofPhotoUrls.map((u: string, k: number) => (
                       <Image key={k} source={{ uri: u }} style={[styles.photoThumb, { borderColor: colors.border }]} resizeMode="cover" />

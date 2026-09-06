@@ -27,18 +27,19 @@ import { Avatar } from '@/components/ui/Avatar';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
-const STATUS_STEPS: {
+const STATUS_STEPS = (): {
   key: string; label: string; icon: string;
   action: string | null; next: string | null;
   gradient: readonly [string, string];
-}[] = [
+}[] => [
   // Brand palette only (audit 2026-08-10: the old in_transit step was
   // purple, which is not a SEIRS colour).
-  { key: 'assigned',   label: 'Head to Pickup',   icon: 'map-outline',            action: 'Mark Picked Up',    next: 'picked_up',  gradient: ['#3A7BD5', '#2A5FA8'] },
-  { key: 'picked_up',  label: 'Package Collected', icon: 'cube-outline',           action: 'Start Delivery',    next: 'in_transit', gradient: ['#FFBE0B', '#D99E00'] },
-  { key: 'in_transit', label: 'En Route',           icon: 'navigate-outline',       action: 'Confirm Delivered', next: 'delivered',  gradient: ['#0F2B4C', '#1A3A63'] },
-  { key: 'delivered',  label: 'Delivered!',          icon: 'checkmark-circle-outline', action: null,             next: null,         gradient: ['#16A34A', '#15803D'] },
+  { key: 'assigned',   label: tr('auto.active.headToPickup', 'Head to Pickup'),   icon: 'map-outline',            action: 'Mark Picked Up',    next: 'picked_up',  gradient: ['#3A7BD5', '#2A5FA8'] },
+  { key: 'picked_up',  label: tr('auto.active.packageCollected', 'Package Collected'), icon: 'cube-outline',           action: 'Start Delivery',    next: 'in_transit', gradient: ['#FFBE0B', '#D99E00'] },
+  { key: 'in_transit', label: tr('auto.history.enRoute', 'En Route'),           icon: 'navigate-outline',       action: 'Confirm Delivered', next: 'delivered',  gradient: ['#0F2B4C', '#1A3A63'] },
+  { key: 'delivered',  label: tr('auto.active.delivered', 'Delivered!'),          icon: 'checkmark-circle-outline', action: null,             next: null,         gradient: ['#16A34A', '#15803D'] },
 ];
 
 /**
@@ -46,11 +47,11 @@ const STATUS_STEPS: {
  * 2026-08-23): no photos, no codes, no handoff ceremony. "I've arrived"
  * fires the picked_up transition, which is what pings the passenger.
  */
-const RIDE_STEPS: typeof STATUS_STEPS = [
-  { key: 'assigned',   label: 'Head to pickup',        icon: 'map-outline',              action: "I've arrived",  next: 'picked_up',  gradient: ['#3A7BD5', '#2A5FA8'] },
-  { key: 'picked_up',  label: 'Waiting for passenger', icon: 'person-outline',           action: 'Start ride',    next: 'in_transit', gradient: ['#FFBE0B', '#D99E00'] },
-  { key: 'in_transit', label: 'On the trip',           icon: 'navigate-outline',         action: 'End ride',      next: 'delivered',  gradient: ['#0F2B4C', '#1A3A63'] },
-  { key: 'delivered',  label: 'Ride completed!',       icon: 'checkmark-circle-outline', action: null,            next: null,         gradient: ['#16A34A', '#15803D'] },
+const RIDE_STEPS = (): ReturnType<typeof STATUS_STEPS> => [
+  { key: 'assigned',   label: tr('auto.active.headToPickup2', 'Head to pickup'),        icon: 'map-outline',              action: "I've arrived",  next: 'picked_up',  gradient: ['#3A7BD5', '#2A5FA8'] },
+  { key: 'picked_up',  label: tr('auto.active.waitingForPassenger', 'Waiting for passenger'), icon: 'person-outline',           action: 'Start ride',    next: 'in_transit', gradient: ['#FFBE0B', '#D99E00'] },
+  { key: 'in_transit', label: tr('auto.active.onTheTrip', 'On the trip'),           icon: 'navigate-outline',         action: 'End ride',      next: 'delivered',  gradient: ['#0F2B4C', '#1A3A63'] },
+  { key: 'delivered',  label: tr('auto.active.rideCompleted', 'Ride completed!'),       icon: 'checkmark-circle-outline', action: null,            next: null,         gradient: ['#16A34A', '#15803D'] },
 ];
 
 export default function ActiveDeliveryScreen() {
@@ -268,10 +269,10 @@ export default function ActiveDeliveryScreen() {
    * delivery and opens the ticket in one call.
    */
   const REPORT_REASONS = [
-    { key: 'mismatch',   label: "Package doesn't match the description" },
-    { key: 'overweight', label: 'Heavier than declared' },
-    { key: 'absent',     label: 'Sender not present / wrong address' },
-    { key: 'unsafe',     label: 'Unsafe or refused item' },
+    { key: 'mismatch',   label: tr('auto.active.packageDoesnTMatchThe', 'Package doesn\'t match the description') },
+    { key: 'overweight', label: tr('auto.active.heavierThanDeclared', 'Heavier than declared') },
+    { key: 'absent',     label: tr('auto.active.senderNotPresentWrongAddress', 'Sender not present / wrong address') },
+    { key: 'unsafe',     label: tr('auto.active.unsafeOrRefusedItem', 'Unsafe or refused item') },
   ] as const;
 
   const [reporting, setReporting] = useState(false);
@@ -281,14 +282,14 @@ export default function ActiveDeliveryScreen() {
     setSheet({
       title,
       message,
-      options: [{ label: 'Got it', variant: 'primary', onPress: onDone }],
+      options: [{ label: tr('auto.active.gotIt', 'Got it'), variant: 'primary', onPress: onDone }],
       cancelLabel: null,
       onCancel: onDone,
     });
 
   const reportProblem = () => setSheet({
-    title: 'Report a problem',
-    message: 'What is wrong with this job? You will be asked for a photo.',
+    title: tr('auto.active.reportAProblem', 'Report a problem'),
+    message: tr('auto.active.whatIsWrongWithThis', 'What is wrong with this job? You will be asked for a photo.'),
     options: REPORT_REASONS.map(r => ({
       label: r.label,
       onPress: () => captureAndReport(r.key, r.label),
@@ -315,20 +316,20 @@ export default function ActiveDeliveryScreen() {
       });
 
       setSheet({
-        title: 'Reported',
+        title: tr('auto.active.reported', 'Reported'),
         message: photoUrl
           ? `Support has your photo and the job is flagged. ${label}.`
           : `Support has been notified and the job is flagged. ${label}.\n\nNo photo was attached, which makes it harder to settle.`,
         options: res?.ticketId
           ? [{
-              label: 'Open the ticket',
+              label: tr('auto.active.openTheTicket', 'Open the ticket'),
               variant: 'primary' as const,
               onPress: () => router.push({
                 pathname: '/(driver)/support/[ticketId]',
                 params: { ticketId: res.ticketId },
               } as any),
             }]
-          : [{ label: 'Got it', variant: 'primary' as const }],
+          : [{ label: tr('auto.active.gotIt', 'Got it'), variant: 'primary' as const }],
         cancelLabel: res?.ticketId ? 'Not now' : null,
       });
     } catch (e: any) {
@@ -473,8 +474,8 @@ export default function ActiveDeliveryScreen() {
      * could not make. A list has no slot limit.
      */
     setSheet({
-      title: 'Cancel this job?',
-      message: 'The customer is refunded in full and the job goes to another driver. Pick the reason: it is recorded. "I feel unsafe" never counts against your daily allowance.',
+      title: tr('auto.active.cancelThisJob', 'Cancel this job?'),
+      message: tr('auto.active.theCustomerIsRefundedIn', 'The customer is refunded in full and the job goes to another driver. Pick the reason: it is recorded. "I feel unsafe" never counts against your daily allowance.'),
       options: reasons.map(([key, label]) => ({
         label,
         variant: 'destructive' as const,
@@ -487,13 +488,13 @@ export default function ActiveDeliveryScreen() {
           }
         },
       })),
-      cancelLabel: 'Keep the job',
+      cancelLabel: tr('auto.active.keepTheJob', 'Keep the job'),
     });
   };
 
   const advanceStatus = async () => {
     if (!delivery) return;
-    const step = ((delivery as any).kind === 'ride' ? RIDE_STEPS : STATUS_STEPS).find(s => s.key === delivery.status);
+    const step = ((delivery as any).kind === 'ride' ? RIDE_STEPS() : STATUS_STEPS()).find(s => s.key === delivery.status);
     if (!step?.next) return;
 
     const nextStatus = step.next;
@@ -503,9 +504,9 @@ export default function ActiveDeliveryScreen() {
     if (nextStatus === 'delivered' && !isRideJob) {
       if (!proofReady) {
         setSheet({
-          title: 'Proof of delivery needed',
-          message: 'Take a photo of the package with the person who received it before confirming. It is what settles a dispute later.',
-          options: [{ label: 'Take photo', variant: 'primary', icon: 'camera-outline', onPress: takeProofPhoto }],
+          title: tr('auto.active.proofOfDeliveryNeeded', 'Proof of delivery needed'),
+          message: tr('auto.active.takeAPhotoOfThe', 'Take a photo of the package with the person who received it before confirming. It is what settles a dispute later.'),
+          options: [{ label: tr('auto.active.takePhoto', 'Take photo'), variant: 'primary', icon: 'camera-outline', onPress: takeProofPhoto }],
         });
         return;
       }
@@ -515,12 +516,12 @@ export default function ActiveDeliveryScreen() {
       // path is safe to offer.
       if (delivery.requiresRecipientVerification) {
         setSheet({
-          title: 'High-value package',
-          message: 'This delivery requires recipient verification: physical ID plus email code, or SEIRS ID plus typed name.',
+          title: tr('auto.active.highValuePackage', 'High-value package'),
+          message: tr('auto.active.thisDeliveryRequiresRecipientVerificatio', 'This delivery requires recipient verification: physical ID plus email code, or SEIRS ID plus typed name.'),
           options: [
             {
-              label: 'Verify the recipient',
-              sub: 'Opens the identity hand-off',
+              label: tr('auto.active.verifyTheRecipient', 'Verify the recipient'),
+              sub: tr('auto.active.opensTheIdentityHandOff', 'Opens the identity hand-off'),
               variant: 'primary',
               icon: 'shield-checkmark-outline',
               onPress: () => router.push({
@@ -529,8 +530,8 @@ export default function ActiveDeliveryScreen() {
               } as any),
             },
             {
-              label: 'Already verified: mark delivered',
-              sub: 'The server refuses this without a hand-off record',
+              label: tr('auto.active.alreadyVerifiedMarkDelivered', 'Already verified: mark delivered'),
+              sub: tr('auto.active.theServerRefusesThisWithout', 'The server refuses this without a hand-off record'),
               onPress: () => doUpdate(nextStatus),
             },
           ],
@@ -565,12 +566,12 @@ export default function ActiveDeliveryScreen() {
    * receiver on a cheap phone still needs the other two.
    */
   const openHandoverSheet = (nextStatus: string) => setSheet({
-    title: 'Who received the package?',
-    message: 'This is recorded on the delivery record.',
+    title: tr('auto.active.whoReceivedThePackage', 'Who received the package?'),
+    message: tr('auto.active.thisIsRecordedOnThe', 'This is recorded on the delivery record.'),
     options: [
       {
-        label: 'Scan their package QR',
-        sub: 'Strongest proof: they hold a code from the sender. Scan, then confirm here',
+        label: tr('auto.active.scanTheirPackageQr', 'Scan their package QR'),
+        sub: tr('auto.active.strongestProofTheyHoldA', 'Strongest proof: they hold a code from the sender. Scan, then confirm here'),
         variant: 'primary',
         icon: 'qr-code-outline',
         onPress: () => router.push({
@@ -579,13 +580,13 @@ export default function ActiveDeliveryScreen() {
         } as any),
       },
       {
-        label: 'The recipient',
-        sub: 'You asked and they said yes',
+        label: tr('auto.active.theRecipient', 'The recipient'),
+        sub: tr('auto.active.youAskedAndTheySaid', 'You asked and they said yes'),
         onPress: () => doUpdate(nextStatus as any, { relation: 'recipient' }),
       },
       {
-        label: 'Someone else',
-        sub: 'A gateman, a neighbour, reception. Their name goes on the record',
+        label: tr('auto.active.someoneElse', 'Someone else'),
+        sub: tr('auto.active.aGatemanANeighbourReception', 'A gateman, a neighbour, reception. Their name goes on the record'),
         onPress: () => promptReceiverName(),
       },
     ],
@@ -603,9 +604,9 @@ export default function ActiveDeliveryScreen() {
         'Who accepted it?',
         'Their name, as they gave it to you.',
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: tr('auto.parcelRequests.cancel', 'Cancel'), style: 'cancel' },
           {
-            text: 'Confirm Delivered',
+            text: tr('auto.active.confirmDelivered', 'Confirm Delivered'),
             onPress: (name?: string) => {
               const clean = (name ?? '').trim();
               if (!clean) {
@@ -651,10 +652,10 @@ export default function ActiveDeliveryScreen() {
         } catch { /* fall through */ }
         if (remainingActive > 0) {
           setSheet({
-            title: 'Trunk check',
+            title: tr('auto.active.trunkCheck', 'Trunk check'),
             message: `Delivered ${delivery.trackingCode}. You still have ${remainingActive} package${remainingActive > 1 ? 's' : ''} on board: take a quick photo of the remaining cargo. It protects YOU in any dispute.`,
             options: [{
-              label: 'Take the trunk photo',
+              label: tr('auto.active.takeTheTrunkPhoto', 'Take the trunk photo'),
               variant: 'primary',
               icon: 'camera-outline',
               onPress: () => router.replace({
@@ -662,7 +663,7 @@ export default function ActiveDeliveryScreen() {
                 params:   { deliveryId: delivery.id, remaining: String(remainingActive) },
               } as any),
             }],
-            cancelLabel: 'Skip, not recommended',
+            cancelLabel: tr('auto.active.skipNotRecommended', 'Skip, not recommended'),
             // Dismissing by backdrop has to land the rider somewhere.
             // Leaving them on a delivered job with no route out was the
             // old behaviour of the Cancel button anyway.
@@ -689,10 +690,10 @@ export default function ActiveDeliveryScreen() {
               ? 'Your earnings for this trip are already cleared and ready to withdraw.'
               : `Your earnings for this trip clear in ${clearanceDays} business day${clearanceDays === 1 ? '' : 's'}, then you can withdraw them.`;
         setSheet({
-          title: 'Delivery complete',
+          title: tr('auto.active.deliveryComplete', 'Delivery complete'),
           message: `You've successfully delivered ${delivery.trackingCode}.\n\n${clearanceLine}`,
           options: [{
-            label: 'Back to jobs',
+            label: tr('auto.active.backToJobs', 'Back to jobs'),
             variant: 'primary',
             onPress: () => router.replace('/(driver)' as any),
           }],
@@ -737,7 +738,7 @@ export default function ActiveDeliveryScreen() {
   // switched on kind but the Progress list was hardcoded to STATUS_STEPS,
   // so a ride driver read "Package Collected" halfway through a trip.
   const isRide      = (delivery as any).kind === 'ride';
-  const steps       = isRide ? RIDE_STEPS : STATUS_STEPS;
+  const steps       = isRide ? RIDE_STEPS() : STATUS_STEPS();
   const stepConfig  = steps.find(s => s.key === delivery.status) ?? steps[0];
   const isDone      = delivery.status === 'delivered';
   const needsProof  = delivery.status === 'in_transit' && !isRide;
@@ -769,8 +770,8 @@ export default function ActiveDeliveryScreen() {
     if (resolution === 'store' || resolution === 'auto_store') {
       return {
         direction: 'drop',
-        title: 'Hand in at the partner counter',
-        sub:   'Scan the parcel, then the counter signs for it. Until they sign it is still on you.',
+        title: tr('auto.active.handInAtThePartner', 'Hand in at the partner counter'),
+        sub:   tr('auto.active.scanTheParcelThenThe', 'Scan the parcel, then the counter signs for it. Until they sign it is still on you.'),
         /**
          * No storeId on this branch, so the handover screen cannot look the
          * counter up and the rider still gets an address without a name or
@@ -789,8 +790,8 @@ export default function ActiveDeliveryScreen() {
     if ((delivery as any).pickupStoreId && delivery.status === 'assigned') {
       return {
         direction: 'collect',
-        title: 'Collect from the partner counter',
-        sub:   'Scan the parcel, then the counter signs it out. After that it is on you.',
+        title: tr('auto.active.collectFromThePartnerCounter', 'Collect from the partner counter'),
+        sub:   tr('auto.active.scanTheParcelThenThe2', 'Scan the parcel, then the counter signs it out. After that it is on you.'),
         storeName:    'Partner counter',
         storeAddress: delivery.pickupAddress ?? '',
         // The handover screen swaps the placeholder above for the shop's real
@@ -868,8 +869,7 @@ export default function ActiveDeliveryScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.bgPromptTitle}>{tx('auto.active.yourMapStopsWhenYour', 'Your map stops when your screen locks')}</Text>
               <Text style={styles.bgPromptBody}>
-                Tap to keep sharing while your phone is in your pocket. Choose
-                "Allow all the time". It stops on its own when the job ends.
+                {tr('auto.active.tapToKeepSharingWhile', 'Tap to keep sharing while your phone is in your pocket. Choose "Allow all the time". It stops on its own when the job ends.')}
               </Text>
             </View>
             <Text style={styles.bgPromptCta}>{tx('auto.active.turnOn', 'Turn on')}</Text>
@@ -1065,19 +1065,19 @@ export default function ActiveDeliveryScreen() {
           <Text style={[styles.cardTitle, { color: theme.text }]}>{isRide ? 'Trip Details' : 'Package Details'}</Text>
           {[
             ...(isRide ? [] : [
-              { label: 'Description', value: delivery.packageDescription,                        icon: 'cube-outline' },
-              { label: 'Size',        value: delivery.packageSize,                               icon: 'resize-outline' },
-              { label: 'Fragile',     value: delivery.isFragile ? 'Yes: handle carefully' : 'No', icon: 'warning-outline' },
+              { label: tr('auto.active.description', 'Description'), value: delivery.packageDescription,                        icon: 'cube-outline' },
+              { label: tr('auto.active.size', 'Size'),        value: delivery.packageSize,                               icon: 'resize-outline' },
+              { label: tr('auto.id.fragile', 'Fragile'),     value: delivery.isFragile ? 'Yes: handle carefully' : 'No', icon: 'warning-outline' },
             ]),
             {
-              label: 'Distance',
+              label: tr('auto.id.distance', 'Distance'),
               value: Number.isFinite(Number(delivery.distanceKm)) && delivery.distanceKm != null
                 ? `${Number(delivery.distanceKm).toFixed(1)} km` : null,
               icon: 'map-outline',
             },
             {
               // Driver money is always the server number, never recomputed here.
-              label: 'Your Earnings',
+              label: tr('auto.active.yourEarnings', 'Your Earnings'),
               value: Number.isFinite(Number(delivery.driverEarnings)) && delivery.driverEarnings != null
                 ? naira(delivery.driverEarnings) : null,
               icon: 'cash-outline',
@@ -1123,7 +1123,7 @@ export default function ActiveDeliveryScreen() {
                 } as any)}
               >
                 <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
-                <Text style={styles.chatBtnText}>Chat</Text>
+                <Text style={styles.chatBtnText}>{tr('auto.active.chat', 'Chat')}</Text>
               </Pressable>
             </View>
           </View>
@@ -1155,7 +1155,7 @@ export default function ActiveDeliveryScreen() {
                 } as any)}
               >
                 <Ionicons name="chatbubble-outline" size={18} color="#fff" />
-                <Text style={styles.chatBtnText}>Chat</Text>
+                <Text style={styles.chatBtnText}>{tr('auto.active.chat', 'Chat')}</Text>
               </Pressable>
             </View>
           </View>
@@ -1178,7 +1178,7 @@ export default function ActiveDeliveryScreen() {
                   onPress={() => Linking.openURL(`tel:${delivery.receiverPhone}`)}
                 >
                   <Ionicons name="call-outline" size={18} color="#fff" />
-                  <Text style={styles.chatBtnText}>Call</Text>
+                  <Text style={styles.chatBtnText}>{tr('auto.active.call', 'Call')}</Text>
                 </Pressable>
               )}
             </View>
@@ -1188,7 +1188,7 @@ export default function ActiveDeliveryScreen() {
         {['assigned', 'picked_up'].includes(String(delivery.status)) && (
           <Pressable onPress={cancelJob} style={{ alignSelf: 'center', paddingVertical: 10 }}>
             <Text style={{ color: '#DC2626', fontSize: FontSize.sm, fontWeight: '600' }}>
-              Can't do this job? Cancel with a reason
+              {tr('auto.active.canTDoThisJob', 'Can\'t do this job? Cancel with a reason')}
             </Text>
           </Pressable>
         )}
@@ -1213,7 +1213,7 @@ export default function ActiveDeliveryScreen() {
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.active.proofOfDelivery', 'Proof of Delivery')}</Text>
             <Text style={[styles.proofHint, { color: theme.textSecond }]}>
-              Take a photo when you hand over the package. Required to confirm delivery.
+              {tr('auto.active.takeAPhotoWhenYou', 'Take a photo when you hand over the package. Required to confirm delivery.')}
             </Text>
             {proofUri ? (
               <View style={styles.proofPreview}>
@@ -1375,10 +1375,10 @@ export default function ActiveDeliveryScreen() {
             <Pressable
               style={({ pressed }) => [styles.nobodyBtn, { borderColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
               onPress={() => setSheet({
-                title: 'Nobody available to receive?',
-                message: 'The sender gets 5 minutes to respond: wait, neighbour, gate, or partner store. Their answer arrives in this delivery\'s chat. If they stay silent, follow the fallback message.',
+                title: tr('auto.active.nobodyAvailableToReceive', 'Nobody available to receive?'),
+                message: tr('auto.active.theSenderGets5Minutes', 'The sender gets 5 minutes to respond: wait, neighbour, gate, or partner store. Their answer arrives in this delivery\'s chat. If they stay silent, follow the fallback message.'),
                 options: [{
-                  label: 'Notify the sender',
+                  label: tr('auto.active.notifyTheSender', 'Notify the sender'),
                   variant: 'primary',
                   icon: 'chatbubble-ellipses-outline',
                   onPress: async () => {
@@ -1394,7 +1394,7 @@ export default function ActiveDeliveryScreen() {
             >
               <Ionicons name="alert-circle-outline" size={18} color={theme.text} />
               <Text style={{ color: theme.text, fontSize: FontSize.base, fontWeight: FontWeight.bold as any }}>
-                Nobody available to receive?
+                {tr('auto.active.nobodyAvailableToReceive', 'Nobody available to receive?')}
               </Text>
             </Pressable>
           )}
@@ -1414,7 +1414,7 @@ export default function ActiveDeliveryScreen() {
           <View style={[styles.receiverCard, { backgroundColor: theme.surface }]}>
             <Text style={[styles.receiverTitle, { color: theme.text }]}>{tx('auto.active.whoAcceptedIt', 'Who accepted it?')}</Text>
             <Text style={[styles.receiverBody, { color: theme.textSecond }]}>
-              Their name, as they gave it to you. This goes on the delivery record.
+              {tr('auto.active.theirNameAsTheyGave', 'Their name, as they gave it to you. This goes on the delivery record.')}
             </Text>
             <TextInput
               value={receiverName}

@@ -27,6 +27,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const CONFIRM_PHRASE = 'delete my account';
 
@@ -70,9 +71,9 @@ export default function DeleteBusinessAccountScreen() {
       'Your account is deactivated now and permanently deleted after 30 days. ' +
       'Sign in before then to cancel.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: tr('auto.payoutAccount.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: tr('auto.deleteAccount.delete', 'Delete'),
           style: 'destructive',
           onPress: async () => {
             setLoading(true);
@@ -119,8 +120,7 @@ export default function DeleteBusinessAccountScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.warnTitle, { color: colors.error }]}>{tx('auto.deleteAccount.permanentAfter30Days', 'Permanent after 30 days')}</Text>
               <Text style={[styles.warnSub, { color: colors.textSecond }]}>
-                Deactivated now. Sign in within 30 days to cancel. After that everything below is
-                removed for good.
+                {tr('auto.deleteAccount.deactivatedNowSignInWithin', 'Deactivated now. Sign in within 30 days to cancel. After that everything below is removed for good.')}
               </Text>
             </View>
           </View>
@@ -165,14 +165,14 @@ export default function DeleteBusinessAccountScreen() {
               <>
                 <Icon name="Download" size={16} color={colors.primary} />
                 <Text style={[styles.exportText, { color: colors.primary }]}>
-                  Download my data first (recommended)
+                  {tr('auto.deleteAccount.downloadMyDataFirstRecommended', 'Download my data first (recommended)')}
                 </Text>
               </>
             )}
           </Pressable>
 
           <View style={{ marginTop: 20, gap: 6 }}>
-            <Text style={[styles.fieldLabel, { color: colors.textSecond }]}>CONFIRM YOUR PASSWORD</Text>
+            <Text style={[styles.fieldLabel, { color: colors.textSecond }]}>{tr('auto.deleteAccount.confirmYourPassword', 'CONFIRM YOUR PASSWORD')}</Text>
             <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}>
               <TextInput
                 value={password}
@@ -215,7 +215,7 @@ export default function DeleteBusinessAccountScreen() {
               <>
                 <Icon name="Trash2" size={16} color={canSubmit ? colors.textOnPrimary : colors.textThird} />
                 <Text style={[styles.dangerBtnText, { color: canSubmit ? colors.textOnPrimary : colors.textThird }]}>
-                  Delete my account
+                  {tr('auto.deleteAccount.deleteMyAccount', 'Delete my account')}
                 </Text>
               </>
             )}

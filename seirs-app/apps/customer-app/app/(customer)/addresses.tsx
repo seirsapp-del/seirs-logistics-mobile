@@ -13,6 +13,7 @@ import { addressesApi, deliveriesApi, type SavedAddressDTO } from '@/services/ap
 import InlineAddressPicker from '@/components/InlineAddressPicker';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 // Spec V8: saved address book synced to backend so the data follows
 // the user across devices + can pre-fill driver routing. AsyncStorage
 // is kept as a warm cache so the list renders before the network round
@@ -148,7 +149,7 @@ export default function AddressesScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Sparkles size={12} color={theme.primary} />
                 <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, fontWeight: FontWeight.bold, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Suggested from your trips
+                  {tx('auto.addresses.suggestedFromYourTrips', 'Suggested from your trips')}
                 </Text>
               </View>
               {filteredSuggestions.map((s) => (
@@ -269,7 +270,7 @@ export default function AddressesScreen() {
           )}
 
           <Text style={[styles.footnote, { color: theme.textThird }]}>
-            Synced across your SEIRS devices. Coordinates saved so the driver has an exact pickup pin.
+            {tx('auto.addresses.syncedAcrossYourSeirsDevices', 'Synced across your SEIRS devices. Coordinates saved so the driver has an exact pickup pin.')}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -17,12 +17,13 @@ import { deliveriesApi, feesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { useAuth } from '@/context/AuthContext';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
-const URGENCY_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
-  instant:   { label: 'Instant',   color: '#EF4444', Icon: Zap  },
-  standard:  { label: 'Standard',  color: '#3A7BD5', Icon: Clock },
-  scheduled: { label: 'Scheduled', color: '#D97706', Icon: Clock },
-};
+const URGENCY_CONFIG = (): Record<string, { label: string; color: string; Icon: any }> => ({
+  instant:   { label: tr('auto.jobDetail.instant', 'Instant'),   color: '#EF4444', Icon: Zap  },
+  standard:  { label: tr('auto.jobDetail.standard', 'Standard'),  color: '#3A7BD5', Icon: Clock },
+  scheduled: { label: tr('auto.jobDetail.scheduled', 'Scheduled'), color: '#D97706', Icon: Clock },
+});
 
 const ACCEPT_TIMEOUT_SEC = 45;
 
@@ -84,7 +85,7 @@ export default function JobDetailScreen() {
     setSheet({
       title,
       message,
-      options: [{ label: 'Got it', variant: 'primary', onPress: onDone }],
+      options: [{ label: tr('auto.active.gotIt', 'Got it'), variant: 'primary', onPress: onDone }],
       cancelLabel: null,
       onCancel: onDone,
     });
@@ -285,7 +286,7 @@ export default function JobDetailScreen() {
     );
   }
 
-  const urg = URGENCY_CONFIG[job.urgency] ?? { label: job.urgency, color: '#6B7280', Icon: Clock };
+  const urg = URGENCY_CONFIG()[job.urgency] ?? { label: job.urgency, color: '#6B7280', Icon: Clock };
 
   const isRide = job.kind === 'ride';
 
@@ -330,11 +331,11 @@ export default function JobDetailScreen() {
   const openMaps = (address: string) => {
     const query = encodeURIComponent(address);
     setSheet({
-      title: 'Navigate there',
-      message: 'Which app should take you?',
+      title: tr('auto.deliveryDetail.navigateThere', 'Navigate there'),
+      message: tr('auto.deliveryDetail.whichAppShouldTakeYou', 'Which app should take you?'),
       options: [
-        { label: 'Google Maps', variant: 'primary', icon: 'navigate-outline', onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query}`) },
-        { label: 'Waze',        icon: 'car-outline',      onPress: () => Linking.openURL(`https://waze.com/ul?q=${query}`) },
+        { label: tr('auto.deliveryDetail.googleMaps', 'Google Maps'), variant: 'primary', icon: 'navigate-outline', onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query}`) },
+        { label: tr('auto.deliveryDetail.waze', 'Waze'),        icon: 'car-outline',      onPress: () => Linking.openURL(`https://waze.com/ul?q=${query}`) },
       ],
     });
   };
@@ -493,7 +494,7 @@ export default function JobDetailScreen() {
           ]}>
             <Zap size={16} color="#6366F1" strokeWidth={1.75} />
             <Text style={styles.rideBannerText}>
-              This is a RIDE: you are picking up a passenger, not a package.
+              {tr('auto.jobDetail.thisIsARideYou', 'This is a RIDE: you are picking up a passenger, not a package.')}
             </Text>
           </View>
         )}
@@ -517,8 +518,8 @@ export default function JobDetailScreen() {
           ]}>
             <Navigation size={16} color="#B45309" strokeWidth={1.75} />
             <Text style={[styles.rideBannerText, { color: '#B45309' }]}>
-              INTERSTATE: this run leaves {job.pickupStateName ?? job.pickupStateCode} for {job.dropoffStateName ?? job.dropoffStateCode}
-              {job.distanceKm ? `, about ${job.distanceKm} km each way` : ''}. Check your papers and your fuel before you accept.
+              {tr('auto.jobDetail.interstateThisRunLeaves', 'INTERSTATE: this run leaves')} {job.pickupStateName ?? job.pickupStateCode} for {job.dropoffStateName ?? job.dropoffStateCode}
+              {job.distanceKm ? `, about ${job.distanceKm} km each way` : ''}{tr('auto.jobDetail.checkYourPapersAndYour', '. Check your papers and your fuel before you accept.')}
             </Text>
           </View>
         )}
@@ -756,14 +757,14 @@ export default function JobDetailScreen() {
           <View style={[styles.stateNote, { backgroundColor: theme.surfaceSecond }]}>
             <CheckCircle size={18} color="#16A34A" strokeWidth={1.75} />
             <Text style={[styles.stateNoteText, { color: theme.textSecond }]}>
-              This job is finished. Nothing left to do here.
+              {tr('auto.jobDetail.thisJobIsFinishedNothing', 'This job is finished. Nothing left to do here.')}
             </Text>
           </View>
         ) : (
           <View style={[styles.stateNote, { backgroundColor: theme.surfaceSecond }]}>
             <XCircle size={18} color={theme.textThird} strokeWidth={1.75} />
             <Text style={[styles.stateNoteText, { color: theme.textSecond }]}>
-              Another driver took this one. It is off your list.
+              {tr('auto.jobDetail.anotherDriverTookThisOne', 'Another driver took this one. It is off your list.')}
             </Text>
           </View>
         )}

@@ -11,6 +11,7 @@ import { authApi } from '@/services/api';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * Forgot password, and the "check your inbox" state that follows it.
@@ -59,7 +60,7 @@ export default function ForgotPasswordScreen() {
     <View style={styles.brandRow}>
       <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
       <Text style={[styles.brand,    { color: theme.primary }]}>SEIRS</Text>
-      <Text style={[styles.brandSub, { color: theme.textThird }]}>BUSINESS &amp; PARTNERS</Text>
+      <Text style={[styles.brandSub, { color: theme.textThird }]}>{tr('auto.forgotPassword.businessPartners', 'BUSINESS & PARTNERS')}</Text>
     </View>
   );
 
@@ -68,7 +69,7 @@ export default function ForgotPasswordScreen() {
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <ScrollView
-          contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
+          contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xxl, paddingBottom: Spacing.xl + insets.bottom }]}
           showsVerticalScrollIndicator={false}
         >
           {/* Holds the space the back arrow occupies on the form state. This
@@ -88,8 +89,7 @@ export default function ForgotPasswordScreen() {
             </View>
             <Text style={[styles.sentTitle, { color: theme.text }]}>{tx('auto.forgotPassword.checkYourInbox', 'Check your inbox')}</Text>
             <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
-              If an account exists for {email.trim().toLowerCase()}, we sent a reset link.
-              It expires in 15 minutes. Check spam if you do not see it.
+              {tr('auto.forgotPassword.ifAnAccountExistsFor', 'If an account exists for')} {email.trim().toLowerCase()}{tr('auto.forgotPassword.weSentAResetLink', ', we sent a reset link. It expires in 15 minutes. Check spam if you do not see it.')}
             </Text>
           </View>
 
@@ -108,7 +108,7 @@ export default function ForgotPasswordScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.xxl, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -129,7 +129,7 @@ export default function ForgotPasswordScreen() {
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>{tx('auto.forgotPassword.forgotPassword', 'Forgot password?')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            Enter your email and we&apos;ll send you a link to reset your password.
+            {tr('auto.forgotPassword.enterYourEmailAndWe', 'Enter your email and we\'ll send you a link to reset your password.')}
           </Text>
         </View>
 

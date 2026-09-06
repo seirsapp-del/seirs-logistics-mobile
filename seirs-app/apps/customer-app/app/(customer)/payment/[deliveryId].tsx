@@ -12,6 +12,7 @@ import { paymentsApi, deliveriesApi, loyaltyApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Spec V8 §"Confirmed Decisions": COD removed. Everything routes through
 // Flutterwave's hosted checkout (card, bank transfer, USSD live there;
@@ -45,9 +46,9 @@ import { tx } from '@/i18n/tx';
  * above the cap, so a figure guessed client-side would be a promise this
  * screen cannot keep.
  */
-const POINT_REWARDS = [
-  { type: 'discount_500' as const,  cost: 500,  label: '₦500 off',      note: 'Comes off this booking.' },
-  { type: 'free_delivery' as const, cost: 1000, label: 'Free delivery', note: 'Covers this booking up to the reward cap.' },
+const POINT_REWARDS = () => [
+  { type: 'discount_500' as const,  cost: 500,  label: tr('auto.paymentDetail.500Off', '₦500 off'),      note: tr('auto.paymentDetail.comesOffThisBooking', 'Comes off this booking.') },
+  { type: 'free_delivery' as const, cost: 1000, label: tr('auto.paymentDetail.freeDelivery', 'Free delivery'), note: tr('auto.paymentDetail.coversThisBookingUpTo', 'Covers this booking up to the reward cap.') },
 ];
 
 export default function PaymentScreen() {
@@ -204,7 +205,7 @@ export default function PaymentScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={[styles.backText, { color: theme.primary }]}>← Back</Text>
+            <Text style={[styles.backText, { color: theme.primary }]}>{tr('auto.paymentDetail.back', '← Back')}</Text>
           </Pressable>
           <Text style={[styles.title, { color: theme.text }]}>{tx('auto.deliveryId.payment', 'Payment')}</Text>
         </View>
@@ -243,7 +244,7 @@ export default function PaymentScreen() {
                   onPress={() => router.push({ pathname: '/(customer)/edit-booking/[id]', params: { id: String(deliveryId) } } as any)}
                   hitSlop={8}
                 >
-                  <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: '700' }}>Edit</Text>
+                  <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: '700' }}>{tr('auto.history.edit', 'Edit')}</Text>
                 </Pressable>
               )}
             </View>
@@ -269,7 +270,7 @@ export default function PaymentScreen() {
               </Text>
             </View>
 
-            {POINT_REWARDS.map((r) => {
+            {POINT_REWARDS().map((r) => {
               const afford = points >= r.cost;
               const busy   = redeeming === r.type;
               return (
@@ -320,15 +321,13 @@ export default function PaymentScreen() {
         {alreadyPaid ? (
           <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
-              This booking is already paid. Nothing more to do here.
+              {tr('auto.paymentDetail.thisBookingIsAlreadyPaid', 'This booking is already paid. Nothing more to do here.')}
             </Text>
           </View>
         ) : (
           <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
-              You will be taken to our secure checkout to pay by card, bank transfer, USSD and more.
-              Your bank confirms it with a one-time code, and any processing cost is shown there before
-              you pay. Come back to the app afterwards and we confirm it automatically.
+              {tr('auto.paymentDetail.youWillBeTakenTo', 'You will be taken to our secure checkout to pay by card, bank transfer, USSD and more. Your bank confirms it with a one-time code, and any processing cost is shown there before you pay. Come back to the app afterwards and we confirm it automatically.')}
             </Text>
           </View>
         )}
@@ -336,7 +335,7 @@ export default function PaymentScreen() {
         {error ? <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text> : null}
         {loadErr ? (
           <Text style={[styles.errorText, { color: theme.textSecond }]}>
-            Could not load the booking details. The amount still comes from the booking when you pay.
+            {tr('auto.paymentDetail.couldNotLoadTheBooking', 'Could not load the booking details. The amount still comes from the booking when you pay.')}
           </Text>
         ) : null}
 
@@ -349,9 +348,7 @@ export default function PaymentScreen() {
             <Text style={[styles.escrowTitle, { color: theme.text }]}>{tx('auto.deliveryId.paymentProtection', 'Payment Protection')}</Text>
           </View>
           <Text style={[styles.escrowDesc, { color: theme.textSecond }]}>
-            Your payment is held by SEIRS and only released to the driver after delivery is
-            confirmed. If the delivery cannot be completed, refunds follow the Terms of Service:
-            work already done, like distance covered, can be deducted.
+            {tr('auto.paymentDetail.yourPaymentIsHeldBy', 'Your payment is held by SEIRS and only released to the driver after delivery is confirmed. If the delivery cannot be completed, refunds follow the Terms of Service: work already done, like distance covered, can be deducted.')}
           </Text>
         </View>
 
@@ -381,7 +378,7 @@ export default function PaymentScreen() {
           )}
           {verifying && (
             <Text style={[styles.verifyNote, { color: theme.textSecond }]}>
-              Verifying your payment...
+              {tr('auto.paymentDetail.verifyingYourPayment', 'Verifying your payment...')}
             </Text>
           )}
         </View>

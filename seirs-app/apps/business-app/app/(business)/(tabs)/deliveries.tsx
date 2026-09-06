@@ -13,6 +13,7 @@ import { statusTint } from '@/constants/tint';
 import { vehicleLabel } from '@/constants/vehicles';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const STATUSES = ['all', 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled'];
 
@@ -119,8 +120,8 @@ export default function DeliveriesScreen() {
       'Cancel delivery?',
       `Tracking: ${item.trackingNumber ?? item.trackingCode ?? item.id.slice(0, 8)}. The driver will be notified. If you already paid and the fare is still held, it is refunded to the card you paid with. This cannot be undone.`,
       [
-        { text: 'Keep', style: 'cancel' },
-        { text: 'Cancel delivery', style: 'destructive', onPress: async () => {
+        { text: tr('auto.deliveries.keep', 'Keep'), style: 'cancel' },
+        { text: tr('auto.deliveries.cancelDelivery', 'Cancel delivery'), style: 'destructive', onPress: async () => {
           try {
             await businessApi.cancelDelivery(item.id);
             load();
@@ -233,9 +234,9 @@ export default function DeliveriesScreen() {
             <Icon name="Repeat" size={12} color={colors.primary} />
             {/* metaText capitalises vehicle names; this is a sentence. */}
             <Text style={[styles.metaText, { color: colors.primary, fontWeight: '600', textTransform: 'none' }]}>
-              Recurring run · today's price · pay before {(item.scheduledFor ?? item.scheduledAt)
+              {tr('auto.deliveries.recurringRunTodaySPrice', 'Recurring run · today\'s price · pay before')} {(item.scheduledFor ?? item.scheduledAt)
                 ? new Date((item.scheduledFor ?? item.scheduledAt) as string).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
-                : 'pickup'} or it does not go out
+                : 'pickup'} {tr('auto.deliveries.orItDoesNotGo', 'or it does not go out')}
             </Text>
           </View>
         )}
@@ -263,7 +264,7 @@ export default function DeliveriesScreen() {
               hitSlop={8}
               style={[styles.payLink, { borderColor: colors.border }]}
             >
-              <Text style={[styles.payLinkText, { color: colors.text }]}>Edit</Text>
+              <Text style={[styles.payLinkText, { color: colors.text }]}>{tr('auto.deliveries.edit', 'Edit')}</Text>
             </Pressable>
           )}
           {isCancellable && (

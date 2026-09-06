@@ -280,7 +280,7 @@ function CreateModal({ visible, leadMin, onClose, onCreated }: { visible: boolea
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <View style={[styles.header, { paddingTop: 16, borderBottomColor: theme.border }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 12, borderBottomColor: theme.border }]}>
           <Pressable onPress={onClose} hitSlop={8}><X size={22} color={theme.text} strokeWidth={2} /></Pressable>
           <Text style={[styles.headerTitle, { color: theme.text }]}>{t('recurring.newTitle', { defaultValue: 'New schedule' })}</Text>
           <View style={{ width: 22 }} />

@@ -20,6 +20,7 @@ import { deliveriesApi, loyaltyApi, promotionsApi, usersApi } from '@/services/a
 import { alertDialog } from '@/components/SeirsDialog';
 import { savePdf } from '@seirs/shared/utils/dataExport';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // The marketing site is the single home for FAQ and the legal documents:
 // it is edited without shipping a release, and it teaches people SEIRS
@@ -122,8 +123,8 @@ export default function ProfileScreen() {
          * it unasked.
          */
         [
-          { text: 'Save as PDF', onPress: () => void exportAsPdf() },
-          { text: 'Close', style: 'cancel' },
+          { text: tr('auto.profile.saveAsPdf', 'Save as PDF'), onPress: () => void exportAsPdf() },
+          { text: tr('auto.documents.close', 'Close'), style: 'cancel' },
         ],
       );
     } catch {
@@ -191,20 +192,20 @@ export default function ProfileScreen() {
          * nobody would ever turn off is furniture that implies these are
          * optional. They are not.
          */
-        { icon: 'document-text-outline', label: 'Documents', sub: 'Letters and documents from SEIRS', onPress: () => router.push('/(customer)/documents' as any) },
+        { icon: 'document-text-outline', label: tr('auto.documents.documents', 'Documents'), sub: tr('auto.profile.lettersAndDocumentsFromSeirs', 'Letters and documents from SEIRS'), onPress: () => router.push('/(customer)/documents' as any) },
         { icon: 'language-outline',      label: t('profile.language'),      sub: t('profile.languageSub'),      onPress: () => router.push('/(customer)/language') },
         {
           icon:  'contrast-outline',
-          label: 'Appearance',
+          label: tr('auto.profile.appearance', 'Appearance'),
           sub:   followSystem ? 'Following your phone' : (isDark ? 'Dark' : 'Light'),
           onPress: () => alertDialog(
             'Appearance',
             `How should the app look? Currently ${isDark ? 'Dark' : 'Light'}.`,
             [
-              { text: 'Follow my phone', onPress: () => setFollowSystem(true) },
-              { text: 'Light',           onPress: () => setTheme('light') },
-              { text: 'Dark',            onPress: () => setTheme('dark') },
-              { text: 'Cancel', style: 'cancel' },
+              { text: tr('auto.profile.followMyPhone', 'Follow my phone'), onPress: () => setFollowSystem(true) },
+              { text: tr('auto.profile.light', 'Light'),           onPress: () => setTheme('light') },
+              { text: tr('auto.profile.dark', 'Dark'),            onPress: () => setTheme('dark') },
+              { text: tr('auto.AddressPicker.cancel', 'Cancel'), style: 'cancel' },
             ],
           ),
         },
@@ -358,7 +359,7 @@ export default function ProfileScreen() {
               style={[styles.seirsIdRow, { borderTopColor: theme.border }]}
             >
               <View style={{ flex: 1 }}>
-                <Text style={[styles.seirsIdLabel, { color: theme.textSecond }]}>SEIRS ID · tap for QR</Text>
+                <Text style={[styles.seirsIdLabel, { color: theme.textSecond }]}>{tr('auto.profile.seirsIdTapForQr', 'SEIRS ID · tap for QR')}</Text>
                 <Text style={[styles.seirsIdValue, { color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }]}>
                   {(user as any).accountId}
                 </Text>
@@ -485,7 +486,7 @@ export default function ProfileScreen() {
           >
             <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}>{tx('auto.profile.yourSeirsId', 'Your SEIRS ID')}</Text>
             <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, textAlign: 'center' }}>
-              Show this to a driver or support agent to identify yourself. No personal info is encoded, just your unique account handle.
+              {tr('auto.profile.showThisToADriver', 'Show this to a driver or support agent to identify yourself. No personal info is encoded, just your unique account handle.')}
             </Text>
 
             <View style={{ padding: Spacing.md, backgroundColor: '#FFFFFF', borderRadius: Radius.lg }}>
@@ -510,13 +511,13 @@ export default function ProfileScreen() {
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.border, borderRadius: Radius.lg, paddingVertical: 12 }}
               >
                 <Ionicons name="copy-outline" size={16} color={theme.text} />
-                <Text style={{ color: theme.text, fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>Copy</Text>
+                <Text style={{ color: theme.text, fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>{tr('auto.profile.copy', 'Copy')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => setShowQrModal(false)}
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.primary, borderRadius: Radius.lg, paddingVertical: 12 }}
               >
-                <Text style={{ color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Done</Text>
+                <Text style={{ color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>{tr('auto.profile.done', 'Done')}</Text>
               </Pressable>
             </View>
           </Pressable>

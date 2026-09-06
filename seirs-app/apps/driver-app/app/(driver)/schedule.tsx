@@ -13,6 +13,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { naira } from '@/utils/money';
 import { driversApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const SCHEDULE_STORAGE_KEY = 'seirs_driver_working_hours';
 
@@ -241,7 +242,7 @@ export default function ScheduleScreen() {
         {showSched && (
           <View style={[styles.schedCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
             <Text style={[styles.schedNote, { color: theme.textThird }]}>
-              A personal note to yourself, saved on this phone only. It does not change which jobs you are offered: you get jobs whenever you are online.
+              {tr('auto.schedule.aPersonalNoteToYourself', 'A personal note to yourself, saved on this phone only. It does not change which jobs you are offered: you get jobs whenever you are online.')}
             </Text>
             {DAYS.map((day, i) => (
               <View

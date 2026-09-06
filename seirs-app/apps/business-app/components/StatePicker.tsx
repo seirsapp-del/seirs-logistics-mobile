@@ -14,6 +14,7 @@ import { Icon } from '@/components/Icon';
 import { NIGERIAN_STATES } from '@/constants/nigerian-states';
 import { useColors } from '@/context/ThemeContext';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 interface Props {
   label?:    string;
@@ -89,7 +90,7 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
               <View style={styles.empty}>
-                <Text style={styles.emptyText}>No state matches “{search}”.</Text>
+                <Text style={styles.emptyText}>{tr('auto.statepicker.noStateMatches', 'No state matches “')}{search}”.</Text>
               </View>
             }
             renderItem={({ item }) => (

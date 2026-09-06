@@ -46,6 +46,7 @@ import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme
 import { deliveriesApi } from '@/services/api';
 import { PackageCodeCapture } from '@/components/PackageCodeCapture';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 export default function ScanPackageScreen() {
   const router = useRouter();
@@ -102,7 +103,7 @@ export default function ScanPackageScreen() {
         <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.scanPackage.verifyThePackage', 'Verify the package')}</Text>
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
-            Scan their QR, or type the code they were sent. Either one proves it.
+            {tr('auto.scanPackage.scanTheirQrOrType', 'Scan their QR, or type the code they were sent. Either one proves it.')}
           </Text>
         </View>
       </View>
@@ -125,7 +126,7 @@ export default function ScanPackageScreen() {
             <Ionicons name="checkmark-circle" size={36} color="#fff" />
             <Text style={styles.verdictTitle}>{tx('auto.scanPackage.packageVerified', 'Package verified')}</Text>
             <Text style={styles.verdictSub}>
-              {expected}{'\n'}Hand it over and confirm delivery.
+              {expected}{'\n'}{tr('auto.scanPackage.handItOverAndConfirm', 'Hand it over and confirm delivery.')}
             </Text>
           </View>
         )}
@@ -134,7 +135,7 @@ export default function ScanPackageScreen() {
             <Ionicons name="alert-circle" size={36} color="#fff" />
             <Text style={styles.verdictTitle}>{tx('auto.scanPackage.wrongPackage', 'Wrong package')}</Text>
             <Text style={styles.verdictSub}>
-              Got {lastSeen || 'nothing'}{'\n'}Expected {expected}. Do not hand over.
+              Got {lastSeen || 'nothing'}{'\n'}Expected {expected}{tr('auto.scanPackage.doNotHandOver', '. Do not hand over.')}
             </Text>
           </View>
         )}

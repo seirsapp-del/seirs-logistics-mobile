@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { storiesApi, type StoryDTO } from '@/services/api';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * SEIRS Stories (founder 2026-08-12). The "Stories" chip on home used
@@ -69,7 +70,7 @@ export default function StoriesScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Stories &amp; Offers</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tr('auto.stories.storiesOffers', 'Stories & Offers')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -96,7 +97,7 @@ export default function StoriesScreen() {
             <View style={styles.center}>
               <Newspaper size={34} color={theme.textThird} strokeWidth={1.5} />
               <Text style={[styles.empty, { color: theme.textSecond }]}>
-                No stories yet. New offers and updates land here.
+                {tr('auto.stories.noStoriesYetNewOffers', 'No stories yet. New offers and updates land here.')}
               </Text>
             </View>
           )}

@@ -32,6 +32,7 @@ import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { TERMS_URL } from '@/constants/config';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const VEHICLE_LABEL: Record<string, string> = {
   okada: 'Okada', keke: 'Keke', car: 'Car', danfo: 'Danfo',
@@ -103,8 +104,8 @@ export default function ConfirmRideScreen() {
     } catch (e: any) {
       if (e?.code === 'QUOTE_EXPIRED' || /expired/i.test(String(e?.message ?? ''))) {
         showDialog({
-          title: 'Price refreshed',
-          message: 'You took a moment, so the price was re-checked. Pick your ride again to see the current number.',
+          title: tr('auto.confirmRide.priceRefreshed', 'Price refreshed'),
+          message: tr('auto.confirmRide.youTookAMomentSo', 'You took a moment, so the price was re-checked. Pick your ride again to see the current number.'),
           dismissable: false,
           actions: [{ text: 'OK', style: 'primary', onPress: () => router.back() }],
         });
@@ -217,8 +218,7 @@ export default function ConfirmRideScreen() {
               </View>
             ))}
             <Text style={[styles.sumNote, { color: theme.textThird }]}>
-              A driver is matched the moment your payment lands. Your driver
-              greets you by name; chat opens once they accept.
+              {tr('auto.confirmRide.aDriverIsMatchedThe', 'A driver is matched the moment your payment lands. Your driver greets you by name; chat opens once they accept.')}
             </Text>
           </View>
 
@@ -234,13 +234,12 @@ export default function ConfirmRideScreen() {
               {tcAgreed && <Ionicons name="checkmark" size={13} color="#fff" />}
             </View>
             <Text style={[styles.tcText, { color: theme.textSecond }]}>
-              I agree to the SEIRS Terms of Service, including the cancellation
-              policy.{' '}
+              {tr('auto.confirmRide.iAgreeToTheSeirs', 'I agree to the SEIRS Terms of Service, including the cancellation policy.')}{' '}
               <Text
                 style={{ color: theme.primary, fontWeight: '600' }}
                 onPress={() => Linking.openURL(TERMS_URL)}
               >
-                Read them
+                {tr('auto.confirmRide.readThem', 'Read them')}
               </Text>
             </Text>
           </Pressable>
@@ -263,8 +262,7 @@ export default function ConfirmRideScreen() {
               )}
           </Pressable>
           <Text style={[styles.footNote, { color: theme.textThird }]}>
-            Nothing is charged until the payment screen. Cancelling an unpaid
-            booking is free.
+            {tr('auto.confirmRide.nothingIsChargedUntilThe', 'Nothing is charged until the payment screen. Cancelling an unpaid booking is free.')}
           </Text>
         </BottomSheetScrollView>
       </BottomSheet>

@@ -31,6 +31,7 @@ import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 interface ApplicationStatus {
   storeId:    string;
@@ -224,8 +225,7 @@ export default function ApplyPartnerScreen() {
           </View>
           <Text style={[styles.statusTitle, { color: colors.text }]}>{tx('auto.applyPartner.applicationUnderReview', 'Application under review')}</Text>
           <Text style={[styles.statusBody, { color: colors.textSecond }]}>
-            SEIRS is reviewing your KYC documents for <Text style={[styles.bold, { color: colors.text }]}>{existing.storeName}</Text>.
-            Reviews take up to 3 business days. We&apos;ll send an email when you&apos;re approved.
+            {tr('auto.applyPartner.seirsIsReviewingYourKyc', 'SEIRS is reviewing your KYC documents for')} <Text style={[styles.bold, { color: colors.text }]}>{existing.storeName}</Text>{tr('auto.applyPartner.reviewsTakeUpTo3', '. Reviews take up to 3 business days. We\'ll send an email when you\'re approved.')}
           </Text>
         </View>
       </View>
@@ -245,10 +245,9 @@ export default function ApplyPartnerScreen() {
           <View style={[styles.statusBadge, { backgroundColor: '#ECFDF5' }]}>
             <Icon name="CheckCircle2" size={20} color="#10B981" />
           </View>
-          <Text style={[styles.statusTitle, { color: colors.text }]}>You&apos;re approved!</Text>
+          <Text style={[styles.statusTitle, { color: colors.text }]}>{tr('auto.applyPartner.youReApproved', 'You\'re approved!')}</Text>
           <Text style={[styles.statusBody, { color: colors.textSecond }]}>
-            <Text style={[styles.bold, { color: colors.text }]}>{existing.storeName}</Text> can now accept SEIRS drop-offs.
-            Use the mode switcher at the top of the app to toggle between sending and partner modes.
+            <Text style={[styles.bold, { color: colors.text }]}>{existing.storeName}</Text> {tr('auto.applyPartner.canNowAcceptSeirsDrop', 'can now accept SEIRS drop-offs. Use the mode switcher at the top of the app to toggle between sending and partner modes.')}
           </Text>
         </View>
       </View>
@@ -271,8 +270,7 @@ export default function ApplyPartnerScreen() {
 
         <Text style={[styles.heading, { color: colors.text }]}>{tx('auto.applyPartner.applyToBeAPartner', 'Apply to be a Partner Store')}</Text>
         <Text style={[styles.sub, { color: colors.textSecond }]}>
-          Operate a SEIRS collection point. Earn a fee on every package, weekly payouts.
-          We&apos;ll review your KYC docs within 3 business days.
+          {tr('auto.applyPartner.operateASeirsCollectionPoint', 'Operate a SEIRS collection point. Earn a fee on every package, weekly payouts. We\'ll review your KYC docs within 3 business days.')}
         </Text>
 
         {existing?.status === 'rejected' && existing.reviewNote && (
@@ -305,7 +303,7 @@ export default function ApplyPartnerScreen() {
           value={form.state}
           onChange={(s) => setForm({ ...form, state: s })}
         />
-        <Text style={[styles.label, { color: colors.textSecond }]}>City / LGA</Text>
+        <Text style={[styles.label, { color: colors.textSecond }]}>{tr('auto.register.cityLga', 'City / LGA')}</Text>
         <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TextInput
             style={[styles.input, { color: colors.text }]}
@@ -374,13 +372,13 @@ export default function ApplyPartnerScreen() {
           label={tx('auto.applyPartner.ownerIdRequired', 'Owner ID (required)')}
           uri={ownerId}
           onPick={() => pickImage(setOwnerId)}
-          hint="National ID, driver's licence, or international passport"
+          hint={tr('auto.applyPartner.nationalIdDriverSLicence', 'National ID, driver\'s licence, or international passport')}
         />
         <PhotoSlot
           label={tx('auto.applyPartner.cacRegistrationOptional', 'CAC registration (optional)')}
           uri={cacReg}
           onPick={() => pickImage(setCacReg)}
-          hint="Speeds up review if you have a registered business"
+          hint={tr('auto.applyPartner.speedsUpReviewIfYou', 'Speeds up review if you have a registered business')}
         />
 
         <Pressable

@@ -19,6 +19,7 @@ import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 /**
  * The engine's zone tiers in the same words the Send screen used at
@@ -70,7 +71,7 @@ export default function ReceiptScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.lg }}>
         <Ionicons name="receipt-outline" size={48} color={theme.textThird} />
         <Text style={{ color: theme.textSecond, marginTop: Spacing.md, textAlign: 'center' }}>
-          Receipt not available. The trip may not be completed yet.
+          {tr('auto.receiptDetail.receiptNotAvailableTheTrip', 'Receipt not available. The trip may not be completed yet.')}
         </Text>
         <Pressable onPress={() => router.back()} style={{ marginTop: Spacing.lg }}>
           <Text style={{ color: theme.primary, fontWeight: '600' }}>{tx('auto.id.goBack', 'Go back')}</Text>
@@ -121,11 +122,11 @@ export default function ReceiptScreen() {
     : null;
 
   const fareRows = ([
-    breakdown.base     != null ? { label: 'Base fare',    amount: Number(breakdown.base) }     : null,
-    breakdown.distance != null ? { label: 'Distance fee', amount: Number(breakdown.distance) } : null,
-    breakdown.time     != null ? { label: 'Time fee',     amount: Number(breakdown.time) }     : null,
+    breakdown.base     != null ? { label: tr('auto.receiptDetail.baseFare', 'Base fare'),    amount: Number(breakdown.base) }     : null,
+    breakdown.distance != null ? { label: tr('auto.receiptDetail.distanceFee', 'Distance fee'), amount: Number(breakdown.distance) } : null,
+    breakdown.time     != null ? { label: tr('auto.receiptDetail.timeFee', 'Time fee'),     amount: Number(breakdown.time) }     : null,
     zoneTierRow,
-    breakdown.service  != null ? { label: 'Service fee',  amount: Number(breakdown.service) }  : null,
+    breakdown.service  != null ? { label: tr('auto.receiptDetail.serviceFee', 'Service fee'),  amount: Number(breakdown.service) }  : null,
   ].filter(Boolean)) as Array<{ label: string; amount: number }>;
 
   const trackingCode    = trip.trackingCode    ?? trip.id;

@@ -15,15 +15,16 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const { width: W, height: H } = Dimensions.get('window');
 
-const SLIDES = [
+const SLIDES = () => [
   {
     id: 'brand',
     Icon: Truck,
-    headline: "Send, ride, travel.",
-    sub: 'Parcels, in-city rides and intercity seats, all in one app.',
+    headline: tr('auto.onboarding.sendRideTravel', 'Send, ride, travel.'),
+    sub: tr('auto.onboarding.parcelsInCityRidesAnd', 'Parcels, in-city rides and intercity seats, all in one app.'),
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -31,8 +32,8 @@ const SLIDES = [
   {
     id: 'send',
     Icon: Package,
-    headline: 'Carried by a verified driver.',
-    sub: 'Documents, parcels, hot food or fragile goods, each on the right vehicle.',
+    headline: tr('auto.onboarding.carriedByAVerifiedDriver', 'Carried by a verified driver.'),
+    sub: tr('auto.onboarding.documentsParcelsHotFoodOr', 'Documents, parcels, hot food or fragile goods, each on the right vehicle.'),
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#58A6FF',
@@ -40,8 +41,8 @@ const SLIDES = [
   {
     id: 'track',
     Icon: MapPin,
-    headline: 'See where it is.',
-    sub: 'Live map tracking, and a proof photo the moment it lands.',
+    headline: tr('auto.onboarding.seeWhereItIs', 'See where it is.'),
+    sub: tr('auto.onboarding.liveMapTrackingAndA', 'Live map tracking, and a proof photo the moment it lands.'),
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1E4A80',
     accentColor:   '#79B8FF',
@@ -49,8 +50,8 @@ const SLIDES = [
   {
     id: 'ride',
     Icon: Users,
-    headline: 'Travelling between cities?',
-    sub: 'Buy a seat with a driver already going, and pay for the leg you ride.',
+    headline: tr('auto.onboarding.travellingBetweenCities', 'Travelling between cities?'),
+    sub: tr('auto.onboarding.buyASeatWithA', 'Buy a seat with a driver already going, and pay for the leg you ride.'),
     gradientStart: '#0A1E36',
     gradientEnd:   '#2D72CC',
     accentColor:   '#58A6FF',
@@ -58,8 +59,8 @@ const SLIDES = [
   {
     id: 'business',
     Icon: ShoppingBag,
-    headline: 'Farm loads to house moves.',
-    sub: 'Produce, building materials and machine parts, on a vehicle that fits.',
+    headline: tr('auto.onboarding.farmLoadsToHouseMoves', 'Farm loads to house moves.'),
+    sub: tr('auto.onboarding.produceBuildingMaterialsAndMachine', 'Produce, building materials and machine parts, on a vehicle that fits.'),
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -67,8 +68,8 @@ const SLIDES = [
   {
     id: 'partner',
     Icon: Store,
-    headline: 'Collect on your time.',
-    sub: 'Drop off or pick up at a partner store, whenever it suits you.',
+    headline: tr('auto.onboarding.collectOnYourTime', 'Collect on your time.'),
+    sub: tr('auto.onboarding.dropOffOrPickUp', 'Drop off or pick up at a partner store, whenever it suits you.'),
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#79B8FF',
@@ -102,13 +103,13 @@ export default function OnboardingScreen() {
   useEffect(() => {
     if (!isFocused) return;
     timerRef.current = setTimeout(() => {
-      const next = (current + 1) % SLIDES.length;
+      const next = (current + 1) % SLIDES().length;
       goToSlide(next);
     }, SLIDE_DURATION);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [current, isFocused]);
 
-  const slide = SLIDES[current];
+  const slide = SLIDES()[current];
   const SlideIcon = slide.Icon;
 
   const handleBecomeDriver = () => {
@@ -153,7 +154,7 @@ export default function OnboardingScreen() {
 
           {/* Progress dots */}
           <View style={styles.dots}>
-            {SLIDES.map((_, i) => (
+            {SLIDES().map((_, i) => (
               <Pressable key={i} onPress={() => goToSlide(i)}>
                 <View
                   style={[
@@ -187,7 +188,7 @@ export default function OnboardingScreen() {
           onPress={() => router.push('/(auth)/login' as any)}
         >
           <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
-            I Already Have an Account
+            {tr('auto.onboarding.iAlreadyHaveAnAccount', 'I Already Have an Account')}
           </Text>
         </Pressable>
 
@@ -200,7 +201,7 @@ export default function OnboardingScreen() {
           <View style={styles.secondaryRow}>
             <Truck size={16} color={theme.text} strokeWidth={2} />
             <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
-              Become a Driver
+              {tr('auto.onboarding.becomeADriver', 'Become a Driver')}
             </Text>
           </View>
         </Pressable>
