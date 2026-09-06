@@ -47,7 +47,7 @@ import {
   deliveriesApi,
   type ServiceCategory, type RateCard,
 } from '@/services/api';
-import { useBusinessStore, type StoreLite } from '@/store/businessStore';
+import { useBusinessStore, isDraftEmpty, type StoreLite } from '@/store/businessStore';
 import { type VehicleType } from '@seirs/shared';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { VEHICLE_LABEL } from '@/constants/vehicles';
@@ -110,13 +110,13 @@ export default function SendPackageScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   /**
-   * The dashboard's "Special Cargo" card promised trucks and cold chain
-   * and pushed this screen with no param at all, so it was the same
-   * button as "Send a Package" (B-1.3). It now arrives with preset=cargo
-   * and a truck already chosen.
+   * "Special Cargo" no longer lands here (founder 2026-09-06). It used to
+   * arrive with preset=cargo and a truck preselected, which made it Send
+   * with one chip moved. It is the quote-first lane now, special-request,
+   * the same thing the customer app calls Special delivery.
    */
-  const { preset, tripId: tripIdParam, tripLabel: tripLabelParam } =
-    useLocalSearchParams<{ preset?: string; tripId?: string; tripLabel?: string }>();
+  const { tripId: tripIdParam, tripLabel: tripLabelParam } =
+    useLocalSearchParams<{ tripId?: string; tripLabel?: string }>();
   /**
    * Sending this load on a rider's declared trip (2026-08-31).
    *
@@ -127,14 +127,9 @@ export default function SendPackageScreen() {
    */
   const postToTripId    = typeof tripIdParam === 'string' ? tripIdParam : undefined;
   const postToTripLabel = typeof tripLabelParam === 'string' ? tripLabelParam : undefined;
-  const isCargoPreset = preset === 'cargo';
   const {
-    draft, setDraft, addStop, removeStop, updateStop, resetDraft,
+    draft, draftSavedAt, setDraft, addStop, removeStop, updateStop, resetDraft,
   } = useBusinessStore();
-
-  useEffect(() => {
-    if (isCargoPreset) setDraft({ vehicleType: 'truck_small' as VehicleType });
-  }, [isCargoPreset]);
 
   const mapRef = useRef<MapView>(null);
   /**
@@ -279,6 +274,68 @@ export default function SendPackageScreen() {
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * The saved draft, made visible and refusable (founder 2026-09-06:
+   * "imagine a user having to delete their old input").
+   *
+   * Persisting the form was his own call on 16 August and it is still the
+   * right one for a trader ten packages in when the app restarts. What
+   * was wrong is that the leftover came back SILENTLY, as if it were a
+   * blank form, and the only way out was deleting every field by hand.
+   * So: a strip on the first step says an unfinished booking was found
+   * and how old it is, with Start fresh beside Continue, and the header
+   * carries Start over on every step. The store drops anything a day old
+   * before it is ever shown.
+   */
+  const hasDraft = !isDraftEmpty(draft);
+  /**
+   * Decided ONCE, when the screen opens, and only after the persisted
+   * store has actually loaded. On a cold start the first render sees the
+   * empty default draft and AsyncStorage fills it a moment later; a plain
+   * useState initialiser would have said "nothing saved" every time it
+   * mattered. Not derived from hasDraft either, or the strip would greet
+   * somebody with "unfinished booking" the moment they typed their first
+   * word into a fresh form.
+   */
+  const [showResume, setShowResume] = useState(false);
+  useEffect(() => {
+    const check = () => { if (!isDraftEmpty(useBusinessStore.getState().draft)) setShowResume(true); };
+    const p = (useBusinessStore as any).persist;
+    if (!p || p.hasHydrated()) { check(); return; }
+    const unsub = p.onFinishHydration(check);
+    return () => { unsub?.(); };
+  }, []);
+  const draftAge = (() => {
+    if (!draftSavedAt) return '';
+    const min = Math.max(1, Math.round((Date.now() - draftSavedAt) / 60000));
+    if (min < 60) return `${min} min ago`;
+    const h = Math.round(min / 60);
+    return h < 24 ? `${h} hour${h === 1 ? '' : 's'} ago` : 'yesterday';
+  })();
+  const clearBooking = () => {
+    resetDraft();
+    setPickupQuery('');
+    setPkgQueries(['']);
+    setPredictions([]);
+    setActiveField(null);
+    setScheduleNow(true);
+    setScheduledHour(null);
+    setError(null);
+    setShowResume(false);
+    setStep(0);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+  const startOver = () => {
+    dialog.alert(
+      'Start over?',
+      'This clears every package, address and photo in this booking.',
+      [
+        { text: 'Keep editing', style: 'cancel' },
+        { text: 'Start over', style: 'destructive', onPress: clearBooking },
+      ],
+    );
+  };
 
 
   // ── Rate card + catalog (prices + caps + category chips) ─────────────
@@ -843,15 +900,6 @@ export default function SendPackageScreen() {
       return vehicleCap(v) >= count && (payload === 0 || payload >= kg);
     });
     if (!fits) return;
-    if (isCargoPreset) {
-      // Special Cargo arrived on a truck deliberately: the recommender may
-      // step UP to a bigger vehicle but must never quietly downgrade the
-      // sender back to an okada.
-      const fitsIdx = VEHICLE_ORDER.indexOf(fits);
-      const curIdx  = VEHICLE_ORDER.indexOf(draft.vehicleType);
-      if (fitsIdx > curIdx) setDraft({ vehicleType: fits as VehicleType });
-      return;
-    }
     if (fits !== draft.vehicleType) setDraft({ vehicleType: fits as VehicleType });
   };
 
@@ -1067,11 +1115,20 @@ export default function SendPackageScreen() {
             Step {step + 1} of {STEPS.length} · {STEPS[step]}
           </Text>
         </View>
-        <View style={styles.dots}>
-          {STEPS.map((_, i) => (
-            <View key={i} style={[styles.dot, { backgroundColor: i <= step ? colors.primary : colors.border }]} />
-          ))}
-        </View>
+        {/* One way out of a filled form, on every step, that is not
+            deleting fields one by one. Hidden while the form is blank. */}
+        {(hasDraft || step > 0) ? (
+          <Pressable onPress={startOver} hitSlop={8} style={[styles.startOverBtn, { borderColor: colors.border }]}>
+            <Icon name="RotateCcw" size={14} color={colors.textSecond} />
+            <Text style={[styles.startOverText, { color: colors.textSecond }]}>Start over</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.dots}>
+            {STEPS.map((_, i) => (
+              <View key={i} style={[styles.dot, { backgroundColor: i <= step ? colors.primary : colors.border }]} />
+            ))}
+          </View>
+        )}
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -1094,6 +1151,30 @@ export default function SendPackageScreen() {
           {/* ─── STEP 0: PACKAGES ──────────────────────────────────── */}
           {step === 0 && (
             <View style={{ gap: 18 }}>
+              {/* The saved draft, named. Continue keeps it; Start fresh
+                  clears it. Either way the sender knows the form is not
+                  blank, which is the part that was missing. */}
+              {showResume && hasDraft && (
+                <View style={[styles.resumeStrip, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+                  <Icon name="Clock" size={18} color={colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.resumeTitle, { color: colors.text }]}>
+                      Unfinished booking{draftAge ? ` from ${draftAge}` : ''}
+                    </Text>
+                    <Text style={[styles.resumeSub, { color: colors.textSecond }]}>
+                      {draft.stops.length} package{draft.stops.length === 1 ? '' : 's'} saved on this phone. Continue where you stopped, or start fresh.
+                    </Text>
+                  </View>
+                  <View style={{ gap: 6 }}>
+                    <Pressable onPress={() => setShowResume(false)} style={[styles.resumeBtn, { backgroundColor: colors.primary }]}>
+                      <Text style={[styles.resumeBtnText, { color: '#fff' }]}>Continue</Text>
+                    </Pressable>
+                    <Pressable onPress={clearBooking} style={[styles.resumeBtn, { borderWidth: 1, borderColor: colors.primary }]}>
+                      <Text style={[styles.resumeBtnText, { color: colors.primary }]}>Start fresh</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
               {/* The run-level "drop at a partner store" card was removed
                   here (founder 2026-08-16): store drop is a DESTINATION
                   choice and now lives on every package below. The other
@@ -2212,6 +2293,14 @@ export default function SendPackageScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Start over (header) and the saved-draft strip (step 1), 2026-09-06.
+  startOverBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
+  startOverText: { fontSize: 12, fontWeight: '600' },
+  resumeStrip:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: 1 },
+  resumeTitle:   { fontSize: 14, fontWeight: '700' },
+  resumeSub:     { fontSize: 12, lineHeight: 17, marginTop: 2 },
+  resumeBtn:     { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, alignItems: 'center' },
+  resumeBtnText: { fontSize: 12, fontWeight: '700' },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1,

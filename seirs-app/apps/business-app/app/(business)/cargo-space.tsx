@@ -286,8 +286,9 @@ export default function CargoSpaceScreen() {
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Cargo Space</Text>
+          {/* Says what it is for in the first line (founder 2026-09-06). */}
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
-            Room on a trip somebody is already making
+            Interstate trips: room on a run somebody is already making
           </Text>
         </View>
       </View>

@@ -118,13 +118,15 @@ export default function BusinessDashboard() {
               <View style={styles.actions}>
                 <ActionCard icon="Package"         label="Send a Package" sub="One or many packages, one payment"
                   onPress={() => router.push('/(business)/send-package' as any)} primary />
-                {/* Both cards pushed the same route with no distinguishing
-                    param and send-package read none, so "Special Cargo"
-                    promised trucks and cold chain and preselected nothing
-                    (B-1.3). It now arrives on the vehicle step with a truck
-                    already chosen. */}
-                <ActionCard icon="Truck"           label="Special Cargo" sub="Trucks, cold chain & heavy loads"
-                  onPress={() => router.push({ pathname: '/(business)/send-package', params: { preset: 'cargo' } } as any)} />
+                {/* Special Cargo is the quote-first lane, the same thing the
+                    customer app calls Special delivery (founder 2026-09-06).
+                    It used to open Send with a truck preselected, which made
+                    it the same button as Send a Package with one chip moved.
+                    A generator, a transformer or a shop's worth of fittings
+                    is not a rate-card job: a person prices it, so the card
+                    opens the request form and never the rate card. */}
+                <ActionCard icon="Truck"           label="Special Cargo" sub="Heavy or unusual loads, quoted by a person"
+                  onPress={() => router.push('/(business)/special-request' as any)} />
                 {/*
                   * Cargo Space was reachable from the drawer only, while the
                   * customer app puts its equivalent on the home screen. That
@@ -133,9 +135,11 @@ export default function BusinessDashboard() {
                   * and it is the harder of the two to stumble across. Founder
                   * approved promoting it on 2026-09-04; the drawer entry
                   * stays. Route, not Truck, so it does not read as a second
-                  * Special Cargo sitting next to the first.
+                  * Special Cargo sitting next to the first. "Interstate" is
+                  * in the line because nobody could tell what it was for
+                  * (founder 2026-09-06).
                   */}
-                <ActionCard icon="Route"           label="Cargo Space" sub="Room on a trip already being made"
+                <ActionCard icon="Route"           label="Cargo Space" sub="Interstate trips: room on a run already being made"
                   onPress={() => router.push('/(business)/cargo-space' as any)} />
               </View>
 

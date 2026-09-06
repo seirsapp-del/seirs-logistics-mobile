@@ -107,6 +107,12 @@ export interface DraftDelivery {
 
 interface BusinessStore {
   draft:       DraftDelivery;
+  /**
+   * When the draft was last touched, or null when it is the empty form.
+   * Send reads it to say "unfinished booking from 20 minutes ago" and
+   * the store drops a draft nobody has touched for a day.
+   */
+  draftSavedAt: number | null;
   setDraft:    (patch: Partial<DraftDelivery>) => void;
   resetDraft:  () => void;
   addStop:     (stop: DeliveryStop) => void;
@@ -114,6 +120,30 @@ interface BusinessStore {
   updateStop:  (idx: number, patch: Partial<DeliveryStop>) => void;
   /** Replace the entire stops array, used after auto-optimize reorders. */
   reorderStops: (newOrder: DeliveryStop[]) => void;
+}
+
+/** A saved draft older than this is thrown away on the next app start. */
+export const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * True when the form holds nothing a sender typed: no pickup, no
+ * address, no recipient, no photo, no weight on any package. The
+ * vehicle and the schedule toggles do not count; they are defaults.
+ */
+export function isDraftEmpty(d: DraftDelivery): boolean {
+  if (d.pickupAddress?.trim()) return false;
+  if (d.pickupStoreId) return false;
+  if (d.packageDescription?.trim()) return false;
+  if (d.stops.length > 1) return false;
+  const s = d.stops[0];
+  if (!s) return true;
+  return !(
+    s.address?.trim() || s.recipientName?.trim() || s.recipientPhone?.trim() ||
+    s.receiverFirstName?.trim() || s.receiverLastName?.trim() ||
+    s.packageDescription?.trim() || s.note?.trim() ||
+    (s.photoUris?.length ?? 0) > 0 || s.weightKg || s.categoryCode ||
+    s.declaredValueNgn || s.destinationStoreId
+  );
 }
 
 const EMPTY_DRAFT: DraftDelivery = {
@@ -133,21 +163,23 @@ const EMPTY_DRAFT: DraftDelivery = {
 };
 
 const createBusinessStore: StateCreator<BusinessStore> = (set) => ({
-  draft:      EMPTY_DRAFT,
-  setDraft:   (patch) => set((s) => ({ draft: { ...s.draft, ...patch } })),
-  resetDraft: () => set({ draft: EMPTY_DRAFT }),
-  addStop:    (stop) => set((s) => ({ draft: { ...s.draft, stops: [...s.draft.stops, stop] } })),
+  draft:        EMPTY_DRAFT,
+  draftSavedAt: null,
+  setDraft:   (patch) => set((s) => ({ draft: { ...s.draft, ...patch }, draftSavedAt: Date.now() })),
+  resetDraft: () => set({ draft: EMPTY_DRAFT, draftSavedAt: null }),
+  addStop:    (stop) => set((s) => ({ draft: { ...s.draft, stops: [...s.draft.stops, stop] }, draftSavedAt: Date.now() })),
   removeStop: (idx) =>
-    set((s) => ({ draft: { ...s.draft, stops: s.draft.stops.filter((_, i) => i !== idx) } })),
+    set((s) => ({ draft: { ...s.draft, stops: s.draft.stops.filter((_, i) => i !== idx) }, draftSavedAt: Date.now() })),
   updateStop: (idx, patch) =>
     set((s) => ({
       draft: {
         ...s.draft,
         stops: s.draft.stops.map((stop, i) => i === idx ? { ...stop, ...patch } : stop),
       },
+      draftSavedAt: Date.now(),
     })),
   reorderStops: (newOrder) =>
-    set((s) => ({ draft: { ...s.draft, stops: newOrder } })),
+    set((s) => ({ draft: { ...s.draft, stops: newOrder }, draftSavedAt: Date.now() })),
 });
 
 /**
@@ -155,12 +187,28 @@ const createBusinessStore: StateCreator<BusinessStore> = (set) => ({
  * through ten packages must not lose them to an app restart, and photos
  * picked minutes ago should still be attached. Only the draft is stored;
  * nothing else in this store is worth surviving a restart.
+ *
+ * And it EXPIRES (founder 2026-09-06: "imagine a user having to delete
+ * their old input"). Surviving a restart ten minutes later is the
+ * feature; greeting somebody a week later with a stranger's lasagne
+ * photo on "Two cartons of shoes" is not. A draft untouched for a day is
+ * dropped here, before the form ever renders it, and Send offers "Start
+ * fresh" for anything younger than that.
  */
 export const useBusinessStore = create<BusinessStore>()(
   persist(createBusinessStore, {
     name: 'seirs_business_draft',
     storage: createJSONStorage(() => AsyncStorage),
-    partialize: ((state: BusinessStore) => ({ draft: state.draft })) as any,
+    partialize: ((state: BusinessStore) => ({ draft: state.draft, draftSavedAt: state.draftSavedAt })) as any,
+    onRehydrateStorage: () => (state) => {
+      if (!state) return;
+      const stale = state.draftSavedAt != null && Date.now() - state.draftSavedAt > DRAFT_TTL_MS;
+      // Drafts saved before the stamp existed carry no date: treat them
+      // as stale too, otherwise every phone keeps its pre-2026-09-06
+      // leftovers forever.
+      const undated = state.draftSavedAt == null && !isDraftEmpty(state.draft);
+      if (stale || undated) state.resetDraft();
+    },
   }),
 );
 
