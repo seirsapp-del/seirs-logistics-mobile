@@ -364,17 +364,21 @@ export class BusinessService {
               // is matched for then, and the unpaid cancel below reads it.
               scheduledAt: pickupAt.toISOString(),
             });
-        if (kind === 'customer' && delivery?.id) {
-          // The customer path does not read isRecurring from its DTO; the
-          // flag is what the unpaid-run sweep and the app label key on.
-          await this.deliveriesRepo.update(delivery.id, { isRecurring: true } as any).catch(() => {});
+        // Neither booking path persists the flag from its DTO, and the flag
+        // is what the unpaid-run sweep and the app's "Recurring run" label
+        // key on, so it is written here, after the fact, for both.
+        if (delivery?.id) {
+          await this.deliveriesRepo.update(delivery.id, { isRecurring: true, recurringTemplateId: t.id } as any).catch(() => {});
         }
         t.fireCount  += 1;
         t.lastRunAt  = now;
         t.lastError  = null;
 
         const when = pickupAt.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' });
-        const amount = Number(delivery?.price ?? 0);
+        // The price as STORED, not as returned: the first push read the
+        // create() result and said N0.00 while the row held N3,041.07.
+        const stored = delivery?.id ? await this.deliveriesRepo.findOne({ where: { id: delivery.id } }).catch(() => null) : null;
+        const amount = Number(stored?.price ?? delivery?.price ?? 0);
         this.push(t.owner.id, `Ready to pay: ${t.name}`,
           `Today's price is ₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} for pickup at ${when}. ` +
           `Pay through checkout before then and it goes out; nothing is charged on its own.`,
@@ -407,8 +411,9 @@ export class BusinessService {
       .where('d."isRecurring" = true')
       .andWhere('d.status = :st', { st: DeliveryStatus.PENDING })
       .andWhere('d."paymentHeldAt" IS NULL')
-      .andWhere('d."scheduledAt" IS NOT NULL')
-      .andWhere('d."scheduledAt" <= :cutoff', { cutoff })
+      // scheduledFor is the column both booking paths actually store.
+      .andWhere('d."scheduledFor" IS NOT NULL')
+      .andWhere('d."scheduledFor" <= :cutoff', { cutoff })
       .take(100)
       .getMany();
     for (const d of stale) {

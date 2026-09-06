@@ -495,6 +495,19 @@ export class Delivery {
   @Column({ type: 'timestamptz', nullable: true })
   scheduledFor: Date | null;
 
+  /**
+   * Created by a recurring schedule (2026-09-06). Until today the flag
+   * was passed on the DTO and silently dropped, because no column held
+   * it: the app could not label the run, and the unpaid-run sweep
+   * queried a column that did not exist. Columns are added by the
+   * BusinessModule self-heal on boot.
+   */
+  @Column({ type: 'boolean', default: false })
+  isRecurring: boolean;
+
+  @Column({ type: 'uuid', nullable: true })
+  recurringTemplateId: string | null;
+
   // Night surcharge applied at booking (NGN, passed to the driver in
   // full). Kept as its own column so receipts + statements can show it
   // as a separate line and admin analytics can track night volume.

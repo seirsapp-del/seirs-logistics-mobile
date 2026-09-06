@@ -65,6 +65,7 @@ interface Delivery {
   paymentHeldAt?:  string | null;
   /** A run created by a recurring template: paid by hand, every time. */
   isRecurring?:    boolean;
+  scheduledFor?:   string | null;
   scheduledAt?:    string | null;
 }
 
@@ -231,8 +232,8 @@ export default function DeliveriesScreen() {
           <View style={[styles.meta, { marginTop: 2 }]}>
             <Icon name="Repeat" size={12} color={colors.primary} />
             <Text style={[styles.metaText, { color: colors.primary, fontWeight: '600' }]}>
-              Recurring run · today's price · pay before {item.scheduledAt
-                ? new Date(item.scheduledAt).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
+              Recurring run · today's price · pay before {(item.scheduledFor ?? item.scheduledAt)
+                ? new Date((item.scheduledFor ?? item.scheduledAt) as string).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
                 : 'pickup'} or it does not go out
             </Text>
           </View>

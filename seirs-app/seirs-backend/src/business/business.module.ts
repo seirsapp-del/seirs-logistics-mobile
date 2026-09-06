@@ -1,5 +1,6 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { FeesModule } from '../fees/fees.module';
 import { BusinessController } from './business.controller';
@@ -61,4 +62,25 @@ import { NotificationsModule } from '../notifications/notifications.module';
   providers:   [BusinessService],
   exports:     [BusinessService],
 })
-export class BusinessModule {}
+export class BusinessModule implements OnModuleInit {
+  constructor(private readonly ds: DataSource) {}
+
+  /**
+   * Self-heal the two recurring columns on deliveries (2026-09-06). The
+   * schema is not synchronised in production, so a new entity column is
+   * only real once something adds it; same pattern as AdminModule.
+   */
+  async onModuleInit() {
+    try {
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "isRecurring" boolean NOT NULL DEFAULT false,
+          ADD COLUMN IF NOT EXISTS "recurringTemplateId" uuid NULL
+      `);
+    } catch (e: any) {
+      // A failure here must never stop the API booting; the cron logs
+      // loudly if the columns are still missing when it runs.
+      console.warn(`[BusinessModule] recurring columns self-heal skipped: ${e?.message ?? e}`);
+    }
+  }
+}
