@@ -7,6 +7,7 @@ export {
   usersApi,
   deliveriesApi,
   paymentsApi,
+  recurringApi,
   driversApi,
   notificationsApi,
   dropoffApi,

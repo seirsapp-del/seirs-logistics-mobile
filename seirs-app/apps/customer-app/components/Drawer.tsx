@@ -107,6 +107,12 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'Package',    label: t('drawer.parcelRequests', { defaultValue: 'Trip requests' }),
       onPress: () => navigate('/(customer)/parcel-requests'),
       section: t('drawer.sectionSend', { defaultValue: 'Send & travel' }) },
+    /* Recurring runs came to the customer app on 2026-09-06 (founder).
+       Same rules as the business side: priced on the day, Awaiting
+       payment about an hour before pickup, paid by hand, never charged. */
+    { icon: 'Repeat',     label: t('drawer.recurring', { defaultValue: 'Recurring deliveries' }),
+      onPress: () => navigate('/(customer)/recurring'),
+      section: t('drawer.sectionSend', { defaultValue: 'Send & travel' }) },
     /*
      * NOT drop-at-store. It looks like a destination and is actually a
      * STEP of the send flow (founder 2026-09-05, immediately). Opening it

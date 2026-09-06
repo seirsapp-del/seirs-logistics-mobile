@@ -431,8 +431,14 @@ export default function TrackScreen() {
     });
   })();
 
+  /*
+   * Read against the RESOLVED status. The header takes its status from
+   * the live tracking stream, this card took it from the fetched record,
+   * and on 2026-09-06 the two disagreed on the founder's phone: the
+   * header said Cancelled while this card said Waiting for payment.
+   */
   const custody = custodyOf(
-    deliveryData,
+    deliveryData ? { ...deliveryData, status: rawStatus ?? deliveryData.status } : deliveryData,
     assignedDriver?.name ?? deliveryData?.driver?.name ?? null,
   );
 

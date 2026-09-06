@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { FeesModule } from '../fees/fees.module';
 import { BusinessController } from './business.controller';
+import { RecurringController } from './recurring.controller';
 import { BusinessService } from './business.service';
 import { BusinessAccount } from './business-account.entity';
 import { PartnerStore } from './partner-store.entity';
@@ -56,7 +57,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     // Cargo Space validates the trip a load is posted to.
     forwardRef(() => DriversModule),
   ],
-  controllers: [BusinessController],
+  controllers: [BusinessController, RecurringController],
   providers:   [BusinessService],
   exports:     [BusinessService],
 })

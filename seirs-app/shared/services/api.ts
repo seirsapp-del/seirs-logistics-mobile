@@ -744,6 +744,27 @@ export const paymentsApi = {
     ),
 };
 
+// ─── Recurring runs, for any account (customer app uses these) ──────────────
+// A template is a saved booking plus a cadence. Runs are created about an
+// hour before pickup as Awaiting payment and paid by hand; nothing is
+// charged on its own (founder 2026-09-06).
+export const recurringApi = {
+  list:   () => request<any[]>('GET', '/recurring-templates'),
+  create: (body: {
+    name: string;
+    cadence: 'daily' | 'weekly' | 'monthly';
+    dayOfWeek?: number;
+    dayOfMonth?: number;
+    hour?: number;
+    minute?: number;
+    payload: any;
+    termsAccepted: boolean;
+  }) => request<any>('POST', '/recurring-templates', body),
+  toggle: (id: string, isActive: boolean) =>
+    request<any>('PATCH', `/recurring-templates/${id}`, { isActive }),
+  remove: (id: string) => request<any>('DELETE', `/recurring-templates/${id}`),
+};
+
 // ─── Loyalty Points (customer-facing) ────────────────────────────────────────
 export interface LoyaltyEntry {
   id:                string;

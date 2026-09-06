@@ -196,7 +196,20 @@ export class BusinessService {
     if (!Object.values(RecurringCadence).includes(body.cadence)) {
       throw new BadRequestException('Invalid cadence.');
     }
-    if (!body.payload?.pickupAddress || !Array.isArray(body.payload?.stops) || !body.payload.stops.length) {
+    /**
+     * Two payload shapes, told apart by payload.kind. A business template
+     * holds the multi-stop business booking; a customer template (added
+     * 2026-09-06, founder: "add the recurring thing to the customer app as
+     * well") holds the customer CreateDeliveryDto, pickup and one drop-off.
+     * The cron creates each through its own booking path.
+     */
+    const kind = body.payload?.kind === 'customer' ? 'customer' : 'business';
+    if (kind === 'customer') {
+      const p = body.payload;
+      if (!p?.pickupAddress || !p?.dropoffAddress || p.pickupLat == null || p.dropoffLat == null) {
+        throw new BadRequestException('Payload must include a pickup and a drop-off with coordinates.');
+      }
+    } else if (!body.payload?.pickupAddress || !Array.isArray(body.payload?.stops) || !body.payload.stops.length) {
       throw new BadRequestException('Payload must include a pickup and at least one stop.');
     }
     if (body.cadence === RecurringCadence.WEEKLY && (body.dayOfWeek == null || body.dayOfWeek < 0 || body.dayOfWeek > 6)) {
@@ -327,14 +340,29 @@ export class BusinessService {
     for (const t of due) {
       const pickupAt = new Date(t.nextRunAt);
       try {
-        const { termsAcceptedAt: _terms, ...payload } = (t.payload ?? {}) as any;
-        const delivery: any = await this.createDelivery(t.owner.id, {
-          ...(payload as CreateMultiStopDeliveryDto),
-          isRecurring: true,
-          // The run is for the scheduled hour, not for "now": the driver
-          // is matched for then, and the unpaid cancel below reads it.
-          scheduledAt: pickupAt.toISOString(),
-        });
+        const { termsAcceptedAt: _terms, kind, ...payload } = (t.payload ?? {}) as any;
+        const delivery: any = kind === 'customer'
+          // The customer's own booking path: same pricing, same photos,
+          // same receiver rules as a booking made by hand.
+          ? await this.deliveriesService.create({
+              ...(payload as any),
+              scheduledNow: false,
+              scheduledFor: pickupAt.toISOString(),
+              paymentMethod: 'card',
+              isRecurring: true,
+            } as any, t.owner)
+          : await this.createDelivery(t.owner.id, {
+              ...(payload as CreateMultiStopDeliveryDto),
+              isRecurring: true,
+              // The run is for the scheduled hour, not for "now": the driver
+              // is matched for then, and the unpaid cancel below reads it.
+              scheduledAt: pickupAt.toISOString(),
+            });
+        if (kind === 'customer' && delivery?.id) {
+          // The customer path does not read isRecurring from its DTO; the
+          // flag is what the unpaid-run sweep and the app label key on.
+          await this.deliveriesRepo.update(delivery.id, { isRecurring: true } as any).catch(() => {});
+        }
         t.fireCount  += 1;
         t.lastRunAt  = now;
         t.lastError  = null;
