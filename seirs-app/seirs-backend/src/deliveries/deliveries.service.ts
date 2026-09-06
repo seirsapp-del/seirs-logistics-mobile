@@ -4705,7 +4705,20 @@ export class DeliveriesService {
       // (first prod run: one refund threw and stalled the rest of the list
       // until later cycles) must never block the remaining refunds.
       try {
-        await this.repo.update(d.id, { status: DeliveryStatus.CANCELLED });
+        /**
+         * Paid and unpaid are two different failures (2026-09-06).
+         *
+         * This sweep assumed every stale booking was PAID: it refunded,
+         * clawed back points and raised a "No rider found, refunded in
+         * full" support ticket. An UNPAID booking that nobody paid for by
+         * its due time is the customer's decision, not our failure: no
+         * money moved, so nothing is refunded, no ticket is raised, and
+         * the message says what happened. Recurring runs made this daily.
+         */
+        const paid = !!d.paymentHeldAt;
+        await this.repo.update(d.id, paid
+          ? { status: DeliveryStatus.CANCELLED }
+          : { status: DeliveryStatus.CANCELLED, cancelledAt: new Date(), cancellationReason: 'Not paid before pickup time' } as any);
 
         /**
          * Give the seat back (2026-08-29).
@@ -4735,7 +4748,7 @@ export class DeliveriesService {
         if (this.trackingGateway) {
           try { this.trackingGateway.broadcastStatusChange(d.id, DeliveryStatus.CANCELLED); } catch { /* ws only */ }
         }
-        if (d.customer?.id && this.paymentsService) {
+        if (paid && d.customer?.id && this.paymentsService) {
           try {
             await this.paymentsService.refundEscrow(d.id, d.customer.id, 0);
           } catch (err: any) {
@@ -4746,16 +4759,33 @@ export class DeliveriesService {
         // updateStatus, so it needs its own clawback: otherwise a booking
         // that expires unclaimed keeps the points it earned on a fare
         // that was refunded in full.
-        try {
-          await this.loyaltyService?.clawbackForDelivery(d.id);
-        } catch (err: any) {
-          this.logger.error(`Auto-expiry loyalty clawback failed for ${d.trackingCode}: ${err?.message ?? err}`);
+        if (paid) {
+          try {
+            await this.loyaltyService?.clawbackForDelivery(d.id);
+          } catch (err: any) {
+            this.logger.error(`Auto-expiry loyalty clawback failed for ${d.trackingCode}: ${err?.message ?? err}`);
+          }
         }
         if (d.customer?.id && this.notificationsService) {
-          this.notificationsService
-            .notifyStatusUpdate(d.customer.id, d.trackingCode, DeliveryStatus.CANCELLED, d.id)
-            .catch(() => {});
+          if (paid) {
+            this.notificationsService
+              .notifyStatusUpdate(d.customer.id, d.trackingCode, DeliveryStatus.CANCELLED, d.id)
+              .catch(() => {});
+          } else {
+            const recurring = !!(d as any).isRecurring;
+            this.notificationsService.create(
+              d.customer.id,
+              recurring ? 'Run cancelled, not paid' : 'Booking cancelled, not paid',
+              recurring
+                ? `${d.trackingCode ?? 'Your recurring run'} was not paid before its pickup time, so it did not go out. Nothing was charged. The next run will be created on schedule.`
+                : `${d.trackingCode ?? 'Your booking'} was not paid before its pickup time, so it was cancelled. Nothing was charged. Book again whenever you are ready.`,
+              'status_update' as any,
+              d.id,
+              d.trackingCode,
+            ).catch(() => {});
+          }
         }
+        if (!paid) continue;   // nothing was taken, so nothing below applies
 
         /**
          * And tell a human here, which nothing did (founder 2026-09-04).

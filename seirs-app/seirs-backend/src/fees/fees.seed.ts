@@ -530,15 +530,12 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
    * checkout with the bank's OTP, and fuel moves too often to commit to
    * a price weeks ahead). Each run is created this many minutes before
    * its pickup time, at that day's price, as Awaiting payment, and the
-   * owner is pushed to pay. Unpaid past the second window, the run is
-   * cancelled and they are told.
+   * owner is pushed to pay. An unpaid run is cancelled by the ordinary
+   * pending_booking_expiry_minutes rule, measured from its pickup time.
    */
   { key: 'recurring_notice_minutes', name: 'Recurring run: ask to pay this long before pickup (minutes)',
-    description: 'How many minutes before its pickup time a recurring run is created and priced, and the owner is notified to pay. The run is Awaiting payment until they do.',
+    description: 'How many minutes before its pickup time a recurring run is created and priced, and the owner is notified to pay. The run is Awaiting payment until they do; unpaid, it expires under pending_booking_expiry_minutes.',
     category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 60 },
-  { key: 'recurring_unpaid_cancel_minutes', name: 'Recurring run: cancel if unpaid this long after pickup time (minutes)',
-    description: 'A recurring run still unpaid this many minutes after its pickup time is cancelled and the owner is notified. 0 cancels at pickup time exactly.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 30 },
 
   /**
    * Ten, not sixty (founder 2026-09-04: "why not 10 minutes, much better").

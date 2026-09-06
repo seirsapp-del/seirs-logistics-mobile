@@ -332,7 +332,6 @@ export class BusinessService {
   @Cron('*/5 * * * *')
   async runDueRecurringTemplates() {
     const leadMin  = Number(await this.fees.getValueOr('recurring_notice_minutes', 60)) || 60;
-    const graceMin = Math.max(0, Number(await this.fees.getValueOr('recurring_unpaid_cancel_minutes', 30)) || 0);
     const now = new Date();
     const horizon = new Date(now.getTime() + leadMin * 60_000);
 
@@ -398,43 +397,11 @@ export class BusinessService {
       await this.recurringRepo.save(t);
     }
     if (due.length) this.logger.log(`Recurring runs created, awaiting payment: ${due.length}`);
-
-    await this.cancelUnpaidRecurringRuns(now, graceMin);
-  }
-
-  /**
-   * A recurring run nobody paid for does not go out, and does not sit in
-   * the list as Pending forever. Cancelled past the grace window, no
-   * fee (nothing was charged), and the owner is told why.
-   */
-  private async cancelUnpaidRecurringRuns(now: Date, graceMin: number) {
-    const cutoff = new Date(now.getTime() - graceMin * 60_000);
-    const stale = await this.deliveriesRepo
-      .createQueryBuilder('d')
-      .leftJoinAndSelect('d.customer', 'c')
-      .where('d."isRecurring" = true')
-      .andWhere('d.status = :st', { st: DeliveryStatus.PENDING })
-      .andWhere('d."paymentHeldAt" IS NULL')
-      // scheduledFor is the column both booking paths actually store.
-      .andWhere('d."scheduledFor" IS NOT NULL')
-      .andWhere('d."scheduledFor" <= :cutoff', { cutoff })
-      .take(100)
-      .getMany();
-    for (const d of stale) {
-      try {
-        await this.deliveriesRepo.update(d.id, {
-          status: DeliveryStatus.CANCELLED,
-          cancelledAt: now,
-          cancellationReason: 'Recurring run not paid before pickup time',
-        } as any);
-        this.push((d as any).customer?.id, 'Run cancelled, not paid',
-          `${d.trackingCode ?? 'Your recurring run'} was not paid before its pickup time, so it did not go out. Nothing was charged. The next run will be created on schedule.`,
-          NotificationType.STATUS_UPDATE, d.id);
-      } catch (e: any) {
-        this.logger.warn(`Could not cancel unpaid recurring run ${d.id}: ${e?.message ?? e}`);
-      }
-    }
-    if (stale.length) this.logger.log(`Recurring runs cancelled unpaid: ${stale.length}`);
+    // Unpaid runs are cancelled by the one sweep every booking already
+    // has, DeliveriesService.expireStalePending, which cancels a PENDING
+    // booking `pending_booking_expiry_minutes` after its due time and,
+    // since 2026-09-06, tells an unpaid owner "Run cancelled, not paid"
+    // without refunding or raising a no-rider ticket. One rule, one row.
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
