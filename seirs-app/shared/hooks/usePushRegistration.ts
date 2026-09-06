@@ -79,16 +79,36 @@ export function usePushRegistration(enabled: boolean) {
           });
         }
 
-        // Expo push token (works in both Expo Go and dev builds, and is
-        // accepted by backend FcmService alongside native FCM tokens).
-        const tokenResp = await Notifications.getExpoPushTokenAsync();
-        const token = tokenResp?.data;
+        /**
+         * The NATIVE token first (2026-09-06). On Android that is the FCM
+         * device token, which the server's Firebase Admin path delivers
+         * directly with the credentials Railway already holds. The Expo
+         * token needs the FCM key uploaded to Expo as well, a second set
+         * of credentials to keep alive for no gain. Expo's token stays as
+         * the fallback and the server relays those through Expo.
+         */
+        let token: string | undefined;
+        try {
+          const dev = await Notifications.getDevicePushTokenAsync();
+          if (dev?.data && typeof dev.data === 'string') token = dev.data;
+        } catch (e: any) {
+          if (__DEV__) console.warn(`[push] device token unavailable: ${e?.message ?? e}`);
+        }
+        if (!token) {
+          const tokenResp = await Notifications.getExpoPushTokenAsync();
+          token = tokenResp?.data;
+        }
         if (!token || cancelled) return;
 
         await notificationsApi.registerToken(token);
         registered.current = true;
-      } catch {
-        // expo-notifications not installed yet, or token fetch failed: no-op.
+        // Dev only: the token is how a push is traced end to end.
+        if (__DEV__) console.log(`[push] registered ${String(token).slice(0, 40)}...`);
+      } catch (e: any) {
+        // expo-notifications not installed yet, or token fetch failed. Say
+        // so in dev: a silent no-op here cost a day of "why is my phone
+        // quiet" (2026-09-06).
+        if (__DEV__) console.warn(`[push] registration skipped: ${e?.message ?? e}`);
       }
     })();
 
