@@ -992,8 +992,18 @@ export class TravelBuddyService {
     const board  = await this.stopsRepo.findOne({ where: { id: booking.boardStopId } as any });
     const alight = await this.stopsRepo.findOne({ where: { id: booking.alightStopId } as any });
 
+    // The exact spot goes out WITH the confirmation, as a Maps link the
+    // passenger can follow (founder 2026-09-06), not only on a screen
+    // they have to find later.
+    const bLat = Number(board?.latitude), bLng = Number(board?.longitude);
+    const meet = board?.address
+      ? ` Meet the driver at ${board.address}${board.description ? ` (${board.description})` : ''}.`
+      : '';
+    const dir = Number.isFinite(bLat) && Number.isFinite(bLng) && !(bLat === 0 && bLng === 0)
+      ? ` Directions: https://www.google.com/maps/dir/?api=1&destination=${bLat},${bLng}`
+      : '';
     this.push(booking.passengerId, 'Your seat is held',
-      `${board?.city ?? 'Your stop'} to ${alight?.city ?? 'your drop-off'} is paid and the seat is yours. Watch for the driver marking they have arrived at your stop.`,
+      `${board?.city ?? 'Your stop'} to ${alight?.city ?? 'your drop-off'} is paid and the seat is yours.${meet}${dir} Watch for the driver marking they have arrived at your stop.`,
       NotificationType.PAYMENT_RECEIVED, deliveryId);
     this.push(trip.driver?.user?.id, 'Seat paid for',
       `${booking.seats} seat${booking.seats === 1 ? '' : 's'} from ${board?.city ?? 'the pickup'} to ${alight?.city ?? 'the drop-off'} is paid. It is on your job list.`,
@@ -1948,7 +1958,35 @@ export class TravelBuddyService {
     return rows?.[0] ?? null;
   }
 
+  /**
+   * The exact spot, once it is theirs.
+   *
+   * Before payment a passenger sees the town and the address line. After
+   * payment they get the pin, the driver's own words about where to stand
+   * ("under the bridge, by the second bus stop") and a Google Maps link
+   * to the very place the driver picked when declaring the trip (founder
+   * 2026-09-06: "does the customer get a link they can follow after they
+   * pay, the one Google Maps gave the driver, to locate the place
+   * easily"). The link is a directions URL, so it opens the Maps app on
+   * the phone with the route to the spot already drawn.
+   */
+  private stopForPassenger(id: string, stop: TripStop | null, sequence: number, revealed: boolean) {
+    const base = { id, city: stop?.city ?? null, address: stop?.address ?? null, sequence };
+    if (!revealed || !stop) return base;
+    const lat = Number(stop.latitude), lng = Number(stop.longitude);
+    const hasPin = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+    return {
+      ...base,
+      description: stop.description ?? null,
+      latitude:  hasPin ? lat : null,
+      longitude: hasPin ? lng : null,
+      mapsUrl:   hasPin ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}` : null,
+    };
+  }
+
   private viewForPassenger(booking: SeatBooking, trip: any, board: TripStop, alight: TripStop) {
+    const revealed = !!booking.paidAt
+      || [SeatBookingStatus.BOOKED, SeatBookingStatus.BOARDED, SeatBookingStatus.DROPPED].includes(booking.status);
     return {
       id: booking.id,
       tripId: booking.tripId,
@@ -1959,8 +1997,8 @@ export class TravelBuddyService {
       luggage: booking.luggage,
       passengerNote: booking.passengerNote,
       driverNote: booking.driverNote,
-      board:  { id: booking.boardStopId,  city: board?.city  ?? null, address: board?.address  ?? null, sequence: booking.boardSequence },
-      alight: { id: booking.alightStopId, city: alight?.city ?? null, address: alight?.address ?? null, sequence: booking.alightSequence },
+      board:  this.stopForPassenger(booking.boardStopId,  board  ?? null, booking.boardSequence,  revealed),
+      alight: this.stopForPassenger(booking.alightStopId, alight ?? null, booking.alightSequence, revealed),
       requestedAt: booking.requestedAt,
       acceptedAt: booking.acceptedAt,
       paymentDueAt: booking.paymentDueAt,

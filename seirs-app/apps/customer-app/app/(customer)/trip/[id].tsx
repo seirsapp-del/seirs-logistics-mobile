@@ -30,7 +30,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSendDraftStore } from '@/store/useSendDraftStore';
 import { Colors } from '@/constants/theme';
-import { deliveriesApi } from '@/services/api';
+import { deliveriesApi, travelBuddyApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
@@ -82,6 +82,23 @@ export default function TripDetailsScreen() {
   const { patchDraft } = useSendDraftStore();
 
   const [d, setD] = useState<any>(null);
+  /**
+   * For a seat on a declared trip: the booking behind this delivery, for
+   * the driver's own words about where to stand and the Maps link to the
+   * spot they picked. Both are released by the server only once the seat
+   * is paid (founder 2026-09-06).
+   */
+  const [seat, setSeat] = useState<any>(null);
+  useEffect(() => {
+    if (!d?.tripId || !d?.id) { setSeat(null); return; }
+    travelBuddyApi.mySeatBookings()
+      .then((rows: any[]) => setSeat((rows ?? []).find((r) => r.deliveryId === d.id) ?? null))
+      .catch(() => setSeat(null));
+  }, [d?.tripId, d?.id]);
+  const meetUrl: string | null = seat?.board?.mapsUrl
+    ?? (d?.tripId && Number.isFinite(Number(d?.pickupLat)) && Number.isFinite(Number(d?.pickupLng)) && Number(d.pickupLat) !== 0
+      ? `https://www.google.com/maps/dir/?api=1&destination=${Number(d.pickupLat)},${Number(d.pickupLng)}`
+      : null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -288,8 +305,22 @@ export default function TripDetailsScreen() {
           2026-08-24). */}
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: Math.max(insets.bottom + 24, 56) }}>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.cardLabel, { color: colors.textThird }]}>COLLECTED FROM</Text>
+          {/* A seat is not collected from anywhere: the passenger goes to
+              the driver. Say where, in the driver's words, and hand over
+              the route (founder 2026-09-06). */}
+          <Text style={[styles.cardLabel, { color: colors.textThird }]}>{d.tripId ? 'WHERE TO MEET' : 'COLLECTED FROM'}</Text>
           <Text style={[styles.cardValue, { color: colors.text }]}>{d.pickupAddress}</Text>
+          {!!d.tripId && !!seat?.board?.description && (
+            <Text style={{ fontSize: 13, color: colors.textSecond, marginTop: 2 }}>
+              {String(seat?.driver?.name ?? 'The driver').split(' ')[0]} says: {seat.board.description}
+            </Text>
+          )}
+          {!!d.tripId && !!meetUrl && (
+            <Pressable onPress={() => Linking.openURL(meetUrl).catch(() => {})} style={styles.meetLink} hitSlop={6}>
+              <Icon name="Navigation" size={14} color={colors.primary} />
+              <Text style={[styles.meetLinkTxt, { color: colors.primary }]}>Open in Google Maps</Text>
+            </Pressable>
+          )}
           {d.pickedUpAt && (
             <Text style={{ fontSize: 13, color: colors.textSecond }}>Collected {fmtWhen(d.pickedUpAt)}</Text>
           )}
@@ -747,6 +778,9 @@ export default function TripDetailsScreen() {
 
 // Style values verbatim from the business delivery detail.
 const styles = StyleSheet.create({
+  // The seat's meeting-spot link (2026-09-06).
+  meetLink:    { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, alignSelf: 'flex-start' },
+  meetLinkTxt: { fontSize: 13, fontWeight: '600' },
   center:   { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   header:   { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   backBtn:  { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

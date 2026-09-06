@@ -15,7 +15,7 @@
 import { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator,
-  RefreshControl, StatusBar,
+  RefreshControl, StatusBar, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -70,8 +70,12 @@ type SeatReq = {
   segmentKm: number;
   priceNgn: number;
   luggage: string | null;
-  board:  { city: string | null };
-  alight: { city: string | null };
+  /**
+   * address is there from the start; description, the pin and mapsUrl
+   * arrive only once the seat is paid for (server-side gate).
+   */
+  board:  { city: string | null; address?: string | null; description?: string | null; mapsUrl?: string | null };
+  alight: { city: string | null; address?: string | null; description?: string | null; mapsUrl?: string | null };
   deliveryId: string | null;
   paymentDueAt: string | null;
   driver: { name: string; rating: number | null; vehicleType?: string | null; vehiclePlate?: string | null };
@@ -257,8 +261,38 @@ export default function ParcelRequestsScreen() {
               )}
               {canPay && (
                 <Text style={[styles.fact, { color: theme.textSecond }]}>
-                  The plate and vehicle photo are on the booking once paid. Pay to hold the seat.
+                  The plate, the vehicle photo and the exact meeting spot are on the booking once paid. Pay to hold the seat.
                 </Text>
+              )}
+              {/* Paid: the exact spot the driver picked, in their words, and
+                  a link that opens Google Maps with the route to it (founder
+                  2026-09-06). Same again for where they get off. */}
+              {(b.status === 'booked' || b.status === 'boarded') && !!b.board?.address && (
+                <View style={[styles.spot, { borderColor: theme.border, backgroundColor: theme.surfaceSecond }]}>
+                  <Text style={[styles.spotLabel, { color: theme.textThird }]}>WHERE TO MEET</Text>
+                  <Text style={[styles.spotAddr, { color: theme.text }]}>{b.board.address}</Text>
+                  {!!b.board.description && (
+                    <Text style={[styles.spotNote, { color: theme.textSecond }]}>{b.driver?.name?.split(' ')[0] ?? 'The driver'} says: {b.board.description}</Text>
+                  )}
+                  {!!b.board.mapsUrl && (
+                    <Pressable onPress={() => Linking.openURL(b.board.mapsUrl!).catch(() => {})} style={styles.mapsLink}>
+                      <Navigation size={13} color={theme.primary} strokeWidth={2} />
+                      <Text style={[styles.mapsLinkTxt, { color: theme.primary }]}>Open in Google Maps</Text>
+                    </Pressable>
+                  )}
+                  {!!b.alight?.address && (
+                    <>
+                      <Text style={[styles.spotLabel, { color: theme.textThird, marginTop: 10 }]}>WHERE YOU GET OFF</Text>
+                      <Text style={[styles.spotAddr, { color: theme.text }]}>{b.alight.address}</Text>
+                      {!!b.alight.mapsUrl && (
+                        <Pressable onPress={() => Linking.openURL(b.alight.mapsUrl!).catch(() => {})} style={styles.mapsLink}>
+                          <Navigation size={13} color={theme.primary} strokeWidth={2} />
+                          <Text style={[styles.mapsLinkTxt, { color: theme.primary }]}>Open in Google Maps</Text>
+                        </Pressable>
+                      )}
+                    </>
+                  )}
+                </View>
               )}
               <View style={styles.actions}>
                 {open && (
@@ -382,6 +416,13 @@ export default function ParcelRequestsScreen() {
 }
 
 const styles = StyleSheet.create({
+  // The paid seat's meeting spot and its Maps link (2026-09-06).
+  spot:        { borderWidth: 1, borderRadius: Radius.md, padding: 10, marginTop: 8, gap: 3 },
+  spotLabel:   { fontSize: 10.5, fontWeight: FontWeight.bold as any, letterSpacing: 0.8 },
+  spotAddr:    { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+  spotNote:    { fontSize: 12.5, lineHeight: 17 },
+  mapsLink:    { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
+  mapsLinkTxt: { fontSize: 13, fontWeight: FontWeight.semibold as any },
   header:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
   backBtn:     { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold as any },
