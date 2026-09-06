@@ -13,8 +13,7 @@ import { API_BASE } from '@/constants/config';
 import { configureApi } from '@/services/api';
 import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
-import { initI18n } from '@/i18n';
-import { useTranslation } from 'react-i18next';
+import i18n, { initI18n } from '@/i18n';
 import { usePushRegistration } from '@seirs/shared/hooks/usePushRegistration';
 import { ErrorBoundary } from '@seirs/shared/components/ErrorBoundary';
 // Themed replacement for the Android system AlertDialog. Sits inside
@@ -94,15 +93,25 @@ function NavigationGuard() {
 function RootStack() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
-  // Remount the navigator on a language change (2026-09-06): screens read
-  // their text through tx(), which has no hook to re-render them.
-  const { i18n } = useTranslation();
+  /*
+   * Remount the navigator on a language change (2026-09-06): screens read
+   * their text through tx(), which has no hook to re-render them. An
+   * explicit listener, not useTranslation(): on the device the hook's
+   * re-render never came and the home tab stayed in the old language
+   * until a cold start.
+   */
+  const [lang, setLang] = useState(i18n.language);
+  useEffect(() => {
+    const onChange = (l: string) => setLang(l);
+    i18n.on('languageChanged', onChange);
+    return () => { i18n.off('languageChanged', onChange); };
+  }, []);
 
   return (
     <>
       <NavigationGuard />
       <Stack
-        key={i18n.language}
+        key={lang}
         screenOptions={{
           headerStyle: { backgroundColor: theme.surface },
           headerTintColor: theme.text,

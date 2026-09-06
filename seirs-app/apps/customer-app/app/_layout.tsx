@@ -17,8 +17,7 @@ import { API_BASE } from '@/constants/config';
 import { configureApi } from '@/services/api';
 import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
-import { initI18n } from '@/i18n';
-import { useTranslation } from 'react-i18next';
+import i18n, { initI18n } from '@/i18n';
 import { usePushRegistration } from '@seirs/shared/hooks/usePushRegistration';
 import { ErrorBoundary } from '@seirs/shared/components/ErrorBoundary';
 import {
@@ -105,8 +104,15 @@ function RootStack() {
    * converted from hard-coded English read their text through tx(), which
    * has no hook to re-render them; keying the stack on the language makes
    * every mounted screen, tabs included, come back in the new language.
+   * An explicit listener, not useTranslation(): on the device the hook's
+   * re-render never came.
    */
-  const { i18n } = useTranslation();
+  const [lang, setLang] = useState(i18n.language);
+  useEffect(() => {
+    const onChange = (l: string) => setLang(l);
+    i18n.on('languageChanged', onChange);
+    return () => { i18n.off('languageChanged', onChange); };
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -117,7 +123,7 @@ function RootStack() {
       <DeletionPendingBanner />
       <View style={{ flex: 1 }}>
         <Stack
-          key={i18n.language}
+          key={lang}
           screenOptions={{
             headerStyle: { backgroundColor: theme.surface },
             headerTintColor: theme.text,
