@@ -209,6 +209,8 @@ function CreateModal({ visible, leadMin, onClose, onCreated }: { visible: boolea
   const [dayOfMonth, setDayOfMonth] = useState(1);
   const [hour,       setHour]       = useState(9);
   const [minute,     setMinute]     = useState(0);
+  const [hourText,   setHourText]   = useState('9');
+  const [minuteText, setMinuteText] = useState('00');
   const [agreed,     setAgreed]     = useState(false);
   const [loading,    setLoading]    = useState(false);
   const [saving,     setSaving]     = useState(false);
@@ -353,9 +355,15 @@ function CreateModal({ visible, leadMin, onClose, onCreated }: { visible: boolea
 
           <Step n={4} title={t('recurring.step4', { defaultValue: 'Pickup time' })} />
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <TextInput value={String(hour)} onChangeText={v => setHour(Math.max(0, Math.min(23, Number(v) || 0)))} keyboardType="number-pad" maxLength={2} style={[inputStyle, { width: 70, textAlign: 'center' }]} />
+            {/* Raw text while typing, parsed on blur: a padded "00" under a
+                two-character limit swallowed the second digit (2026-09-06). */}
+            <TextInput value={hourText} onChangeText={v => { const r = v.replace(/\D/g, '').slice(0, 2); setHourText(r); setHour(Math.max(0, Math.min(23, Number(r) || 0))); }}
+              onBlur={() => setHourText(String(hour))}
+              keyboardType="number-pad" maxLength={2} selectTextOnFocus style={[inputStyle, { width: 70, textAlign: 'center' }]} />
             <Text style={{ color: theme.text, fontWeight: '700', fontSize: 18 }}>:</Text>
-            <TextInput value={pad(minute)} onChangeText={v => setMinute(Math.max(0, Math.min(59, Number(v) || 0)))} keyboardType="number-pad" maxLength={2} style={[inputStyle, { width: 70, textAlign: 'center' }]} />
+            <TextInput value={minuteText} onChangeText={v => { const r = v.replace(/\D/g, '').slice(0, 2); setMinuteText(r); setMinute(Math.max(0, Math.min(59, Number(r) || 0))); }}
+              onBlur={() => setMinuteText(pad(minute))}
+              keyboardType="number-pad" maxLength={2} selectTextOnFocus style={[inputStyle, { width: 70, textAlign: 'center' }]} />
             <Text style={{ color: theme.textSecond, fontSize: 13 }}>{t('recurring.twentyFourHour', { defaultValue: '24-hour' })}</Text>
           </View>
           <Text style={{ color: theme.textSecond, fontSize: 13, lineHeight: 18, marginTop: -6 }}>

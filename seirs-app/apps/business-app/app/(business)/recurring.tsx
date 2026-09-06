@@ -267,6 +267,8 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
   const [dayOfMonth,  setDayOfMonth]  = useState(1);
   const [hour,        setHour]        = useState(9);
   const [minute,      setMinute]      = useState(0);
+  const [hourText,    setHourText]    = useState('9');
+  const [minuteText,  setMinuteText]  = useState('00');
   const [agreed,      setAgreed]      = useState(false);
   const [loading,     setLoading]     = useState(false);
   const [saving,      setSaving]      = useState(false);
@@ -478,19 +480,26 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
 
           <Step n={4} title={tx('auto.recurring.pickupTime', 'Pickup time')} />
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            {/* Raw text while typing, parsed on blur. A padded "00" under a
+                two-character limit swallowed the second digit, so 05 could
+                not be typed at all (found on the device 2026-09-06). */}
             <TextInput
-              value={String(hour)}
-              onChangeText={t => setHour(Math.max(0, Math.min(23, Number(t) || 0)))}
+              value={hourText}
+              onChangeText={v => { const r = v.replace(/\D/g, '').slice(0, 2); setHourText(r); setHour(Math.max(0, Math.min(23, Number(r) || 0))); }}
+              onBlur={() => setHourText(String(hour))}
               keyboardType="number-pad"
               maxLength={2}
+              selectTextOnFocus
               style={[styles.input, { width: 70, textAlign: 'center', color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
             />
             <Text style={{ color: colors.text, fontWeight: '700', fontSize: 18 }}>:</Text>
             <TextInput
-              value={pad(minute)}
-              onChangeText={t => setMinute(Math.max(0, Math.min(59, Number(t) || 0)))}
+              value={minuteText}
+              onChangeText={v => { const r = v.replace(/\D/g, '').slice(0, 2); setMinuteText(r); setMinute(Math.max(0, Math.min(59, Number(r) || 0))); }}
+              onBlur={() => setMinuteText(pad(minute))}
               keyboardType="number-pad"
               maxLength={2}
+              selectTextOnFocus
               style={[styles.input, { width: 70, textAlign: 'center', color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
             />
             <Text style={{ color: colors.textSecond, fontSize: 13 }}>24-hour</Text>
