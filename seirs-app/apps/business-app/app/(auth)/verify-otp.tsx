@@ -13,6 +13,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const OTP_LENGTH      = 6;
 const RESEND_COOLDOWN = 60;
@@ -224,7 +225,7 @@ export default function VerifyOtpScreen() {
                     styles.resendText,
                     { color: cooldown > 0 ? theme.textThird : theme.accent },
                   ]}>
-                    {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
+                    {cooldown > 0 ? tx9('auto.verifyOtp.resendInS', 'Resend in {{cooldown}}s', { cooldown }) : tx9('auto.verifyOtp.resendCode', 'Resend code')}
                   </Text>
                 </View>
               )}

@@ -21,6 +21,7 @@ import { Colors } from '@/constants/theme';
 import { documentsApi, type UserDocumentDTO } from '@/services/api';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const DOC_ICON: Record<string, string> = {
   statement: 'Receipt',
@@ -126,7 +127,7 @@ export default function CustomerDocumentsScreen() {
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: theme.text }]}>{viewing?.title}</Text>
             <Text style={[styles.modalMeta, { color: theme.textSecond }]}>
-              {viewing?.category}{viewing?.sentByName ? ` · sent by ${viewing.sentByName}` : ''} ·{' '}
+              {viewing?.category}{viewing?.sentByName ? tx9('auto.documents.sentBy', '· sent by {{sentByName}}', { sentByName: viewing.sentByName }) : ''} ·{' '}
               {viewing ? new Date(viewing.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
             </Text>
             <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
@@ -166,7 +167,7 @@ export default function CustomerDocumentsScreen() {
                   becomes a forwardable URL.
                 */}
                 <Text style={{ color: theme.text, fontWeight: '600' }}>
-                  {pdfBusy ? 'Making PDF...' : 'Save as PDF'}
+                  {pdfBusy ? tx9('auto.documents.makingPdf', 'Making PDF...') : tx9('auto.profile.saveAsPdf', 'Save as PDF')}
                 </Text>
               </Pressable>
               <Pressable style={[styles.modalBtn, { backgroundColor: theme.primary }]} onPress={() => setViewing(null)}>

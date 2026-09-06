@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { notificationsApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type NotifType = 'job' | 'payment' | 'system' | 'rating';
 
@@ -51,7 +52,7 @@ function relativeTime(iso: string): string {
   const d = new Date(iso).getTime();
   if (!d) return '';
   const delta = (Date.now() - d) / 1000;
-  if (delta < 60)     return 'Just now';
+  if (delta < 60)     return tx9('auto.notifications.justNow', 'Just now');
   if (delta < 3600)   return `${Math.floor(delta / 60)} min ago`;
   if (delta < 86400)  return new Date(iso).toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit' });
   if (delta < 172800) return 'Yesterday';

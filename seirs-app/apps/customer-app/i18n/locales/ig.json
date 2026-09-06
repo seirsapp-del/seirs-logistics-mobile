@@ -681,7 +681,7 @@
     "enterLocationsToContinue": "Tinye ebe gaa n'ihu"
   },
   "settings": {
-    "languageTitle": "Asụsụ & Mpaghara",
+    "languageTitle": "Asụsụ",
     "appLanguage": "Asụsụ Ngwa",
     "displayCurrency": "Ego Ngosi",
     "currencyNote": "A na-eme azụmahịa niile na Naira Naịjịrịa (NGN). Ego ndị ọzọ bụ maka ngosi naanị.",
@@ -1081,18 +1081,6 @@
       "atLeast8Characters": "Opekata mkpụrụ 8",
       "home": "Ụlọ",
       "iAgreeToThe": "Ekwenyere m na"
-    },
-    "resetPassword": {
-      "atLeast8Characters": "Opekata mkpụrụ 8",
-      "invalidLink": "Njikọ ezighị ezi",
-      "backToSignIn": "Laghachi na mbanye",
-      "passwordReset": "Ntọgharị paswọdụ",
-      "signIn": "Banye",
-      "setNewPassword": "Tọọ paswọdụ ọhụrụ",
-      "newPassword": "Paswọdụ ọhụrụ",
-      "confirmPassword": "Kwenye paswọdụ",
-      "resetPassword": "Tọgharịa paswọdụ",
-      "repeatYourPassword": "Tinyegharịa paswọdụ gị"
     },
     "history": {
       "trackLive": "Soro ozugbo",

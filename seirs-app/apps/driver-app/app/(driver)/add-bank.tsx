@@ -23,6 +23,7 @@ import { paymentsApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Payout bank account setup: fully live.
@@ -154,12 +155,12 @@ export default function AddBankScreen() {
           />
         </View>
         <Text style={[styles.successTitle, { color: theme.text }]}>
-          {savedAsPending ? 'Submitted for Review' : 'Bank Saved!'}
+          {savedAsPending ? tx9('auto.addBank.submittedForReview', 'Submitted for Review') : tx9('auto.addBank.bankSaved', 'Bank Saved!')}
         </Text>
         <Text style={[styles.successSub, { color: theme.textSecond }]}>
           {savedAsPending
-            ? `We check payout account changes, up to 3 business days. ` +
-              `Payouts pause until then, and nothing is lost.`
+            ? tx9('auto.addBank.weCheckPayoutAccountChanges', 'We check payout account changes, up to 3 business days.') +
+              tx9('auto.addBank.payoutsPauseUntilThenAnd', 'Payouts pause until then, and nothing is lost.')
             : `${selectedBank?.name} account ending in ${accountNumber.slice(-4)} is now your payout account.`}
         </Text>
         <Pressable style={[styles.doneBtn, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
@@ -197,7 +198,7 @@ export default function AddBankScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.currentLabel, { color: theme.textThird }]}>{tx('auto.addBank.currentPayoutAccount', 'Current payout account')}</Text>
                 <Text style={[styles.currentValue, { color: theme.text }]}>
-                  {current.bankName ?? 'Bank'} · {current.bankAccountName} · {current.bankAccountNumber}
+                  {current.bankName ?? tx9('auto.addBank.bank', 'Bank')} · {current.bankAccountName} · {current.bankAccountNumber}
                 </Text>
               </View>
             </View>
@@ -210,7 +211,7 @@ export default function AddBankScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.currentLabel, { color: theme.warning }]}>{tx('auto.addBank.changeUnderReview', 'Change under review')}</Text>
                 <Text style={[styles.currentValue, { color: theme.text }]}>
-                  {current.pendingBankName ?? 'New bank'} account ending {String(current.pendingBankAccountNumber).slice(-4)}{tr('auto.addBank.reviewTakesUpTo3', '. Review takes up to 3 business days.')}
+                  {current.pendingBankName ?? tx9('auto.addBank.newBank', 'New bank')} account ending {String(current.pendingBankAccountNumber).slice(-4)}{tr('auto.addBank.reviewTakesUpTo3', '. Review takes up to 3 business days.')}
                 </Text>
               </View>
             </View>
@@ -225,7 +226,7 @@ export default function AddBankScreen() {
             >
               <Ionicons name="business-outline" size={18} color={selectedBank ? theme.primary : theme.textThird} />
               <Text style={[styles.selectText, { color: selectedBank ? theme.text : theme.textThird }]}>
-                {banksLoading ? 'Loading banks…' : (selectedBank?.name || 'Select bank…')}
+                {banksLoading ? tx9('auto.addBank.loadingBanks', 'Loading banks…') : (selectedBank?.name || tx9('auto.addBank.selectBank2', 'Select bank…'))}
               </Text>
               <Ionicons name="chevron-down" size={16} color={theme.textThird} />
             </Pressable>
@@ -246,7 +247,7 @@ export default function AddBankScreen() {
               />
               {accountNumber.length === 10 && selectedBank && !verified && (
                 <Pressable style={[styles.verifyBtn, { backgroundColor: theme.primary }]} onPress={handleVerify} disabled={verifying}>
-                  <Text style={styles.verifyBtnText}>{verifying ? 'Checking…' : 'Verify'}</Text>
+                  <Text style={styles.verifyBtnText}>{verifying ? tx9('auto.addBank.checking', 'Checking…') : tx9('auto.addBank.verify', 'Verify')}</Text>
                 </Pressable>
               )}
               {verified && <Ionicons name="checkmark-circle" size={20} color="#22C55E" />}
@@ -271,7 +272,7 @@ export default function AddBankScreen() {
             <Text style={[styles.infoText, { color: theme.textSecond }]}>
               {tr('auto.addBank.theAccountNameIsConfirmed', 'The account name is confirmed directly with the bank. Your details are encrypted and used only for paying you.')}
               {current?.bankAccountNumber
-                ? ' Replacing your account pauses withdrawals until support approves the change (up to 3 business days). This protects your earnings if someone else gets into your account.'
+                ? tx9('auto.addBank.replacingYourAccountPausesWithdrawals', 'Replacing your account pauses withdrawals until support approves the change (up to 3 business days). This protects your earnings if someone else gets into your account.')
                 : ''}
             </Text>
           </View>
@@ -289,7 +290,7 @@ export default function AddBankScreen() {
         >
           <Ionicons name="save-outline" size={20} color={canSave ? '#fff' : theme.textThird} />
           <Text style={[styles.saveBtnText, { color: canSave ? '#fff' : theme.textThird }]}>
-            {submitting ? 'Saving…' : 'Save Bank Account'}
+            {submitting ? tx9('auto.addBank.saving', 'Saving…') : tx9('auto.addBank.saveBankAccount', 'Save Bank Account')}
           </Text>
         </Pressable>
       </View>
@@ -319,7 +320,7 @@ export default function AddBankScreen() {
                 style={{ maxHeight: 360 }}
                 ListEmptyComponent={
                   <Text style={[styles.emptyBanks, { color: theme.textThird }]}>
-                    {banks.length === 0 ? 'Bank list unavailable. Check your connection and reopen.' : 'No bank matches that search.'}
+                    {banks.length === 0 ? tx9('auto.addBank.bankListUnavailableCheckYour', 'Bank list unavailable. Check your connection and reopen.') : tx9('auto.addBank.noBankMatchesThatSearch', 'No bank matches that search.')}
                   </Text>
                 }
                 renderItem={({ item }) => (

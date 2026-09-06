@@ -28,6 +28,7 @@ import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const CONFIRM_PHRASE = 'delete my account';
 
@@ -127,29 +128,29 @@ export default function DeleteBusinessAccountScreen() {
 
           <Text style={[styles.what, { color: colors.text }]}>{tx('auto.deleteAccount.finishTheseFirst', 'Finish these first')}</Text>
           {[
-            'Deliveries still in progress: let them complete or cancel them',
-            'Packages sitting at a partner store waiting to be collected',
-            'API keys in use by your shop, which stop working immediately',
+            tx9('auto.deleteAccount.deliveriesStillInProgressLet', 'Deliveries still in progress: let them complete or cancel them'),
+            tx9('auto.deleteAccount.packagesSittingAtAPartner', 'Packages sitting at a partner store waiting to be collected'),
+            tx9('auto.deleteAccount.apiKeysInUseBy', 'API keys in use by your shop, which stop working immediately'),
           ].map((line) => (
             <Text key={line} style={[styles.bullet, { color: colors.textSecond }]}>{'•'} {line}</Text>
           ))}
 
           <Text style={[styles.what, { color: colors.text }]}>{tx('auto.deleteAccount.whatGetsDeleted', 'What gets deleted')}</Text>
           {[
-            'Your business profile, contact details and logo',
-            'Your delivery history and itemised statements, after the grace window',
-            'Saved addresses, recurring runs and saved payment details',
-            'Your API keys and webhook endpoints',
-            'Loyalty points, which cannot be transferred or paid out',
+            tx9('auto.deleteAccount.yourBusinessProfileContactDetails', 'Your business profile, contact details and logo'),
+            tx9('auto.deleteAccount.yourDeliveryHistoryAndItemised', 'Your delivery history and itemised statements, after the grace window'),
+            tx9('auto.deleteAccount.savedAddressesRecurringRunsAnd', 'Saved addresses, recurring runs and saved payment details'),
+            tx9('auto.deleteAccount.yourApiKeysAndWebhook', 'Your API keys and webhook endpoints'),
+            tx9('auto.deleteAccount.loyaltyPointsWhichCannotBe', 'Loyalty points, which cannot be transferred or paid out'),
           ].map((line) => (
             <Text key={line} style={[styles.bullet, { color: colors.textSecond }]}>{'•'} {line}</Text>
           ))}
 
           <Text style={[styles.what, { color: colors.text }]}>{tx('auto.deleteAccount.whatWeKeep', 'What we keep')}</Text>
           {[
-            'Records tied to an open dispute, until it is settled',
-            'Invoices and tax records we are legally required to retain',
-            'Anonymised analytics, which cannot identify you',
+            tx9('auto.deleteAccount.recordsTiedToAnOpen', 'Records tied to an open dispute, until it is settled'),
+            tx9('auto.deleteAccount.invoicesAndTaxRecordsWe', 'Invoices and tax records we are legally required to retain'),
+            tx9('auto.deleteAccount.anonymisedAnalyticsWhichCannotIdentify', 'Anonymised analytics, which cannot identify you'),
           ].map((line) => (
             <Text key={line} style={[styles.bullet, { color: colors.textSecond }]}>{'•'} {line}</Text>
           ))}

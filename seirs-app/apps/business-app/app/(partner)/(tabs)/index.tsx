@@ -13,6 +13,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 
 export default function PartnerDashboard() {
@@ -60,7 +61,7 @@ export default function PartnerDashboard() {
                   (2026-08-12): this line used to print the BIZ- account
                   ID behind a PART- placeholder, which read as though the
                   account and the shop were the same thing. */}
-              <Text style={styles.partnerId}>{data?.storeCode ?? 'Code pending approval'}</Text>
+              <Text style={styles.partnerId}>{data?.storeCode ?? tx9('auto.tabsIndex.codePendingApproval', 'Code pending approval')}</Text>
             {/* There was NO way back to the business side once you entered
                 partner mode (founder 2026-08-16). Same account, two hats:
                 this returns to sending without signing out. */}
@@ -87,7 +88,7 @@ export default function PartnerDashboard() {
             </View>
             <Text style={styles.capacityCount}>
               {loadError
-                ? 'Could not load store status. Pull to refresh.'
+                ? tx9('auto.tabsIndex.couldNotLoadStoreStatus', 'Could not load store status. Pull to refresh.')
                 : capacity > 0
                   ? `${inStock} / ${capacity} packages`
                   : `${inStock} packages, capacity not set`}
@@ -240,7 +241,7 @@ function PackageRow({ pkg }: { pkg: any }) {
       </View>
       <View style={[styles.pkgBadge, { backgroundColor: isCollected ? '#DCFCE7' : '#FEF3C7' }]}>
         <Text style={[styles.pkgBadgeText, { color: isCollected ? '#16A34A' : '#D97706' }]}>
-          {isCollected ? 'Collected' : 'Awaiting'}
+          {isCollected ? tx9('auto.capacity.collected', 'Collected') : tx9('auto.tabsIndex.awaiting', 'Awaiting')}
         </Text>
       </View>
     </View>

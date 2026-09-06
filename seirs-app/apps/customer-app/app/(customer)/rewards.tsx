@@ -13,6 +13,7 @@ import { loyaltyApi, deliveriesApi, type LoyaltyTier } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Tier thresholds MUST mirror the backend (loyalty.service.ts:TIER_THRESHOLDS).
 // Keep in sync manually. The tier chip shown to the user is otherwise a lie.
@@ -66,9 +67,9 @@ interface Redemption {
 }
 
 const REDEMPTIONS = (): Redemption[] => [
-  { type: 'insurance',    label: tr('auto.rewards.500InsuranceCover', '₦500 insurance cover'),  desc: 'Insure a single delivery up to ₦50,000',            cost: 200,  icon: 'shield-checkmark-outline', live: false },
-  { type: 'discount_500', label: tr('auto.paymentDetail.500Off', '₦500 off'),              desc: '₦500 discount on your next delivery',              cost: 500,  icon: 'pricetag-outline', live: true },
-  { type: 'free_delivery',label: tr('auto.paymentDetail.freeDelivery', 'Free delivery'),          desc: 'One free delivery up to ₦2,000',                   cost: 1000, icon: 'gift-outline', live: true },
+  { type: 'insurance',    label: tr('auto.rewards.500InsuranceCover', '₦500 insurance cover'),  desc: tx9('auto.rewards.insureASingleDeliveryUp', 'Insure a single delivery up to ₦50,000'),            cost: 200,  icon: 'shield-checkmark-outline', live: false },
+  { type: 'discount_500', label: tr('auto.paymentDetail.500Off', '₦500 off'),              desc: tx9('auto.rewards.500DiscountOnYourNext', '₦500 discount on your next delivery'),              cost: 500,  icon: 'pricetag-outline', live: true },
+  { type: 'free_delivery',label: tr('auto.paymentDetail.freeDelivery', 'Free delivery'),          desc: tx9('auto.rewards.oneFreeDeliveryUpTo', 'One free delivery up to ₦2,000'),                   cost: 1000, icon: 'gift-outline', live: true },
 ];
 
 // Helpers
@@ -180,7 +181,7 @@ export default function RewardsScreen() {
     if (activeDeliveries.length === 0) {
       showDialog({
         title: tr('auto.rewards.bookADeliveryFirst', 'Book a delivery first'),
-        message: `You don't have any active deliveries to apply this reward to. Book a delivery, then come back here to redeem.`,
+        message: tx9('auto.rewards.youDonTHaveAny', 'You don\'t have any active deliveries to apply this reward to. Book a delivery, then come back here to redeem.'),
         actions: [
           { text: tr('auto.AddressPicker.cancel', 'Cancel'), style: 'cancel' },
           { text: tr('auto.rewards.bookDelivery', 'Book delivery'), style: 'primary', onPress: () => router.push('/(customer)/send' as any) },
@@ -205,7 +206,7 @@ export default function RewardsScreen() {
     // it because Cancel counts too. SeirsDialog renders the whole list
     // and scrolls, so the cap is gone along with the bug.
     showDialog({
-      title: `Apply ${r.label} to which delivery?`,
+      title: tx9('auto.rewards.applyToWhichDelivery', 'Apply {{label}} to which delivery?', { label: r.label }),
       message: tr('auto.rewards.pickTheDeliveryYouWant', 'Pick the delivery you want this reward to apply to.'),
       actions: [
         ...activeDeliveries.map((d: any) => ({
@@ -223,7 +224,7 @@ export default function RewardsScreen() {
       // Points are a count, not money, so they stay whole here. The
       // kobo rule applies to naira amounts, and customers hold points
       // rather than naira on this account.
-      message: `This will deduct ${r.cost.toLocaleString()} points from your balance and apply the reward to delivery ${delivery.trackingCode}. Cannot be undone.`,
+      message: tx9('auto.rewards.thisWillDeductPointsFrom', 'This will deduct {{v0}} points from your balance and apply the reward to delivery {{trackingCode}}. Cannot be undone.', { v0: r.cost.toLocaleString(), trackingCode: delivery.trackingCode }),
       actions: [
         {
           text: tr('auto.rewards.redeem', 'Redeem'),
@@ -341,7 +342,7 @@ export default function RewardsScreen() {
           <View style={styles.weekHead}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.rewards.last7Days', 'Last 7 days')}</Text>
             <Text style={[styles.weekEarned, { color: theme.primary }]}>
-              {week.earned > 0 ? `+${week.earned.toLocaleString()} pts` : 'No points yet'}
+              {week.earned > 0 ? `+${week.earned.toLocaleString()} pts` : tx9('auto.rewards.noPointsYet', 'No points yet')}
             </Text>
           </View>
 
@@ -367,9 +368,9 @@ export default function RewardsScreen() {
           <Text style={[styles.weekFoot, { color: theme.textSecond }]}>
             {week.earned === 0 && week.spent === 0
               ? (nextTier
-                  ? `Nothing yet this week. Every delivery earns, and you are ${(nextTier.min - points).toLocaleString()} points from ${nextTier.name}.`
-                  : 'Nothing yet this week. Every delivery you book earns points.')
-              : `Earned ${week.earned.toLocaleString()}, redeemed ${week.spent.toLocaleString()} this week.`}
+                  ? tx9('auto.rewards.nothingYetThisWeekEvery', 'Nothing yet this week. Every delivery earns, and you are {{v0}} points from {{name}}.', { v0: (nextTier.min - points).toLocaleString(), name: nextTier.name })
+                  : tx9('auto.rewards.nothingYetThisWeekEvery2', 'Nothing yet this week. Every delivery you book earns points.'))
+              : tx9('auto.rewards.earnedRedeemedThisWeek', 'Earned {{v0}}, redeemed {{v1}} this week.', { v0: week.earned.toLocaleString(), v1: week.spent.toLocaleString() })}
           </Text>
         </View>
 
@@ -531,11 +532,11 @@ export default function RewardsScreen() {
         <View style={[styles.earnCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.earnTitle, { color: theme.text }]}>{tx('auto.rewards.howToEarn', 'How to earn')}</Text>
           {[
-            { pts: '10 pts',  text: tr('auto.rewards.per1000SpentOn', 'per ₦1,000 spent on a delivery') },
-            { pts: '+5 pts',  text: tr('auto.rewards.bonusWhenYouPayBy', 'bonus when you pay by bank transfer') },
-            { pts: '200 pts', text: tr('auto.rewards.perFriendWhoSignsUp', 'per friend who signs up and completes a delivery') },
-            { pts: '5 pts',   text: tr('auto.rewards.forRatingADriver', 'for rating a driver') },
-            { pts: '50 pts',  text: tr('auto.rewards.bonusOnYour5thDelivery', 'bonus on your 5th delivery each month') },
+            { pts: tx9('auto.rewards.10Pts', '10 pts'),  text: tr('auto.rewards.per1000SpentOn', 'per ₦1,000 spent on a delivery') },
+            { pts: tx9('auto.rewards.5Pts', '+5 pts'),  text: tr('auto.rewards.bonusWhenYouPayBy', 'bonus when you pay by bank transfer') },
+            { pts: tx9('auto.rewards.200Pts', '200 pts'), text: tr('auto.rewards.perFriendWhoSignsUp', 'per friend who signs up and completes a delivery') },
+            { pts: tx9('auto.rewards.5Pts2', '5 pts'),   text: tr('auto.rewards.forRatingADriver', 'for rating a driver') },
+            { pts: tx9('auto.rewards.50Pts', '50 pts'),  text: tr('auto.rewards.bonusOnYour5thDelivery', 'bonus on your 5th delivery each month') },
           ].map(item => (
             <View key={item.text} style={styles.earnRow}>
               <Text style={[styles.earnPts, { color: theme.primary }]}>{item.pts}</Text>
@@ -556,19 +557,19 @@ export default function RewardsScreen() {
 // Kept as a switch so unknown reasons fall back to something readable.
 function activityLabel(reason: string): string {
   switch (reason) {
-    case 'delivery_complete':      return 'Delivery completed';
-    case 'bank_transfer_bonus':    return 'Bank transfer bonus';
-    case 'referral_bonus':         return 'Referral bonus';
-    case 'rate_driver':            return 'Rated a driver';
-    case 'monthly_streak':         return 'Monthly streak bonus';
-    case 'redeem_discount':        return 'Redeemed ₦500 off';
-    case 'redeem_free_delivery':   return 'Redeemed free delivery';
-    case 'redeem_priority':        return 'Redeemed priority dispatch';
-    case 'redeem_insurance':       return 'Redeemed insurance cover';
-    case 'admin_adjustment':       return 'Admin adjustment';
-    case 'refund_clawback':        return 'Refund adjustment';
-    case 'expired':                return 'Points expired';
-    case 'tier_warning':           return 'Tier warning sent';
+    case 'delivery_complete':      return tx9('auto.wallet.deliveryCompleted', 'Delivery completed');
+    case 'bank_transfer_bonus':    return tx9('auto.wallet.bankTransferBonus', 'Bank transfer bonus');
+    case 'referral_bonus':         return tx9('auto.wallet.referralBonus', 'Referral bonus');
+    case 'rate_driver':            return tx9('auto.wallet.ratedADriver', 'Rated a driver');
+    case 'monthly_streak':         return tx9('auto.wallet.monthlyStreakBonus', 'Monthly streak bonus');
+    case 'redeem_discount':        return tx9('auto.wallet.redeemed500Off', 'Redeemed ₦500 off');
+    case 'redeem_free_delivery':   return tx9('auto.wallet.redeemedFreeDelivery', 'Redeemed free delivery');
+    case 'redeem_priority':        return tx9('auto.wallet.redeemedPriorityDispatch', 'Redeemed priority dispatch');
+    case 'redeem_insurance':       return tx9('auto.wallet.redeemedInsuranceCover', 'Redeemed insurance cover');
+    case 'admin_adjustment':       return tx9('auto.rewards.adminAdjustment', 'Admin adjustment');
+    case 'refund_clawback':        return tx9('auto.wallet.refundAdjustment', 'Refund adjustment');
+    case 'expired':                return tx9('auto.wallet.pointsExpired', 'Points expired');
+    case 'tier_warning':           return tx9('auto.wallet.tierWarningSent', 'Tier warning sent');
     default:                        return reason;
   }
 }

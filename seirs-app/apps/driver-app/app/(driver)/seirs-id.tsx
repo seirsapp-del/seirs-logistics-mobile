@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8 §1.17: driver presents this screen at handoff so the partner
 // staff or recipient can scan the QR (or read the alphanumeric backup
@@ -87,7 +88,7 @@ export default function SeirsIdScreen() {
                 ? <CheckCircle size={14} color="#fff" strokeWidth={2} />
                 : <Copy        size={14} color="#fff" strokeWidth={2} />
               }
-              <Text style={styles.copyBtnText}>{copied ? 'Copied' : 'Copy'}</Text>
+              <Text style={styles.copyBtnText}>{copied ? tx9('auto.seirsId.copied', 'Copied') : tx9('auto.profile.copy', 'Copy')}</Text>
             </Pressable>
           </View>
         </View>
@@ -111,10 +112,10 @@ export default function SeirsIdScreen() {
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.seirsId.whereYouLlUseIt', 'Where you\'ll use it')}</Text>
           {[
-            'Collecting from a partner counter: staff scan this before releasing packages to you.',
-            'At a pickup, the sender can scan it to confirm you are the driver SEIRS assigned.',
-            'Read the code to SEIRS support and they find your account instantly.',
-            'It is also your SEIRS Verified ID fallback when you have no physical ID on you.',
+            tx9('auto.seirsId.collectingFromAPartnerCounter', 'Collecting from a partner counter: staff scan this before releasing packages to you.'),
+            tx9('auto.seirsId.atAPickupTheSender', 'At a pickup, the sender can scan it to confirm you are the driver SEIRS assigned.'),
+            tx9('auto.seirsId.readTheCodeToSeirs', 'Read the code to SEIRS support and they find your account instantly.'),
+            tx9('auto.seirsId.itIsAlsoYourSeirs', 'It is also your SEIRS Verified ID fallback when you have no physical ID on you.'),
           ].map((text, i) => (
             <View key={i} style={styles.howRow}>
               <View style={[styles.howStep, { backgroundColor: theme.primary }]}>

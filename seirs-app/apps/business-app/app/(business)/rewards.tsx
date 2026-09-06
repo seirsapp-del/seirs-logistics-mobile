@@ -11,6 +11,7 @@ import { FontWeight, Shadows } from '@/constants/theme';
 import { businessApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Redeem, for business accounts.
@@ -35,9 +36,9 @@ import { tx as tr } from '@/i18n/tx';
  * errors.
  */
 const REDEMPTIONS = () => [
-  { key: 'insurance',     icon: 'Shield' as const, label: tr('auto.rewards.500ParcelCover', '₦500 parcel cover'), desc: 'Cover a single delivery up to ₦50,000', cost: 200,  live: false },
-  { key: 'discount_500',  icon: 'Gift'   as const, label: tr('auto.deliveryDetail.500Off', '₦500 off'),          desc: '₦500 off your next booking',            cost: 500,  live: true  },
-  { key: 'free_delivery', icon: 'Star'   as const, label: tr('auto.deliveryDetail.freeDelivery', 'Free delivery'),     desc: 'One booking covered up to the reward cap', cost: 1000, live: true  },
+  { key: 'insurance',     icon: 'Shield' as const, label: tr('auto.rewards.500ParcelCover', '₦500 parcel cover'), desc: tx9('auto.rewards.coverASingleDeliveryUp', 'Cover a single delivery up to ₦50,000'), cost: 200,  live: false },
+  { key: 'discount_500',  icon: 'Gift'   as const, label: tr('auto.deliveryDetail.500Off', '₦500 off'),          desc: tx9('auto.rewards.500OffYourNextBooking', '₦500 off your next booking'),            cost: 500,  live: true  },
+  { key: 'free_delivery', icon: 'Star'   as const, label: tr('auto.deliveryDetail.freeDelivery', 'Free delivery'),     desc: tx9('auto.rewards.oneBookingCoveredUpTo', 'One booking covered up to the reward cap'), cost: 1000, live: true  },
 ];
 
 const HOW_TO_EARN = [
@@ -144,12 +145,12 @@ export default function BusinessRewardsScreen() {
                 <Text style={[styles.rowSub, { color: colors.textSecond }]}>{r.desc}</Text>
                 <Text style={[styles.rowCost, { color: colors.textThird }]}>
                   {r.cost.toLocaleString()} pts
-                  {!r.live ? ' · Not available yet' : ''}
+                  {!r.live ? tx9('auto.rewards.notAvailableYet', '· Not available yet') : ''}
                 </Text>
               </View>
               {r.live && (
                 <Text style={[styles.rowState, { color: afford ? colors.primary : colors.textThird }]}>
-                  {afford ? 'Ready' : (r.cost - points).toLocaleString() + ' more'}
+                  {afford ? tx9('auto.wallet.ready', 'Ready') : (r.cost - points).toLocaleString() + ' more'}
                 </Text>
               )}
             </View>

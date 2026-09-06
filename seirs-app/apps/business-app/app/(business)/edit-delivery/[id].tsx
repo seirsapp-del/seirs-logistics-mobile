@@ -32,6 +32,7 @@ import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const onlyDigits = (v: string) => v.replace(/[^0-9+]/g, '');
 const onlyName   = (v: string) => v.replace(/[^\p{L} .'\-]/gu, '');
@@ -146,8 +147,8 @@ export default function EditDelivery() {
             <Text style={[styles.bannerTitle, { color: colors.text }]}>{row?.trackingCode}</Text>
             <Text style={[styles.bannerNote, { color: colors.textSecond }]}>
               {paid
-                ? 'This order is paid, so the fare is fixed to this exact journey. You can still change the instructions the driver reads on arrival. To send somewhere else, cancel for a refund and book again.'
-                : 'Nothing has been charged yet, so this can still change. We work the price out again when you save.'}
+                ? tx9('auto.editDeliveryDetail.thisOrderIsPaidSo', 'This order is paid, so the fare is fixed to this exact journey. You can still change the instructions the driver reads on arrival. To send somewhere else, cancel for a refund and book again.')
+                : tx9('auto.editDeliveryDetail.nothingHasBeenChargedYet', 'Nothing has been charged yet, so this can still change. We work the price out again when you save.')}
             </Text>
           </View>
 

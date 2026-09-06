@@ -40,6 +40,7 @@ import { supportApi, deliveriesApi, type TicketTopic } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const TOPICS = (): { key: TicketTopic; label: string; icon: any; hint: string }[] => [
   { key: 'delivery', label: tr('auto.new.deliveryIssue', 'Delivery issue'),      icon: Package,         hint: tr('auto.new.packageLateMissingDamagedWrong', 'Package late, missing, damaged, wrong address') },
@@ -165,8 +166,8 @@ export default function NewSupportTicketScreen() {
                   <Clock size={13} color={openHours ? '#16A34A' : '#D97706'} />
                   <Text style={[styles.responseText, { color: theme.textSecond }]}>
                     {openHours
-                      ? 'Support is online now · hours 6am–10pm WAT'
-                      : 'Support is closed right now · hours 6am–10pm WAT'}
+                      ? tx9('auto.new.supportIsOnlineNowHours', 'Support is online now · hours 6am–10pm WAT')
+                      : tx9('auto.new.supportIsClosedRightNow', 'Support is closed right now · hours 6am–10pm WAT')}
                   </Text>
                 </View>
                 {/* Team avatars strip: social proof + humanises the queue */}
@@ -354,8 +355,8 @@ export default function NewSupportTicketScreen() {
                 <Clock size={13} color={openHours ? '#16A34A' : '#D97706'} />
                 <Text style={[styles.hoursNoteText, { color: theme.textSecond }]}>
                   {openHours
-                    ? 'Support is online now. Hours: 6am–10pm WAT.'
-                    : 'Support is closed right now (hours 6am–10pm WAT). Send your message and we will reply once we open at 6am.'}
+                    ? tx9('auto.new.supportIsOnlineNowHours2', 'Support is online now. Hours: 6am–10pm WAT.')
+                    : tx9('auto.new.supportIsClosedRightNow2', 'Support is closed right now (hours 6am–10pm WAT). Send your message and we will reply once we open at 6am.')}
                 </Text>
               </View>
             </View>

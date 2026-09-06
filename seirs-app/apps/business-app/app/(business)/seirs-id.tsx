@@ -17,6 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 export default function BusinessSeirsIdScreen() {
   const router     = useRouter();
@@ -89,7 +90,7 @@ export default function BusinessSeirsIdScreen() {
               onPress={handleCopy}
             >
               <Icon name={copied ? 'CheckCircle2' : 'Copy'} size={14} color="#fff" />
-              <Text style={styles.copyBtnText}>{copied ? 'Copied' : 'Copy'}</Text>
+              <Text style={styles.copyBtnText}>{copied ? tx9('auto.deliveryDetail.copied', 'Copied') : tx9('auto.deliveryDetail.copy', 'Copy')}</Text>
             </Pressable>
           </View>
         </View>
@@ -98,9 +99,9 @@ export default function BusinessSeirsIdScreen() {
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.seirsId.whenYouSendPackages', 'When you send packages')}</Text>
           {[
-            'Dropping a run at a partner counter: staff scan this to book the packages against your account.',
-            'A driver collecting from your premises can confirm they are at the right business.',
-            'Read the code to SEIRS support and they find your account instantly, no email spelling.',
+            tx9('auto.seirsId.droppingARunAtA', 'Dropping a run at a partner counter: staff scan this to book the packages against your account.'),
+            tx9('auto.seirsId.aDriverCollectingFromYour', 'A driver collecting from your premises can confirm they are at the right business.'),
+            tx9('auto.seirsId.readTheCodeToSeirs', 'Read the code to SEIRS support and they find your account instantly, no email spelling.'),
           ].map((text, i) => (
             <View key={i} style={styles.howRow}>
               <View style={[styles.howStep, { backgroundColor: theme.primary }]}>
@@ -115,9 +116,9 @@ export default function BusinessSeirsIdScreen() {
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.seirsId.ifYouRunAPartner', 'If you run a partner counter')}</Text>
           {[
-            'SEIRS drivers collecting from your counter verify they are dealing with the registered store keeper.',
-            'Payout questions: this ID ties your counter’s earnings ledger to you and nobody else.',
-            'Your store also has its own STORE CODE for customers; this ID is YOURS, the store code is the shop’s.',
+            tx9('auto.seirsId.seirsDriversCollectingFromYour', 'SEIRS drivers collecting from your counter verify they are dealing with the registered store keeper.'),
+            tx9('auto.seirsId.payoutQuestionsThisIdTies', 'Payout questions: this ID ties your counter’s earnings ledger to you and nobody else.'),
+            tx9('auto.seirsId.yourStoreAlsoHasIts', 'Your store also has its own STORE CODE for customers; this ID is YOURS, the store code is the shop’s.'),
           ].map((text, i) => (
             <View key={i} style={styles.howRow}>
               <View style={[styles.howStep, { backgroundColor: theme.primary }]}>

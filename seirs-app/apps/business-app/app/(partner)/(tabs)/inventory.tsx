@@ -10,6 +10,7 @@ import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 const STATUSES = ['all', 'in_store', 'awaiting_pickup', 'collected', 'returned'];
 
 const STATUS_COLOR: Record<string, string> = {
@@ -168,7 +169,7 @@ export default function InventoryScreen() {
               onPress={() => setStatus(s)}
             >
               <Text style={[styles.tabText, { color: colors.textSecond }, active && { color: '#fff' }]}>
-                {s === 'all' ? 'All' : s.replace(/_/g, ' ')}
+                {s === 'all' ? tx9('auto.storage.all', 'All') : s.replace(/_/g, ' ')}
               </Text>
             </Pressable>
           );

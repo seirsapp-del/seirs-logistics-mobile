@@ -39,6 +39,7 @@ import InlineAddressPicker from '@/components/InlineAddressPicker';
 import { type PickedAddress } from '@/components/AddressPicker';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * The kinds of job that actually turn up, in the sender's words rather
@@ -221,9 +222,9 @@ export default function SpecialRequestScreen() {
 
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           {([
-            ['Fragile', fragile, setFragile, 'Needs careful handling or padding.'],
-            ['Hazardous', hazardous, setHazardous, 'Fuel, chemicals, gas, anything flammable.'],
-            ['Temperature controlled', tempControl, setTempControl, 'Must stay cold or must not freeze.'],
+            [tx9('auto.specialRequest.fragile', 'Fragile'), fragile, setFragile, tx9('auto.specialRequest.needsCarefulHandlingOrPadding', 'Needs careful handling or padding.')],
+            [tx9('auto.specialRequest.hazardous', 'Hazardous'), hazardous, setHazardous, tx9('auto.specialRequest.fuelChemicalsGasAnythingFlammable', 'Fuel, chemicals, gas, anything flammable.')],
+            [tx9('auto.specialRequest.temperatureControlled', 'Temperature controlled'), tempControl, setTempControl, tx9('auto.specialRequest.mustStayColdOrMust', 'Must stay cold or must not freeze.')],
           ] as const).map(([label, value, set, hint], i) => (
             <View key={label} style={[styles.toggleRow, i > 0 && { borderTopWidth: 1, borderTopColor: theme.divider }]}>
               <View style={{ flex: 1 }}>

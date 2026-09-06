@@ -681,7 +681,7 @@
     "enterLocationsToContinue": "Tẹ àwọn ipò láti tẹ̀síwájú"
   },
   "settings": {
-    "languageTitle": "Èdè & Agbègbè",
+    "languageTitle": "Èdè",
     "appLanguage": "Èdè Ìṣe",
     "displayCurrency": "Owó Ìfihàn",
     "currencyNote": "Gbogbo ìṣòwò ni a ń ṣe ní Naira Nàìjíríà (NGN). Àwọn owó míràn ni fún ìfihàn nìkan.",
@@ -1081,18 +1081,6 @@
       "atLeast8Characters": "Ó kéré tán àmì 8",
       "home": "Ilé",
       "iAgreeToThe": "Mo gbà pẹ̀lú"
-    },
-    "resetPassword": {
-      "atLeast8Characters": "Ó kéré tán àmì 8",
-      "invalidLink": "Ìjápọ̀ kò tọ̀nà",
-      "backToSignIn": "Padà sí ìwọlé",
-      "passwordReset": "Ìtúnṣe ọ̀rọ̀ìgbaniwọlé",
-      "signIn": "Wọlé",
-      "setNewPassword": "Ṣètò ọ̀rọ̀ìgbaniwọlé tuntun",
-      "newPassword": "Ọ̀rọ̀ìgbaniwọlé tuntun",
-      "confirmPassword": "Jẹ́rìí ọ̀rọ̀ìgbaniwọlé",
-      "resetPassword": "Tún ọ̀rọ̀ìgbaniwọlé ṣe",
-      "repeatYourPassword": "Tún ọ̀rọ̀ìgbaniwọlé rẹ tẹ̀"
     },
     "history": {
       "trackLive": "Tọpa ní àsìkò gidi",

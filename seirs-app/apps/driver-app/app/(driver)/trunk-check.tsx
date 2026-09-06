@@ -13,6 +13,7 @@ import { uploadApi } from '@/services/api';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8 §2.16: anti-theft trunk inventory check. Whenever a passenger
 // or recipient exits the vehicle while there are still other packages
@@ -109,8 +110,8 @@ export default function TrunkCheckScreen() {
             <Text style={styles.warnTitle}>{tx('auto.trunkCheck.confirmRemainingPackages', 'Confirm remaining packages')}</Text>
             <Text style={styles.warnSub}>
               {remaining > 0
-                ? `${remaining} other package${remaining === 1 ? ' is' : 's are'} still in your trunk. Take a photo confirming everything is intact before continuing.`
-                : 'Take a quick photo of the trunk so the chain of custody is documented.'}
+                ? `${remaining} other package${remaining === 1 ? ' is' : tx9('auto.editTripDetail.sAre', 's are')} still in your trunk. Take a photo confirming everything is intact before continuing.`
+                : tx9('auto.trunkCheck.takeAQuickPhotoOf', 'Take a quick photo of the trunk so the chain of custody is documented.')}
             </Text>
           </View>
         </View>

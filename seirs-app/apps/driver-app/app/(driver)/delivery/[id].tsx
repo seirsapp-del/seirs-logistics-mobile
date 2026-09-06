@@ -35,6 +35,7 @@ import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 interface Stop {
   id:             string;
@@ -271,7 +272,7 @@ export default function DeliveryDetailScreen() {
     return (
       <SafeAreaView style={[styles.center, { backgroundColor: theme.background }]}>
         <Ionicons name="alert-circle-outline" size={48} color={theme.textThird} />
-        <Text style={[styles.errorText, { color: theme.textSecond }]}>{error ?? 'Trip not found'}</Text>
+        <Text style={[styles.errorText, { color: theme.textSecond }]}>{error ?? tx9('auto.deliveryDetail.tripNotFound', 'Trip not found')}</Text>
         <Pressable style={[styles.backLink, { backgroundColor: theme.accent }]} onPress={() => router.back()}>
           <Text style={styles.backLinkText}>{tr('auto.deliveryDetail.back', 'Back')}</Text>
         </Pressable>
@@ -297,11 +298,11 @@ export default function DeliveryDetailScreen() {
             device 2026-08-31 on a delivery completed a week earlier. */}
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
           {delivery.isMultiStop
-            ? `${delivery.stops.length}-stop trip`
-            : delivery.status === 'delivered' ? 'Completed trip'
-            : delivery.status === 'cancelled' ? 'Cancelled trip'
-            : delivery.status === 'failed'    ? 'Failed trip'
-            : 'Active trip'}
+            ? tx9('auto.deliveryDetail.stopTrip', '{{length}}-stop trip', { length: delivery.stops.length })
+            : delivery.status === 'delivered' ? tx9('auto.deliveryDetail.completedTrip', 'Completed trip')
+            : delivery.status === 'cancelled' ? tx9('auto.deliveryDetail.cancelledTrip', 'Cancelled trip')
+            : delivery.status === 'failed'    ? tx9('auto.deliveryDetail.failedTrip', 'Failed trip')
+            : tx9('auto.deliveryDetail.activeTrip', 'Active trip')}
         </Text>
         <Pressable
           style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]}
@@ -321,7 +322,7 @@ export default function DeliveryDetailScreen() {
             <Text style={[styles.trackingSub, { color: theme.textSecond }]}>
               {/* First name only: the surname is the lookup key this
                   rule exists to withhold (sweep 2026-08-23). */}
-              {(delivery as any).kind === 'ride' ? `RIDE · ${(delivery as any).receiverFirstName || 'passenger'}` : (delivery.packageDescription ?? delivery.categoryCode ?? 'Delivery')}
+              {(delivery as any).kind === 'ride' ? `RIDE · ${(delivery as any).receiverFirstName || 'passenger'}` : (delivery.packageDescription ?? delivery.categoryCode ?? tx9('auto.deliveryDetail.delivery', 'Delivery'))}
             </Text>
           </View>
           {delivery.routeWasAutoOptimized && (
@@ -502,7 +503,7 @@ export default function DeliveryDetailScreen() {
                   <View style={[styles.doneBanner]}>
                     <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
                     <Text style={[styles.doneText, { color: '#16A34A' }]}>
-                      {stop.deliveredAt ? `Delivered ${new Date(stop.deliveredAt).toLocaleTimeString()}` : 'Delivered'}
+                      {stop.deliveredAt ? `Delivered ${new Date(stop.deliveredAt).toLocaleTimeString()}` : tx9('auto.history.delivered', 'Delivered')}
                     </Text>
                   </View>
                 )}
@@ -559,8 +560,8 @@ export default function DeliveryDetailScreen() {
               <BreakdownLine
                 theme={theme}
                 label={delivery.zoneTier
-                  ? `Surcharge share (${ZONE_TIER_LABEL[delivery.zoneTier] ?? 'distance'})`
-                  : 'Surcharge share'}
+                  ? tx9('auto.deliveryDetail.surchargeShare', 'Surcharge share ({{v0}})', { v0: ZONE_TIER_LABEL[delivery.zoneTier] ?? 'distance' })
+                  : tx9('auto.deliveryDetail.surchargeShare2', 'Surcharge share')}
                 value={delivery.priceBreakdown.driver.surchargeShare}
               />
             )}

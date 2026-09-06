@@ -4,6 +4,7 @@ import { Bell } from 'lucide-react-native';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { tx } from '@/i18n/tx';
 
 interface NotificationBellProps {
   /** Bell icon size in pixels. Default 22. */
@@ -25,7 +26,7 @@ export function NotificationBell({ size = 22, color }: NotificationBellProps = {
       style={styles.wrap}
       hitSlop={8}
       accessibilityRole="button"
-      accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+      accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : tx('auto.notifications.notifications', 'Notifications')}
     >
       <Bell size={size} color={color ?? theme.text} strokeWidth={1.5} />
       {unreadCount > 0 && (

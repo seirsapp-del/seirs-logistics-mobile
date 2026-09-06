@@ -33,6 +33,7 @@ import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Above this many metres of reported uncertainty the fix is too vague to
@@ -53,19 +54,19 @@ const GROUPS = (): Array<{ key: PartnerDocGroup; title: string; note: string }> 
 const STATE = (): Record<string, { label: string; tone: 'good' | 'wait' | 'warn' | 'bad'; help: string }> => ({
   approved: {
     label: tr('auto.verification.approved', 'Approved'), tone: 'good',
-    help: 'Checked and accepted. Nothing else is needed for this one.',
+    help: tx9('auto.verification.checkedAndAcceptedNothingElse', 'Checked and accepted. Nothing else is needed for this one.'),
   },
   submitted: {
     label: tr('auto.verification.beingChecked', 'Being checked'), tone: 'wait',
-    help: 'With our team. You do not need to do anything while it is here.',
+    help: tx9('auto.verification.withOurTeamYouDo', 'With our team. You do not need to do anything while it is here.'),
   },
   needs_replacing: {
     label: tr('auto.verification.needsReplacing', 'Needs replacing'), tone: 'warn',
-    help: 'Nothing is wrong with what you sent. It has run out, so we need the current one.',
+    help: tx9('auto.verification.nothingIsWrongWithWhat', 'Nothing is wrong with what you sent. It has run out, so we need the current one.'),
   },
   rejected: {
     label: tr('auto.verification.sendItAgain', 'Send it again'), tone: 'bad',
-    help: 'This one could not be accepted. The reason is below.',
+    help: tx9('auto.verification.thisOneCouldNotBe', 'This one could not be accepted. The reason is below.'),
   },
   missing: {
     label: tr('auto.verification.notSentYet', 'Not sent yet'), tone: 'wait',
@@ -256,8 +257,8 @@ export default function PartnerDocumentsScreen() {
             />
             <Text style={[styles.summaryText, { color: colors.text }]}>
               {outstanding > 0
-                ? `${outstanding} ${outstanding === 1 ? 'document is' : 'documents are'} still needed before we can decide.`
-                : 'Everything we need is in. Nothing is waiting on you.'}
+                ? `${outstanding} ${outstanding === 1 ? tx9('auto.verification.documentIs', 'document is') : tx9('auto.verification.documentsAre', 'documents are')} still needed before we can decide.`
+                : tx9('auto.verification.everythingWeNeedIsIn', 'Everything we need is in. Nothing is waiting on you.')}
             </Text>
           </View>
 
@@ -311,7 +312,7 @@ export default function PartnerDocumentsScreen() {
 
                       {d.canExpire && d.expiresAt ? (
                         <Text style={[styles.expiry, { color: status === 'needs_replacing' ? colors.warning : colors.textThird }]}>
-                          {status === 'needs_replacing' ? 'Ran out on' : 'Valid until'} {dmy(d.expiresAt)}
+                          {status === 'needs_replacing' ? tx9('auto.verification.ranOutOn', 'Ran out on') : tx9('auto.verification.validUntil', 'Valid until')} {dmy(d.expiresAt)}
                         </Text>
                       ) : null}
 
@@ -324,8 +325,8 @@ export default function PartnerDocumentsScreen() {
                           <Icon name={d.needsLocation ? 'Camera' : 'Upload'} size={15} color={colors.textOnPrimary} />
                           <Text style={[styles.sendBtnText, { color: colors.textOnPrimary }]}>
                             {busy === d.docId ? 'Sending...'
-                              : d.needsLocation ? (d.url ? 'Take it again' : 'Take this photo')
-                              : (d.url ? 'Send a new one' : 'Send this one')}
+                              : d.needsLocation ? (d.url ? tx9('auto.verification.takeItAgain', 'Take it again') : tx9('auto.verification.takeThisPhoto', 'Take this photo'))
+                              : (d.url ? tx9('auto.verification.sendANewOne', 'Send a new one') : tx9('auto.verification.sendThisOne', 'Send this one'))}
                           </Text>
                         </Pressable>
                       ) : null}

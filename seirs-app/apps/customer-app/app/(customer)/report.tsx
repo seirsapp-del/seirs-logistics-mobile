@@ -13,6 +13,7 @@ import { supportApi, deliveriesApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Report an issue, rebuilt in the business design language (founder
@@ -35,12 +36,12 @@ export default function ReportScreen() {
 
   // Translated each render so language switches reflect live.
   const CATEGORIES = [
-    { id: 'lost_item',  icon: 'ShoppingBag',  label: t('report.lostItem'),        desc: 'Left something in the vehicle' },
-    { id: 'driver',     icon: 'User',         label: t('report.driverBehaviour'), desc: 'Rude, dangerous or unprofessional' },
-    { id: 'overcharge', icon: 'Banknote',     label: t('report.paymentIssue'),    desc: 'Charged more than the quoted fare' },
-    { id: 'route',      icon: 'Navigation',   label: t('report.wrongAddress'),    desc: 'Driver took an unexpected route' },
-    { id: 'vehicle',    icon: 'Car',          label: t('report.damagedPackage'),  desc: 'Dirty or unsafe vehicle' },
-    { id: 'other',      icon: 'MoreHorizontal', label: t('report.other'),         desc: 'Something else happened' },
+    { id: 'lost_item',  icon: 'ShoppingBag',  label: t('report.lostItem'),        desc: tx9('auto.report.leftSomethingInTheVehicle', 'Left something in the vehicle') },
+    { id: 'driver',     icon: 'User',         label: t('report.driverBehaviour'), desc: tx9('auto.report.rudeDangerousOrUnprofessional', 'Rude, dangerous or unprofessional') },
+    { id: 'overcharge', icon: 'Banknote',     label: t('report.paymentIssue'),    desc: tx9('auto.report.chargedMoreThanTheQuoted', 'Charged more than the quoted fare') },
+    { id: 'route',      icon: 'Navigation',   label: t('report.wrongAddress'),    desc: tx9('auto.report.driverTookAnUnexpectedRoute', 'Driver took an unexpected route') },
+    { id: 'vehicle',    icon: 'Car',          label: t('report.damagedPackage'),  desc: tx9('auto.report.dirtyOrUnsafeVehicle', 'Dirty or unsafe vehicle') },
+    { id: 'other',      icon: 'MoreHorizontal', label: t('report.other'),         desc: tx9('auto.report.somethingElseHappened', 'Something else happened') },
   ] as const;
 
   const [category, setCategory] = useState<string | null>(null);

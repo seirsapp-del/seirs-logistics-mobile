@@ -15,6 +15,7 @@ import { sosApi, apiRequest } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8: driver-side SOS. Mirrors customer SOS using the same
 // /sos/trigger backend endpoint. Optional ?deliveryId= when fired
@@ -57,19 +58,19 @@ type EmergencyContact = {
  * Offline fallback ONLY. Both numbers are correct and enough to dial.
  * Do not grow this list, grow the admin one.
  */
-const FALLBACK_CONTACTS: EmergencyContact[] = [
+const FALLBACK_CONTACTS = (): EmergencyContact[] => [
   {
     id:          'fallback-112',
     name:        'Emergency (all services)',
     numbers:     ['112'],
-    instruction: 'The national emergency line. Dial this first if you are hurt, threatened, or unsure who you need.',
+    instruction: tx9('auto.sos.theNationalEmergencyLineDial', 'The national emergency line. Dial this first if you are hurt, threatened, or unsure who you need.'),
     category:    'national',
   },
   {
     id:          'fallback-199',
     name:        'Fire Service',
     numbers:     ['199'],
-    instruction: 'Fire, or a vehicle burning. For anything else use 112.',
+    instruction: tx9('auto.sos.fireOrAVehicleBurning', 'Fire, or a vehicle burning. For anything else use 112.'),
     category:    'fire',
   },
 ];
@@ -109,7 +110,7 @@ export default function DriverSosScreen() {
    * intent is that a rider dials help directly WHILE SEIRS responds, so
    * the numbers must already be on screen when the alarm goes off.
    */
-  const [contacts, setContacts] = useState<EmergencyContact[]>(FALLBACK_CONTACTS);
+  const [contacts, setContacts] = useState<EmergencyContact[]>(FALLBACK_CONTACTS());
   const [contactsOffline, setContactsOffline] = useState(false);
 
   useEffect(() => {
@@ -123,7 +124,7 @@ export default function DriverSosScreen() {
         setContactsOffline(false);
         // An empty directory is one nobody has filled in, not a failure
         // to reach one.
-        setContacts(items.length ? items : FALLBACK_CONTACTS);
+        setContacts(items.length ? items : FALLBACK_CONTACTS());
       })
       .catch((e: any) => {
         if (cancelled) return;
@@ -137,7 +138,7 @@ export default function DriverSosScreen() {
          */
         const status = Number(e?.status ?? e?.response?.status ?? 0);
         setContactsOffline(status !== 404);
-        setContacts(FALLBACK_CONTACTS);
+        setContacts(FALLBACK_CONTACTS());
       });
     return () => { cancelled = true; };
   }, []);
@@ -316,12 +317,12 @@ export default function DriverSosScreen() {
                   countdown before sending. Cancel is a real un-send, so the
                   mechanism is fine: only the wording was lying. */}
               <Text style={styles.activeTitle}>
-                {countdown > 0 ? 'SOS sent' : 'SOS Activated!'}
+                {countdown > 0 ? tx9('auto.sos.sosSent', 'SOS sent') : tx9('auto.sos.sosActivated', 'SOS Activated!')}
               </Text>
               <Text style={styles.activeDesc}>
                 {countdown > 0
-                  ? `Ops has been alerted and your location is being shared. Cancel within ${countdown}s if this was a mistake.`
-                  : 'Help is on the way. Stay safe.'}
+                  ? tx9('auto.sos.opsHasBeenAlertedAnd', 'Ops has been alerted and your location is being shared. Cancel within {{countdown}}s if this was a mistake.', { countdown })
+                  : tx9('auto.sos.helpIsOnTheWay', 'Help is on the way. Stay safe.')}
               </Text>
               {countdown > 0 && (
                 <Pressable style={styles.cancelBtn} onPress={cancelSOS}>
@@ -341,7 +342,7 @@ export default function DriverSosScreen() {
                   <Pressable style={styles.detailBtn} onPress={() => setNoteOpen(true)}>
                     <Ionicons name="chatbubble-ellipses-outline" size={16} color="#7F1D1D" />
                     <Text style={styles.detailBtnText}>
-                      {noteSent ? 'Update what is happening' : 'Tell ops what is happening'}
+                      {noteSent ? tx9('auto.sos.updateWhatIsHappening', 'Update what is happening') : tx9('auto.sos.tellOpsWhatIsHappening', 'Tell ops what is happening')}
                     </Text>
                   </Pressable>
                 </>

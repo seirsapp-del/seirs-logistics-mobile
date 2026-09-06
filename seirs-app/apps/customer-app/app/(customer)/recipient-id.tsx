@@ -17,6 +17,7 @@ import { deliveriesApi, dropoffApi, identityApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8 §1.17: recipient-side handoff identity surface. Used when the
 // customer is collecting a package (door delivery from driver, or pickup
@@ -109,7 +110,7 @@ export default function RecipientIdScreen() {
       const res = await identityApi.issueHandoffOtp(deliveryId, user.id);
       showDialog({
         title: tr('auto.recipientId.codeSent', 'Code sent'),
-        message: `A 6-digit verification code has been emailed to you. It expires in ${res.expiresInMinutes} minutes. Check your inbox and read it aloud to the staff or driver at handoff.`,
+        message: tx9('auto.recipientId.a6DigitVerificationCode', 'A 6-digit verification code has been emailed to you. It expires in {{expiresInMinutes}} minutes. Check your inbox and read it aloud to the staff or driver at handoff.', { expiresInMinutes: res.expiresInMinutes }),
       });
     } catch (e: any) {
       showDialog({ title: tr('auto.recipientId.couldNotSendCode', 'Could not send code'), message: e?.message ?? 'Try again in a moment.' });
@@ -173,7 +174,7 @@ export default function RecipientIdScreen() {
                 ? <CheckCircle size={14} color="#fff" strokeWidth={2} />
                 : <Copy        size={14} color="#fff" strokeWidth={2} />
               }
-              <Text style={styles.copyBtnText}>{copied ? 'Copied' : 'Copy'}</Text>
+              <Text style={styles.copyBtnText}>{copied ? tx9('auto.packageQr.copied', 'Copied') : tx9('auto.profile.copy', 'Copy')}</Text>
             </Pressable>
           </View>
         </View>
@@ -210,7 +211,7 @@ export default function RecipientIdScreen() {
               >
                 <Mail size={14} color={theme.primary} />
                 <Text style={[styles.otpBtnText, { color: theme.primary }]}>
-                  {issuing === it.id ? 'Sending…' : 'Email me a verification code'}
+                  {issuing === it.id ? tx9('auto.recipientId.sending', 'Sending…') : tx9('auto.recipientId.emailMeAVerificationCode', 'Email me a verification code')}
                 </Text>
               </Pressable>
             </View>

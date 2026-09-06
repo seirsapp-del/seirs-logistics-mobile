@@ -16,18 +16,20 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import i18n, { changeLanguage, type LanguageCode } from '@/i18n';
 import { alertDialog } from '@/components/SeirsDialog';
 
-// Only show languages we actually have translations for.
-const LANGUAGES: { code: LanguageCode; label: string; sub: string; flag: string }[] = [
-  { code: 'en', label: 'English',  sub: 'Nigeria', flag: '🇳🇬' },
-  { code: 'yo', label: 'Yorùbá',   sub: 'Nigeria', flag: '🇳🇬' },
-  { code: 'ha', label: 'Hausa',    sub: 'Nigeria', flag: '🇳🇬' },
-  { code: 'ig', label: 'Igbo',     sub: 'Nigeria', flag: '🇳🇬' },
+// Only the languages we actually have translations for. Endonyms, never
+// translated: a Yoruba speaker looks for "Yorùbá" whatever the app is set to.
+const LANGUAGES: { code: LanguageCode; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'yo', label: 'Yorùbá'  },
+  { code: 'ha', label: 'Hausa'   },
+  { code: 'ig', label: 'Igbo'    },
 ];
 
-const CURRENCIES = [
-  { code: 'NGN', symbol: '₦', label: 'Nigerian Naira',  flag: '🇳🇬' },
-];
-
+/**
+ * Language only (founder 2026-09-06, on device): the "Nigeria" line under
+ * every language and the "Display currency: NGN" card told the customer
+ * nothing they could change, so both are gone.
+ */
 export default function LanguageScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
@@ -37,8 +39,6 @@ export default function LanguageScreen() {
 
   const current = (i18n.language?.split('-')[0] ?? 'en') as LanguageCode;
   const [selectedLang, setSelectedLang] = useState<LanguageCode>(current);
-  // All transactions are NGN at launch; FX display is a v1.1 feature.
-  const [selectedCurr] = useState('NGN');
 
   const handleLanguageChange = async (code: LanguageCode) => {
     setSelectedLang(code);
@@ -70,8 +70,6 @@ export default function LanguageScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-
-        {/* Language */}
         <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>{t('settings.appLanguage')}</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {LANGUAGES.map((lang, i, arr) => (
@@ -84,55 +82,13 @@ export default function LanguageScreen() {
               ]}
               onPress={() => handleLanguageChange(lang.code)}
             >
-              <Text style={styles.flag}>{lang.flag}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.langLabel, { color: theme.text }]}>{lang.label}</Text>
-                <Text style={[styles.langSub, { color: theme.textSecond }]}>{lang.sub}</Text>
-              </View>
+              <Text style={[styles.langLabel, { color: theme.text, flex: 1 }]}>{lang.label}</Text>
               {selectedLang === lang.code && (
                 <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
               )}
             </Pressable>
           ))}
         </View>
-
-        {/* Currency */}
-        <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>{t('settings.displayCurrency')}</Text>
-        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
-          {CURRENCIES.map((curr, i, arr) => (
-            /* Display-only: NGN is the only launch currency, so this is
-               a View, not a dead Pressable (production audit 2026-08-10). */
-            <View
-              key={curr.code}
-              style={[
-                styles.row,
-                i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
-                selectedCurr === curr.code && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
-              ]}
-            >
-              <Text style={styles.flag}>{curr.flag}</Text>
-              <View style={[styles.symbolWrap, { backgroundColor: selectedCurr === curr.code ? theme.primary : theme.surfaceSecond }]}>
-                <Text style={[styles.symbol, { color: selectedCurr === curr.code ? '#fff' : theme.textSecond }]}>{curr.symbol}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.langLabel, { color: theme.text }]}>{curr.code}</Text>
-                <Text style={[styles.langSub, { color: theme.textSecond }]}>{curr.label}</Text>
-              </View>
-              {selectedCurr === curr.code && (
-                <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
-              )}
-            </View>
-          ))}
-        </View>
-
-        {/* Note */}
-        <View style={[styles.note, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
-          <Ionicons name="information-circle-outline" size={16} color={theme.primary} />
-          <Text style={[styles.noteText, { color: theme.textSecond }]}>
-            {t('settings.currencyNote')}
-          </Text>
-        </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -147,13 +103,6 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5, paddingLeft: Spacing.xs },
   card:         { borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden' },
 
-  row:       { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: 14 },
-  flag:      { fontSize: 22 },
+  row:       { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: 16 },
   langLabel: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  langSub:   { fontSize: FontSize.xs, marginTop: 2 },
-  symbolWrap:{ width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
-  symbol:    { fontSize: FontSize.base, fontWeight: FontWeight.bold },
-
-  note:     { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
-  noteText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
 });

@@ -48,6 +48,7 @@ import {
 } from '@/components/VehicleOwnershipForm';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Canonical backend taxonomy, with the names Nigerians actually use.
@@ -390,7 +391,7 @@ export default function VehicleScreen() {
                 {!!liveSub && <Text style={[styles.liveSub, { color: theme.textSecond }]}>{liveSub}</Text>}
                 {record?.ownership?.declared && record.ownership.ownership === 'third_party' && (
                   <Text style={[styles.liveOwner, { color: theme.textSecond }]}>
-                    Owned by {record.ownership.ownerName ?? 'someone else'}, on file
+                    Owned by {record.ownership.ownerName ?? tx9('auto.vehicle.someoneElse', 'someone else')}, on file
                   </Text>
                 )}
               </View>
@@ -439,7 +440,7 @@ export default function VehicleScreen() {
                 <View style={[styles.pendingRow, { borderTopColor: theme.border }]}>
                   <Text style={[styles.pendingKey, { color: theme.textThird }]}>{tx('auto.vehicle.owner', 'Owner')}</Text>
                   <Text style={[styles.pendingVal, { color: theme.text }]}>
-                    {pending.ownership === 'third_party' ? (pending.ownerName ?? 'Someone else') : 'You'}
+                    {pending.ownership === 'third_party' ? (pending.ownerName ?? tx9('auto.active.someoneElse', 'Someone else')) : tx9('auto.hotspots.you', 'You')}
                   </Text>
                 </View>
                 <Pressable
@@ -448,7 +449,7 @@ export default function VehicleScreen() {
                   disabled={saving}
                 >
                   <Text style={[styles.withdrawText, { color: theme.error }]}>
-                    {saving ? 'Working...' : 'Withdraw this request'}
+                    {saving ? 'Working...' : tx9('auto.vehicle.withdrawThisRequest2', 'Withdraw this request')}
                   </Text>
                 </Pressable>
               </View>
@@ -471,15 +472,15 @@ export default function VehicleScreen() {
                     <View style={styles.pendingHead}>
                       <Ionicons name="checkmark-circle-outline" size={20} color={theme.success} />
                       <Text style={[styles.pendingTitle, { color: theme.success }]}>
-                        {record?.vehiclePlate ? 'Your vehicle is approved' : 'No vehicle on file yet'}
+                        {record?.vehiclePlate ? tx9('auto.vehicle.yourVehicleIsApproved', 'Your vehicle is approved') : tx9('auto.vehicle.noVehicleOnFileYet', 'No vehicle on file yet')}
                       </Text>
                     </View>
                     <Text style={[styles.pendingText, { color: theme.textSecond }]}>
                       {record?.vehiclePlate
-                        ? `You are riding ${liveTitle}${record.vehiclePlate ? ` on ${record.vehiclePlate}` : ''}, and jobs are matched to it. `
+                        ? tx9('auto.vehicle.youAreRidingAndJobs', 'You are riding {{liveTitle}}{{v1}}, and jobs are matched to it.', { liveTitle, v1: record.vehiclePlate ? ` on ${record.vehiclePlate}` : '' })
                           + 'Nothing below changes that today: filling it in asks our team to approve a different vehicle, '
                           + 'and you keep working on this one until they do.'
-                        : 'Fill this in to tell us what you ride. Our team checks it before jobs start matching to it.'}
+                        : tx9('auto.vehicle.fillThisInToTell', 'Fill this in to tell us what you ride. Our team checks it before jobs start matching to it.')}
                     </Text>
                   </View>
                 )}
@@ -494,13 +495,13 @@ export default function VehicleScreen() {
                     {faultedLabels.length > 0 ? (
                       <Text style={[styles.pendingText, { color: theme.textSecond }]}>
                         {faultedLabels.length === 1
-                          ? `Only ${faultedLabels[0]} needs redoing. Everything else you sent was accepted, so leave it as it is.`
-                          : `These need redoing: ${faultedLabels.join(', ')}. Everything else you sent was accepted, so leave the rest as it is.`}
+                          ? tx9('auto.vehicle.onlyNeedsRedoingEverythingElse', 'Only {{v0}} needs redoing. Everything else you sent was accepted, so leave it as it is.', { v0: faultedLabels[0] })
+                          : tx9('auto.vehicle.theseNeedRedoingEverythingElse', 'These need redoing: {{v0}}. Everything else you sent was accepted, so leave the rest as it is.', { v0: faultedLabels.join(', ') })}
                       </Text>
                     ) : (
                       <Text style={[styles.pendingText, { color: theme.textSecond }]}>
                         {lastDecision.decisionNote
-                          || 'No reason was recorded. Ask support what is missing before resubmitting.'}
+                          || tx9('auto.vehicle.noReasonWasRecordedAsk', 'No reason was recorded. Ask support what is missing before resubmitting.')}
                       </Text>
                     )}
                     {/* The note is shown as well as the list, never instead
@@ -524,7 +525,7 @@ export default function VehicleScreen() {
                 {/* Named as a request, not an edit form. Nothing below
                     applies until an admin approves it. */}
                 <Text style={[styles.requestHeading, { color: theme.textThird }]}>
-                  {record?.vehiclePlate ? 'ASK TO CHANGE YOUR VEHICLE' : 'TELL US WHAT YOU RIDE'}
+                  {record?.vehiclePlate ? tx9('auto.vehicle.askToChangeYourVehicle', 'ASK TO CHANGE YOUR VEHICLE') : tx9('auto.vehicle.tellUsWhatYouRide', 'TELL US WHAT YOU RIDE')}
                 </Text>
 
                 {/* Vehicle type */}

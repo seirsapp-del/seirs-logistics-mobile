@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { useColors } from '@/context/ThemeContext';
 import { notificationsApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 interface NotificationBellProps {
   size?:  number;
@@ -41,7 +42,7 @@ export function NotificationBell({ size = 20, color }: NotificationBellProps = {
       style={styles.wrap}
       hitSlop={8}
       accessibilityRole="button"
-      accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+      accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : tx('auto.settings.notifications', 'Notifications')}
     >
       <Icon name="Bell" size={size} color={color ?? colors.text} strokeWidth={1.5} />
       {unread > 0 && (

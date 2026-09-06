@@ -18,6 +18,7 @@ import { naira } from '@/utils/money';
 import { useAuth } from '@/context/AuthContext';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const URGENCY_CONFIG = (): Record<string, { label: string; color: string; Icon: any }> => ({
   instant:   { label: tr('auto.jobDetail.instant', 'Instant'),   color: '#EF4444', Icon: Zap  },
@@ -32,35 +33,35 @@ const ACCEPT_TIMEOUT_SEC = 45;
 // so "Lasagna" could be a boxed book or a cold-chain load, and the rider
 // accepted blind (founder, on device 2026-08-24). Strings mirror the
 // customer app's category list (customer-app/i18n/locales/en.json).
-const CATEGORY_LABEL: Record<string, string> = {
-  documents:         'Documents / Envelope',
-  small_parcel:      'Small Parcel',
-  standard_parcel:   'Standard Parcel',
-  fragile:           'Fragile / Electronics',
-  food_hot:          'Hot Food',
-  food_cold:         'Cold / Frozen Food',
-  medical:           'Medical Supplies',
-  bulk_goods:        'Bulk Goods',
-  farm_produce:      'Farm Produce',
-  building:          'Building Materials',
-  lumber:            'Lumber / Sawmill',
-  house_move_single: 'House Move, single item',
-  house_move_full:   'House Move, full unit',
-  live_animals:      'Live Animals',
-  industrial:        'Industrial Parts',
-  other:             'Other / Special',
-};
+const CATEGORY_LABEL = (): Record<string, string> => ({
+  documents:         tx9('auto.jobDetail.documentsEnvelope', 'Documents / Envelope'),
+  small_parcel:      tx9('auto.jobDetail.smallParcel', 'Small Parcel'),
+  standard_parcel:   tx9('auto.jobDetail.standardParcel', 'Standard Parcel'),
+  fragile:           tx9('auto.jobDetail.fragileElectronics', 'Fragile / Electronics'),
+  food_hot:          tx9('auto.jobDetail.hotFood', 'Hot Food'),
+  food_cold:         tx9('auto.jobDetail.coldFrozenFood', 'Cold / Frozen Food'),
+  medical:           tx9('auto.jobDetail.medicalSupplies', 'Medical Supplies'),
+  bulk_goods:        tx9('auto.jobDetail.bulkGoods', 'Bulk Goods'),
+  farm_produce:      tx9('auto.jobDetail.farmProduce', 'Farm Produce'),
+  building:          tx9('auto.jobDetail.buildingMaterials', 'Building Materials'),
+  lumber:            tx9('auto.jobDetail.lumberSawmill', 'Lumber / Sawmill'),
+  house_move_single: tx9('auto.jobDetail.houseMoveSingleItem', 'House Move, single item'),
+  house_move_full:   tx9('auto.jobDetail.houseMoveFullUnit', 'House Move, full unit'),
+  live_animals:      tx9('auto.jobDetail.liveAnimals', 'Live Animals'),
+  industrial:        tx9('auto.jobDetail.industrialParts', 'Industrial Parts'),
+  other:             tx9('auto.jobDetail.otherSpecial', 'Other / Special'),
+});
 
 // Loads that punish a slow run. Flagged so the rider can judge the job
 // BEFORE accepting. Deliberately worded as a handling warning and never
 // as a deadline: SEIRS promises no arrival times anywhere (founder rule,
 // Lagos traffic plus NEPA plus checkpoints make any ETA a refund magnet).
-const TIME_CRITICAL: Record<string, string> = {
-  food_hot:     'Keep it hot, deliver without detours',
-  food_cold:    'Cold chain, do not let it sit in the sun',
-  medical:      'Medical load, handle with priority',
-  live_animals: 'Live animals, air and water matter',
-};
+const TIME_CRITICAL = (): Record<string, string> => ({
+  food_hot:     tx9('auto.jobDetail.keepItHotDeliverWithout', 'Keep it hot, deliver without detours'),
+  food_cold:    tx9('auto.jobDetail.coldChainDoNotLet', 'Cold chain, do not let it sit in the sun'),
+  medical:      tx9('auto.jobDetail.medicalLoadHandleWithPriority', 'Medical load, handle with priority'),
+  live_animals: tx9('auto.jobDetail.liveAnimalsAirAndWater', 'Live animals, air and water matter'),
+});
 
 /** A coordinate pair is only usable when BOTH halves are real numbers. */
 const toCoord = (lat: any, lng: any) => {
@@ -304,9 +305,9 @@ export default function JobDetailScreen() {
   const pins = [pick, drop].filter(Boolean) as Array<{ latitude: number; longitude: number }>;
 
   const categoryLabel = job.categoryCode
-    ? (CATEGORY_LABEL[job.categoryCode] ?? String(job.categoryCode).replace(/_/g, ' '))
+    ? (CATEGORY_LABEL()[job.categoryCode] ?? String(job.categoryCode).replace(/_/g, ' '))
     : null;
-  const criticalNote = job.categoryCode ? TIME_CRITICAL[job.categoryCode] : undefined;
+  const criticalNote = job.categoryCode ? TIME_CRITICAL()[job.categoryCode] : undefined;
   // Remote photos only. A relative path would render as a silent grey box.
   const photo: string | null = (job.packagePhotos ?? [])
     .find((u: any) => typeof u === 'string' && /^https?:\/\//i.test(u)) ?? null;
@@ -463,8 +464,8 @@ export default function JobDetailScreen() {
                   rather than the local 45s nudge (2026-08-25). */}
               <Text style={[styles.countdownLabel, { color: countdownColor }]}>
                 {isTripOffer
-                  ? `Seat booking held for you: ${countdownLabel} left`
-                  : `This offer closes in ${countdownLabel}`}
+                  ? tx9('auto.jobDetail.seatBookingHeldForYou', 'Seat booking held for you: {{countdownLabel}} left', { countdownLabel })
+                  : tx9('auto.jobDetail.thisOfferClosesIn', 'This offer closes in {{countdownLabel}}', { countdownLabel })}
               </Text>
             </View>
             <View style={[styles.countdownTrack, { backgroundColor: theme.surfaceSecond }]}>
@@ -519,7 +520,7 @@ export default function JobDetailScreen() {
             <Navigation size={16} color="#B45309" strokeWidth={1.75} />
             <Text style={[styles.rideBannerText, { color: '#B45309' }]}>
               {tr('auto.jobDetail.interstateThisRunLeaves', 'INTERSTATE: this run leaves')} {job.pickupStateName ?? job.pickupStateCode} for {job.dropoffStateName ?? job.dropoffStateCode}
-              {job.distanceKm ? `, about ${job.distanceKm} km each way` : ''}{tr('auto.jobDetail.checkYourPapersAndYour', '. Check your papers and your fuel before you accept.')}
+              {job.distanceKm ? tx9('auto.jobDetail.aboutKmEachWay', ', about {{distanceKm}} km each way', { distanceKm: job.distanceKm }) : ''}{tr('auto.jobDetail.checkYourPapersAndYour', '. Check your papers and your fuel before you accept.')}
             </Text>
           </View>
         )}
@@ -696,7 +697,7 @@ export default function JobDetailScreen() {
                   surname, no phone number, ever. A package sender's phone
                   is expected, but it still unlocks on acceptance. */}
               <Text style={[styles.customerNote, { color: theme.textThird }]}>
-                {isRide ? 'In-app chat only. No phone number is shared.' : 'Phone shared after acceptance'}
+                {isRide ? tx9('auto.jobDetail.inAppChatOnlyNo', 'In-app chat only. No phone number is shared.') : tx9('auto.jobDetail.phoneSharedAfterAcceptance', 'Phone shared after acceptance')}
               </Text>
             </View>
             {isRide
@@ -727,7 +728,7 @@ export default function JobDetailScreen() {
               <XCircle size={20} color="#EF4444" strokeWidth={1.75} />
               {/* "Skip" on a pool job: nothing is sent, so the button must
                   not read like a decision dispatch acts on (D-1.5). */}
-              <Text style={[styles.declineText, { color: '#EF4444' }]}>{isTripOffer ? 'Decline' : 'Skip'}</Text>
+              <Text style={[styles.declineText, { color: '#EF4444' }]}>{isTripOffer ? tx9('auto.parcelRequests.decline', 'Decline') : tx9('auto.sos.skip', 'Skip')}</Text>
             </Pressable>
             <Pressable
               style={[styles.acceptBtn, { backgroundColor: theme.primary, opacity: claiming ? 0.6 : 1 }]}
@@ -741,7 +742,7 @@ export default function JobDetailScreen() {
                   words, and the sheet behind this button already says
                   "ride" (2026-08-25). */}
               <Text style={styles.acceptText}>
-                {claiming ? 'Accepting...' : isTripOffer ? 'Accept Booking' : isRide ? 'Accept Ride' : 'Accept Job'}
+                {claiming ? 'Accepting...' : isTripOffer ? tx9('auto.jobDetail.acceptBooking', 'Accept Booking') : isRide ? tx9('auto.jobDetail.acceptRide', 'Accept Ride') : tx9('auto.jobDetail.acceptJob', 'Accept Job')}
               </Text>
             </Pressable>
           </>

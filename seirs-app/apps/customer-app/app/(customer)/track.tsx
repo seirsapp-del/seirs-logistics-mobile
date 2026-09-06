@@ -27,6 +27,7 @@ import { showDialog } from '@/components/SeirsDialog';
 import { collectUrl, trackUrl } from '@/constants/config';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Labels looked up via t(`tracking.step${cap}`) at render so language
 // switches reflect live.
@@ -48,16 +49,16 @@ const STATUS_CONFIG: Record<string, {
   cancelled:  { labelKey: 'tracking.stepCancelled', step: 0, gradient: ['#6B7280', '#4B5563'], icon: 'close-circle' },
 };
 
-const RIDE_LABELS: Record<string, string> = {
-  awaiting_payment: 'Waiting for payment',
-  pending:          'Finding your driver',
-  assigned:         'Driver on the way',
-  picked_up:        'Arrived, meet them outside',
-  in_transit:       'On the trip',
-  delivered:        'Ride completed',
-  failed:           'Ride failed',
-  cancelled:        'Ride cancelled',
-};
+const RIDE_LABELS = (): Record<string, string> => ({
+  awaiting_payment: tx9('auto.tripDetail.waitingForPayment', 'Waiting for payment'),
+  pending:          tx9('auto.track.findingYourDriver', 'Finding your driver'),
+  assigned:         tx9('auto.track.driverOnTheWay', 'Driver on the way'),
+  picked_up:        tx9('auto.track.arrivedMeetThemOutside', 'Arrived, meet them outside'),
+  in_transit:       tx9('auto.track.onTheTrip', 'On the trip'),
+  delivered:        tx9('auto.track.rideCompleted', 'Ride completed'),
+  failed:           tx9('auto.track.rideFailed', 'Ride failed'),
+  cancelled:        tx9('auto.track.rideCancelled', 'Ride cancelled'),
+});
 
 /**
  * A SEAT on a declared trip is a ride with a tripId. It is not dispatched:
@@ -66,16 +67,16 @@ const RIDE_LABELS: Record<string, string> = {
  * package words (Picked Up, Delivered) were both wrong for it, and the
  * founder saw the package set on a seat booking on 2026-09-05.
  */
-const SEAT_LABELS: Record<string, string> = {
-  awaiting_payment: 'Pay to hold your seat',
-  pending:          'Seat held',
-  assigned:         'Driver confirmed',
-  picked_up:        'On board',
-  in_transit:       'On the trip',
-  delivered:        'Trip completed',
-  failed:           'Trip did not happen',
-  cancelled:        'Seat cancelled',
-};
+const SEAT_LABELS = (): Record<string, string> => ({
+  awaiting_payment: tx9('auto.track.payToHoldYourSeat', 'Pay to hold your seat'),
+  pending:          tx9('auto.parcelRequests.seatHeld', 'Seat held'),
+  assigned:         tx9('auto.track.driverConfirmed', 'Driver confirmed'),
+  picked_up:        tx9('auto.parcelRequests.onBoard', 'On board'),
+  in_transit:       tx9('auto.track.onTheTrip', 'On the trip'),
+  delivered:        tx9('auto.track.tripCompleted', 'Trip completed'),
+  failed:           tx9('auto.track.tripDidNotHappen', 'Trip did not happen'),
+  cancelled:        tx9('auto.track.seatCancelled', 'Seat cancelled'),
+});
 
 /** The states where a package is actually in motion. */
 const IN_FLIGHT = ['assigned', 'picked_up', 'in_transit'];
@@ -149,21 +150,21 @@ function custodyOf(d: any, driverName?: string | null) {
     if (d?.awaitingPayment) {
       if (d?.tripId) {
         return {
-          who:    'Pay to hold your seat',
+          who:    tx9('auto.track.payToHoldYourSeat', 'Pay to hold your seat'),
           detail: tr('auto.track.theDriverHasAcceptedThe', 'The driver has accepted. The seat is yours once payment lands.'),
           where:  null,
         };
       }
       return {
-        who:    'Waiting for payment',
+        who:    tx9('auto.tripDetail.waitingForPayment', 'Waiting for payment'),
         detail: tr('auto.track.weStartFindingADriver', 'We start finding a driver the moment payment lands'),
         where:  null,
       };
     }
     if (d?.tripId) {
-      return { who: 'Seat held', detail: tr('auto.track.yourDriverLeavesAtThe', 'Your driver leaves at the declared time'), where: null };
+      return { who: tx9('auto.parcelRequests.seatHeld', 'Seat held'), detail: tr('auto.track.yourDriverLeavesAtThe', 'Your driver leaves at the declared time'), where: null };
     }
-    return { who: 'Looking for a driver', detail: tr('auto.track.nobodyIsCarryingItYet', 'Nobody is carrying it yet'), where: null };
+    return { who: tx9('auto.track.lookingForADriver', 'Looking for a driver'), detail: tr('auto.track.nobodyIsCarryingItYet', 'Nobody is carrying it yet'), where: null };
   }
   if (IN_FLIGHT.includes(status)) {
     const named = driverName ? `With ${driverName}` : 'With your driver';
@@ -173,8 +174,8 @@ function custodyOf(d: any, driverName?: string | null) {
       where:  d.dropoffAddress ?? null,
     };
   }
-  if (status === 'failed')    return { who: 'Delivery could not be completed', detail: null, where: d.dropoffAddress ?? null };
-  if (status === 'cancelled') return { who: 'Cancelled before delivery', detail: null, where: null };
+  if (status === 'failed')    return { who: tx9('auto.track.deliveryCouldNotBeCompleted', 'Delivery could not be completed'), detail: null, where: d.dropoffAddress ?? null };
+  if (status === 'cancelled') return { who: tx9('auto.track.cancelledBeforeDelivery', 'Cancelled before delivery'), detail: null, where: null };
   return null;
 }
 
@@ -369,7 +370,7 @@ export default function TrackScreen() {
             try {
               await deliveriesApi.redirectToStore(deliveryData.id, store.id);
               setRedirectOpen(false);
-              showDialog({ title: tr('auto.track.redirected', 'Redirected'), message: `The driver now delivers to ${store.storeName}. The recipient collects with their code.` });
+              showDialog({ title: tr('auto.track.redirected', 'Redirected'), message: tx9('auto.track.theDriverNowDeliversTo', 'The driver now delivers to {{storeName}}. The recipient collects with their code.', { storeName: store.storeName }) });
               handleSearch();
             } catch (e: any) {
               showDialog({ title: tr('auto.track.couldNotRedirect', 'Could not redirect'), message: e?.message ?? 'Please try again or contact support.' });
@@ -533,7 +534,7 @@ export default function TrackScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.statusBarLabel, { color: theme.text }]}>
                   {(deliveryData as any)?.kind === 'ride'
-                    ? (((deliveryData as any)?.tripId ? SEAT_LABELS : RIDE_LABELS)[String(currentStatus)] ?? (statusInfo ? t(statusInfo.labelKey) : t('common.loading')))
+                    ? (((deliveryData as any)?.tripId ? SEAT_LABELS() : RIDE_LABELS())[String(currentStatus)] ?? (statusInfo ? t(statusInfo.labelKey) : t('common.loading')))
                     : (statusInfo ? t(statusInfo.labelKey) : t('common.loading'))}
                 </Text>
                 <Text style={[styles.statusBarCode, { color: theme.textSecond }]}>
@@ -659,7 +660,7 @@ export default function TrackScreen() {
                 put it. */}
             <View style={[styles.card, { backgroundColor: theme.surface, padding: 0, overflow: 'hidden' }, Shadows.sm]}>
               <Text style={[styles.cardTitle, { color: theme.text, paddingHorizontal: Spacing.md, paddingTop: Spacing.md }]}>
-                {currentStatus === 'delivered' ? 'Where it went' : 'Where it is'}
+                {currentStatus === 'delivered' ? tx9('auto.track.whereItWent', 'Where it went') : tx9('auto.track.whereItIs', 'Where it is')}
               </Text>
               <DeliveryTrackMap
                 pickup={{ lat: deliveryData.pickupLat, lng: deliveryData.pickupLng }}
@@ -750,7 +751,7 @@ export default function TrackScreen() {
                       <Pressable
                         style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.surfaceSecond, borderRadius: 10, paddingVertical: 11 }}
                         onPress={() => Share.share({
-                          message: `I'm on a SEIRS ride (${deliveryData.trackingCode}). Follow my trip live: ${trackUrl(deliveryData.trackingCode)}`,
+                          message: tx9('auto.track.iMOnASeirs', 'I\'m on a SEIRS ride ({{trackingCode}}). Follow my trip live: {{v1}}', { trackingCode: deliveryData.trackingCode, v1: trackUrl(deliveryData.trackingCode) }),
                         }).catch(() => {})}
                       >
                         <Ionicons name="share-social-outline" size={16} color={theme.text} />
@@ -860,7 +861,7 @@ export default function TrackScreen() {
                   }}
                 >
                   <Text style={{ color: '#FFFFFF', fontWeight: FontWeight.bold as any, fontSize: FontSize.sm }}>
-                    {payingFee ? 'Opening payment...' : `Pay ${naira(deliveryData.redirectFeeOwedNgn)}`}
+                    {payingFee ? tx9('auto.track.openingPayment', 'Opening payment...') : `Pay ${naira(deliveryData.redirectFeeOwedNgn)}`}
                   </Text>
                 </Pressable>
 
@@ -883,8 +884,8 @@ export default function TrackScreen() {
                 </Text>
                 <Text style={{ fontSize: FontSize.sm, color: theme.textSecond, lineHeight: 19 }}>
                   Going back to {deliveryData.pickupAddress}.
-                  {deliveryData.returnStatus === 'pending' ? ' Support is reviewing it.' : ''}
-                  {deliveryData.returnStatus === 'applied' ? ' On its way back to you.' : ''}
+                  {deliveryData.returnStatus === 'pending' ? tx9('auto.track.supportIsReviewingIt', 'Support is reviewing it.') : ''}
+                  {deliveryData.returnStatus === 'applied' ? tx9('auto.track.onItsWayBackTo', 'On its way back to you.') : ''}
                 </Text>
                 {deliveryData.returnStatus === 'approved' && !deliveryData.returnPaidAt && (
                   <Pressable
@@ -1099,7 +1100,7 @@ export default function TrackScreen() {
               }}
             >
               <Text style={{ color: '#FFFFFF', fontWeight: FontWeight.bold as any, fontSize: FontSize.base }}>
-                {addrBusy ? 'Sending...' : 'Ask support to change it'}
+                {addrBusy ? 'Sending...' : tx9('auto.track.askSupportToChangeIt', 'Ask support to change it')}
               </Text>
             </Pressable>
 

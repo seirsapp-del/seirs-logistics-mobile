@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { driversApi, dropoffApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Hotspots: full-screen demand map so drivers know where to position
@@ -180,10 +181,10 @@ export default function HotspotsScreen() {
           {/* Legend */}
           <View style={[styles.legendRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             {[
-              { c: '#16A34A', l: 'Steady' },
-              { c: '#D97706', l: 'Medium' },
-              { c: '#EF4444', l: 'High' },
-              { c: '#0F2B4C', l: 'Store' },
+              { c: '#16A34A', l: tx9('auto.hotspots.steady', 'Steady') },
+              { c: '#D97706', l: tx9('auto.hotspots.medium', 'Medium') },
+              { c: '#EF4444', l: tx9('auto.hotspots.high', 'High') },
+              { c: '#0F2B4C', l: tx9('auto.hotspots.store', 'Store') },
             ].map(x => (
               <View key={x.l} style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: x.c }]} />
@@ -210,7 +211,7 @@ export default function HotspotsScreen() {
                   <Text style={[styles.zoneTitle, { color: theme.text }]}>{zoneLabel(z.intensity)}</Text>
                   <Text style={[styles.zoneSub, { color: theme.textSecond }]}>
                     {z.orderCount} recent order{z.orderCount === 1 ? '' : 's'}
-                    {z.distanceKm != null ? ` · ${z.distanceKm} km from you` : ''}
+                    {z.distanceKm != null ? tx9('auto.hotspots.kmFromYou', '· {{distanceKm}} km from you', { distanceKm: z.distanceKm }) : ''}
                   </Text>
                 </View>
                 <Pressable style={[styles.navBtn, { backgroundColor: theme.primary }]} onPress={() => navigateTo(z)}>

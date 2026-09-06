@@ -39,6 +39,7 @@ import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type PresetKey = 'this_month' | 'last_month' | 'last_2_months' | 'last_90' | 'this_year' | 'last_year';
 
@@ -130,10 +131,10 @@ function isCarryForward(e: DriverEarning): boolean {
 
 /** What a rider will recognise a line by: where it went, else the trip id. */
 function narrativeFor(e: DriverEarning): string {
-  if (isCarryForward(e)) return 'Carried forward';
+  if (isCarryForward(e)) return tx9('auto.statement.carriedForward', 'Carried forward');
   /* A trip that did not complete. The rider rode; somebody else ended it. */
   const st = (e as any).delivery?.status;
-  if (st === 'cancelled' || st === 'failed') return 'Cancelled after you set off';
+  if (st === 'cancelled' || st === 'failed') return tx9('auto.statement.cancelledAfterYouSetOff', 'Cancelled after you set off');
   const d = (e as any).delivery;
   const to = d?.dropoffAddress ?? d?.deliveryAddress ?? d?.destinationAddress;
   if (to) return String(to).split(',')[0];
@@ -275,12 +276,12 @@ Sharing the figures as text instead.`);
             {/* Period above the figure, always. A total with no dates over it
                 is what these screens exist to stop. */}
             <Text style={[styles.period, { color: theme.textThird }]}>
-              {periodLabel(range.from, range.to) || 'SELECT A PERIOD'}
+              {periodLabel(range.from, range.to) || tx9('auto.statement.selectAPeriod', 'SELECT A PERIOD')}
             </Text>
             <Text style={[styles.heroValue, { color: theme.text }]}>{naira(netNgn)}</Text>
             <Text style={[styles.heroSub, { color: theme.textSecond }]}>
               {tr('auto.statement.yoursInThisPeriod', 'yours in this period ·')} {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
-              {carried.length > 0 ? ` · ${naira(carriedNgn)} carried forward` : ''}
+              {carried.length > 0 ? tx9('auto.statement.carriedForward2', '· {{v0}} carried forward', { v0: naira(carriedNgn) }) : ''}
             </Text>
           </View>
 
@@ -322,7 +323,7 @@ Sharing the figures as text instead.`);
             >
               <Download size={16} color="#fff" />
               <Text style={styles.exportBtnText}>
-                {exporting ? 'Preparing...' : 'Export this statement'}
+                {exporting ? 'Preparing...' : tx9('auto.statement.exportThisStatement', 'Export this statement')}
               </Text>
             </Pressable>
           )}
@@ -330,7 +331,7 @@ Sharing the figures as text instead.`);
           <Text style={[styles.footNote, { color: theme.textThird }]}>
             {tr('auto.statement.everyFigureCoversThePeriod', 'Every figure covers the period shown above it, never your whole history with SEIRS. Earnings still clearing are not counted here. The exported copy carries a code anyone can check, so it works as proof of income.')}
             {carried.length > 0
-              ? ' Money carried forward from an earlier payout is already yours and is counted in the total above.'
+              ? tx9('auto.statement.moneyCarriedForwardFromAn', 'Money carried forward from an earlier payout is already yours and is counted in the total above.')
               : ''}
           </Text>
         </ScrollView>

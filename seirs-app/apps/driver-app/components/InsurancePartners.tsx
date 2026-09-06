@@ -19,12 +19,13 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
-const PARTNERS = [
-  { name: 'AXA Mansard',          desc: 'Vehicle and third-party cover',   url: 'https://axamansard.com' },
-  { name: 'Leadway Assurance',    desc: 'Motorcycle and auto insurance',   url: 'https://leadway.com' },
-  { name: 'Aiico Insurance',      desc: 'Affordable rider policies',       url: 'https://aiicoplc.com' },
-  { name: 'Cornerstone Insurance', desc: 'Motor and liability cover',      url: 'https://cornerstoneinsuranceplc.com' },
+const PARTNERS = () => [
+  { name: 'AXA Mansard',          desc: tx9('auto.insurancepartners.vehicleAndThirdPartyCover', 'Vehicle and third-party cover'),   url: 'https://axamansard.com' },
+  { name: 'Leadway Assurance',    desc: tx9('auto.insurancepartners.motorcycleAndAutoInsurance', 'Motorcycle and auto insurance'),   url: 'https://leadway.com' },
+  { name: 'Aiico Insurance',      desc: tx9('auto.insurancepartners.affordableRiderPolicies', 'Affordable rider policies'),       url: 'https://aiicoplc.com' },
+  { name: 'Cornerstone Insurance', desc: tx9('auto.insurancepartners.motorAndLiabilityCover', 'Motor and liability cover'),      url: 'https://cornerstoneinsuranceplc.com' },
 ];
 
 export function InsurancePartners() {
@@ -49,13 +50,13 @@ export function InsurancePartners() {
 
       {open && (
         <View style={[styles.list, { borderColor: theme.border }]}>
-          {PARTNERS.map((p, i) => (
+          {PARTNERS().map((p, i) => (
             <Pressable
               key={p.name}
               onPress={() => Linking.openURL(p.url).catch(() => {})}
               style={[
                 styles.row,
-                i < PARTNERS.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
+                i < PARTNERS().length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
               ]}
             >
               <View style={{ flex: 1 }}>

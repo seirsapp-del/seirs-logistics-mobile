@@ -30,12 +30,13 @@ import { chatApi, uploadApi } from '@/services/api';
 import { SOCKET_URL } from '@/constants/config';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 // Business/partner canned messages. Warehouse and counter context.
-const QUICK_REPLIES = [
-  { key: 'ready',         fallback: 'Package is ready for pickup' },
-  { key: 'atCounter',     fallback: 'Come to the front counter' },
-  { key: 'fiveMin',       fallback: 'Give us 5 minutes' },
-  { key: 'callOffice',    fallback: 'Please call our office' },
+const QUICK_REPLIES = () => [
+  { key: 'ready',         fallback: tx('auto.chatthread.packageIsReadyForPickup', 'Package is ready for pickup') },
+  { key: 'atCounter',     fallback: tx('auto.chatthread.comeToTheFrontCounter', 'Come to the front counter') },
+  { key: 'fiveMin',       fallback: tx('auto.chatthread.giveUs5Minutes', 'Give us 5 minutes') },
+  { key: 'callOffice',    fallback: tx('auto.chatthread.pleaseCallOurOffice', 'Please call our office') },
   { key: 'thanks',        fallback: 'Thanks' },
 ];
 
@@ -265,7 +266,7 @@ export function ChatThread({ deliveryId, otherPartyName }: ChatThreadProps) {
           contentContainerStyle={styles.quickReplyRow}
           keyboardShouldPersistTaps="handled"
         >
-          {QUICK_REPLIES.map((qr) => (
+          {QUICK_REPLIES().map((qr) => (
             <Pressable
               key={qr.key}
               onPress={() => handleSend(t(`chat.quickReplies.business.${qr.key}`, { defaultValue: qr.fallback }))}

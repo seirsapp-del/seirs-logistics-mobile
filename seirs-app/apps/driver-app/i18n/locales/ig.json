@@ -260,7 +260,7 @@
     "cancel": "Kagbuo"
   },
   "language": {
-    "title": "Asụsụ & Mpaghara",
+    "title": "Asụsụ",
     "appLanguage": "Asụsụ Ngwa",
     "displayCurrency": "Ego Ngosi",
     "currencyNote": "A na-arụ ọrụ azụmahịa niile na Naira Nigeria (NGN). Ego ndị ọzọ bụ naanị maka ngosi.",
@@ -392,18 +392,6 @@
       "optional": "(nhọrọ)",
       "cityLga": "Obodo / LGA",
       "includingTheDriverCodeOf": "(gụnyere Usoro omume ọkwọ ụgbọ) na"
-    },
-    "resetPassword": {
-      "atLeast8Characters": "Opekata mkpụrụ 8",
-      "invalidLink": "Njikọ ezighị ezi",
-      "backToSignIn": "Laghachi na mbanye",
-      "passwordReset": "Ntọgharị paswọdụ",
-      "signIn": "Banye",
-      "setNewPassword": "Tọọ paswọdụ ọhụrụ",
-      "newPassword": "Paswọdụ ọhụrụ",
-      "confirmPassword": "Kwenye paswọdụ",
-      "resetPassword": "Tọgharịa paswọdụ",
-      "repeatYourPassword": "Tinyegharịa paswọdụ gị"
     },
     "profile": {
       "yourSeirsId": "SEIRS ID gị",

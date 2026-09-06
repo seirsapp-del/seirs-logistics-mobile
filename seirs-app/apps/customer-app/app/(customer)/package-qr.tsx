@@ -44,6 +44,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { trackUrl } from '@/constants/config';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * The ticket is deliberately the same paper white in both themes.
@@ -224,7 +225,7 @@ export default function PackageQrScreen() {
           >
             <Icon name={copied ? 'Check' : 'Copy'} size={17} color={copied ? colors.success : colors.primary} />
             <Text style={[styles.actionText, { color: copied ? colors.success : colors.primary }]}>
-              {copied ? 'Copied' : 'Copy code'}
+              {copied ? tx9('auto.packageQr.copied', 'Copied') : tx9('auto.packageQr.copyCode', 'Copy code')}
             </Text>
           </Pressable>
 

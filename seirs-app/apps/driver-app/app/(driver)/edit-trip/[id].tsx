@@ -35,6 +35,7 @@ import { driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Every half hour of the day, matching the declare form.
@@ -160,8 +161,8 @@ export default function EditTrip() {
           </Text>
           <Text style={[styles.bannerNote, { color: theme.textSecond }]}>
             {frozen
-              ? `${booked} seat${booked === 1 ? ' is' : 's are'} booked and paid for. You can still open up more seats or more space, but the departure is fixed: your passengers arranged their day around it. Cancel the trip if you can no longer make it.`
-              : 'Nobody has booked yet, so everything below is still yours to change. The route itself is fixed: cancel and declare a new trip to drive somewhere else.'}
+              ? `${booked} seat${booked === 1 ? ' is' : tx9('auto.editTripDetail.sAre', 's are')} booked and paid for. You can still open up more seats or more space, but the departure is fixed: your passengers arranged their day around it. Cancel the trip if you can no longer make it.`
+              : tx9('auto.editTripDetail.nobodyHasBookedYetSo', 'Nobody has booked yet, so everything below is still yours to change. The route itself is fixed: cancel and declare a new trip to drive somewhere else.')}
           </Text>
         </View>
 
@@ -246,7 +247,7 @@ export default function EditTrip() {
         {takesPax && (
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>
-              SEATS FOR SALE{frozen ? ` (${booked} already booked)` : ''}
+              SEATS FOR SALE{frozen ? tx9('auto.editTripDetail.alreadyBooked', '({{booked}} already booked)', { booked }) : ''}
             </Text>
             <TextInput
               value={seats}

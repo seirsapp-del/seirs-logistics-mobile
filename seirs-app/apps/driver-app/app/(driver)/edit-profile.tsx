@@ -25,6 +25,7 @@ import { isValidNigerianMobile, toE164Ng } from '@/constants/phone';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8: driver standalone profile editor. Mirrors the customer version.
 // Vehicle fields are NOT exposed here; those live on the KYC re-submission
@@ -43,8 +44,8 @@ const ISO_DATE     = /^\d{4}-\d{2}-\d{2}$/;
 function validateName(v: string, min = 2, max = 40, label = 'This field'): string | null {
   const s = v.trim();
   if (s.length < min || s.length > max) return `${label} must be ${min} to ${max} characters`;
-  if (!NAME_CHARS.test(s))               return 'Only letters, spaces, hyphens, apostrophes, dots';
-  if (!NAME_NO_SPAM.test(s))             return 'No phone numbers, URLs, or emails';
+  if (!NAME_CHARS.test(s))               return tx9('auto.editProfile.onlyLettersSpacesHyphensApostrophes', 'Only letters, spaces, hyphens, apostrophes, dots');
+  if (!NAME_NO_SPAM.test(s))             return tx9('auto.editProfile.noPhoneNumbersUrlsOr', 'No phone numbers, URLs, or emails');
   return null;
 }
 // D-10.7: one validator for the whole app. This screen used to accept any
@@ -52,20 +53,20 @@ function validateName(v: string, min = 2, max = 40, label = 'This field'): strin
 // editable here could not be registered in the first place.
 function validatePhone(v: string): string | null {
   if (!v.trim()) return null;
-  if (!isValidNigerianMobile(v)) return 'Nigerian mobile only (0/234/+234 + 10 digits)';
+  if (!isValidNigerianMobile(v)) return tx9('auto.editProfile.nigerianMobileOnly0234', 'Nigerian mobile only (0/234/+234 + 10 digits)');
   return null;
 }
 function validateDob(v: string): string | null {
   if (!v.trim()) return null;
-  if (!ISO_DATE.test(v.trim())) return 'Use YYYY-MM-DD format';
+  if (!ISO_DATE.test(v.trim())) return tx9('auto.editProfile.useYyyyMmDdFormat', 'Use YYYY-MM-DD format');
   const d = new Date(v.trim());
-  if (Number.isNaN(d.getTime())) return 'Not a real date';
+  if (Number.isNaN(d.getTime())) return tx9('auto.editProfile.notARealDate', 'Not a real date');
   const now = new Date();
   let age = now.getFullYear() - d.getFullYear();
   const m = now.getMonth() - d.getMonth();
   if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
-  if (age < 18)  return 'Drivers must be at least 18';
-  if (age > 120) return 'Please enter a real date of birth';
+  if (age < 18)  return tx9('auto.editProfile.driversMustBeAtLeast', 'Drivers must be at least 18');
+  if (age > 120) return tx9('auto.editProfile.pleaseEnterARealDate', 'Please enter a real date of birth');
   return null;
 }
 
@@ -221,7 +222,7 @@ export default function EditProfileScreen() {
             <Field label={tx('auto.editProfile.lastName', 'Last name')} value={lastName} onChange={setLastName} icon={<User size={15} color={theme.textThird} />} theme={theme} error={errors.lastName} hint={tr('auto.editProfile.30DayChangeLimit', '30-day change limit')} />
           </Section>
 
-          <Section title={tx('auto.editProfile.dateOfBirth', 'Date of birth')} subtitle={dobLocked ? 'Locked once set. Contact support to correct a typo.' : 'Must match your KYC document. Locked once you save.'}>
+          <Section title={tx('auto.editProfile.dateOfBirth', 'Date of birth')} subtitle={dobLocked ? tx9('auto.editProfile.lockedOnceSetContactSupport', 'Locked once set. Contact support to correct a typo.') : tx9('auto.editProfile.mustMatchYourKycDocument', 'Must match your KYC document. Locked once you save.')}>
             <Field
               label={tx('auto.editProfile.yyyyMmDd', 'YYYY-MM-DD')}
               value={dateOfBirth}

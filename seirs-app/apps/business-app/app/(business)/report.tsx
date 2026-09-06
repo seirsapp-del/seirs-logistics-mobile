@@ -12,6 +12,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 import { businessApi, supportApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Report an issue for business senders (founder 2026-08-22: the
@@ -24,11 +25,11 @@ import { tx as tr } from '@/i18n/tx';
  */
 
 const CATEGORIES = () => [
-  { id: 'delivery', icon: 'Package',        label: tr('auto.report.deliveryIssue', 'Delivery issue'), desc: 'A delivery went wrong or is stuck',   topic: 'delivery' },
-  { id: 'billing',  icon: 'Banknote',       label: tr('auto.report.billing', 'Billing'),        desc: 'Charged wrongly or a refund question', topic: 'billing' },
-  { id: 'driver',   icon: 'Bike',           label: tr('auto.DeliveryTrackMap.driver', 'Driver'),         desc: 'A problem with a driver on a job',      topic: 'driver' },
-  { id: 'account',  icon: 'User',           label: tr('auto.settings.account', 'Account'),        desc: 'Access, team or business details',     topic: 'account' },
-  { id: 'other',    icon: 'MoreHorizontal', label: tr('auto.report.other', 'Other'),          desc: 'Something else happened',              topic: 'other' },
+  { id: 'delivery', icon: 'Package',        label: tr('auto.report.deliveryIssue', 'Delivery issue'), desc: tx9('auto.report.aDeliveryWentWrongOr', 'A delivery went wrong or is stuck'),   topic: 'delivery' },
+  { id: 'billing',  icon: 'Banknote',       label: tr('auto.report.billing', 'Billing'),        desc: tx9('auto.report.chargedWronglyOrARefund', 'Charged wrongly or a refund question'), topic: 'billing' },
+  { id: 'driver',   icon: 'Bike',           label: tr('auto.DeliveryTrackMap.driver', 'Driver'),         desc: tx9('auto.report.aProblemWithADriver', 'A problem with a driver on a job'),      topic: 'driver' },
+  { id: 'account',  icon: 'User',           label: tr('auto.settings.account', 'Account'),        desc: tx9('auto.report.accessTeamOrBusinessDetails', 'Access, team or business details'),     topic: 'account' },
+  { id: 'other',    icon: 'MoreHorizontal', label: tr('auto.report.other', 'Other'),          desc: tx9('auto.report.somethingElseHappened', 'Something else happened'),              topic: 'other' },
 ] as const;
 
 export default function BusinessReportScreen() {

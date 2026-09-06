@@ -1020,17 +1020,6 @@
       "thisTicketIsClosedOpen": "An rufe wannan tikitin. Buɗe sabo idan har yanzu kana buƙatar taimako.",
       "typeAMessage": "Rubuta saƙo…"
     },
-    "resetPassword": {
-      "invalidLink": "Mahaɗin ba daidai ba",
-      "backToSignIn": "Koma shiga",
-      "signIn": "Shiga",
-      "confirmPassword": "Tabbatar da kalmar sirri",
-      "newPassword": "Sabuwar kalmar sirri",
-      "passwordUpdated": "An sabunta kalmar sirri",
-      "chooseANewPassword": "Zaɓi sabuwar kalmar sirri",
-      "updatePassword": "Sabunta kalmar sirri",
-      "repeatNewPassword": "Maimaita sabuwar kalmar sirri"
-    },
     "SocialSignIn": {
       "continueWithGoogle": "Ci gaba da Google",
       "signInWithApple": "Shiga da Apple"

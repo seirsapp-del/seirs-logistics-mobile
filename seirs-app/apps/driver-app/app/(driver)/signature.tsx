@@ -21,6 +21,7 @@ import { identityApi, uploadApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8 §1.17: driver door-to-door handoff signature. Two methods:
 // physical ID + email OTP, or SEIRS ID + typed-name signature. Mirrors
@@ -214,7 +215,7 @@ export default function DriverSignatureScreen() {
                 <Pressable onPress={requestOtp} disabled={loading} style={[styles.secondaryBtn, { borderColor: theme.primary }]}>
                   <Mail size={14} color={theme.primary} />
                   <Text style={[styles.secondaryBtnText, { color: theme.primary }]}>
-                    {loading ? 'Sending…' : 'Email recipient a 6-digit code'}
+                    {loading ? tx9('auto.signature.sending', 'Sending…') : tx9('auto.signature.emailRecipientA6Digit', 'Email recipient a 6-digit code')}
                   </Text>
                 </Pressable>
               ) : (

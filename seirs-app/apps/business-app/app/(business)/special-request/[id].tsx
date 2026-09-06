@@ -34,6 +34,7 @@ import { showDialog } from '@/components/SeirsDialog';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * What each status means TO THE SENDER, in their words.
@@ -199,8 +200,8 @@ export default function BusinessSpecialRequestDetail() {
               {hoursLeft !== null && (
                 <Text style={[styles.expiry, { color: hoursLeft <= 6 ? '#DC2626' : theme.textThird }]}>
                   {hoursLeft > 0
-                    ? `This price holds for another ${hoursLeft} hour${hoursLeft === 1 ? '' : 's'}. Diesel and haulage move, so we cannot hold it longer.`
-                    : 'This quote has run out. Pull down to refresh and ask us for a fresh one.'}
+                    ? tx9('auto.specialRequestDetail.thisPriceHoldsForAnother', 'This price holds for another {{hoursLeft}} hour{{v1}}. Diesel and haulage move, so we cannot hold it longer.', { hoursLeft, v1: hoursLeft === 1 ? '' : 's' })
+                    : tx9('auto.specialRequestDetail.thisQuoteHasRunOut', 'This quote has run out. Pull down to refresh and ask us for a fresh one.')}
                 </Text>
               )}
             </View>

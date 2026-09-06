@@ -24,6 +24,7 @@ import { alertDialog } from '@/components/SeirsDialog';
 import { normaliseRc, isValidRc, canonicalRc, RC_ERROR } from '@seirs/shared/utils/rcNumber';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8 §4. business / partner profile editor. Edits both the User
 // row (name, phone) AND the BusinessAccount row (companyName, RC,
@@ -38,14 +39,14 @@ const NG_PHONE     = /^(\+?234[789]\d{9}|0[789]\d{9}|[789]\d{9})$/;
 function validateName(v: string, min = 2, max = 40): string | null {
   const s = v.trim();
   if (!s) return null;
-  if (s.length < min || s.length > max) return `Must be ${min} to ${max} characters`;
-  if (!NAME_CHARS.test(s))               return 'Only letters, spaces, hyphens, apostrophes, dots';
-  if (!NAME_NO_SPAM.test(s))             return 'No phone numbers, URLs, or emails';
+  if (s.length < min || s.length > max) return tx9('auto.editProfile.mustBeToCharacters', 'Must be {{min}} to {{max}} characters', { min, max });
+  if (!NAME_CHARS.test(s))               return tx9('auto.editProfile.onlyLettersSpacesHyphensApostrophes', 'Only letters, spaces, hyphens, apostrophes, dots');
+  if (!NAME_NO_SPAM.test(s))             return tx9('auto.editProfile.noPhoneNumbersUrlsOr', 'No phone numbers, URLs, or emails');
   return null;
 }
 function validatePhone(v: string): string | null {
   if (!v.trim()) return null;
-  if (!NG_PHONE.test(v.trim())) return 'Nigerian mobile only';
+  if (!NG_PHONE.test(v.trim())) return tx9('auto.editProfile.nigerianMobileOnly', 'Nigerian mobile only');
   return null;
 }
 
@@ -280,7 +281,7 @@ export default function BusinessEditProfileScreen() {
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.label, { color: colors.textSecond }]}>DATE OF BIRTH {dobLocked ? '(LOCKED)' : ''}</Text>
+            <Text style={[styles.label, { color: colors.textSecond }]}>DATE OF BIRTH {dobLocked ? tx9('auto.editProfile.locked', '(LOCKED)') : ''}</Text>
             <TextInput
               onFocus={onFieldFocus}
               value={dateOfBirth} onChangeText={setDateOfBirth} editable={!dobLocked}
@@ -288,7 +289,7 @@ export default function BusinessEditProfileScreen() {
               style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: dobLocked ? 0.6 : 1 }]}
               placeholder="1985-04-22" placeholderTextColor={colors.textThird} />
             <Text style={{ fontSize: 12, color: colors.textThird }}>
-              {dobLocked ? 'Contact support to correct a typo.' : 'Locked once you save. Format: YYYY-MM-DD'}
+              {dobLocked ? tx9('auto.editProfile.contactSupportToCorrectA', 'Contact support to correct a typo.') : tx9('auto.editProfile.lockedOnceYouSaveFormat', 'Locked once you save. Format: YYYY-MM-DD')}
             </Text>
           </View>
 

@@ -19,6 +19,7 @@ import { EarningsCalendar } from '@/components/EarningsCalendar';
 import { naira, nairaShort, nairaAxis } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -364,7 +365,7 @@ export default function EarningsScreen() {
             const amount   = Number(tx.driverNet ?? tx.driverEarnings ?? tx.amount ?? 0);
             const isCredit = tx.type !== 'debit' && tx.type !== 'payout' && tx.type !== 'withdrawal';
             const amtColor = isCredit ? '#16A34A' : '#EF4444';
-            const label    = tx.label ?? (isCredit ? `Trip ${tx.trackingCode ?? ''}`.trim() : 'Withdrawal');
+            const label    = tx.label ?? (isCredit ? `Trip ${tx.trackingCode ?? ''}`.trim() : tx9('auto.earnings.withdrawal', 'Withdrawal'));
             const date     = new Date(tx.createdAt ?? tx.earnedAt ?? tx.deliveredAt ?? Date.now())
               .toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
             /**

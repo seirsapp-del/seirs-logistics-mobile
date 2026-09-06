@@ -26,18 +26,19 @@ import { validatePassword } from '@seirs/shared';
 import { isValidNigerianMobile, toE164Ng, toNationalInput, NG_PHONE_HINT } from '@/constants/phone';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type VehicleType = 'bicycle' | 'motorcycle' | 'tricycle' | 'car' | 'van' | 'truck_small' | 'truck_large';
 
 // D-6.3: labels must match app/(driver)/vehicle.tsx. Same app, one vocabulary,
 // and it is the Nigerian one: okada, keke, danfo.
 const VEHICLES = (): { id: VehicleType; label: string; desc: string; Icon: any }[] => [
-  { id: 'bicycle',     label: tr('auto.driverRegister.bicycle', 'Bicycle'),              desc: 'Up to 5 kg',      Icon: Bike  },
-  { id: 'motorcycle',  label: tr('auto.driverRegister.okadaMotorcycle', 'Okada (Motorcycle)'),   desc: 'Up to 20 kg',     Icon: Bike  },
-  { id: 'tricycle',    label: tr('auto.driverRegister.kekeTricycle', 'Keke (Tricycle)'),      desc: 'Up to 100 kg',    Icon: Truck },
-  { id: 'car',         label: tr('auto.driverRegister.car', 'Car'),                  desc: 'Up to 200 kg',    Icon: Car   },
-  { id: 'van',         label: tr('auto.driverRegister.vanDanfo', 'Van / Danfo'),          desc: 'Up to 800 kg',    Icon: Van   },
-  { id: 'truck_small', label: tr('auto.driverRegister.smallTruck', 'Small Truck'),          desc: 'Up to 3,000 kg',  Icon: Truck },
+  { id: 'bicycle',     label: tr('auto.driverRegister.bicycle', 'Bicycle'),              desc: tx9('auto.driverRegister.upTo5Kg', 'Up to 5 kg'),      Icon: Bike  },
+  { id: 'motorcycle',  label: tr('auto.driverRegister.okadaMotorcycle', 'Okada (Motorcycle)'),   desc: tx9('auto.driverRegister.upTo20Kg', 'Up to 20 kg'),     Icon: Bike  },
+  { id: 'tricycle',    label: tr('auto.driverRegister.kekeTricycle', 'Keke (Tricycle)'),      desc: tx9('auto.driverRegister.upTo100Kg', 'Up to 100 kg'),    Icon: Truck },
+  { id: 'car',         label: tr('auto.driverRegister.car', 'Car'),                  desc: tx9('auto.driverRegister.upTo200Kg', 'Up to 200 kg'),    Icon: Car   },
+  { id: 'van',         label: tr('auto.driverRegister.vanDanfo', 'Van / Danfo'),          desc: tx9('auto.driverRegister.upTo800Kg', 'Up to 800 kg'),    Icon: Van   },
+  { id: 'truck_small', label: tr('auto.driverRegister.smallTruck', 'Small Truck'),          desc: tx9('auto.driverRegister.upTo3000Kg', 'Up to 3,000 kg'),  Icon: Truck },
   { id: 'truck_large', label: tr('auto.driverRegister.largeTruck', 'Large Truck'),          desc: '3,000 kg+',       Icon: Truck },
 ];
 
@@ -75,18 +76,18 @@ export default function DriverRegisterScreen() {
   // button on a form this long is only fair if it says what it wants.
   const pwProblem = password ? validatePassword(password) : 'Choose a password.';
   const missing: { msg: string; at: string } | null =
-      !firstName.trim()               ? { msg: 'Enter your first name.', at: 'firstName' }
-    : !lastName.trim()                ? { msg: 'Enter your last name.', at: 'lastName' }
-    : !email.trim()                   ? { msg: 'Enter your email address.', at: 'email' }
+      !firstName.trim()               ? { msg: tx9('auto.driverRegister.enterYourFirstName', 'Enter your first name.'), at: 'firstName' }
+    : !lastName.trim()                ? { msg: tx9('auto.driverRegister.enterYourLastName', 'Enter your last name.'), at: 'lastName' }
+    : !email.trim()                   ? { msg: tx9('auto.driverRegister.enterYourEmailAddress', 'Enter your email address.'), at: 'email' }
     : !isValidNigerianMobile(phone)   ? { msg: NG_PHONE_HINT, at: 'phone' }
     : pwProblem                       ? { msg: pwProblem, at: 'password' }
-    : password !== confirmPass        ? { msg: 'Passwords do not match.', at: 'confirm' }
-    : !addrState                      ? { msg: 'Pick the state you live in.', at: 'state' }
-    : !addrCity.trim()                ? { msg: 'Enter your city or LGA.', at: 'city' }
-    : !addrStreet.trim()              ? { msg: 'Enter your street address.', at: 'street' }
-    : !vehicle                        ? { msg: 'Select a vehicle type.', at: 'vehicle' }
-    : !ageConfirmed                   ? { msg: 'Confirm you are 18 years or older.', at: 'consent' }
-    : !termsConfirmed                 ? { msg: 'Accept the Terms of Service and Privacy Policy.', at: 'consent' }
+    : password !== confirmPass        ? { msg: tx9('auto.driverRegister.passwordsDoNotMatch', 'Passwords do not match.'), at: 'confirm' }
+    : !addrState                      ? { msg: tx9('auto.driverRegister.pickTheStateYouLive', 'Pick the state you live in.'), at: 'state' }
+    : !addrCity.trim()                ? { msg: tx9('auto.driverRegister.enterYourCityOrLga', 'Enter your city or LGA.'), at: 'city' }
+    : !addrStreet.trim()              ? { msg: tx9('auto.driverRegister.enterYourStreetAddress', 'Enter your street address.'), at: 'street' }
+    : !vehicle                        ? { msg: tx9('auto.driverRegister.selectAVehicleType', 'Select a vehicle type.'), at: 'vehicle' }
+    : !ageConfirmed                   ? { msg: tx9('auto.driverRegister.confirmYouAre18Years', 'Confirm you are 18 years or older.'), at: 'consent' }
+    : !termsConfirmed                 ? { msg: tx9('auto.driverRegister.acceptTheTermsOfService', 'Accept the Terms of Service and Privacy Policy.'), at: 'consent' }
     : null;
 
   // Where each field sits, so the line under the button can take you there.

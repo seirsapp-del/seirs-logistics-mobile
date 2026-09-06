@@ -28,6 +28,7 @@ import {
 } from '@/services/api';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Unified inbox row: delivery chat OR support ticket, merged + sorted
 // by recency so the tab shows one coherent conversation surface.
@@ -238,7 +239,7 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(busin
                       ]}
                       numberOfLines={1}
                     >
-                      {c.lastMessage || '(no messages)'}
+                      {c.lastMessage || tx9('auto.messagesinbox.noMessages', '(no messages)')}
                     </Text>
                     {isUnread && (
                       <View style={[styles.badge, { backgroundColor: theme.primary }]}>

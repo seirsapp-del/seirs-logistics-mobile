@@ -30,6 +30,7 @@ import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type Bank = { id: string; name: string; code: string };
 
@@ -175,7 +176,7 @@ export default function PayoutAccountScreen() {
           {(editing || !current?.hasAccount) && (
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.cardLabel, { color: colors.textThird }]}>
-                {current?.hasAccount ? 'NEW ACCOUNT' : 'ADD YOUR ACCOUNT'}
+                {current?.hasAccount ? tx9('auto.payoutAccount.newAccount', 'NEW ACCOUNT') : tx9('auto.payoutAccount.addYourAccount', 'ADD YOUR ACCOUNT')}
               </Text>
 
               <Text style={[styles.fieldLabel, { color: colors.textSecond }]}>{tx('auto.payoutAccount.yourBank', 'Your bank')}</Text>
@@ -245,7 +246,7 @@ export default function PayoutAccountScreen() {
                 }]}
               >
                 <Text style={[styles.saveBtnText, { color: colors.textOnPrimary }]}>
-                  {saving ? 'Checking with your bank...' : 'Check and save'}
+                  {saving ? tx9('auto.payoutAccount.checkingWithYourBank', 'Checking with your bank...') : tx9('auto.payoutAccount.checkAndSave', 'Check and save')}
                 </Text>
               </Pressable>
 

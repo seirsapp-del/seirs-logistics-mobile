@@ -25,6 +25,7 @@ import { usersApi, uploadApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // ─── Validation (must stay in sync with backend UpdateProfileDto) ───────────
 
@@ -36,23 +37,23 @@ const ISO_DATE     = /^\d{4}-\d{2}-\d{2}$/;
 function validateName(v: string, min = 2, max = 40, label = 'This field'): string | null {
   const s = v.trim();
   if (s.length < min || s.length > max) return `${label} must be ${min}–${max} characters`;
-  if (!NAME_CHARS.test(s))               return 'Only letters, spaces, hyphens, apostrophes, dots';
-  if (!NAME_NO_SPAM.test(s))             return 'No phone numbers, URLs, or emails';
+  if (!NAME_CHARS.test(s))               return tx9('auto.editProfile.onlyLettersSpacesHyphensApostrophes', 'Only letters, spaces, hyphens, apostrophes, dots');
+  if (!NAME_NO_SPAM.test(s))             return tx9('auto.editProfile.noPhoneNumbersUrlsOr', 'No phone numbers, URLs, or emails');
   return null;
 }
 function validatePhone(v: string): string | null {
   if (!v.trim()) return null;                          // optional in this form; server may require
-  if (!NG_PHONE.test(v.trim())) return 'Nigerian mobile only (0/234/+234 + 10 digits)';
+  if (!NG_PHONE.test(v.trim())) return tx9('auto.editProfile.nigerianMobileOnly0234', 'Nigerian mobile only (0/234/+234 + 10 digits)');
   return null;
 }
 function validateDob(v: string): string | null {
   if (!v.trim()) return null;
-  if (!ISO_DATE.test(v.trim())) return 'Use YYYY-MM-DD format';
+  if (!ISO_DATE.test(v.trim())) return tx9('auto.editProfile.useYyyyMmDdFormat', 'Use YYYY-MM-DD format');
   const d = new Date(v.trim());
-  if (Number.isNaN(d.getTime())) return 'Not a real date';
+  if (Number.isNaN(d.getTime())) return tx9('auto.editProfile.notARealDate', 'Not a real date');
   const age = ageInYears(d);
-  if (age < 13)  return 'Must be 13 or older';
-  if (age > 120) return 'Please enter a real date of birth';
+  if (age < 13)  return tx9('auto.editProfile.mustBe13OrOlder', 'Must be 13 or older');
+  if (age > 120) return tx9('auto.editProfile.pleaseEnterARealDate', 'Please enter a real date of birth');
   return null;
 }
 function ageInYears(dob: Date): number {
@@ -268,7 +269,7 @@ export default function EditProfileScreen() {
           </Section>
 
           {/* DOB */}
-          <Section title={tx('auto.editProfile.dateOfBirth', 'Date of birth')} subtitle={dobLocked ? 'Locked once set. Contact support to correct a typo.' : 'Used for identity verification and age-gated features. Locked once you save.'}>
+          <Section title={tx('auto.editProfile.dateOfBirth', 'Date of birth')} subtitle={dobLocked ? tx9('auto.editProfile.lockedOnceSetContactSupport', 'Locked once set. Contact support to correct a typo.') : tx9('auto.editProfile.usedForIdentityVerificationAnd', 'Used for identity verification and age-gated features. Locked once you save.')}>
             <Field
               label={tx('auto.editProfile.yyyyMmDd', 'YYYY-MM-DD')}
               value={dateOfBirth}

@@ -13,6 +13,7 @@ import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 // Spec V8 §4.11: partner sponsored-placement billing view. Live monthly
 // fee is read from the Fee Catalogue (admin-editable, propagates within
 // 60s) so the displayed price always matches what would actually be
@@ -133,7 +134,7 @@ export default function PartnerBillingScreen() {
           <View style={[styles.statusChip, { backgroundColor: active ? tint('green', isDark).bg : colors.surfaceSecond }]}>
             <View style={[styles.statusDot, { backgroundColor: active ? tint('green', isDark).fg : colors.textThird }]} />
             <Text style={[styles.statusText, { color: active ? tint('green', isDark).fg : colors.textSecond }]}>
-              {active ? 'Active' : 'Inactive'}
+              {active ? tx9('auto.tabsIndex.active', 'Active') : tx9('auto.billing.inactive', 'Inactive')}
             </Text>
           </View>
         </View>
@@ -155,7 +156,7 @@ export default function PartnerBillingScreen() {
         </Text>
 
         <View style={[styles.toggleRow, { borderTopColor: colors.border }]}>
-          <Text style={[styles.toggleLabel, { color: colors.text }]}>{active ? 'Active' : 'Activate placement'}</Text>
+          <Text style={[styles.toggleLabel, { color: colors.text }]}>{active ? tx9('auto.tabsIndex.active', 'Active') : tx9('auto.billing.activatePlacement', 'Activate placement')}</Text>
           {busy ? (
             <ActivityIndicator color={colors.accent} />
           ) : (

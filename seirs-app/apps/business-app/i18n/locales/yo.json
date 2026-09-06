@@ -1020,17 +1020,6 @@
       "thisTicketIsClosedOpen": "A ti pa tíkẹ́ẹ̀tì yìí dé. Ṣí tuntun bí o bá ṣì nílò ìrànlọ́wọ́.",
       "typeAMessage": "Tẹ ìwé…"
     },
-    "resetPassword": {
-      "invalidLink": "Ìjápọ̀ kò tọ̀nà",
-      "backToSignIn": "Padà sí ìwọlé",
-      "signIn": "Wọlé",
-      "confirmPassword": "Jẹ́rìí ọ̀rọ̀ìgbaniwọlé",
-      "newPassword": "Ọ̀rọ̀ìgbaniwọlé tuntun",
-      "passwordUpdated": "A ti ṣàtúnṣe ọ̀rọ̀ìgbaniwọlé",
-      "chooseANewPassword": "Yan ọ̀rọ̀ìgbaniwọlé tuntun",
-      "updatePassword": "Ṣàtúnṣe ọ̀rọ̀ìgbaniwọlé",
-      "repeatNewPassword": "Tún ọ̀rọ̀ìgbaniwọlé tuntun tẹ̀"
-    },
     "SocialSignIn": {
       "continueWithGoogle": "Tẹ̀síwájú pẹ̀lú Google",
       "signInWithApple": "Wọlé pẹ̀lú Apple"

@@ -14,17 +14,18 @@ import { vehicleLabel } from '@/constants/vehicles';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const STATUSES = ['all', 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled'];
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL = (): Record<string, string> => ({
   all:        'All',
   pending:    'Pending',
   assigned:   'Assigned',
-  in_transit: 'In Transit',
+  in_transit: tx9('auto.deliveries.inTransit', 'In Transit'),
   delivered:  'Delivered',
   cancelled:  'Cancelled',
-};
+});
 
 /**
  * Status colour now comes from constants/tint.ts (2026-08-24).
@@ -250,7 +251,7 @@ export default function DeliveriesScreen() {
               style={[styles.payLink, { borderColor: colors.primary }]}
             >
               <Text style={[styles.payLinkText, { color: colors.primary }]}>
-                {paying === item.id ? 'Opening…' : 'Pay now'}
+                {paying === item.id ? tx9('auto.deliveries.opening', 'Opening…') : tx9('auto.deliveries.payNow', 'Pay now')}
               </Text>
             </Pressable>
           )}
@@ -343,7 +344,7 @@ export default function DeliveriesScreen() {
                 { color: colors.text },
                 active && { color: '#fff' },
               ]}>
-                {STATUS_LABEL[s]}
+                {STATUS_LABEL()[s]}
               </Text>
             </Pressable>
           );
@@ -370,7 +371,7 @@ export default function DeliveriesScreen() {
             <View style={styles.empty}>
               <Icon name={loadError ? 'AlertCircle' : 'Package'} size={40} color={loadError ? '#DC2626' : colors.textThird} />
               <Text style={[styles.emptyText, { color: loadError ? '#DC2626' : colors.textThird }]}>
-                {loadError ? 'Could not load your deliveries. Pull down to try again.' : 'No deliveries found'}
+                {loadError ? tx9('auto.deliveries.couldNotLoadYourDeliveries', 'Could not load your deliveries. Pull down to try again.') : tx9('auto.deliveries.noDeliveriesFound', 'No deliveries found')}
               </Text>
             </View>
           }

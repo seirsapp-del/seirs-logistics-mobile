@@ -65,6 +65,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 export default function RegisterScreen() {
   const router     = useRouter();
@@ -117,23 +118,23 @@ export default function RegisterScreen() {
    * is tappable and scrolls to it (founder 2026-09-01).
    */
   const whatIsMissing = (): { msg: string; at: string } | null => {
-    if (!form.firstName.trim())      return { msg: 'Please enter your first name.', at: 'firstName' };
-    if (!form.lastName.trim())       return { msg: 'Please enter your last name.', at: 'lastName' };
-    if (!form.email.trim())          return { msg: 'Please enter your email address.', at: 'email' };
-    if (!form.email.includes('@'))   return { msg: 'Please enter a valid email address.', at: 'email' };
-    if (!form.phone.trim())          return { msg: 'Please enter your phone number.', at: 'phone' };
+    if (!form.firstName.trim())      return { msg: tx9('auto.register.pleaseEnterYourFirstName', 'Please enter your first name.'), at: 'firstName' };
+    if (!form.lastName.trim())       return { msg: tx9('auto.register.pleaseEnterYourLastName', 'Please enter your last name.'), at: 'lastName' };
+    if (!form.email.trim())          return { msg: tx9('auto.register.pleaseEnterYourEmailAddress', 'Please enter your email address.'), at: 'email' };
+    if (!form.email.includes('@'))   return { msg: tx9('auto.register.pleaseEnterAValidEmail', 'Please enter a valid email address.'), at: 'email' };
+    if (!form.phone.trim())          return { msg: tx9('auto.register.pleaseEnterYourPhoneNumber', 'Please enter your phone number.'), at: 'phone' };
     // 071 is in the regex above and was missing from this list, so a Glo 071
     // user who mistyped was told their prefix is invalid (B-6.6).
     if (!phoneValid)                 return { msg: NG_PHONE_HINT, at: 'phone' };
-    if (!form.companyName.trim())    return { msg: 'Please enter your company name.', at: 'companyName' };
+    if (!form.companyName.trim())    return { msg: tx9('auto.register.pleaseEnterYourCompanyName', 'Please enter your company name.'), at: 'companyName' };
     if (!rcOk)                       return { msg: RC_ERROR, at: 'rcNumber' };
-    if (!form.state)                 return { msg: 'Please pick your state.', at: 'state' };
-    if (!form.city.trim())           return { msg: 'Please enter your city or LGA (e.g. Ikeja, Surulere, Lekki).', at: 'city' };
-    if (!form.streetAddress.trim())  return { msg: 'Please enter your street address (street name + building number / landmark).', at: 'street' };
+    if (!form.state)                 return { msg: tx9('auto.register.pleasePickYourState', 'Please pick your state.'), at: 'state' };
+    if (!form.city.trim())           return { msg: tx9('auto.register.pleaseEnterYourCityOr', 'Please enter your city or LGA (e.g. Ikeja, Surulere, Lekki).'), at: 'city' };
+    if (!form.streetAddress.trim())  return { msg: tx9('auto.register.pleaseEnterYourStreetAddress', 'Please enter your street address (street name + building number / landmark).'), at: 'street' };
     if (!passValid)                  return { msg: passError ?? 'Password does not meet the requirements above.', at: 'password' };
-    if (!passMatch)                  return { msg: 'Passwords do not match. Please re-type your confirm password.', at: 'confirm' };
-    if (!ageOk)                      return { msg: 'Please confirm you are 18 or older.', at: 'consent' };
-    if (!termsOk)                    return { msg: 'Please accept the Terms of Service.', at: 'consent' };
+    if (!passMatch)                  return { msg: tx9('auto.register.passwordsDoNotMatchPlease', 'Passwords do not match. Please re-type your confirm password.'), at: 'confirm' };
+    if (!ageOk)                      return { msg: tx9('auto.register.pleaseConfirmYouAre18', 'Please confirm you are 18 or older.'), at: 'consent' };
+    if (!termsOk)                    return { msg: tx9('auto.register.pleaseAcceptTheTermsOf', 'Please accept the Terms of Service.'), at: 'consent' };
     return null;
   };
 

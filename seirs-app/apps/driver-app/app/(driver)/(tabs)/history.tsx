@@ -13,6 +13,7 @@ import { driversApi, earningsApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const STATUS_CONFIG = (): Record<string, { label: string; color: string; icon: string }> => ({
   delivered:  { label: tr('auto.history.delivered', 'Delivered'),   color: '#16A34A', icon: 'checkmark-circle' },

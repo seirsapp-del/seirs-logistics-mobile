@@ -24,6 +24,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 
 type Segment = 'rewards' | 'earnings';
@@ -34,24 +35,24 @@ type Segment = 'rewards' | 'earnings';
  * untouched, because neither is a real product yet.
  */
 const POINT_USES = () => [
-  { cost: 500,  label: tr('auto.wallet.500OffADelivery', '₦500 off a delivery'), desc: 'Comes off the price before you pay.' },
-  { cost: 1000, label: tr('auto.wallet.aFreeDelivery', 'A free delivery'),       desc: 'Covers one booking up to the reward cap.' },
+  { cost: 500,  label: tr('auto.wallet.500OffADelivery', '₦500 off a delivery'), desc: tx9('auto.wallet.comesOffThePriceBefore', 'Comes off the price before you pay.') },
+  { cost: 1000, label: tr('auto.wallet.aFreeDelivery', 'A free delivery'),       desc: tx9('auto.wallet.coversOneBookingUpTo', 'Covers one booking up to the reward cap.') },
 ];
 
 // The ledger's reason codes in the sender's words, identical to the
 // customer app's version: two spellings of one event read as two events.
 function activityLabel(reason: string): string {
   switch (reason) {
-    case 'delivery_complete':    return 'Delivery completed';
-    case 'bank_transfer_bonus':  return 'Bank transfer bonus';
-    case 'referral_bonus':       return 'Referral bonus';
-    case 'rate_driver':          return 'Rated a driver';
-    case 'monthly_streak':       return 'Monthly streak bonus';
-    case 'redeem_discount':      return 'Redeemed ₦500 off';
-    case 'redeem_free_delivery': return 'Redeemed free delivery';
-    case 'admin_adjustment':     return 'Opening balance';
-    case 'refund_clawback':      return 'Refund adjustment';
-    case 'expired':              return 'Points expired';
+    case 'delivery_complete':    return tx9('auto.wallet.deliveryCompleted', 'Delivery completed');
+    case 'bank_transfer_bonus':  return tx9('auto.wallet.bankTransferBonus', 'Bank transfer bonus');
+    case 'referral_bonus':       return tx9('auto.wallet.referralBonus', 'Referral bonus');
+    case 'rate_driver':          return tx9('auto.wallet.ratedADriver', 'Rated a driver');
+    case 'monthly_streak':       return tx9('auto.wallet.monthlyStreakBonus', 'Monthly streak bonus');
+    case 'redeem_discount':      return tx9('auto.wallet.redeemed500Off', 'Redeemed ₦500 off');
+    case 'redeem_free_delivery': return tx9('auto.wallet.redeemedFreeDelivery', 'Redeemed free delivery');
+    case 'admin_adjustment':     return tx9('auto.wallet.openingBalance', 'Opening balance');
+    case 'refund_clawback':      return tx9('auto.wallet.refundAdjustment', 'Refund adjustment');
+    case 'expired':              return tx9('auto.wallet.pointsExpired', 'Points expired');
     default:                     return reason;
   }
 }
@@ -251,7 +252,7 @@ export default function WalletScreen() {
             {/* Senders tap a tab labelled Rewards; this heading was hardcoded
                 "Wallet" for both roles (B-4.2). Only an approved partner
                 store has an actual wallet, because only they hold earnings. */}
-            <Text style={styles.heroTitle}>{canPartner ? 'Wallet' : 'Rewards'}</Text>
+            <Text style={styles.heroTitle}>{canPartner ? tx9('auto.wallet.wallet', 'Wallet') : tx9('auto.rewards.rewards', 'Rewards')}</Text>
             <View style={{ width: 22 }} />
           </View>
 
@@ -372,7 +373,7 @@ export default function WalletScreen() {
             <View style={[styles.weekCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.weekHead}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {segment === 'rewards' ? 'Points earned' : 'Earnings'}
+                  {segment === 'rewards' ? tx9('auto.referral.pointsEarned', 'Points earned') : tx9('auto.earnings.earnings', 'Earnings')}
                 </Text>
                 {/* Neutral, not a filled accent: this control sits under the
                     balance card and was competing with it for attention. */}
@@ -395,7 +396,7 @@ export default function WalletScreen() {
               <Text style={[styles.weekTotal, { color: chart.total > 0 ? POS : colors.textSecond }]}>
                 {chart.total > 0
                   ? (segment === 'rewards' ? `+${chart.total.toLocaleString()} pts` : naira(chart.total))
-                  : 'Nothing yet'}
+                  : tx9('auto.wallet.nothingYet', 'Nothing yet')}
               </Text>
 
               <View style={[styles.weekBars, { gap: range === 7 ? 6 : 2 }]}>
@@ -423,11 +424,11 @@ export default function WalletScreen() {
               <Text style={[styles.weekFoot, { color: colors.textSecond }]}>
                 {chart.total > 0
                   ? (segment === 'rewards'
-                      ? 'Every delivery you book adds to this.'
-                      : 'Paid out to your business bank account weekly.')
+                      ? tx9('auto.wallet.everyDeliveryYouBookAdds', 'Every delivery you book adds to this.')
+                      : tx9('auto.wallet.paidOutToYourBusiness', 'Paid out to your business bank account weekly.'))
                   : (segment === 'rewards'
-                      ? 'Book a delivery and your points will show up here.'
-                      : 'Payouts will show up here once packages move through your counter.')}
+                      ? tx9('auto.wallet.bookADeliveryAndYour', 'Book a delivery and your points will show up here.')
+                      : tx9('auto.wallet.payoutsWillShowUpHere', 'Payouts will show up here once packages move through your counter.'))}
               </Text>
             </View>
 
@@ -505,7 +506,7 @@ export default function WalletScreen() {
                       <Text style={[styles.rowSub, { color: colors.textSecond }]}>{u.desc}</Text>
                     </View>
                     <Text style={[styles.useReady, { color: ready ? colors.primary : colors.textThird }]}>
-                      {ready ? 'Ready' : (u.cost - points).toLocaleString() + ' to go'}
+                      {ready ? tx9('auto.wallet.ready', 'Ready') : (u.cost - points).toLocaleString() + ' to go'}
                     </Text>
                   </View>
                 );
@@ -535,12 +536,12 @@ export default function WalletScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.rowTitle, { color: colors.text }]}>
-                      {p.status === 'paid' ? 'Paid to bank' : 'Pending payout'}
+                      {p.status === 'paid' ? tx9('auto.wallet.paidToBank', 'Paid to bank') : tx9('auto.wallet.pendingPayout', 'Pending payout')}
                     </Text>
                     <Text style={[styles.rowSub, { color: colors.textThird }]}>
                       {p.paidAt
                         ? new Date(p.paidAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
-                        : 'Settles with the weekly run'}
+                        : tx9('auto.wallet.settlesWithTheWeeklyRun', 'Settles with the weekly run')}
                     </Text>
                   </View>
                   <Text style={[styles.rowAmt, { color: p.status === 'paid' ? '#16A34A' : colors.text }]}>

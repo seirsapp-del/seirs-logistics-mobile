@@ -11,13 +11,14 @@ import { earningsApi, type DriverEarning } from '@/services/api';
 import { naira } from '@/utils/money';
 import { tx as tr } from '@/i18n/tx';
 import { tx } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL = (): Record<string, string> => ({
   pending:   'Clearing',
-  available: 'Ready to withdraw',
-  paid:      'Paid to bank',
-  held:      'On hold (review)',
-};
+  available: tx9('auto.transactionDetail.readyToWithdraw', 'Ready to withdraw'),
+  paid:      tx9('auto.transactionDetail.paidToBank', 'Paid to bank'),
+  held:      tx9('auto.transactionDetail.onHoldReview', 'On hold (review)'),
+});
 
 export default function DriverTransactionDetailScreen() {
   const { id }  = useLocalSearchParams<{ id: string }>();
@@ -78,7 +79,7 @@ export default function DriverTransactionDetailScreen() {
   const iconName  = 'arrow-down-circle-outline';
   const iconBg    = '#16A34A18';
   const iconColor = '#16A34A';
-  const statusLabel = STATUS_LABEL[tx.status] ?? tx.status;
+  const statusLabel = STATUS_LABEL()[tx.status] ?? tx.status;
   const statusColor = tx.status === 'held' ? '#DC2626' : tx.status === 'pending' ? '#D97706' : '#16A34A';
 
   /**

@@ -35,6 +35,7 @@ import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const URGENCY_COLOR: Record<string, string> = {
   economy:  '#16A34A',
@@ -372,16 +373,16 @@ export default function DriverHomeScreen() {
               <Clock size={18} color="#FFBE0B" strokeWidth={2} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.reviewTitle}>
-                  {driverData.status === 'rejected'  ? 'Application not approved'
-                    : driverData.status === 'suspended' ? 'Account suspended'
-                    : 'Account under review'}
+                  {driverData.status === 'rejected'  ? tx9('auto.tabsIndex.applicationNotApproved', 'Application not approved')
+                    : driverData.status === 'suspended' ? tx9('auto.tabsIndex.accountSuspended', 'Account suspended')
+                    : tx9('auto.tabsIndex.accountUnderReview', 'Account under review')}
                 </Text>
                 <Text style={styles.reviewText}>
                   {driverData.status === 'rejected'
-                    ? 'Something was wrong with your documents. Open KYC Verification to see what to send again.'
+                    ? tx9('auto.tabsIndex.somethingWasWrongWithYour', 'Something was wrong with your documents. Open KYC Verification to see what to send again.')
                     : driverData.status === 'suspended'
-                    ? 'Your account is suspended, so you cannot go online. Message support and we will sort it out.'
-                    : 'Complete your KYC documents to get approved. Reviews take up to 3 business days. You can explore the app, but going online unlocks after approval.'}
+                    ? tx9('auto.tabsIndex.yourAccountIsSuspendedSo', 'Your account is suspended, so you cannot go online. Message support and we will sort it out.')
+                    : tx9('auto.tabsIndex.completeYourKycDocumentsTo', 'Complete your KYC documents to get approved. Reviews take up to 3 business days. You can explore the app, but going online unlocks after approval.')}
                 </Text>
               </View>
               <ChevronRight size={16} color="rgba(255,255,255,0.7)" strokeWidth={2} />
@@ -396,9 +397,9 @@ export default function DriverHomeScreen() {
                 : <WifiOff size={24} color="rgba(255,255,255,0.6)" strokeWidth={1.75} />
               }
               <View>
-                <Text style={styles.toggleStatus}>{isOnline ? 'You are ONLINE' : 'You are OFFLINE'}</Text>
+                <Text style={styles.toggleStatus}>{isOnline ? tx9('auto.tabsIndex.youAreOnline', 'You are ONLINE') : tx9('auto.tabsIndex.youAreOffline', 'You are OFFLINE')}</Text>
                 <Text style={styles.toggleSub}>
-                  {isOnline ? 'Receiving new job requests' : 'Go online to start earning'}
+                  {isOnline ? tx9('auto.tabsIndex.receivingNewJobRequests', 'Receiving new job requests') : tx9('auto.tabsIndex.goOnlineToStartEarning', 'Go online to start earning')}
                 </Text>
               </View>
             </View>
@@ -469,8 +470,8 @@ export default function DriverHomeScreen() {
                 missed and showed the passenger's full name (2026-08-23). */}
             <Text style={[styles.activeCustomer, { color: theme.text }]}>
               {(activeJob as any).kind === 'ride'
-                ? String(activeJob.customer?.name ?? 'Passenger').trim().split(/\s+/)[0]
-                : (activeJob.customer?.name ?? 'Customer')}
+                ? String(activeJob.customer?.name ?? tx9('auto.active.passenger', 'Passenger')).trim().split(/\s+/)[0]
+                : (activeJob.customer?.name ?? tx9('auto.active.customer', 'Customer'))}
             </Text>
             <View style={styles.activeRow}>
               <Navigation size={14} color={theme.textThird} strokeWidth={1.75} />
@@ -563,7 +564,7 @@ export default function DriverHomeScreen() {
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{tx('auto.index.doneToday', 'Done today')}</Text>
             <Text style={[styles.widgetValue, { color: theme.text }]}>{doneToday}</Text>
             <Text style={[styles.widgetSub, { color: theme.textThird }]} numberOfLines={1}>
-              {doneToday === 1 ? 'job completed' : 'jobs completed'}
+              {doneToday === 1 ? tx9('auto.tabsIndex.jobCompleted', 'job completed') : tx9('auto.tabsIndex.jobsCompleted', 'jobs completed')}
             </Text>
           </Pressable>
 
@@ -580,10 +581,10 @@ export default function DriverHomeScreen() {
             {/* "New" rather than 0.0: a dash does not frighten a driver who
                 simply has not been rated yet. */}
             <Text style={[styles.widgetValue, { color: ratingCount > 0 && (ratingAvg ?? 0) < 3.5 ? '#EF4444' : theme.text }]}>
-              {ratingCount > 0 ? (ratingAvg ?? 0).toFixed(1) : 'New'}
+              {ratingCount > 0 ? (ratingAvg ?? 0).toFixed(1) : tx9('auto.tabsIndex.new', 'New')}
             </Text>
             <Text style={[styles.widgetSub, { color: theme.textThird }]} numberOfLines={1}>
-              {ratingCount > 0 ? `${ratingCount} rating${ratingCount === 1 ? '' : 's'}` : 'no ratings yet'}
+              {ratingCount > 0 ? `${ratingCount} rating${ratingCount === 1 ? '' : 's'}` : tx9('auto.tabsIndex.noRatingsYet', 'no ratings yet')}
             </Text>
           </Pressable>
 
@@ -599,7 +600,7 @@ export default function DriverHomeScreen() {
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{tx('auto.index.requests', 'Requests')}</Text>
             <Text style={[styles.widgetValue, { color: seatReqs > 0 ? theme.primary : theme.text }]}>{seatReqs}</Text>
             <Text style={[styles.widgetSub, { color: theme.textThird }]} numberOfLines={1}>
-              {seatReqs > 0 ? 'waiting on you' : 'for your trips'}
+              {seatReqs > 0 ? tx9('auto.tabsIndex.waitingOnYou', 'waiting on you') : tx9('auto.tabsIndex.forYourTrips', 'for your trips')}
             </Text>
           </Pressable>
 
@@ -692,7 +693,7 @@ export default function DriverHomeScreen() {
                   <Text style={[styles.jobCustomer, { color: job.kind === 'ride' ? '#6366F1' : theme.text }]}>
                     {job.kind === 'ride'
                       ? `RIDE · passenger (${vehicleLabel(job.vehicleType)})`
-                      : [job.packageSize, vehicleLabel(job.vehicleType)].filter(Boolean).join(' · ') || 'Package delivery'}
+                      : [job.packageSize, vehicleLabel(job.vehicleType)].filter(Boolean).join(' · ') || tx9('auto.tabsIndex.packageDelivery', 'Package delivery')}
                   </Text>
                   <View style={styles.addrRow}>
                     <MapPin size={12} color="#16A34A" strokeWidth={1.75} />

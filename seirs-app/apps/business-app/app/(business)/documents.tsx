@@ -20,6 +20,7 @@ import { documentsApi, businessApi, partnerApi, type UserDocumentDTO } from '@/s
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 
 interface SpendYear   { year: number; spentNgn: number; payments: number; toppedUpNgn: number }
@@ -125,7 +126,7 @@ export default function BusinessDocumentsScreen() {
       'Figures aggregate delivery payments made through SEIRS,',
       'suitable for company accounting and FIRS expense records.',
     ];
-    Share.share({ title: `SEIRS spend statement ${y.year}`, message: lines.join('\n') }).catch(() => {});
+    Share.share({ title: tx9('auto.documents.seirsSpendStatement', 'SEIRS spend statement {{year}}', { year: y.year }), message: lines.join('\n') }).catch(() => {});
   };
 
   const sharePayoutYear = (y: PayoutYear) => {
@@ -140,7 +141,7 @@ export default function BusinessDocumentsScreen() {
       'Figures cover payouts marked paid in the SEIRS partner ledger,',
       'suitable for your business records and tax filing.',
     ];
-    Share.share({ title: `SEIRS payout statement ${y.year}`, message: lines.join('\n') }).catch(() => {});
+    Share.share({ title: tx9('auto.documents.seirsPayoutStatement', 'SEIRS payout statement {{year}}', { year: y.year }), message: lines.join('\n') }).catch(() => {});
   };
 
   useEffect(() => { (async () => { await load(); setLoading(false); })(); }, []);
@@ -260,7 +261,7 @@ export default function BusinessDocumentsScreen() {
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: theme.text }]}>{viewing?.title}</Text>
             <Text style={[styles.modalMeta, { color: theme.textSecond }]}>
-              {viewing?.category}{viewing?.sentByName ? ` · sent by ${viewing.sentByName}` : ''} ·{' '}
+              {viewing?.category}{viewing?.sentByName ? tx9('auto.documents.sentBy', '· sent by {{sentByName}}', { sentByName: viewing.sentByName }) : ''} ·{' '}
               {viewing ? new Date(viewing.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
             </Text>
             <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
@@ -291,7 +292,7 @@ export default function BusinessDocumentsScreen() {
                 {/* A document should BE a document. Built on the phone so it
                     covers every document SEIRS sends, not just the export. */}
                 <Text style={{ color: theme.text, fontWeight: '600' }}>
-                  {pdfBusy ? 'Making PDF...' : 'Save as PDF'}
+                  {pdfBusy ? tx9('auto.documents.makingPdf', 'Making PDF...') : tx9('auto.profile.saveAsPdf', 'Save as PDF')}
                 </Text>
               </Pressable>
               <Pressable style={[styles.modalBtn, { backgroundColor: theme.primary }]} onPress={() => setViewing(null)}>

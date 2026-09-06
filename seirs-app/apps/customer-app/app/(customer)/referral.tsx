@@ -16,6 +16,7 @@ import { loyaltyApi, type ReferralHistoryItem } from '@/services/api';
 import { referralUrl } from '@/constants/config';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Universal/web fallback link: when the receiver doesn't have the app,
 // the page on seirs.co/r/<code> can show download links and forward
@@ -117,7 +118,7 @@ export default function ReferralScreen() {
               onPress={handleCopy}
             >
               <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={16} color="#fff" />
-              <Text style={styles.copyBtnText}>{copied ? 'Copied!' : 'Copy'}</Text>
+              <Text style={styles.copyBtnText}>{copied ? tx9('auto.referral.copied', 'Copied!') : tx9('auto.profile.copy', 'Copy')}</Text>
             </Pressable>
           </View>
           <Pressable style={[styles.shareBtn, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '40' }]} onPress={handleShare}>

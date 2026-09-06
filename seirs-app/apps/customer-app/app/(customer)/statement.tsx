@@ -37,6 +37,7 @@ import type { CustomerStatement, StatementEntry } from '@/services/api';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type PresetKey = 'this_month' | 'last_month' | 'last_2_months' | 'last_90';
 
@@ -215,7 +216,7 @@ export default function CustomerStatementScreen() {
             {/* Period above the figure, always. A total with no dates
                 over it is what these screens exist to stop. */}
             <Text style={[styles.period, { color: theme.textThird }]}>
-              {periodLabel(statement?.from, statement?.to) || 'SELECT A PERIOD'}
+              {periodLabel(statement?.from, statement?.to) || tx9('auto.statement.selectAPeriod', 'SELECT A PERIOD')}
             </Text>
             <Text style={[styles.heroValue, { color: theme.text }]}>{naira(totalNgn)}</Text>
             <Text style={[styles.heroSub, { color: theme.textSecond }]}>
@@ -261,7 +262,7 @@ export default function CustomerStatementScreen() {
             >
               <Ionicons name="download-outline" size={16} color={theme.textOnPrimary} />
               <Text style={[styles.exportBtnText, { color: theme.textOnPrimary }]}>
-                {exporting ? 'Preparing...' : 'Export this statement'}
+                {exporting ? 'Preparing...' : tx9('auto.statement.exportThisStatement', 'Export this statement')}
               </Text>
             </Pressable>
           )}

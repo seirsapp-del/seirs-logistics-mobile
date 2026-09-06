@@ -13,12 +13,13 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { promotionsApi, type PromoDTO } from '@/services/api';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 // Render the discount value as a chip label per promo type.
 function promoLabel(p: PromoDTO): string {
   if (p.type === 'flat_discount') return `${naira(p.value)} off`;
   if (p.type === 'percent')       return `${Number(p.value)}% off`;
-  return 'Free delivery';
+  return tr('auto.paymentDetail.freeDelivery', 'Free delivery');
 }
 
 const PROMO_GRADIENTS = [
@@ -127,7 +128,7 @@ export default function PromotionsScreen() {
                   <View style={[styles.expiryBadge, { backgroundColor: daysLeft <= 3 ? '#FEF2F2' : isDark ? '#161B22' : '#F1F5F9', borderColor: daysLeft <= 3 ? '#FECACA' : theme.border }]}>
                     <Ionicons name="time-outline" size={11} color={daysLeft <= 3 ? '#EF4444' : theme.textThird} />
                     <Text style={[styles.expiryText, { color: daysLeft <= 3 ? '#EF4444' : theme.textThird }]}>
-                      {daysLeft === 0 ? 'Expires today' : `${daysLeft}d left`}
+                      {daysLeft === 0 ? tr('auto.promotions.expiresToday', 'Expires today') : `${daysLeft}d left`}
                     </Text>
                   </View>
                 </View>

@@ -7,6 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 // Amber banner rendered above the main tab stack whenever the current user
 // has a pending deletion. Tapping Cancel hits the backend, clears the
 // AuthContext state, and the banner disappears. No banner = no deletion
@@ -57,7 +58,7 @@ export function DeletionPendingBanner() {
         </Text>
         <Text style={styles.sub}>
           {tx('auto.deletionpendingbanner.yourAccountWillBePermanently', 'Your account will be permanently deleted on')} {dateLabel}
-          {daysLeft > 0 ? ` (${daysLeft} day${daysLeft === 1 ? '' : 's'} left)` : ''}.
+          {daysLeft > 0 ? tr('auto.deletionpendingbanner.dayLeft', '({{daysLeft}} day{{v1}} left)', { daysLeft, v1: daysLeft === 1 ? '' : 's' }) : ''}.
         </Text>
       </View>
       <Pressable
@@ -65,7 +66,7 @@ export function DeletionPendingBanner() {
         disabled={busy}
         style={[styles.btn, busy && { opacity: 0.5 }]}
       >
-        <Text style={styles.btnText}>{busy ? '…' : 'Cancel'}</Text>
+        <Text style={styles.btnText}>{busy ? '…' : tr('auto.AddressPicker.cancel', 'Cancel')}</Text>
       </Pressable>
     </View>
   );

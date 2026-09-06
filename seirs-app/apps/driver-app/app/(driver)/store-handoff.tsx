@@ -47,6 +47,7 @@ import { PackageCodeCapture } from '@/components/PackageCodeCapture';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type Direction = 'collect' | 'drop';
 type Step      = 'scan' | 'sign' | 'done';
@@ -68,23 +69,23 @@ const COPY = (): Record<Direction, {
 }> => ({
   collect: {
     title:    tr('auto.storeHandoff.collectFromTheCounter', 'Collect from the counter'),
-    scanLead: 'Scan the parcel before you take it. From this moment it is on you, not the store.',
-    signTitle: 'Who is releasing it?',
-    signBody:  'Hand your phone to the person at the counter. They type their own full name. That name is what answers a question about this parcel later, and a store id cannot.',
-    namePlaceholder: "Counter staff's full name",
+    scanLead: tx9('auto.storeHandoff.scanTheParcelBeforeYou', 'Scan the parcel before you take it. From this moment it is on you, not the store.'),
+    signTitle: tx9('auto.storeHandoff.whoIsReleasingIt', 'Who is releasing it?'),
+    signBody:  tx9('auto.storeHandoff.handYourPhoneToThe', 'Hand your phone to the person at the counter. They type their own full name. That name is what answers a question about this parcel later, and a store id cannot.'),
+    namePlaceholder: tx9('auto.storeHandoff.counterStaffSFullName', 'Counter staff\'s full name'),
     cta:       tr('auto.storeHandoff.takeCustody', 'Take custody'),
-    doneTitle: 'Signed for',
-    doneBody:  'The parcel is on you now. The counter is on the record as having released it.',
+    doneTitle: tx9('auto.storeHandoff.signedFor', 'Signed for'),
+    doneBody:  tx9('auto.storeHandoff.theParcelIsOnYou', 'The parcel is on you now. The counter is on the record as having released it.'),
   },
   drop: {
     title:    tr('auto.storeHandoff.handInAtTheCounter', 'Hand in at the counter'),
-    scanLead: 'Scan the parcel as you hand it over. Until the counter signs, it is still on you.',
-    signTitle: 'Who is receiving it?',
-    signBody:  'Hand your phone to the person at the counter. They type their own full name. This is what stops the store saying later that the parcel never arrived.',
-    namePlaceholder: "Counter staff's full name",
+    scanLead: tx9('auto.storeHandoff.scanTheParcelAsYou', 'Scan the parcel as you hand it over. Until the counter signs, it is still on you.'),
+    signTitle: tx9('auto.storeHandoff.whoIsReceivingIt', 'Who is receiving it?'),
+    signBody:  tx9('auto.storeHandoff.handYourPhoneToThe2', 'Hand your phone to the person at the counter. They type their own full name. This is what stops the store saying later that the parcel never arrived.'),
+    namePlaceholder: tx9('auto.storeHandoff.counterStaffSFullName', 'Counter staff\'s full name'),
     cta:       tr('auto.storeHandoff.handOver', 'Hand over'),
-    doneTitle: 'Handed over',
-    doneBody:  'The counter has signed for it. It is off you and on the store.',
+    doneTitle: tx9('auto.storeHandoff.handedOver', 'Handed over'),
+    doneBody:  tx9('auto.storeHandoff.theCounterHasSignedFor', 'The counter has signed for it. It is off you and on the store.'),
   },
 });
 
@@ -325,7 +326,7 @@ export default function StoreHandoffScreen() {
                 color: counter.isOpenNow ? '#16A34A' : '#DC2626',
                 fontWeight: FontWeight.bold,
               }}>
-                {counter.isOpenNow ? 'Open now' : 'Closed now'}
+                {counter.isOpenNow ? tx9('auto.storeHandoff.openNow', 'Open now') : tx9('auto.storeHandoff.closedNow', 'Closed now')}
               </Text>
               {counterHours ? `  ·  ${counterHours}` : ''}
               {counter.phone ? '  ·  ' : ''}
@@ -345,7 +346,7 @@ export default function StoreHandoffScreen() {
       {/* Three dots, not a percentage. A rider needs to know how many more
           things they are being asked for while someone waits. */}
       <View style={styles.steps}>
-        {['Scan', 'Sign', 'Done'].map((label, i) => (
+        {[tx9('auto.storeHandoff.scan', 'Scan'), tx9('auto.storeHandoff.sign', 'Sign'), tx9('auto.profile.done', 'Done')].map((label, i) => (
           <View key={label} style={styles.stepItem}>
             <View style={[
               styles.stepDot,
@@ -477,7 +478,7 @@ export default function StoreHandoffScreen() {
                     </View>}
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.photoTitle, { color: theme.text }]}>
-                    {photoUri ? 'Photo attached' : 'Add a photo of the hand-over'}
+                    {photoUri ? tx9('auto.storeHandoff.photoAttached', 'Photo attached') : tx9('auto.storeHandoff.addAPhotoOfThe', 'Add a photo of the hand-over')}
                   </Text>
                   <Text style={[styles.photoSub, { color: theme.textSecond }]}>
                     {tr('auto.storeHandoff.optionalSkipItIfThe', 'Optional. Skip it if the queue is moving.')}

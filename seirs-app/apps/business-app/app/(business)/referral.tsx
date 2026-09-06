@@ -14,6 +14,7 @@ import { loyaltyApi } from '@/services/api';
 import { WEB_BASE } from '@/constants/config';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Refer & Earn, for business accounts.
@@ -116,12 +117,12 @@ export default function BusinessReferralScreen() {
           <View style={styles.codeRow}>
             <View style={[styles.codeBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
               <Text style={[styles.code, { color: colors.text }]} numberOfLines={1}>
-                {code || 'Not available'}
+                {code || tx9('auto.referral.notAvailable', 'Not available')}
               </Text>
             </View>
             <Pressable onPress={copy} style={[styles.copyBtn, { backgroundColor: colors.primary }]}>
               <Icon name={copied ? 'Check' : 'Copy'} size={16} color="#fff" />
-              <Text style={styles.copyText}>{copied ? 'Copied' : 'Copy'}</Text>
+              <Text style={styles.copyText}>{copied ? tx9('auto.deliveryDetail.copied', 'Copied') : tx9('auto.deliveryDetail.copy', 'Copy')}</Text>
             </Pressable>
           </View>
           <Pressable onPress={share} style={[styles.shareBtn, { borderColor: colors.primary }]}>
@@ -149,9 +150,9 @@ export default function BusinessReferralScreen() {
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>{tx('auto.referral.howItWorks', 'How it works')}</Text>
           {[
-            'Share your code with another business',
-            'They sign up and complete their first delivery',
-            'You both get rewarded',
+            tx9('auto.referral.shareYourCodeWithAnother', 'Share your code with another business'),
+            tx9('auto.referral.theySignUpAndComplete', 'They sign up and complete their first delivery'),
+            tx9('auto.referral.youBothGetRewarded', 'You both get rewarded'),
           ].map((step, i) => (
             <View key={step} style={styles.stepRow}>
               <View style={[styles.stepNo, { backgroundColor: colors.primary }]}>
@@ -181,7 +182,7 @@ export default function BusinessReferralScreen() {
             >
               <View style={{ flex: 1 }}>
                 <Text style={[styles.histName, { color: colors.text }]} numberOfLines={1}>
-                  {r.name ?? r.businessName ?? 'A business'}
+                  {r.name ?? r.businessName ?? tx9('auto.referral.aBusiness', 'A business')}
                 </Text>
                 <Text style={[styles.histSub, { color: colors.textThird }]}>
                   {r.joinedAt ? new Date(r.joinedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
@@ -191,7 +192,7 @@ export default function BusinessReferralScreen() {
                   first completed delivery, and saying so here stops the
                   question of where the points went. */}
               <Text style={[styles.histState, { color: r.bonusPaid ? '#16A34A' : colors.textThird }]}>
-                {r.bonusPaid ? 'Bonus paid' : 'Awaiting first delivery'}
+                {r.bonusPaid ? tx9('auto.referral.bonusPaid', 'Bonus paid') : tx9('auto.referral.awaitingFirstDelivery', 'Awaiting first delivery')}
               </Text>
             </View>
           ))

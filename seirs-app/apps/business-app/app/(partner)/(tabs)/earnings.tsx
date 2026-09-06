@@ -11,6 +11,7 @@ import { useColors } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const PERIODS = ['week', 'month'] as const;
 type Period = typeof PERIODS[number];
@@ -69,7 +70,7 @@ export default function EarningsScreen() {
                 onPress={() => setPeriod(p)}
               >
                 <Text style={[styles.periodBtnText, { color: colors.textSecond }, active && { color: '#fff' }]}>
-                  {p === 'week' ? 'This Week' : 'This Month'}
+                  {p === 'week' ? tx9('auto.earnings.thisWeek', 'This Week') : tx9('auto.billing.thisMonth', 'This Month')}
                 </Text>
               </Pressable>
             );
@@ -116,7 +117,7 @@ export default function EarningsScreen() {
             </View>
             <View style={styles.payoutRight}>
               <Text style={[styles.payoutDateLabel, { color: colors.textThird }]}>{tx('auto.earnings.nextTransfer', 'Next Transfer')}</Text>
-              <Text style={[styles.payoutDate, { color: colors.text }]}>{data?.nextPayoutDate ?? 'Monday'}</Text>
+              <Text style={[styles.payoutDate, { color: colors.text }]}>{data?.nextPayoutDate ?? tx9('auto.earnings.monday', 'Monday')}</Text>
             </View>
           </View>
 
@@ -142,7 +143,7 @@ export default function EarningsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.destLabel, { color: colors.textSecond }]}>{tr('auto.earnings.paidInto', 'PAID INTO')}</Text>
               <Text style={[styles.destValue, { color: colors.text }]}>
-                {(data as any)?.payoutAccountLabel ?? 'Your payout account'}
+                {(data as any)?.payoutAccountLabel ?? tx9('auto.earnings.yourPayoutAccount', 'Your payout account')}
               </Text>
             </View>
             <Text style={[styles.destAction, { color: colors.primary }]}>{tx('auto.earnings.change', 'Change')}</Text>

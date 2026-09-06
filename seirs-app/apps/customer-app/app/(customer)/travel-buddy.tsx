@@ -23,6 +23,7 @@ import { CitySearchField } from '@/components/CitySearchField';
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 
 /**
@@ -53,12 +54,12 @@ const vehicleSummary = (driver: any): string => {
   const desc  = vehicleDescription(driver);
   const plate = String(driver?.vehiclePlate ?? '').trim();
   const kind  = VEHICLE_LABEL[driver?.vehicleType] ?? driver?.vehicleType ?? 'vehicle';
-  if (desc && plate) return `Look for a ${desc.toLowerCase()}, plate ${plate}.`;
-  if (desc)          return `Look for a ${desc.toLowerCase()}. The plate is not listed: ask before you board.`;
-  if (plate)         return `Look for plate ${plate} on a ${String(kind).toLowerCase()}.`;
+  if (desc && plate) return tx9('auto.travelBuddy.lookForAPlate', 'Look for a {{v0}}, plate {{plate}}.', { v0: desc.toLowerCase(), plate });
+  if (desc)          return tx9('auto.travelBuddy.lookForAThePlate', 'Look for a {{v0}}. The plate is not listed: ask before you board.', { v0: desc.toLowerCase() });
+  if (plate)         return tx9('auto.travelBuddy.lookForPlateOnA', 'Look for plate {{plate}} on a {{v1}}.', { plate, v1: String(kind).toLowerCase() });
   // Saying so beats an empty line: the passenger knows to ask in chat
   // instead of walking up to the first okada they see.
-  return `This driver has not listed the colour or plate. Ask them in chat before you board.`;
+  return tx9('auto.travelBuddy.thisDriverHasNotListed', 'This driver has not listed the colour or plate. Ask them in chat before you board.');
 };
 
 /**
@@ -74,13 +75,13 @@ const vehicleSummary = (driver: any): string => {
  * both sides of the marketplace are pointed at the same corridors and
  * the pool on each one is not split by wording.
  */
-const POPULAR_ROUTES: Array<{ from: string; to: string }> = [
+const POPULAR_ROUTES = (): Array<{ from: string; to: string }> => [
   { from: 'Lagos',   to: 'Ibadan' },
   { from: 'Lagos',   to: 'Abuja' },
   { from: 'Ibadan',  to: 'Abuja' },
   { from: 'Lagos',   to: 'Benin' },
   { from: 'Abuja',   to: 'Kano' },
-  { from: 'Lagos',   to: 'Port Harcourt' },
+  { from: 'Lagos',   to: tx9('auto.travelBuddy.portHarcourt', 'Port Harcourt') },
 ];
 
 export default function TravelBuddyScreen() {
@@ -545,7 +546,7 @@ export default function TravelBuddyScreen() {
               {dayISO
                 ? new Date(`${dayISO}T00:00:00`).toLocaleDateString('en-GB',
                     { weekday: 'short', day: 'numeric', month: 'short' })
-                : 'Any date'}
+                : tx9('auto.travelBuddy.anyDate', 'Any date')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               {!!dayISO && (
@@ -593,7 +594,7 @@ export default function TravelBuddyScreen() {
           <View style={styles.routesWrap}>
             <Text style={[styles.routesLabel, { color: theme.textSecond }]}>{tr('auto.travelBuddy.popularRoutes', 'POPULAR ROUTES')}</Text>
             <View style={styles.routesRow}>
-              {POPULAR_ROUTES.map(r => (
+              {POPULAR_ROUTES().map(r => (
                 <Pressable
                   key={`${r.from}-${r.to}`}
                   onPress={() => { setFrom(r.from); setTo(r.to); }}
@@ -615,12 +616,12 @@ export default function TravelBuddyScreen() {
           <View style={styles.empty}>
             <Ionicons name="calendar-outline" size={40} color={theme.textThird} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>
-              {trips.length > 0 ? 'Nothing matching that day' : 'No trips on this route yet'}
+              {trips.length > 0 ? tx9('auto.travelBuddy.nothingMatchingThatDay', 'Nothing matching that day') : tx9('auto.travelBuddy.noTripsOnThisRoute', 'No trips on this route yet')}
             </Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
               {trips.length > 0
-                ? `There are ${trips.length} trip${trips.length === 1 ? '' : 's'} on this route, just not for ${seats} seat${seats === 1 ? '' : 's'} on the day you picked. Try Any date.`
-                : 'Drivers declare trips a day or two ahead. Check back, or send your package the normal way and it can still ride with an intercity driver.'}
+                ? tx9('auto.travelBuddy.thereAreTripOnThis', 'There are {{length}} trip{{v1}} on this route, just not for {{seats}} seat{{v3}} on the day you picked. Try Any date.', { length: trips.length, v1: trips.length === 1 ? '' : 's', seats, v3: seats === 1 ? '' : 's' })
+                : tx9('auto.travelBuddy.driversDeclareTripsADay', 'Drivers declare trips a day or two ahead. Check back, or send your package the normal way and it can still ride with an intercity driver.')}
             </Text>
 
             {/* The dead end, made into a door. */}
@@ -647,7 +648,7 @@ export default function TravelBuddyScreen() {
 
             <Text style={[styles.routesLabel, { color: theme.textSecond, marginTop: Spacing.lg }]}>{tr('auto.travelBuddy.orTry', 'OR TRY')}</Text>
             <View style={styles.routesRow}>
-              {POPULAR_ROUTES.map(r => (
+              {POPULAR_ROUTES().map(r => (
                 <Pressable
                   key={`empty-${r.from}-${r.to}`}
                   onPress={() => { setFrom(r.from); setTo(r.to); setDayISO(null); }}
@@ -667,7 +668,7 @@ export default function TravelBuddyScreen() {
         {searched && !loading && trips.length > 0 && (
           <View style={{ gap: 8, marginBottom: Spacing.sm }}>
             <View style={styles.filterRow}>
-              {([['soonest', 'Leaving soonest'], ['seats', 'Most seats']] as const).map(([key, label]) => (
+              {([['soonest', tx9('auto.travelBuddy.leavingSoonest', 'Leaving soonest')], ['seats', tx9('auto.travelBuddy.mostSeats', 'Most seats')]] as const).map(([key, label]) => (
                 <Pressable
                   key={key}
                   onPress={() => setSortBy(key)}
@@ -683,7 +684,7 @@ export default function TravelBuddyScreen() {
               ))}
             </View>
             <View style={styles.filterRow}>
-              {([['any', 'Any time'], ['today', 'Today'], ['tomorrow', 'Tomorrow'], ['week', 'This week']] as const).map(([key, label]) => (
+              {([['any', tx9('auto.travelBuddy.anyTime', 'Any time')], ['today', tx9('auto.wallet.today', 'Today')], ['tomorrow', tx9('auto.travelBuddy.tomorrow', 'Tomorrow')], ['week', tx9('auto.travelBuddy.thisWeek', 'This week')]] as const).map(([key, label]) => (
                 <Pressable
                   key={key}
                   onPress={() => setWhen(key)}
@@ -782,10 +783,10 @@ export default function TravelBuddyScreen() {
                     send them to the wrong city. */}
                 <Text style={[styles.tripMeta, { color: theme.textThird }]}>
                   {trip.segment
-                    ? `Get on at ${trip.segment.boardCity}, off at ${trip.segment.alightCity}`
+                    ? tx9('auto.travelBuddy.getOnAtOffAt', 'Get on at {{boardCity}}, off at {{alightCity}}', { boardCity: trip.segment.boardCity, alightCity: trip.segment.alightCity })
                     : trip.pickupMode === 'fixed' && trip.pickupArea
-                      ? `Gets you on at ${trip.pickupArea}, off at ${trip.toCity}`
-                      : 'Pickup along the route (agree in chat)'}
+                      ? tx9('auto.travelBuddy.getsYouOnAtOff', 'Gets you on at {{pickupArea}}, off at {{toCity}}', { pickupArea: trip.pickupArea, toCity: trip.toCity })
+                      : tx9('auto.travelBuddy.pickupAlongTheRouteAgree', 'Pickup along the route (agree in chat)')}
                 </Text>
                 <Text style={[styles.tripMeta, { color: theme.textThird }]}>
                   {tr('auto.travelBuddy.exactSpotOnceTheDriver', 'Exact spot once the driver accepts you')}
@@ -823,7 +824,7 @@ export default function TravelBuddyScreen() {
                 <Text style={[styles.vehicleDesc, { color: theme.text }]}>
                   {[trip.driver?.vehicleColor, trip.driver?.vehicleMake, trip.driver?.vehicleModel]
                     .filter(Boolean)
-                    .join(' ') || VEHICLE_LABEL[trip.driver?.vehicleType] || 'Vehicle'}
+                    .join(' ') || VEHICLE_LABEL[trip.driver?.vehicleType] || tx9('auto.travelBuddy.vehicle', 'Vehicle')}
                 </Text>
                 <Text style={[styles.tripMeta, { color: theme.textThird }]}>
                   {tr('auto.travelBuddy.thePlateIsShownOnce', 'The plate is shown once the driver accepts you')}
@@ -846,9 +847,9 @@ export default function TravelBuddyScreen() {
               {trip.acceptsPassengers && trip.seatsLeft > 0
                 ? `${trip.seatsLeft} seat${trip.seatsLeft === 1 ? '' : 's'} left`
                 : trip.acceptsPassengers
-                  ? 'Trip is full'
-                  : 'Packages only on this trip'}
-              {trip.spareCapacityKg > 0 ? ` · ${trip.spareCapacityKg} kg spare` : ''}
+                  ? tx9('auto.travelBuddy.tripIsFull', 'Trip is full')
+                  : tx9('auto.travelBuddy.packagesOnlyOnThisTrip', 'Packages only on this trip')}
+              {trip.spareCapacityKg > 0 ? tx9('auto.travelBuddy.kgSpare', '· {{spareCapacityKg}} kg spare', { spareCapacityKg: trip.spareCapacityKg }) : ''}
             </Text>
 
             <View style={styles.tripFoot}>

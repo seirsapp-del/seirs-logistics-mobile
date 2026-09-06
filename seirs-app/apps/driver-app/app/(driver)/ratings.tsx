@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { driversApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const RATING_THRESHOLD = 3.5;
 
@@ -107,7 +108,7 @@ export default function DriverRatingsScreen() {
             ))}
           </View>
           <Text style={[styles.heroSub, { color: theme.textSecond }]}>
-            {total > 0 ? `Based on ${total.toLocaleString()} rating${total === 1 ? '' : 's'}` : 'No ratings yet. Complete deliveries to earn your first.'}
+            {total > 0 ? tx9('auto.ratings.basedOnRating', 'Based on {{v0}} rating{{v1}}', { v0: total.toLocaleString(), v1: total === 1 ? '' : 's' }) : tx9('auto.ratings.noRatingsYetCompleteDeliveries', 'No ratings yet. Complete deliveries to earn your first.')}
           </Text>
         </View>
 

@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 interface Props {
   visible: boolean;
@@ -180,7 +181,7 @@ export function Drawer({ visible, onClose }: Props) {
       }}
       /* Matches the Profile tab's footer, and gives the empty lower half
          of the drawer something true to say. */
-      footerNote={`SEIRS Logistics v${Constants.expoConfig?.version ?? '?'}`}
+      footerNote={tx('auto.drawer.seirsLogisticsV', 'SEIRS Logistics v{{v0}}', { v0: Constants.expoConfig?.version ?? '?' })}
       theme={{
         surface:    c.surface,
         background: c.background,

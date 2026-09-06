@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react-native';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { naira, nairaAxis } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 interface EarningRow {
   id:            string;
@@ -144,7 +145,7 @@ export function EarningsCalendar({ history, theme, currentMonthTotal }: Props) {
       </View>
 
       <Text style={[styles.monthTotal, { color: '#16A34A' }]}>
-        {naira(headerTotal)} {atCurrentMonth ? 'this month' : `in ${MONTHS[viewMonth]}`}
+        {naira(headerTotal)} {atCurrentMonth ? tr('auto.earningscalendar.thisMonth', 'this month') : `in ${MONTHS[viewMonth]}`}
       </Text>
 
       {/* Weekday labels */}
@@ -222,7 +223,7 @@ export function EarningsCalendar({ history, theme, currentMonthTotal }: Props) {
           ) : selectedRows.map(r => (
             <View key={r.id} style={styles.dayRow}>
               <Text style={[styles.dayRowLabel, { color: theme.textSecond }]} numberOfLines={1}>
-                {r.label ?? (`Trip ${r.trackingCode ?? ''}`.trim() || 'Delivery')}
+                {r.label ?? (`Trip ${r.trackingCode ?? ''}`.trim() || tr('auto.deliveryDetail.delivery', 'Delivery'))}
               </Text>
               <Text style={[styles.dayRowAmt, { color: theme.text }]}>
                 {naira(rowAmount(r))}

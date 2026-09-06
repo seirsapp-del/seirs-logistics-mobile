@@ -43,23 +43,24 @@ import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /** Matches the server. A reading looser than this is offered for a retry. */
 const ACCURACY_LIMIT_M = 50;
 
-const DOC_LABEL: Record<string, string> = {
-  storefront_photo: 'The new shop front',
-  storage_area:     'Where parcels will sit',
-  street_view:      'The new shop from the road',
-  shelf_or_lockup:  'The shelf or lock-up (optional)',
-};
+const DOC_LABEL = (): Record<string, string> => ({
+  storefront_photo: tx9('auto.move.theNewShopFront', 'The new shop front'),
+  storage_area:     tx9('auto.move.whereParcelsWillSit', 'Where parcels will sit'),
+  street_view:      tx9('auto.move.theNewShopFromThe', 'The new shop from the road'),
+  shelf_or_lockup:  tx9('auto.move.theShelfOrLockUp', 'The shelf or lock-up (optional)'),
+});
 
-const DOC_HINT: Record<string, string> = {
-  storefront_photo: 'Stand across the road and photograph the whole front, including any sign.',
-  storage_area:     'The shelf, corner or room where customers’ parcels will actually be kept.',
-  street_view:      'The street looking towards your shop, so a rider can recognise the turning.',
-  shelf_or_lockup:  'If parcels go in a lock-up or cabinet, show it.',
-};
+const DOC_HINT = (): Record<string, string> => ({
+  storefront_photo: tx9('auto.move.standAcrossTheRoadAnd', 'Stand across the road and photograph the whole front, including any sign.'),
+  storage_area:     tx9('auto.move.theShelfCornerOrRoom', 'The shelf, corner or room where customers’ parcels will actually be kept.'),
+  street_view:      tx9('auto.move.theStreetLookingTowardsYour', 'The street looking towards your shop, so a rider can recognise the turning.'),
+  shelf_or_lockup:  tx9('auto.move.ifParcelsGoInA', 'If parcels go in a lock-up or cabinet, show it.'),
+});
 
 export default function PartnerMoveScreen() {
   const colors = useColors();
@@ -233,7 +234,7 @@ export default function PartnerMoveScreen() {
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.move.yourAddressToday', 'YOUR ADDRESS TODAY')}</Text>
           <Text style={[styles.address, { color: colors.text }]}>
-            {data?.currentAddress || 'No address on file'}
+            {data?.currentAddress || tx9('auto.settings.noAddressOnFile', 'No address on file')}
           </Text>
           <Text style={[styles.note, { color: colors.textSecond }]}>
             {tr('auto.move.thisIsWhereCustomersAnd', 'This is where customers and riders are sent. It only changes once our team has approved your new shop.')}
@@ -289,10 +290,10 @@ export default function PartnerMoveScreen() {
                   )}
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.docLabel, { color: colors.text }]}>
-                      {DOC_LABEL[docId] ?? docId}
+                      {DOC_LABEL()[docId] ?? docId}
                     </Text>
                     <Text style={[styles.docHint, { color: colors.textSecond }]}>
-                      {doc ? 'Sent. Our team will look at it.' : DOC_HINT[docId] ?? ''}
+                      {doc ? tx9('auto.move.sentOurTeamWillLook', 'Sent. Our team will look at it.') : DOC_HINT()[docId] ?? ''}
                     </Text>
                     {!doc && required && (
                       <Text style={[styles.docHint, { color: colors.warning }]}>{tx('auto.move.neededBeforeWeCanApprove', 'Needed before we can approve')}</Text>
@@ -305,7 +306,7 @@ export default function PartnerMoveScreen() {
                   >
                     {busy === docId
                       ? <ActivityIndicator size="small" color={colors.primary} />
-                      : <Text style={[styles.smallBtnText, { color: colors.primary }]}>{doc ? 'Retake' : 'Take'}</Text>}
+                      : <Text style={[styles.smallBtnText, { color: colors.primary }]}>{doc ? tx9('auto.move.retake', 'Retake') : tx9('auto.move.take', 'Take')}</Text>}
                   </Pressable>
                 </View>
               );
@@ -325,7 +326,7 @@ export default function PartnerMoveScreen() {
                 )}
                 {!!req.rejectedItems?.length && (
                   <Text style={[styles.note, { color: colors.textSecond }]}>
-                    Please redo: {req.rejectedItems.map((d: string) => DOC_LABEL[d] ?? d).join(', ')}.
+                    Please redo: {req.rejectedItems.map((d: string) => DOC_LABEL()[d] ?? d).join(', ')}.
                   </Text>
                 )}
               </View>
@@ -388,8 +389,8 @@ export default function PartnerMoveScreen() {
                   </Text>
                   <Text style={[styles.docHint, { color: colors.textSecond }]}>
                     {stillTrading
-                      ? 'Yes. Customers holding a collection code can still come and get their parcel.'
-                      : 'No, the shop is already shut. Tell us now so we can arrange to get those parcels back.'}
+                      ? tx9('auto.move.yesCustomersHoldingACollection', 'Yes. Customers holding a collection code can still come and get their parcel.')
+                      : tx9('auto.move.noTheShopIsAlready', 'No, the shop is already shut. Tell us now so we can arrange to get those parcels back.')}
                   </Text>
                 </View>
                 <Switch

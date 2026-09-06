@@ -55,6 +55,7 @@ import { TERMS_URL } from '@/constants/config';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const STEPS = ['Packages', 'Pickup', 'Vehicle', 'Review'] as const;
 const STEP_SLOTS = ['send-package', 'send-address', 'send-vehicle', 'send-fare'] as const;
@@ -84,11 +85,11 @@ const DEFAULT_MAX_PACKAGES: Record<string, number> = {
  * different ways. An unlisted tier renders nothing rather than a raw key.
  */
 const ZONE_TIER_LABEL: Record<string, string> = {
-  intraStateLongHaul: 'Long trip within one state',
-  interStateAdjacent: 'Crossing into the next state',
-  interStateDistant:  'Crossing to a further state',
-  crossZone:          'Crossing to another part of the country',
-  interState:         'Crossing a state line',
+  intraStateLongHaul: tx9('auto.sendPackage.longTripWithinOneState', 'Long trip within one state'),
+  interStateAdjacent: tx9('auto.sendPackage.crossingIntoTheNextState', 'Crossing into the next state'),
+  interStateDistant:  tx9('auto.sendPackage.crossingToAFurtherState', 'Crossing to a further state'),
+  crossZone:          tx9('auto.sendPackage.crossingToAnotherPartOf', 'Crossing to another part of the country'),
+  interState:         tx9('auto.sendPackage.crossingAStateLine', 'Crossing a state line'),
 };
 
 const TIME_SLOTS = Array.from({ length: 17 }, (_, i) => {
@@ -821,16 +822,16 @@ export default function SendPackageScreen() {
     if (step === 0) {
       for (let i = 0; i < draft.stops.length; i++) {
         const s = draft.stops[i];
-        if (!(s.photoUris ?? []).length)    return { packageIndex: i, message: `Package ${i + 1} needs at least one photo.` };
-        if (!(Number(s.weightKg) > 0))      return { packageIndex: i, message: `Package ${i + 1} needs a weight.` };
-        if (!(s.categoryCode ?? draft.categoryCode)) return { packageIndex: i, message: `Package ${i + 1} needs a category.` };
-        if (!s.receiverFirstName?.trim())   return { packageIndex: i, message: `Package ${i + 1} needs the receiver's first name.` };
+        if (!(s.photoUris ?? []).length)    return { packageIndex: i, message: tx9('auto.sendPackage.packageNeedsAtLeastOne', 'Package {{v0}} needs at least one photo.', { v0: i + 1 }) };
+        if (!(Number(s.weightKg) > 0))      return { packageIndex: i, message: tx9('auto.sendPackage.packageNeedsAWeight', 'Package {{v0}} needs a weight.', { v0: i + 1 }) };
+        if (!(s.categoryCode ?? draft.categoryCode)) return { packageIndex: i, message: tx9('auto.sendPackage.packageNeedsACategory', 'Package {{v0}} needs a category.', { v0: i + 1 }) };
+        if (!s.receiverFirstName?.trim())   return { packageIndex: i, message: tx9('auto.sendPackage.packageNeedsTheReceiverS', 'Package {{v0}} needs the receiver\'s first name.', { v0: i + 1 }) };
         if (s.fallbackPref === 'neighbour' && !s.fallbackNeighbourName?.trim())
-          return { packageIndex: i, message: `Package ${i + 1}: name the neighbour who may collect.` };
-        if (!s.recipientPhone?.trim())      return { packageIndex: i, message: `Package ${i + 1} needs the receiver's phone.` };
+          return { packageIndex: i, message: tx9('auto.sendPackage.packageNameTheNeighbourWho', 'Package {{v0}}: name the neighbour who may collect.', { v0: i + 1 }) };
+        if (!s.recipientPhone?.trim())      return { packageIndex: i, message: tx9('auto.sendPackage.packageNeedsTheReceiverS2', 'Package {{v0}} needs the receiver\'s phone.', { v0: i + 1 }) };
         if (s.destinationMode === 'store' && !s.destinationStoreId)
-          return { packageIndex: i, message: `Package ${i + 1}: choose the partner store it goes to.` };
-        if (s.lat == null || s.lng == null) return { packageIndex: i, message: `Package ${i + 1} needs a delivery address picked from the suggestions.` };
+          return { packageIndex: i, message: tx9('auto.sendPackage.packageChooseThePartnerStore', 'Package {{v0}}: choose the partner store it goes to.', { v0: i + 1 }) };
+        if (s.lat == null || s.lng == null) return { packageIndex: i, message: tx9('auto.sendPackage.packageNeedsADeliveryAddress', 'Package {{v0}} needs a delivery address picked from the suggestions.', { v0: i + 1 }) };
       }
       return null;
     }
@@ -855,7 +856,7 @@ export default function SendPackageScreen() {
         if (clash !== -1) {
           return {
             packageIndex: clash,
-            message: `Package ${clash + 1} is going to the same counter you are dropping it at. Send it to an address or a different counter.`,
+            message: tx9('auto.sendPackage.packageIsGoingToThe', 'Package {{v0}} is going to the same counter you are dropping it at. Send it to an address or a different counter.', { v0: clash + 1 }),
           };
         }
       }
@@ -1346,8 +1347,8 @@ export default function SendPackageScreen() {
                     onChangeText={(v) => onChangePkgAddress(i, v)}
                     onFocus={(e) => { setActiveField({ kind: 'pkg', idx: i }); handleFieldFocus(e, 260); }}
                     placeholder={s.destinationMode === 'store'
-                      ? 'Area the receiver is in, e.g. Yaba'
-                      : 'Street, area, city'}
+                      ? tx9('auto.sendPackage.areaTheReceiverIsIn', 'Area the receiver is in, e.g. Yaba')
+                      : tx9('auto.sendPackage.streetAreaCity', 'Street, area, city')}
                     placeholderTextColor={colors.textThird}
                   />
                   {renderSuggestions('pkg', i)}
@@ -1401,7 +1402,7 @@ export default function SendPackageScreen() {
                                 </Text>
                                 <Text style={[styles.storeMeta, { color: colors.textThird }]} numberOfLines={1}>
                                   {storeMetaLine(store)}
-                                  {store.bucket === 'full' ? ' · Full' : store.bucket === 'limited' ? ' · Nearly full' : ' · Space available'}
+                                  {store.bucket === 'full' ? tx9('auto.sendPackage.full', '· Full') : store.bucket === 'limited' ? tx9('auto.sendPackage.nearlyFull', '· Nearly full') : tx9('auto.sendPackage.spaceAvailable', '· Space available')}
                                 </Text>
                               </View>
                               <Icon name="ChevronRight" size={16} color={colors.textThird} />
@@ -1411,8 +1412,8 @@ export default function SendPackageScreen() {
                       ) : (
                         <Text style={[styles.hint, { color: colors.textThird }]}>
                           {(s.lat != null)
-                            ? 'No partner counter near that area yet. Send to the address instead.'
-                            : 'Type the area the receiver is in and we will show the counters around it.'}
+                            ? tx9('auto.sendPackage.noPartnerCounterNearThat', 'No partner counter near that area yet. Send to the address instead.')
+                            : tx9('auto.sendPackage.typeTheAreaTheReceiver', 'Type the area the receiver is in and we will show the counters around it.')}
                         </Text>
                       )}
                     </View>
@@ -1555,7 +1556,7 @@ export default function SendPackageScreen() {
               })}
 
               <Text style={[styles.label, { color: colors.textSecond }]}>
-                {draft.pickupMode === 'store' ? 'Find a counter near' : 'Pickup address'} <Text style={{ color: '#DC2626' }}>*</Text>
+                {draft.pickupMode === 'store' ? tx9('auto.sendPackage.findACounterNear', 'Find a counter near') : tx9('auto.sendPackage.pickupAddress', 'Pickup address')} <Text style={{ color: '#DC2626' }}>*</Text>
               </Text>
               <TextInput
                 style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
@@ -1563,8 +1564,8 @@ export default function SendPackageScreen() {
                 onChangeText={onChangePickup}
                 onFocus={(e) => { setActiveField({ kind: 'pickup' }); handleFieldFocus(e, 260); }}
                 placeholder={draft.pickupMode === 'store'
-                  ? 'Search a place, e.g. Yaba'
-                  : 'Where the driver collects everything'}
+                  ? tx9('auto.sendPackage.searchAPlaceEG', 'Search a place, e.g. Yaba')
+                  : tx9('auto.sendPackage.whereTheDriverCollectsEverything', 'Where the driver collects everything')}
                 placeholderTextColor={colors.textThird}
               />
               {renderSuggestions('pickup')}
@@ -1645,8 +1646,8 @@ export default function SendPackageScreen() {
                   ) : (
                     <Text style={[styles.hint, { color: colors.textThird }]}>
                       {draft.pickupLat != null
-                        ? 'No counter near that area yet. A driver can collect from you instead.'
-                        : 'Type a place nearby and we will show the counters you can drop at.'}
+                        ? tx9('auto.sendPackage.noCounterNearThatArea', 'No counter near that area yet. A driver can collect from you instead.')
+                        : tx9('auto.sendPackage.typeAPlaceNearbyAnd', 'Type a place nearby and we will show the counters you can drop at.')}
                     </Text>
                   )}
                 </View>
@@ -1734,11 +1735,11 @@ export default function SendPackageScreen() {
 
                   <Text style={[styles.hint, { color: scheduledHour == null ? '#DC2626' : colors.textSecond }]}>
                     {scheduledHour == null
-                      ? 'Pick an hour to continue.'
+                      ? tx9('auto.sendPackage.pickAnHourToContinue', 'Pick an hour to continue.')
                       /* The sender picked a PICKUP hour, not an arrival. Said
                          as "Driver arrives" it read as a delivery promise,
                          which Lagos traffic turns into a refund (B-6.2). */
-                      : `Pickup is booked for ${scheduledDayOffset === 0 ? 'today' : 'tomorrow'}, around ${TIME_SLOTS.find(t => t.hour === scheduledHour)?.label}.`}
+                      : tx9('auto.sendPackage.pickupIsBookedForAround', 'Pickup is booked for {{v0}}, around {{v1}}.', { v0: scheduledDayOffset === 0 ? 'today' : 'tomorrow', v1: TIME_SLOTS.find(t => t.hour === scheduledHour)?.label })}
                   </Text>
                 </View>
               )}
@@ -1786,9 +1787,9 @@ export default function SendPackageScreen() {
                       </View>
                       <Text style={[styles.vehSub, { color: colors.textSecond }]}>
                         {disabled
-                          ? overKm ? `Under ${maxKm}km trips only`
-                          : overCount ? `Max ${cap} packages` : `Max ${payload}kg`
-                          : `Up to ${cap} packages${payload > 0 ? ` · ${payload}kg payload` : ''}`}
+                          ? overKm ? tx9('auto.sendPackage.underKmTripsOnly', 'Under {{maxKm}}km trips only', { maxKm })
+                          : overCount ? tx9('auto.sendPackage.maxPackages', 'Max {{cap}} packages', { cap }) : tx9('auto.sendPackage.maxKg', 'Max {{payload}}kg', { payload })
+                          : tx9('auto.sendPackage.upToPackages', 'Up to {{cap}} packages{{v1}}', { cap, v1: payload > 0 ? ` · ${payload}kg payload` : '' })}
                       </Text>
                     </View>
                     {active && <Icon name="CheckCircle2" size={20} color={colors.primary} />}
@@ -1871,12 +1872,12 @@ export default function SendPackageScreen() {
                 <Text style={[styles.sumTitle, { color: colors.text }]}>{tx('auto.sendPackage.route', 'Route')}</Text>
                 <Text style={[styles.sumLine, { color: colors.textSecond }]} numberOfLines={2}>
                   {draft.pickupMode === 'store' && draft.pickupStoreName
-                    ? `You drop at ${draft.pickupStoreName} · driver collects there`
+                    ? tx9('auto.sendPackage.youDropAtDriverCollects', 'You drop at {{pickupStoreName}} · driver collects there', { pickupStoreName: draft.pickupStoreName })
                     : `From ${draft.pickupAddress || '…'}`}
                 </Text>
                 <Text style={[styles.sumLine, { color: colors.textSecond }]}>
                   {draft.stops.length} drop{draft.stops.length === 1 ? '' : 's'} · {route.distanceText ?? `~${routeKm}km`} · {VEHICLE_LABEL[draft.vehicleType]}
-                  {scheduleNow ? ' · Send now' : ` · ${TIME_SLOTS.find(t => t.hour === scheduledHour)?.label ?? ''}`}
+                  {scheduleNow ? tx9('auto.sendPackage.sendNow2', '· Send now') : ` · ${TIME_SLOTS.find(t => t.hour === scheduledHour)?.label ?? ''}`}
                 </Text>
               </View>
 
@@ -1902,10 +1903,10 @@ export default function SendPackageScreen() {
                     {expandedPkg === i && (
                       <View style={{ paddingLeft: 56, paddingBottom: 8, gap: 3 }}>
                         {([
-                          ['Drop-off', s.address || '-'],
-                          ['Receiver', `${[s.receiverFirstName, s.receiverLastName].filter(Boolean).join(' ') || s.recipientName || '-'} · ${s.recipientPhone || '-'}`],
-                          ['Weight', `${s.weightKg || '-'}kg`],
-                          ['Category', catalog.find(c => c.code === (s.categoryCode ?? draft.categoryCode))?.name ?? '-'],
+                          [tx9('auto.DeliveryTrackMap.dropOff', 'Drop-off'), s.address || '-'],
+                          [tx9('auto.sendPackage.receiver', 'Receiver'), `${[s.receiverFirstName, s.receiverLastName].filter(Boolean).join(' ') || s.recipientName || '-'} · ${s.recipientPhone || '-'}`],
+                          [tx9('auto.sendPackage.weight', 'Weight'), `${s.weightKg || '-'}kg`],
+                          [tx9('auto.sendPackage.category', 'Category'), catalog.find(c => c.code === (s.categoryCode ?? draft.categoryCode))?.name ?? '-'],
                         ] as [string, string][]).map(([lbl, val]) => (
                           <View key={lbl} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
                             {/* Labels one step down, VALUES full ink at 12px:
@@ -1995,14 +1996,14 @@ export default function SendPackageScreen() {
                   </View>
                 )}
                 {([
-                  ['Pickup', draft.pickupMode === 'store' && draft.pickupStoreName
+                  [tx9('auto.DeliveryTrackMap.pickup', 'Pickup'), draft.pickupMode === 'store' && draft.pickupStoreName
                     ? `${draft.pickupStoreName} (counter)` : (draft.pickupAddress || '-')],
-                  ['Packages', `${draft.stops.length} package${draft.stops.length === 1 ? '' : 's'}`],
-                  ['Distance', route.distanceText ?? `~${routeKm}km`],
-                  ['Vehicle', VEHICLE_LABEL[draft.vehicleType] ?? draft.vehicleType],
-                  ['When', scheduleNow ? 'Send now' : (TIME_SLOTS.find(t => t.hour === scheduledHour)?.label ?? '-')],
+                  [tx9('auto.sendPackage.packages', 'Packages'), `${draft.stops.length} package${draft.stops.length === 1 ? '' : 's'}`],
+                  [tx9('auto.sendPackage.distance', 'Distance'), route.distanceText ?? `~${routeKm}km`],
+                  [tx9('auto.sendPackage.vehicle', 'Vehicle'), VEHICLE_LABEL[draft.vehicleType] ?? draft.vehicleType],
+                  [tx9('auto.sendPackage.when', 'When'), scheduleNow ? tx9('auto.sendPackage.sendNow', 'Send now') : (TIME_SLOTS.find(t => t.hour === scheduledHour)?.label ?? '-')],
                   ...(Number(quote?.customer?.serviceFee ?? 0) > 0
-                    ? [['Service fee', naira(quote!.customer.serviceFee)] as [string, string]]
+                    ? [[tx9('auto.sendPackage.serviceFee', 'Service fee'), naira(quote!.customer.serviceFee)] as [string, string]]
                     : []),
                   /**
                    * Name the geography, and what it cost (2026-08-31).
@@ -2017,13 +2018,13 @@ export default function SendPackageScreen() {
                   ...((quote as any)?.route?.zoneTier
                       && Number((quote as any)?.route?.tierSurchargeNgn) > 0
                     ? ([
-                        ['Route',
+                        [tx9('auto.sendPackage.route', 'Route'),
                          `${(quote as any).route.pickupStateName ?? (quote as any).route.pickupStateCode} to ${(quote as any).route.dropoffStateName ?? (quote as any).route.dropoffStateCode}`],
-                        [ZONE_TIER_LABEL[(quote as any).route.zoneTier] ?? 'Distance surcharge',
+                        [ZONE_TIER_LABEL[(quote as any).route.zoneTier] ?? tx9('auto.sendPackage.distanceSurcharge', 'Distance surcharge'),
                          naira(Number((quote as any).route.tierSurchargeNgn))],
                       ] as [string, string][])
                     : []),
-                  ['Total', quote?.customer?.total != null ? naira(quote.customer.total) : '…'],
+                  [tx9('auto.id.total', 'Total'), quote?.customer?.total != null ? naira(quote.customer.total) : '…'],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingVertical: 5 }}>
                     <Text style={[styles.lineSub, { color: colors.textSecond, fontSize: 14 }]}>{lbl}</Text>
@@ -2088,15 +2089,15 @@ export default function SendPackageScreen() {
                       <Text style={[styles.sheetValue, { color: colors.text }]}>
                         {storeSheet.openTime && storeSheet.closeTime
                           ? `${storeSheet.openTime} - ${storeSheet.closeTime}`
-                          : 'Not provided'}
+                          : tx9('auto.sendPackage.notProvided', 'Not provided')}
                       </Text>
                       <Text style={[styles.sheetValue, { color: colors.textSecond }]}>
                         {storeSheet.operatingDays?.length
                           ? storeSheet.operatingDays.map((d) => String(d).slice(0, 3)).join(', ')
-                          : 'Days not provided'}
+                          : tx9('auto.sendPackage.daysNotProvided', 'Days not provided')}
                       </Text>
                       <Text style={[styles.sheetValue, { color: storeSheet.isOpenNow ? '#16A34A' : '#DC2626' }]}>
-                        {storeSheet.isOpenNow ? 'Open right now' : 'Closed right now'}
+                        {storeSheet.isOpenNow ? tx9('auto.sendPackage.openRightNow', 'Open right now') : tx9('auto.sendPackage.closedRightNow', 'Closed right now')}
                       </Text>
                     </View>
                   </View>
@@ -2123,7 +2124,7 @@ export default function SendPackageScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.sheetLabel, { color: colors.textThird }]}>{tx('auto.sendPackage.distance', 'Distance')}</Text>
                         <Text style={[styles.sheetValue, { color: colors.text }]}>
-                          {storeSheet.distanceKm < 1 ? 'Under 1km away' : `${storeSheet.distanceKm}km away`}
+                          {storeSheet.distanceKm < 1 ? tx9('auto.sendPackage.under1kmAway', 'Under 1km away') : `${storeSheet.distanceKm}km away`}
                         </Text>
                       </View>
                     </View>
@@ -2154,7 +2155,7 @@ export default function SendPackageScreen() {
                     >
                       <Icon name={copied ? 'Check' : 'Copy'} size={15} color={colors.text} />
                       <Text style={[styles.sheetActionTxt, { color: colors.text }]}>
-                        {copied ? 'Address copied' : 'Copy address'}
+                        {copied ? tx9('auto.sendPackage.addressCopied', 'Address copied') : tx9('auto.sendPackage.copyAddress', 'Copy address')}
                       </Text>
                     </Pressable>
                     <Pressable
@@ -2197,7 +2198,7 @@ export default function SendPackageScreen() {
                   });
                 }}
               >
-                <Marker coordinate={pickupPoint} title={draft.pickupStoreName ?? 'Pickup'} description={draft.pickupAddress} anchor={{ x: 0.5, y: 0.5 }}>
+                <Marker coordinate={pickupPoint} title={draft.pickupStoreName ?? tx9('auto.DeliveryTrackMap.pickup', 'Pickup')} description={draft.pickupAddress} anchor={{ x: 0.5, y: 0.5 }}>
                   <View style={[styles.pinBase, { backgroundColor: '#22C55E' }]}>
                     <Text style={styles.pinTxt}>P</Text>
                   </View>
@@ -2235,7 +2236,7 @@ export default function SendPackageScreen() {
             </Pressable>
             <View style={[styles.mapLegend, { backgroundColor: colors.surface, paddingBottom: 12 + insets.bottom }]}>
               <Text style={[styles.mapLegendTxt, { color: colors.text }]}>
-                P {draft.pickupMode === 'store' ? `· drop at ${draft.pickupStoreName ?? 'counter'}` : '· pickup'}
+                P {draft.pickupMode === 'store' ? tx9('auto.sendPackage.dropAt', '· drop at {{v0}}', { v0: draft.pickupStoreName ?? 'counter' }) : tx9('auto.sendPackage.pickup2', '· pickup')}
                 {'   '}
                 {dropPoints.map((_, i) => `${i + 1}`).join('  ')} · {dropPoints.length} drop{dropPoints.length === 1 ? '' : 's'}
               </Text>
@@ -2280,8 +2281,8 @@ export default function SendPackageScreen() {
                 {step === 3
                   ? (quote?.customer?.total != null
                       ? `Pay ${naira(quote.customer.total)}`
-                      : 'Book this run')
-                  : 'Continue'}
+                      : tx9('auto.sendPackage.bookThisRun', 'Book this run'))
+                  : tx9('auto.releasePickup.continue', 'Continue')}
               </Text>
             )}
           </Pressable>

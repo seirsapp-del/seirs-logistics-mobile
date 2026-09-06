@@ -11,18 +11,12 @@ import { LANGUAGES, changeLanguage, type LanguageCode } from '@/i18n';
 import { useState } from 'react';
 import i18n from '@/i18n';
 
-// All payouts settle in NGN at launch: FX display is a v1.1 feature.
-const CURRENCIES = [
-  { code: 'NGN', symbol: '₦', label: 'Nigerian Naira',  flag: '🇳🇬' },
-];
-
-const LANGUAGE_FLAGS: Record<string, string> = {
-  en: '🇳🇬',
-  yo: '🇳🇬',
-  ig: '🇳🇬',
-  ha: '🇳🇬',
-};
-
+/**
+ * Language only (founder 2026-09-06, on device): the "Nigeria" line under
+ * every language and the whole "Display currency: NGN" card said nothing a
+ * rider could act on, so both are gone. Naira is the only currency and the
+ * language is the only choice.
+ */
 export default function LanguageScreen() {
   const router  = useRouter();
   const cs      = useColorScheme();
@@ -33,7 +27,6 @@ export default function LanguageScreen() {
   const [selectedLang, setSelectedLang] = useState<LanguageCode>(
     (i18n.language as LanguageCode) ?? 'en',
   );
-  const [selectedCurr, setSelectedCurr] = useState('NGN');
 
   const handleSelectLanguage = async (code: LanguageCode) => {
     setSelectedLang(code);
@@ -59,7 +52,6 @@ export default function LanguageScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        {/* Language */}
         <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>
           {t('language.appLanguage')}
         </Text>
@@ -78,86 +70,12 @@ export default function LanguageScreen() {
               ]}
               onPress={() => handleSelectLanguage(lang.code)}
             >
-              <Text style={styles.flag}>{LANGUAGE_FLAGS[lang.code] ?? '🌐'}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.langLabel, { color: theme.text }]}>{lang.label}</Text>
-                <Text style={[styles.langSub, { color: theme.textSecond }]}>
-                  {t('language.nigeria')}
-                </Text>
-              </View>
+              <Text style={[styles.langLabel, { color: theme.text, flex: 1 }]}>{lang.label}</Text>
               {selectedLang === lang.code && (
                 <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
               )}
             </Pressable>
           ))}
-        </View>
-
-        {/* Currency */}
-        <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>
-          {t('language.displayCurrency')}
-        </Text>
-        <View
-          style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
-        >
-          {CURRENCIES.map((curr, i, arr) => (
-            <Pressable
-              key={curr.code}
-              style={[
-                styles.row,
-                i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
-                selectedCurr === curr.code && {
-                  backgroundColor: isDark ? '#001020' : '#EFF6FF',
-                },
-              ]}
-              onPress={() => setSelectedCurr(curr.code)}
-            >
-              <Text style={styles.flag}>{curr.flag}</Text>
-              <View
-                style={[
-                  styles.symbolWrap,
-                  {
-                    backgroundColor:
-                      selectedCurr === curr.code ? theme.primary : theme.surfaceSecond,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.symbol,
-                    {
-                      color:
-                        selectedCurr === curr.code ? '#fff' : theme.textSecond,
-                    },
-                  ]}
-                >
-                  {curr.symbol}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.langLabel, { color: theme.text }]}>{curr.code}</Text>
-                <Text style={[styles.langSub, { color: theme.textSecond }]}>{curr.label}</Text>
-              </View>
-              {selectedCurr === curr.code && (
-                <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
-              )}
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Note */}
-        <View
-          style={[
-            styles.note,
-            {
-              backgroundColor: isDark ? '#001020' : '#EFF6FF',
-              borderColor: theme.primary + '30',
-            },
-          ]}
-        >
-          <Ionicons name="information-circle-outline" size={16} color={theme.primary} />
-          <Text style={[styles.noteText, { color: theme.textSecond }]}>
-            {t('language.currencyNote')}
-          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -197,27 +115,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
-  flag:      { fontSize: 22 },
   langLabel: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  langSub:   { fontSize: FontSize.xs, marginTop: 2 },
-  symbolWrap:{
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  symbol: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
-
-  note: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-  },
-  noteText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
 });

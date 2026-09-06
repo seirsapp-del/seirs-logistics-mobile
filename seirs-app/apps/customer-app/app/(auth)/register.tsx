@@ -25,6 +25,7 @@ import {
 } from 'lucide-react-native';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Nigerian mobile validation lives in shared/utils/ngPhone.ts. This file
 // used to carry its own fixed prefix list, which meant a network code the
@@ -35,16 +36,16 @@ function validate(
   password: string, confirmPassword: string,
   ageConfirmed: boolean, termsAccepted: boolean,
 ): { msg: string; at: string } | null {
-  if (!firstName.trim()) return { msg: 'First name is required.', at: 'firstName' };
-  if (!lastName.trim())  return { msg: 'Last name is required.', at: 'lastName' };
-  if (!email.trim())     return { msg: 'Email address is required.', at: 'email' };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { msg: 'Enter a valid email address.', at: 'email' };
+  if (!firstName.trim()) return { msg: tx9('auto.register.firstNameIsRequired', 'First name is required.'), at: 'firstName' };
+  if (!lastName.trim())  return { msg: tx9('auto.register.lastNameIsRequired', 'Last name is required.'), at: 'lastName' };
+  if (!email.trim())     return { msg: tx9('auto.register.emailAddressIsRequired', 'Email address is required.'), at: 'email' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { msg: tx9('auto.register.enterAValidEmailAddress', 'Enter a valid email address.'), at: 'email' };
   if (!isValidNigerianMobile(phone)) return { msg: NG_PHONE_HINT, at: 'phone' };
   const pwErr = validatePassword(password);
   if (pwErr) return { msg: pwErr, at: 'password' };
-  if (password !== confirmPassword) return { msg: 'Passwords do not match.', at: 'confirm' };
-  if (!ageConfirmed) return { msg: 'You must confirm you are 18 years of age or older.', at: 'consent' };
-  if (!termsAccepted) return { msg: 'You must agree to the Terms of Service and Privacy Policy.', at: 'consent' };
+  if (password !== confirmPassword) return { msg: tx9('auto.register.passwordsDoNotMatch', 'Passwords do not match.'), at: 'confirm' };
+  if (!ageConfirmed) return { msg: tx9('auto.register.youMustConfirmYouAre', 'You must confirm you are 18 years of age or older.'), at: 'consent' };
+  if (!termsAccepted) return { msg: tx9('auto.register.youMustAgreeToThe', 'You must agree to the Terms of Service and Privacy Policy.'), at: 'consent' };
   return null;
 }
 

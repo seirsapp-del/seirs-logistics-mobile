@@ -260,7 +260,7 @@
     "cancel": "Cancel"
   },
   "language": {
-    "title": "Language & Region",
+    "title": "Language",
     "appLanguage": "App Language",
     "displayCurrency": "Display Currency",
     "currencyNote": "All transactions are processed in Nigerian Naira (NGN). Other currencies are for display purposes only.",
@@ -364,7 +364,23 @@
       "optional": "(optional)",
       "cityLga": "City / LGA",
       "iAgreeToThe": "I agree to the",
-      "includingTheDriverCodeOf": "(including the Driver Code of Conduct) and"
+      "includingTheDriverCodeOf": "(including the Driver Code of Conduct) and",
+      "upTo5Kg": "Up to 5 kg",
+      "upTo20Kg": "Up to 20 kg",
+      "upTo100Kg": "Up to 100 kg",
+      "upTo200Kg": "Up to 200 kg",
+      "upTo800Kg": "Up to 800 kg",
+      "upTo3000Kg": "Up to 3,000 kg",
+      "enterYourFirstName": "Enter your first name.",
+      "enterYourLastName": "Enter your last name.",
+      "enterYourEmailAddress": "Enter your email address.",
+      "passwordsDoNotMatch": "Passwords do not match.",
+      "pickTheStateYouLive": "Pick the state you live in.",
+      "enterYourCityOrLga": "Enter your city or LGA.",
+      "enterYourStreetAddress": "Enter your street address.",
+      "selectAVehicleType": "Select a vehicle type.",
+      "confirmYouAre18Years": "Confirm you are 18 years or older.",
+      "acceptTheTermsOfService": "Accept the Terms of Service and Privacy Policy."
     },
     "forgotPassword": {
       "checkYourInbox": "Check your inbox",
@@ -410,7 +426,9 @@
     "verifyOtp": {
       "checkYourEmail": "Check your email",
       "verifyEmail": "Verify Email",
-      "weSentA6Digit": "We sent a 6-digit code to"
+      "weSentA6Digit": "We sent a 6-digit code to",
+      "resendInS": "Resend in {{cooldown}}s",
+      "resendCode": "Resend code"
     },
     "earnings": {
       "earnings": "Earnings",
@@ -434,7 +452,8 @@
       "goalReachedYouBeatYour": "Goal reached! You beat your",
       "targetRaiseItAndSee": "target. Raise it and see how far you can go.",
       "yourPersonalTargetSetIt": "Your personal target. Set it to match your hustle; you can change it any time.",
-      "save": "Save"
+      "save": "Save",
+      "withdrawal": "Withdrawal"
     },
     "history": {
       "myTrips": "My Trips",
@@ -510,7 +529,11 @@
       "totalEarned": "Total Earned",
       "showThisToACustomer": "Show this to a customer at handoff to prove you are the assigned driver.",
       "copy": "Copy",
-      "done": "Done"
+      "done": "Done",
+      "changeProfilePhoto": "Change profile photo",
+      "addYourProfilePhoto": "Add your profile photo",
+      "online": "Online",
+      "offline": "Offline"
     },
     "active": {
       "deliveryNotFound": "Delivery not found",
@@ -596,7 +619,21 @@
       "nobodyAvailableToReceive": "Nobody available to receive?",
       "theSenderGets5Minutes": "The sender gets 5 minutes to respond: wait, neighbour, gate, or partner store. Their answer arrives in this delivery's chat. If they stay silent, follow the fallback message.",
       "notifyTheSender": "Notify the sender",
-      "theirNameAsTheyGave": "Their name, as they gave it to you. This goes on the delivery record."
+      "theirNameAsTheyGave": "Their name, as they gave it to you. This goes on the delivery record.",
+      "justStarted": "Just started",
+      "onThisJobMin": "On this job {{mins}} min",
+      "onThisJobHM": "On this job {{h}}h {{v1}}m",
+      "deliveredYouStillHavePackage": "Delivered {{trackingCode}}. You still have {{remainingActive}} package{{v2}} on board: take a quick photo of the remaining cargo. It protects YOU in any dispute.",
+      "youVeSuccessfullyDelivered": "You've successfully delivered {{trackingCode}}. {{clearanceLine}}",
+      "partnerCounter": "Partner counter",
+      "gpsAlways": "GPS ALWAYS",
+      "tripDetails": "Trip Details",
+      "packageDetails": "Package Details",
+      "yesHandleCarefully": "Yes: handle carefully",
+      "travellingWithLargeLuggage": "Travelling with large luggage",
+      "travellingWithASmallBag": "Travelling with a small bag",
+      "noLuggage": "No luggage",
+      "notNamed": "Not named"
     },
     "addBank": {
       "payoutBankAccount": "Payout Bank Account",
@@ -612,7 +649,21 @@
       "keepMyCurrentAccount": "Keep my current account",
       "reviewTakesUpTo3": ". Review takes up to 3 business days.",
       "bank": "Bank",
-      "theAccountNameIsConfirmed": "The account name is confirmed directly with the bank. Your details are encrypted and used only for paying you."
+      "theAccountNameIsConfirmed": "The account name is confirmed directly with the bank. Your details are encrypted and used only for paying you.",
+      "submittedForReview": "Submitted for Review",
+      "bankSaved": "Bank Saved!",
+      "weCheckPayoutAccountChanges": "We check payout account changes, up to 3 business days.",
+      "payoutsPauseUntilThenAnd": "Payouts pause until then, and nothing is lost.",
+      "newBank": "New bank",
+      "loadingBanks": "Loading banks…",
+      "selectBank2": "Select bank…",
+      "checking": "Checking…",
+      "verify": "Verify",
+      "replacingYourAccountPausesWithdrawals": "Replacing your account pauses withdrawals until support approves the change (up to 3 business days). This protects your earnings if someone else gets into your account.",
+      "saving": "Saving…",
+      "saveBankAccount": "Save Bank Account",
+      "bankListUnavailableCheckYour": "Bank list unavailable. Check your connection and reopen.",
+      "noBankMatchesThatSearch": "No bank matches that search."
     },
     "changePassword": {
       "changePassword": "Change Password",
@@ -659,7 +710,15 @@
       "softDeletedNowSignIn": "Soft-deleted now; sign in within 30 days to cancel.",
       "checkingYourAccount": "Checking your account…",
       "downloadMyDataFirstRecommended": "Download my data first (recommended)",
-      "confirmYourPassword": "CONFIRM YOUR PASSWORD"
+      "confirmYourPassword": "CONFIRM YOUR PASSWORD",
+      "walletBalance": "Wallet balance: {{v0}}",
+      "yourDriverProfileKycDocuments": "Your driver profile, KYC documents, and ratings",
+      "yourTripHistoryAfterThe": "Your trip history (after the 30-day grace window)",
+      "yourWalletBalanceWithdrawIt": "Your wallet balance: withdraw it before deleting",
+      "yourBankDetailsSavedPayout": "Your bank details + saved payout info",
+      "auditTrailsForAnyOpen": "Audit trails for any open complaints or disputes",
+      "taxRecordsWeAreLegally": "Tax records we are legally required to retain (FIRS / NDPR)",
+      "anonymisedAnalyticsYouAreNot": "Anonymised analytics: you are not personally identifiable"
     },
     "id": {
       "optimised": "Optimised",
@@ -700,7 +759,9 @@
       "close": "Close",
       "fromSeirs": "FROM SEIRS",
       "officialDocumentsFromSeirsContracts": "Official documents from SEIRS (contracts, letters, policies) will appear here when sent to you, alongside your earnings statements below.",
-      "contractsLettersAndNoticesSeirs": "Contracts, letters and notices SEIRS has sent you. Your own earnings statements live under Statement, on your profile."
+      "contractsLettersAndNoticesSeirs": "Contracts, letters and notices SEIRS has sent you. Your own earnings statements live under Statement, on your profile.",
+      "sentBy": "· sent by {{sentByName}}",
+      "makingPdf": "Making PDF..."
     },
     "editProfile": {
       "editProfile": "Edit Profile",
@@ -725,7 +786,16 @@
       "giveThisToSupportInstead": "Give this to support instead of your email or name. It identifies you privately and uniquely.",
       "90DayChangeLimit": "90-day change limit",
       "30DayChangeLimit": "30-day change limit",
-      "someFieldsHaveChangeLimits": "Some fields have change limits to prevent impersonation. Every change is logged for your safety. Vehicle info is updated via the KYC re-submission flow."
+      "someFieldsHaveChangeLimits": "Some fields have change limits to prevent impersonation. Every change is logged for your safety. Vehicle info is updated via the KYC re-submission flow.",
+      "onlyLettersSpacesHyphensApostrophes": "Only letters, spaces, hyphens, apostrophes, dots",
+      "noPhoneNumbersUrlsOr": "No phone numbers, URLs, or emails",
+      "nigerianMobileOnly0234": "Nigerian mobile only (0/234/+234 + 10 digits)",
+      "useYyyyMmDdFormat": "Use YYYY-MM-DD format",
+      "notARealDate": "Not a real date",
+      "driversMustBeAtLeast": "Drivers must be at least 18",
+      "pleaseEnterARealDate": "Please enter a real date of birth",
+      "lockedOnceSetContactSupport": "Locked once set. Contact support to correct a typo.",
+      "mustMatchYourKycDocument": "Must match your KYC document. Locked once you save."
     },
     "hotspots": {
       "demandHotspots": "Demand Hotspots",
@@ -734,7 +804,12 @@
       "you": "You",
       "goOnlineSoSeirsKnows": "Go online so SEIRS knows where you are, then check back for demand around you.",
       "tapToNavigate": "Tap to navigate",
-      "noDemandClustersRightNow": "No demand clusters right now. Stay online: this updates as orders come in."
+      "noDemandClustersRightNow": "No demand clusters right now. Stay online: this updates as orders come in.",
+      "steady": "Steady",
+      "medium": "Medium",
+      "high": "High",
+      "store": "Store",
+      "kmFromYou": "· {{distanceKm}} km from you"
     },
     "interstate": {
       "declareIntercityTrip": "Declare Intercity Trip",
@@ -773,7 +848,31 @@
       "sparePackageCapacityKg": "SPARE PACKAGE CAPACITY (kg)",
       "whatAreYouOffering": "WHAT ARE YOU OFFERING?",
       "showsYourSpareKgTo": "Shows your spare kg to senders on this route",
-      "packagesRunningYourDeclaredRoute": "Packages running your declared route are ranked towards you around your departure. Nothing is forced on you: skip any package that does not suit the run. A seat request is different: it is made to you alone and nothing is charged until you accept it. Say yes or no, and it expires if you leave it unanswered."
+      "packagesRunningYourDeclaredRoute": "Packages running your declared route are ranked towards you around your departure. Nothing is forced on you: skip any package that does not suit the run. A seat request is different: it is made to you alone and nothing is charged until you accept it. Say yes or no, and it expires if you leave it unanswered.",
+      "portHarcourt": "Port Harcourt",
+      "youAreListedForOn": "You are listed for {{routeLine}} on {{when}}. {{lines}}",
+      "auto": "Auto",
+      "eGBergerBusStop": "e.g. Berger Bus Stop",
+      "whereYouFinish": "Where you finish",
+      "whereYouStop": "Where you stop",
+      "runsThatLeaveYourState": "Runs that leave your state can be offered to you.",
+      "youWillOnlyBeOffered": "You will only be offered runs inside your own state.",
+      "saving": "Saving",
+      "kgSpare": ", {{kg}}kg spare",
+      "noPackages": "No packages",
+      "noSeats": "No seats",
+      "stopOnTheWay": "· {{midStops}} stop{{v1}} on the way",
+      "boardsAt": "· boards at {{pickupAddress}}",
+      "stillOpen": ", {{left}} still open",
+      "full": ", full",
+      "chooseADayAndTime": "Choose a day and time",
+      "giveAtLeastNoticeSo": "Give at least {{v0}} notice, so a sender can find your trip, agree a price and reach you.",
+      "aIsNotAPassenger": "A {{v0}} is not a passenger class on SEIRS. Packages only on this run.",
+      "realSeatsOnlySeirsBlocks": "Real seats only: SEIRS blocks overloading. No doubling the front seat, ever.",
+      "seatsYouReSellingA": "Seats you're selling (a {{vehicleType}} sells up to {{seatCap}})",
+      "seatsYouReSellingYour": "Seats you're selling (your vehicle class caps this)",
+      "passengersBoardAtAndGet": "Passengers board at {{v0}} and get a map pin on {{primary}}{{v2}}. The stops in between are what your route really is, and the fare is measured along them rather than city centre to city centre.",
+      "setYourStartingPointAbove": "Set your starting point above. Passengers get a map pin on it, so it has to be a place you will really be standing."
     },
     "lastOrder": {
       "lastOrderMode": "Last Order Mode",
@@ -787,7 +886,14 @@
       "tellTheDispatcherYouRe": "Tell the dispatcher you're done after your current jobs. Cleanly stop accepting new orders without going offline mid-trip.",
       "activeJobs": "ACTIVE JOBS",
       "todaySAcceptanceRate": "TODAY'S ACCEPTANCE RATE",
-      "lastOrderRequires80This": "Last Order requires ≥80%. This stops drivers from gaming the toggle to skip undesirable orders."
+      "lastOrderRequires80This": "Last Order requires ≥80%. This stops drivers from gaming the toggle to skip undesirable orders.",
+      "windingDown": "Winding down",
+      "acceptingJobs": "Accepting jobs",
+      "noActiveJobsYouCan": "No active jobs: you can sign off normally.",
+      "completeTheseBeforeFullySigning": "Complete these {{activeJobs}} before fully signing off.",
+      "dispatcherStopsSendingYouNew": "Dispatcher stops sending you new job offers",
+      "activeJobsContinueNormallyComplete": "Active jobs continue normally: complete them at your pace",
+      "youCanTReEnable": "You can't re-enable jobs without fully signing off (one-way toggle)"
     },
     "multiLeg": {
       "activePoolTrip": "Active Pool Trip",
@@ -798,7 +904,9 @@
       "inTransit": "In transit",
       "poolCapacity": "POOL CAPACITY",
       "whenYouAcceptAJob": "When you accept a job, it appears here. Multiple legs along the same corridor get bundled into a pool trip.",
-      "theDispatcherSilentlyInsertsLegs": "The dispatcher silently inserts legs that lie within 1km of your route + add ≤20% to your time. You don't need to accept each insertion: just complete legs in the order shown."
+      "theDispatcherSilentlyInsertsLegs": "The dispatcher silently inserts legs that lie within 1km of your route + add ≤20% to your time. You don't need to accept each insertion: just complete legs in the order shown.",
+      "atCapNoNewInsertions": "At cap: no new insertions until a leg completes",
+      "package": "Package"
     },
     "notifications": {
       "notifications": "Notifications",
@@ -819,7 +927,8 @@
       "contactSupport": "Contact support",
       "talkToAPersonAbout": "Talk to a person about it",
       "sosEmergency": "SOS emergency",
-      "alertOpsAndShareMy": "Alert ops and share my live location now"
+      "alertOpsAndShareMy": "Alert ops and share my live location now",
+      "justNow": "Just now"
     },
     "parcelRequests": {
       "requests": "Requests",
@@ -836,7 +945,11 @@
       "declareAnIntercityTripWith": "Declare an intercity trip with seats or packages on, and people going your way can ask to ride or to have theirs carried.",
       "seatAndParcelRequestsShow": "Seat and parcel requests show up here. Nothing is charged until you accept, so you can say no without costing anybody money.",
       "waitingForTheSenderTo": ". Waiting for the sender to answer.",
-      "nameAPlaceOnYour": "Name a place on your route you can actually reach. The sender sees it with a fresh price and can accept or say no. Nothing is charged either way."
+      "nameAPlaceOnYour": "Name a place on your route you can actually reach. The sender sees it with a fresh price and can accept or say no. Nothing is charged either way.",
+      "nothingWaiting": "Nothing waiting",
+      "yourStart": "your start",
+      "yourDestination": "your destination",
+      "youEarn": "You earn {{v0}}"
     },
     "ratings": {
       "myRatings": "My Ratings",
@@ -844,7 +957,9 @@
       "breakdown": "Breakdown",
       "recentReviews": "Recent Reviews",
       "tipsToImproveYourRating": "Tips to improve your rating",
-      "sustainedLowRatingsMayResult": ". Sustained low ratings may result in account review. See tips below to improve."
+      "sustainedLowRatingsMayResult": ". Sustained low ratings may result in account review. See tips below to improve.",
+      "basedOnRating": "Based on {{v0}} rating{{v1}}",
+      "noRatingsYetCompleteDeliveries": "No ratings yet. Complete deliveries to earn your first."
     },
     "scanPackage": {
       "verifyThePackage": "Verify the package",
@@ -860,7 +975,10 @@
       "noScheduledJobsYet": "No scheduled jobs yet",
       "myWorkingHours": "My Working Hours",
       "dayOff": "Day off",
-      "aPersonalNoteToYourself": "A personal note to yourself, saved on this phone only. It does not change which jobs you are offered: you get jobs whenever you are online."
+      "aPersonalNoteToYourself": "A personal note to yourself, saved on this phone only. It does not change which jobs you are offered: you get jobs whenever you are online.",
+      "start": "Start",
+      "saved": "Saved",
+      "saveMyHours": "Save my hours"
     },
     "seirsId": {
       "mySeirsId": "My SEIRS ID",
@@ -873,7 +991,12 @@
       "partnerStaffScansTheQr": "Partner staff scans the QR (or types the code) at pickup.",
       "theySeeYourRegisteredName": "They see your registered name on their screen.",
       "sayYourFullNameThey": "Say your full name: they type it to confirm a match.",
-      "theHandoffIsRecordedIn": "The handoff is recorded in your delivery audit trail."
+      "theHandoffIsRecordedIn": "The handoff is recorded in your delivery audit trail.",
+      "copied": "Copied",
+      "collectingFromAPartnerCounter": "Collecting from a partner counter: staff scan this before releasing packages to you.",
+      "atAPickupTheSender": "At a pickup, the sender can scan it to confirm you are the driver SEIRS assigned.",
+      "readTheCodeToSeirs": "Read the code to SEIRS support and they find your account instantly.",
+      "itIsAlsoYourSeirs": "It is also your SEIRS Verified ID fallback when you have no physical ID on you."
     },
     "signature": {
       "verifyRecipient": "Verify Recipient",
@@ -901,7 +1024,9 @@
       "recipientSSeirsId": "Recipient's SEIRS ID",
       "expectedName": "EXPECTED NAME",
       "askTheRecipientToSpeak": "Ask the recipient to speak their full name. Type EXACTLY what they say below.",
-      "photoOfRecipientWithPackage": "Photo of recipient with package (with ID held up if high-value)"
+      "photoOfRecipientWithPackage": "Photo of recipient with package (with ID held up if high-value)",
+      "sending": "Sending…",
+      "emailRecipientA6Digit": "Email recipient a 6-digit code"
     },
     "sos": {
       "sosEmergency": "SOS Emergency",
@@ -920,7 +1045,15 @@
       "oneTapSharesYourLive": "One tap shares your live location with SEIRS ops. Use this for real emergencies only.",
       "couldNotLoadTheFull": "Could not load the full directory. These national numbers still work.",
       "supportIsAlreadyAlertedAnd": "Support is already alerted and your location is being shared. This is optional: it just tells them what they are coming into.",
-      "skip": "Skip"
+      "skip": "Skip",
+      "theNationalEmergencyLineDial": "The national emergency line. Dial this first if you are hurt, threatened, or unsure who you need.",
+      "fireOrAVehicleBurning": "Fire, or a vehicle burning. For anything else use 112.",
+      "sosSent": "SOS sent",
+      "sosActivated": "SOS Activated!",
+      "opsHasBeenAlertedAnd": "Ops has been alerted and your location is being shared. Cancel within {{countdown}}s if this was a mistake.",
+      "helpIsOnTheWay": "Help is on the way. Stay safe.",
+      "updateWhatIsHappening": "Update what is happening",
+      "tellOpsWhatIsHappening": "Tell ops what is happening"
     },
     "statement": {
       "earningsStatement": "Earnings Statement",
@@ -933,7 +1066,13 @@
       "lastYear": "Last year",
       "yoursInThisPeriod": "yours in this period ·",
       "nothingSettledInThisPeriod": "Nothing settled in this period. Try a wider one.",
-      "everyFigureCoversThePeriod": "Every figure covers the period shown above it, never your whole history with SEIRS. Earnings still clearing are not counted here. The exported copy carries a code anyone can check, so it works as proof of income."
+      "everyFigureCoversThePeriod": "Every figure covers the period shown above it, never your whole history with SEIRS. Earnings still clearing are not counted here. The exported copy carries a code anyone can check, so it works as proof of income.",
+      "carriedForward": "Carried forward",
+      "cancelledAfterYouSetOff": "Cancelled after you set off",
+      "selectAPeriod": "SELECT A PERIOD",
+      "carriedForward2": "· {{v0}} carried forward",
+      "exportThisStatement": "Export this statement",
+      "moneyCarriedForwardFromAn": "Money carried forward from an earlier payout is already yours and is counted in the total above."
     },
     "statusBroadcast": {
       "statusBroadcast": "Status Broadcast",
@@ -968,7 +1107,24 @@
       "thisParcelNigerianEvidenceAct": "this parcel. Nigerian Evidence Act, section 84.",
       "storeSeirsId": "Store SEIRS ID",
       "ifTheCounterCanShow": "If the counter can show their SEIRS ID, add it. It ties the name to a registered store.",
-      "optionalSkipItIfThe": "Optional. Skip it if the queue is moving."
+      "optionalSkipItIfThe": "Optional. Skip it if the queue is moving.",
+      "scanTheParcelBeforeYou": "Scan the parcel before you take it. From this moment it is on you, not the store.",
+      "whoIsReleasingIt": "Who is releasing it?",
+      "handYourPhoneToThe": "Hand your phone to the person at the counter. They type their own full name. That name is what answers a question about this parcel later, and a store id cannot.",
+      "counterStaffSFullName": "Counter staff's full name",
+      "signedFor": "Signed for",
+      "theParcelIsOnYou": "The parcel is on you now. The counter is on the record as having released it.",
+      "scanTheParcelAsYou": "Scan the parcel as you hand it over. Until the counter signs, it is still on you.",
+      "whoIsReceivingIt": "Who is receiving it?",
+      "handYourPhoneToThe2": "Hand your phone to the person at the counter. They type their own full name. This is what stops the store saying later that the parcel never arrived.",
+      "handedOver": "Handed over",
+      "theCounterHasSignedFor": "The counter has signed for it. It is off you and on the store.",
+      "openNow": "Open now",
+      "closedNow": "Closed now",
+      "scan": "Scan",
+      "sign": "Sign",
+      "photoAttached": "Photo attached",
+      "addAPhotoOfThe": "Add a photo of the hand-over"
     },
     "ticketId": {
       "tapToOpen": "Tap to open"
@@ -980,7 +1136,8 @@
       "tapToCaptureTrunk": "Tap to capture trunk",
       "frameTheInsideOfThe": "Frame the inside of the trunk so all remaining packages are visible.",
       "confirmAndContinue": "Confirm and continue",
-      "ifAnythingIsMissingDo": "If anything is missing, do NOT continue. Pull over safely and contact support before driving further, and keep the photo on your phone."
+      "ifAnythingIsMissingDo": "If anything is missing, do NOT continue. Pull over safely and contact support before driving further, and keep the photo on your phone.",
+      "takeAQuickPhotoOf": "Take a quick photo of the trunk so the chain of custody is documented."
     },
     "vehicle": {
       "kycVerification": "KYC Verification",
@@ -1033,7 +1190,18 @@
       "colour": "Colour",
       "eGRed": "e.g. Red",
       "freshPhotosOfTheVehicle": "Fresh photos of the vehicle you are registering now, not the old one.",
-      "whyAreYouChanging": "Why are you changing?"
+      "whyAreYouChanging": "Why are you changing?",
+      "someoneElse": "someone else",
+      "withdrawThisRequest2": "Withdraw this request",
+      "yourVehicleIsApproved": "Your vehicle is approved",
+      "noVehicleOnFileYet": "No vehicle on file yet",
+      "youAreRidingAndJobs": "You are riding {{liveTitle}}{{v1}}, and jobs are matched to it.",
+      "fillThisInToTell": "Fill this in to tell us what you ride. Our team checks it before jobs start matching to it.",
+      "onlyNeedsRedoingEverythingElse": "Only {{v0}} needs redoing. Everything else you sent was accepted, so leave it as it is.",
+      "theseNeedRedoingEverythingElse": "These need redoing: {{v0}}. Everything else you sent was accepted, so leave the rest as it is.",
+      "noReasonWasRecordedAsk": "No reason was recorded. Ask support what is missing before resubmitting.",
+      "askToChangeYourVehicle": "ASK TO CHANGE YOUR VEHICLE",
+      "tellUsWhatYouRide": "TELL US WHAT YOU RIDE"
     },
     "withdrawal": {
       "withdrawalSent": "Withdrawal Sent!",
@@ -1051,23 +1219,19 @@
       "businessDaysAfterEachDelivery": "business days after each delivery)",
       "all": "All",
       "noPayoutAccountYetAdd": "No payout account yet. Add your bank account to withdraw.",
-      "businessDaysAfterEachDelivery2": "business days after each delivery, then withdraw free any time. Withdrawals are matched to whole deliveries and sent as a bank transfer; arrival time depends on your bank."
+      "businessDaysAfterEachDelivery2": "business days after each delivery, then withdraw free any time. Withdrawals are matched to whole deliveries and sent as a bank transfer; arrival time depends on your bank.",
+      "yourBank": "your bank",
+      "newDriversKeepBackFor": "New drivers keep {{holdbackPct}}% back for the first few weeks, so {{v1}} stays in your balance for next time.",
+      "withdrawalsMatchWholeDeliveriesSo": "Withdrawals match whole deliveries, so the rest stays available.",
+      "newBank": "new bank",
+      "change": "Change",
+      "addBank": "+ Add Bank",
+      "bankAccount": "Bank account",
+      "processing": "Processing…"
     },
     "NotFound": {
       "screenNotFound": "Screen not found",
       "goToHome": "Go to home"
-    },
-    "resetPassword": {
-      "invalidLink": "Invalid Link",
-      "backToSignIn": "Back to Sign In",
-      "passwordReset": "Password Reset",
-      "signIn": "Sign In",
-      "setNewPassword": "Set new password",
-      "newPassword": "New Password",
-      "confirmPassword": "Confirm Password",
-      "resetPassword": "Reset Password",
-      "atLeast8Characters": "At least 8 characters",
-      "repeatYourPassword": "Repeat your password"
     },
     "CorridorCard": {
       "onYourWay": "On your way",
@@ -1123,7 +1287,24 @@
       "sellSpareSeatsAndBoot": "Sell spare seats and boot space",
       "live": "Live",
       "newJobsArePaused": "New jobs are paused",
-      "yourVehicleChangeIsBeing": "Your vehicle change is being reviewed, usually within 24 hours to 3 business days. We hold new jobs until it is approved so you are never sent work your vehicle cannot do. Anything already assigned to you is unaffected: finish it as normal."
+      "yourVehicleChangeIsBeing": "Your vehicle change is being reviewed, usually within 24 hours to 3 business days. We hold new jobs until it is approved so you are never sent work your vehicle cannot do. Anything already assigned to you is unaffected: finish it as normal.",
+      "applicationNotApproved": "Application not approved",
+      "accountSuspended": "Account suspended",
+      "accountUnderReview": "Account under review",
+      "somethingWasWrongWithYour": "Something was wrong with your documents. Open KYC Verification to see what to send again.",
+      "yourAccountIsSuspendedSo": "Your account is suspended, so you cannot go online. Message support and we will sort it out.",
+      "completeYourKycDocumentsTo": "Complete your KYC documents to get approved. Reviews take up to 3 business days. You can explore the app, but going online unlocks after approval.",
+      "youAreOnline": "You are ONLINE",
+      "youAreOffline": "You are OFFLINE",
+      "receivingNewJobRequests": "Receiving new job requests",
+      "goOnlineToStartEarning": "Go online to start earning",
+      "jobCompleted": "job completed",
+      "jobsCompleted": "jobs completed",
+      "new": "New",
+      "noRatingsYet": "no ratings yet",
+      "waitingOnYou": "waiting on you",
+      "forYourTrips": "for your trips",
+      "packageDelivery": "Package delivery"
     },
     "layout": {
       "jobs": "Jobs",
@@ -1143,13 +1324,25 @@
       "navigateTheRestOfThe": "Navigate the rest of the run (",
       "handToTheCounterStaff": "Hand to the counter staff, not a customer",
       "iVeArrived": "I've arrived",
-      "earningsBreakdown": "Earnings breakdown"
+      "earningsBreakdown": "Earnings breakdown",
+      "tripNotFound": "Trip not found",
+      "stopTrip": "{{length}}-stop trip",
+      "completedTrip": "Completed trip",
+      "cancelledTrip": "Cancelled trip",
+      "failedTrip": "Failed trip",
+      "activeTrip": "Active trip",
+      "delivery": "Delivery",
+      "surchargeShare": "Surcharge share ({{v0}})",
+      "surchargeShare2": "Surcharge share"
     },
     "editTripDetail": {
       "departureTime": "DEPARTURE TIME",
       "cannotBeTurnedOffWith": "Cannot be turned off with seats already booked.",
       "spareSpaceKg": "SPARE SPACE (KG)",
-      "whatIsGenuinelyLeftAfter": "What is genuinely left after your own load. We stop offering you packages once this much is spoken for."
+      "whatIsGenuinelyLeftAfter": "What is genuinely left after your own load. We stop offering you packages once this much is spoken for.",
+      "sAre": "s are",
+      "nobodyHasBookedYetSo": "Nobody has booked yet, so everything below is still yours to change. The route itself is fixed: cancel and declare a new trip to drive somewhere else.",
+      "alreadyBooked": "({{booked}} already booked)"
     },
     "jobDetail": {
       "instant": "Instant",
@@ -1159,14 +1352,43 @@
       "interstateThisRunLeaves": "INTERSTATE: this run leaves",
       "checkYourPapersAndYour": ". Check your papers and your fuel before you accept.",
       "thisJobIsFinishedNothing": "This job is finished. Nothing left to do here.",
-      "anotherDriverTookThisOne": "Another driver took this one. It is off your list."
+      "anotherDriverTookThisOne": "Another driver took this one. It is off your list.",
+      "documentsEnvelope": "Documents / Envelope",
+      "smallParcel": "Small Parcel",
+      "standardParcel": "Standard Parcel",
+      "fragileElectronics": "Fragile / Electronics",
+      "hotFood": "Hot Food",
+      "coldFrozenFood": "Cold / Frozen Food",
+      "medicalSupplies": "Medical Supplies",
+      "bulkGoods": "Bulk Goods",
+      "farmProduce": "Farm Produce",
+      "buildingMaterials": "Building Materials",
+      "lumberSawmill": "Lumber / Sawmill",
+      "houseMoveSingleItem": "House Move, single item",
+      "houseMoveFullUnit": "House Move, full unit",
+      "liveAnimals": "Live Animals",
+      "industrialParts": "Industrial Parts",
+      "otherSpecial": "Other / Special",
+      "keepItHotDeliverWithout": "Keep it hot, deliver without detours",
+      "coldChainDoNotLet": "Cold chain, do not let it sit in the sun",
+      "medicalLoadHandleWithPriority": "Medical load, handle with priority",
+      "liveAnimalsAirAndWater": "Live animals, air and water matter",
+      "seatBookingHeldForYou": "Seat booking held for you: {{countdownLabel}} left",
+      "thisOfferClosesIn": "This offer closes in {{countdownLabel}}",
+      "aboutKmEachWay": ", about {{distanceKm}} km each way",
+      "inAppChatOnlyNo": "In-app chat only. No phone number is shared.",
+      "phoneSharedAfterAcceptance": "Phone shared after acceptance",
+      "acceptBooking": "Accept Booking",
+      "acceptRide": "Accept Ride",
+      "acceptJob": "Accept Job"
     },
     "supportDetail": {
       "attachPhoto": "Attach photo",
       "chooseWhereToAttachFrom": "Choose where to attach from.",
       "useTheCameraNow": "Use the camera now",
       "fromGallery": "From gallery",
-      "pickAPhotoYouAlready": "Pick a photo you already have"
+      "pickAPhotoYouAlready": "Pick a photo you already have",
+      "document": "Document"
     },
     "transactionDetail": {
       "thisEntryIsNotIn": "This entry is not in your recent earnings. Older entries are not available on this screen yet.",
@@ -1176,13 +1398,16 @@
       "status": "Status",
       "whatHappened": "What happened",
       "paidToBank": "Paid to bank",
-      "forTheDistanceYouRode": "for the distance you rode before it was cancelled. The customer's fare was returned to them. You did nothing wrong and this does not affect your rating."
+      "forTheDistanceYouRode": "for the distance you rode before it was cancelled. The customer's fare was returned to them. You did nothing wrong and this does not affect your rating.",
+      "readyToWithdraw": "Ready to withdraw",
+      "onHoldReview": "On hold (review)"
     },
     "notFound": {
       "notFound": "Not Found"
     },
     "messagesinbox": {
-      "seirsSupport": "SEIRS Support"
+      "seirsSupport": "SEIRS Support",
+      "noMessages": "(no messages)"
     },
     "corridorcard": {
       "end": "End",
@@ -1193,7 +1418,8 @@
       "pdfAttached": "PDF attached"
     },
     "earningscalendar": {
-      "noEarningsOnThisDay": "No earnings on this day."
+      "noEarningsOnThisDay": "No earnings on this day.",
+      "thisMonth": "this month"
     },
     "identitydocuments": {
       "notUploaded": "Not uploaded",
@@ -1209,10 +1435,22 @@
       "guarantorLetter": "Guarantor letter",
       "aFileFromYourEmail": "A file from your email or a portal",
       "tapItAndUploadThe": ". Tap it and upload the current one.",
-      "askedOnceTheseDoNot": "Asked once. These do not change when you change vehicle, so you will not be asked for them again."
+      "askedOnceTheseDoNot": "Asked once. These do not change when you change vehicle, so you will not be asked for them again.",
+      "governmentIssuedIdOrNin": "Government-issued ID or NIN slip, front side",
+      "backSideOfTheSame": "Back side of the same ID or NIN slip",
+      "aClearPhotoOfYour": "A clear photo of your face, used on your rider profile",
+      "aValidNigerianDriverLicence": "A valid Nigerian driver licence",
+      "aLetterFromAGuarantor": "A letter from a guarantor. Recommended, not required",
+      "expiredTapToReplace": "{{label}}, expired, tap to replace",
+      "nothingIsWrongWithWhat": "{{rejectionReason}} Nothing is wrong with what you sent. Tap to upload the current one.",
+      "thisIsNoLongerCurrent": "This is no longer current. Nothing is wrong with what you sent: tap to upload the current one."
     },
     "insurancepartners": {
-      "seirsEarnsAReferralFee": "SEIRS earns a referral fee when you buy through a partner. It does not change what you pay."
+      "seirsEarnsAReferralFee": "SEIRS earns a referral fee when you buy through a partner. It does not change what you pay.",
+      "vehicleAndThirdPartyCover": "Vehicle and third-party cover",
+      "motorcycleAndAutoInsurance": "Motorcycle and auto insurance",
+      "affordableRiderPolicies": "Affordable rider policies",
+      "motorAndLiabilityCover": "Motor and liability cover"
     },
     "packagecodecapture": {
       "youCanStillFinishThis": "You can still finish this hand-off: type the code below."
@@ -1245,6 +1483,18 @@
       "optionalSpeedsUpApproval": "(optional, speeds up approval)",
       "handYourPhoneToThe": "Hand your phone to the owner. Typing their full name here is a legal signature in Nigeria, exactly like signing the paper. It has to match the name above.",
       "byTypingTheirNameThe": "By typing their name the owner confirms they own this vehicle and agree to you using it for SEIRS work. Nigerian Evidence Act, section 84."
+    },
+    "messagesDetail": {
+      "onMyWay": "On my way",
+      "inTrafficRunningLate": "In traffic, running late",
+      "packageDelivered": "Package delivered"
+    },
+    "passwordinput": {
+      "hidePassword": "Hide password",
+      "showPassword": "Show password"
+    },
+    "streetautocomplete": {
+      "startTypingAStreetOr": "Start typing a street or landmark…"
     }
   }
 }

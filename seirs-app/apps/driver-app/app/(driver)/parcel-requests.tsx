@@ -38,6 +38,7 @@ import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type Req = {
   id: string;
@@ -217,7 +218,7 @@ export default function ParcelRequestsScreen() {
         <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.parcelRequests.requests', 'Requests')}</Text>
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
-            {total === 0 ? 'Nothing waiting' : `${total} waiting on you`}
+            {total === 0 ? tx9('auto.parcelRequests.nothingWaiting', 'Nothing waiting') : `${total} waiting on you`}
           </Text>
         </View>
       </View>
@@ -272,7 +273,7 @@ export default function ParcelRequestsScreen() {
                     <View style={styles.row}>
                       <MapPin size={13} color={theme.textThird} strokeWidth={2} />
                       <Text style={[styles.fact, { color: theme.textSecond }]} numberOfLines={2}>
-                        {r.boardName ?? 'your start'} to {r.alightName ?? 'your destination'}
+                        {r.boardName ?? tx9('auto.parcelRequests.yourStart', 'your start')} to {r.alightName ?? tx9('auto.parcelRequests.yourDestination', 'your destination')}
                       </Text>
                     </View>
                   )}
@@ -289,7 +290,7 @@ export default function ParcelRequestsScreen() {
                   )}
                   <View style={styles.factRow}>
                     <Text style={[styles.fact, { color: theme.textSecond }]}>
-                      {r.earnNgn != null ? `You earn ${naira(r.earnNgn)}` : ''}
+                      {r.earnNgn != null ? tx9('auto.parcelRequests.youEarn', 'You earn {{v0}}', { v0: naira(r.earnNgn) }) : ''}
                     </Text>
                     {r.fareNgn != null && (
                       <Text style={[styles.fare, { color: theme.primary }]}>{naira(r.fareNgn)}</Text>

@@ -26,6 +26,7 @@ import { userVerificationApi, uploadApi, type IdentityDocType } from '@/services
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Customer identity verification. Optional trust-tier upgrade.
@@ -488,7 +489,7 @@ function PendingCard({ theme, submittedAt }: any) {
       </View>
       <Text style={{ color: '#92400E', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>{tx('auto.verifyIdentity.underReview', 'Under review')}</Text>
       <Text style={{ color: '#92400E', fontSize: FontSize.sm, textAlign: 'center' }}>
-        Submitted {hoursAgo === 0 ? 'just now' : `${hoursAgo} hour${hoursAgo === 1 ? '' : 's'} ago`}{tr('auto.verifyIdentity.reviewsTakeUpTo3', '. Reviews take up to 3 business days.')}
+        Submitted {hoursAgo === 0 ? tx9('auto.verifyIdentity.justNow', 'just now') : `${hoursAgo} hour${hoursAgo === 1 ? '' : 's'} ago`}{tr('auto.verifyIdentity.reviewsTakeUpTo3', '. Reviews take up to 3 business days.')}
       </Text>
       <Text style={{ color: '#92400E', fontSize: FontSize.xs, opacity: 0.7, textAlign: 'center', marginTop: 4 }}>
         {tr('auto.verifyIdentity.youLlGetANotification', 'You’ll get a notification when a decision is made. Meanwhile you can keep using the app normally.')}
@@ -534,7 +535,7 @@ function UploadRow({ theme, url, busy, hint, onPress }: any) {
         >
           {busy ? <ActivityIndicator color={theme.primary} /> : <Camera size={22} color={theme.primary} />}
           <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>
-            {busy ? 'Uploading' : 'Tap to add'}
+            {busy ? tx9('auto.verifyIdentity.uploading', 'Uploading') : tx9('auto.verifyIdentity.tapToAdd', 'Tap to add')}
           </Text>
         </Pressable>
       )}
@@ -549,15 +550,15 @@ function UploadRow({ theme, url, busy, hint, onPress }: any) {
 function backOfIdHint(docType: IdentityDocType): string {
   switch (docType) {
     case 'nin':
-      return 'The back of the NIN slip. If it is blank, just photograph a plain sheet of paper next to the slip so reviewers know you did not skip this step.';
+      return tx9('auto.verifyIdentity.theBackOfTheNin', 'The back of the NIN slip. If it is blank, just photograph a plain sheet of paper next to the slip so reviewers know you did not skip this step.');
     case 'drivers_licence':
-      return 'The back of your driver\'s licence. Categories, address, and issue/expiry dates should be readable.';
+      return tx9('auto.verifyIdentity.theBackOfYourDriver', 'The back of your driver\'s licence. Categories, address, and issue/expiry dates should be readable.');
     case 'passport':
-      return 'The signature page (or the last used data page). If truly blank, photograph the inside back cover.';
+      return tx9('auto.verifyIdentity.theSignaturePageOrThe', 'The signature page (or the last used data page). If truly blank, photograph the inside back cover.');
     case 'pvc':
-      return 'The back of your PVC. The QR code and issue date should be readable.';
+      return tx9('auto.verifyIdentity.theBackOfYourPvc', 'The back of your PVC. The QR code and issue date should be readable.');
     default:
-      return 'The back of your ID. Well-lit, no glare.';
+      return tx9('auto.verifyIdentity.theBackOfYourId', 'The back of your ID. Well-lit, no glare.');
   }
 }
 

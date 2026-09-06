@@ -22,6 +22,7 @@ import type { EmergencyContactDTO } from '@seirs/shared/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 /** Which glyph a directory entry gets, from the category an admin set. */
 const CATEGORY_ICON: Record<string, IconName> = {
   emergency: 'AlertCircle',
@@ -38,11 +39,11 @@ const CATEGORY_ICON: Record<string, IconName> = {
  * Dialled when the network is gone. Deliberately the national lines only:
  * a wrong number here is worse than a short list.
  */
-const FALLBACK_CONTACTS: EmergencyContactDTO[] = [
+const FALLBACK_CONTACTS = (): EmergencyContactDTO[] => [
   { id: 'fallback-112', name: 'Emergency (all services)', numbers: ['112'],
-    instruction: 'The national emergency line. Dial this first if you are hurt or in danger.' },
+    instruction: tx9('auto.sos.theNationalEmergencyLineDial', 'The national emergency line. Dial this first if you are hurt or in danger.') },
   { id: 'fallback-199', name: 'Fire Service', numbers: ['199'],
-    instruction: 'Fire, or a vehicle burning. For anything else use 112.' },
+    instruction: tx9('auto.sos.fireOrAVehicleBurning', 'Fire, or a vehicle burning. For anything else use 112.') },
 ];
 
 export default function BusinessSosScreen() {
@@ -70,7 +71,7 @@ export default function BusinessSosScreen() {
   const pulse2 = useRef(new Animated.Value(1)).current;
 
   /** The dialled-from directory, served by the backend and admin-editable. */
-  const [contacts, setContacts] = useState<EmergencyContactDTO[]>(FALLBACK_CONTACTS);
+  const [contacts, setContacts] = useState<EmergencyContactDTO[]>(FALLBACK_CONTACTS());
 
   // "What is happening?" state. Asked only AFTER the alert has gone out:
   // an SOS must never become a form, so the button is the alarm and the
@@ -246,12 +247,12 @@ export default function BusinessSosScreen() {
         ) : (
           <View style={styles.idleState}>
             <Text style={styles.sentTitle}>
-              {countdown > 0 ? 'SOS sent' : 'SOS Activated!'}
+              {countdown > 0 ? tx9('auto.sos.sosSent', 'SOS sent') : tx9('auto.sos.sosActivated', 'SOS Activated!')}
             </Text>
             <Text style={styles.idleDesc}>
               {countdown > 0
-                ? `Support has been alerted and your location is being shared. Cancel within ${countdown}s if this was a mistake.`
-                : 'Help is on the way. Keep your phone with you.'}
+                ? tx9('auto.sos.supportHasBeenAlertedAnd', 'Support has been alerted and your location is being shared. Cancel within {{countdown}}s if this was a mistake.', { countdown })
+                : tx9('auto.sos.helpIsOnTheWay', 'Help is on the way. Keep your phone with you.')}
             </Text>
 
             {/* Stays available after the modal is answered or skipped: what
@@ -264,13 +265,13 @@ export default function BusinessSosScreen() {
             <Pressable style={styles.detailBtn} onPress={() => setNoteOpen(true)}>
               <Icon name="MessageSquare" size={16} color="#7F1D1D" />
               <Text style={styles.detailBtnText}>
-                {noteSent ? 'Update what is happening' : 'Tell support what is happening'}
+                {noteSent ? tx9('auto.sos.updateWhatIsHappening', 'Update what is happening') : tx9('auto.sos.tellSupportWhatIsHappening', 'Tell support what is happening')}
               </Text>
             </Pressable>
 
             <Pressable style={styles.cancelBtn} onPress={falseAlarm}>
               <Text style={styles.cancelBtnText}>
-                {countdown > 0 ? 'Cancel SOS' : 'False alarm: cancel the alert'}
+                {countdown > 0 ? tx9('auto.sos.cancelSos', 'Cancel SOS') : tx9('auto.sos.falseAlarmCancelTheAlert', 'False alarm: cancel the alert')}
               </Text>
             </Pressable>
           </View>

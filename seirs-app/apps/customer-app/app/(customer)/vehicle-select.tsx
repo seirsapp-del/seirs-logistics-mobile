@@ -18,6 +18,7 @@ import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // UI presentation for the rate-card package vehicles: keyed by the
 // canonical id calcPackageFare looks up. Keeping this here (not on the
@@ -42,7 +43,7 @@ const PACKAGE_UI: Record<string, { icon: string; descKey: string; features: stri
 /** Payload headline for a cargo card: kg below a tonne, tonnes above. */
 function payloadLabel(maxKg: number): string {
   if (!Number.isFinite(maxKg) || maxKg <= 0) return '';
-  return maxKg >= 1000 ? `Up to ${Math.floor(maxKg / 1000)}t` : `Up to ${maxKg}kg`;
+  return maxKg >= 1000 ? tx9('auto.vehicleSelect.upToT', 'Up to {{v0}}t', { v0: Math.floor(maxKg / 1000) }) : tx9('auto.vehicleSelect.upToKg', 'Up to {{maxKg}}kg', { maxKg });
 }
 
 export default function VehicleSelectScreen() {
@@ -393,7 +394,7 @@ export default function VehicleSelectScreen() {
                 {tr('auto.vehicleSelect.travellingWithLuggage', 'TRAVELLING WITH LUGGAGE?')}
               </Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                {([['none', 'None'], ['small', 'Small bag'], ['large', 'Large']] as const).map(([k, label]) => (
+                {([['none', tx9('auto.vehicleSelect.none', 'None')], ['small', tx9('auto.editBookingDetail.smallBag', 'Small bag')], ['large', tx9('auto.editBookingDetail.large', 'Large')]] as const).map(([k, label]) => (
                   <Pressable
                     key={k}
                     onPress={() => {

@@ -22,6 +22,7 @@ import { mapsApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 // Places and geocoding now go through our backend (security review
 // 2026-08-12). The Google key used to sit in this file, which meant it
 // shipped inside the installed app where anyone could extract it and
@@ -175,7 +176,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
             style={[styles.triggerValue, { color: value ? theme.text : theme.textSecond }]}
             numberOfLines={1}
           >
-            {value || 'Tap to select address…'}
+            {value || tx9('auto.addresspicker.tapToSelectAddress', 'Tap to select address…')}
           </Text>
         </View>
         <Text style={[styles.chevron, { color: theme.textSecond }]}>›</Text>

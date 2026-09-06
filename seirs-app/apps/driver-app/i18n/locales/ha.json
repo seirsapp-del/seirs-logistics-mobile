@@ -260,7 +260,7 @@
     "cancel": "Soke"
   },
   "language": {
-    "title": "Harshe & Yanki",
+    "title": "Harshe",
     "appLanguage": "Harshan App",
     "displayCurrency": "Nuna Kuɗi",
     "currencyNote": "Ana sarrafa duk ma'amaloli a cikin Naira ta Najeriya (NGN). Sauran kuɗaɗe suna don nunawa ne kawai.",
@@ -392,18 +392,6 @@
       "optional": "(na zaɓi)",
       "cityLga": "Birni / Ƙaramar hukuma",
       "includingTheDriverCodeOf": "(har da Ƙa'idojin ɗabi'ar direba) da"
-    },
-    "resetPassword": {
-      "atLeast8Characters": "Aƙalla haruffa 8",
-      "invalidLink": "Mahaɗin ba daidai ba",
-      "backToSignIn": "Koma shiga",
-      "passwordReset": "Sake saita kalmar sirri",
-      "signIn": "Shiga",
-      "setNewPassword": "Saita sabuwar kalmar sirri",
-      "newPassword": "Sabuwar kalmar sirri",
-      "confirmPassword": "Tabbatar da kalmar sirri",
-      "resetPassword": "Sake saita kalmar sirri",
-      "repeatYourPassword": "Maimaita kalmar sirrinka"
     },
     "profile": {
       "yourSeirsId": "SEIRS ID naka",

@@ -40,6 +40,7 @@ import { CitySearchField } from '@/components/CitySearchField';
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * The corridors a trader is most likely to want, so the common case is
@@ -380,7 +381,7 @@ export default function CargoSpaceScreen() {
             <Text style={[styles.dayFieldText, { color: dayISO ? theme.text : theme.textThird }]}>
               {dayISO
                 ? new Date(`${dayISO}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-                : 'Any date'}
+                : tx9('auto.cargoSpace.anyDate', 'Any date')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               {!!dayISO && (
@@ -445,12 +446,12 @@ export default function CargoSpaceScreen() {
           <View style={styles.emptyWrap}>
             <Icon name="Truck" size={40} color={theme.textSecond} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>
-              {trips.length > 0 ? 'Nothing that size on that day' : 'No space on that route yet'}
+              {trips.length > 0 ? tx9('auto.cargoSpace.nothingThatSizeOnThat', 'Nothing that size on that day') : tx9('auto.cargoSpace.noSpaceOnThatRoute', 'No space on that route yet')}
             </Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
               {trips.length > 0
-                ? `There ${trips.length === 1 ? 'is' : 'are'} ${trips.length} trip${trips.length === 1 ? '' : 's'} on this route, just none with room for what you asked on the day you picked. Try Any date, or a lighter load.`
-                : 'Drivers usually declare a trip a day or two ahead. Check again, or send it the normal way and a driver going that way can still pick it up.'}
+                ? tx9('auto.cargoSpace.thereTripOnThisRoute', 'There {{v0}} {{length}} trip{{v2}} on this route, just none with room for what you asked on the day you picked. Try Any date, or a lighter load.', { v0: trips.length === 1 ? 'is' : 'are', length: trips.length, v2: trips.length === 1 ? '' : 's' })
+                : tx9('auto.cargoSpace.driversUsuallyDeclareATrip', 'Drivers usually declare a trip a day or two ahead. Check again, or send it the normal way and a driver going that way can still pick it up.')}
             </Text>
 
             {/* The dead end, made into a door: a trader who has named both
@@ -496,7 +497,7 @@ export default function CargoSpaceScreen() {
         {searched && !loading && trips.length > 0 && (
           <View style={{ gap: 8 }}>
             <View style={styles.filterRow}>
-              {([['soonest', 'Leaving soonest'], ['space', 'Most room']] as const).map(([key, label]) => (
+              {([['soonest', tx9('auto.cargoSpace.leavingSoonest', 'Leaving soonest')], ['space', tx9('auto.cargoSpace.mostRoom', 'Most room')]] as const).map(([key, label]) => (
                 <Pressable
                   key={key}
                   onPress={() => setSortBy(key)}
@@ -512,7 +513,7 @@ export default function CargoSpaceScreen() {
               ))}
             </View>
             <View style={styles.filterRow}>
-              {([['any', 'Any time'], ['today', 'Today'], ['tomorrow', 'Tomorrow'], ['week', 'This week']] as const).map(([key, label]) => (
+              {([['any', tx9('auto.cargoSpace.anyTime', 'Any time')], ['today', tx9('auto.wallet.today', 'Today')], ['tomorrow', tx9('auto.sendPackage.tomorrow', 'Tomorrow')], ['week', tx9('auto.cargoSpace.thisWeek', 'This week')]] as const).map(([key, label]) => (
                 <Pressable
                   key={key}
                   onPress={() => setWhen(key)}
@@ -596,15 +597,15 @@ export default function CargoSpaceScreen() {
                       <Icon name="Users" size={16} color={theme.primary} />
                     </View>}
                 <Text style={[styles.tripMeta, { color: theme.text, fontWeight: '600', flex: 1 }]} numberOfLines={1}>
-                  {trip.driver?.name ?? 'Driver'}
+                  {trip.driver?.name ?? tx9('auto.DeliveryTrackMap.driver', 'Driver')}
                 </Text>
               </View>
               <Text style={[styles.tripMeta, { color: theme.textSecond, marginTop: 2 }]}>
                 {trip.segment
-                  ? `Loads in ${trip.segment.boardCity}, unloads at ${trip.segment.alightCity}`
+                  ? tx9('auto.cargoSpace.loadsInUnloadsAt', 'Loads in {{boardCity}}, unloads at {{alightCity}}', { boardCity: trip.segment.boardCity, alightCity: trip.segment.alightCity })
                   : trip.pickupMode === 'fixed' && trip.pickupArea
-                    ? `Loads in ${trip.pickupArea}, unloads at ${trip.toCity}`
-                    : `Loads along the route, unloads at ${trip.toCity}`}
+                    ? tx9('auto.cargoSpace.loadsInUnloadsAt2', 'Loads in {{pickupArea}}, unloads at {{toCity}}', { pickupArea: trip.pickupArea, toCity: trip.toCity })
+                    : tx9('auto.cargoSpace.loadsAlongTheRouteUnloads', 'Loads along the route, unloads at {{toCity}}', { toCity: trip.toCity })}
               </Text>
               <Text style={[styles.tripMeta, { color: theme.textThird }]}>
                 {tr('auto.cargoSpace.exactSpotOnceTheDriver', 'Exact spot once the driver accepts your load')}
@@ -618,7 +619,7 @@ export default function CargoSpaceScreen() {
                   {trip.driver?.rating != null ? `  ·  ${Number(trip.driver.rating).toFixed(1)} rating` : ''}
                 </Text>
                 <Text style={[styles.spare, { color: spare > 0 ? theme.primary : theme.textSecond }]}>
-                  {spare > 0 ? `${spare} kg of space` : 'Space not stated'}
+                  {spare > 0 ? `${spare} kg of space` : tx9('auto.cargoSpace.spaceNotStated', 'Space not stated')}
                 </Text>
               </View>
 

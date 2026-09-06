@@ -13,6 +13,7 @@ import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 // Spec V8 §3 / §4.7: partner staff scans incoming sender drop-off,
 // confirms details + photo + sender OTP, transitions to RECEIVED_AT_STORE.
 // Three steps: SCAN → DETAILS → CONFIRM.
@@ -372,12 +373,12 @@ export default function ReceiveDropoffScreen() {
             <Text style={[styles.cardSub, { color: colors.text }]}>
               {dropoff.destinationStoreName
                 ? `Counter: ${dropoff.destinationStoreName}`
-                : dropoff.recipientAddress || 'Destination not recorded'}
+                : dropoff.recipientAddress || tx9('auto.receiveDropoff.destinationNotRecorded', 'Destination not recorded')}
             </Text>
             <Text style={[styles.cardSubtle, { color: colors.textThird }]}>
               {dropoff.destinationStoreName
-                ? 'Recipient collects from that counter'
-                : 'Driver delivers to this address'}
+                ? tx9('auto.receiveDropoff.recipientCollectsFromThatCounter', 'Recipient collects from that counter')
+                : tx9('auto.receiveDropoff.driverDeliversToThisAddress', 'Driver delivers to this address')}
             </Text>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.receiveDropoff.dropOffCode', 'DROP-OFF CODE')}</Text>
@@ -397,7 +398,7 @@ export default function ReceiveDropoffScreen() {
               keyboardType="decimal-pad"
               value={weightKg}
               onChangeText={setWeightKg}
-              placeholder={`Sender said ${dropoff.weightKg} kg`}
+              placeholder={tx9('auto.receiveDropoff.senderSaidKg', 'Sender said {{weightKg}} kg', { weightKg: dropoff.weightKg })}
               placeholderTextColor={colors.textThird}
               style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             />
@@ -447,8 +448,8 @@ export default function ReceiveDropoffScreen() {
             <Text style={[styles.cardLabel, { color: colors.textSecond }]}>{tr('auto.receiveDropoff.senderVerification', 'SENDER VERIFICATION')}</Text>
             <Text style={[styles.cardSubtle, { color: colors.textSecond }]}>
               {otpSentTo
-                ? `A 6-digit code was just sent to ${otpSentTo}. Ask the sender to read it out.`
-                : 'Send the sender a 6-digit code, then ask them to read it out.'}
+                ? tx9('auto.receiveDropoff.a6DigitCodeWas', 'A 6-digit code was just sent to {{otpSentTo}}. Ask the sender to read it out.', { otpSentTo })
+                : tx9('auto.receiveDropoff.sendTheSenderA6', 'Send the sender a 6-digit code, then ask them to read it out.')}
             </Text>
             <TextInput
               keyboardType="number-pad"
@@ -468,10 +469,10 @@ export default function ReceiveDropoffScreen() {
                 fontWeight: '700',
               }]}>
                 {sendingOtp
-                  ? 'Sending code...'
+                  ? tx9('auto.receiveDropoff.sendingCode', 'Sending code...')
                   : resendIn > 0
-                    ? `Send a new code in ${resendIn}s`
-                    : otpSentTo ? 'Send a new code' : 'Send the code'}
+                    ? tx9('auto.receiveDropoff.sendANewCodeIn', 'Send a new code in {{resendIn}}s', { resendIn })
+                    : otpSentTo ? tx9('auto.receiveDropoff.sendANewCode', 'Send a new code') : tx9('auto.receiveDropoff.sendTheCode', 'Send the code')}
               </Text>
             </Pressable>
             <Text style={[styles.helperText, { color: colors.textThird }]}>

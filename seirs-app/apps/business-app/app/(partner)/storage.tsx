@@ -12,6 +12,7 @@ import { useColors } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8 §4.10: partner sees overstayed packages with accruing storage
 // fees. Packages enter the list once they cross 24hr in-store. Tier_1
@@ -143,8 +144,8 @@ export default function PartnerStorageScreen() {
           <Icon name="Clock" size={32} color={colors.textThird} />
           <Text style={[styles.emptyText, { color: colors.textSecond }]}>
             {tab === 'all'
-              ? 'No overstayed packages right now: everything is within the 24h free window.'
-              : 'No packages in this tier.'}
+              ? tx9('auto.storage.noOverstayedPackagesRightNow', 'No overstayed packages right now: everything is within the 24h free window.')
+              : tx9('auto.storage.noPackagesInThisTier', 'No packages in this tier.')}
           </Text>
         </View>
       ) : (

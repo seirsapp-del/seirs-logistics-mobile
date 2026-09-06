@@ -260,7 +260,7 @@
     "cancel": "Fagilé"
   },
   "language": {
-    "title": "Èdè & Ẹkùn",
+    "title": "Èdè",
     "appLanguage": "Èdè Ètò",
     "displayCurrency": "Owo Ifihan",
     "currencyNote": "Gbogbo awọn iṣowo ni a ṣe ni Naira Naijiria (NGN). Awọn owo miiran jẹ fun ifihan nikan.",
@@ -392,18 +392,6 @@
       "optional": "(kò pọn dandan)",
       "cityLga": "Ìlú / Ìjọba ìbílẹ̀",
       "includingTheDriverCodeOf": "(pẹ̀lú Ìlànà ìwà awakọ̀) àti"
-    },
-    "resetPassword": {
-      "atLeast8Characters": "Ó kéré tán àmì 8",
-      "invalidLink": "Ìjápọ̀ kò tọ̀nà",
-      "backToSignIn": "Padà sí ìwọlé",
-      "passwordReset": "Ìtúnṣe ọ̀rọ̀ìgbaniwọlé",
-      "signIn": "Wọlé",
-      "setNewPassword": "Ṣètò ọ̀rọ̀ìgbaniwọlé tuntun",
-      "newPassword": "Ọ̀rọ̀ìgbaniwọlé tuntun",
-      "confirmPassword": "Jẹ́rìí ọ̀rọ̀ìgbaniwọlé",
-      "resetPassword": "Tún ọ̀rọ̀ìgbaniwọlé ṣe",
-      "repeatYourPassword": "Tún ọ̀rọ̀ìgbaniwọlé rẹ tẹ̀"
     },
     "profile": {
       "yourSeirsId": "SEIRS ID rẹ",

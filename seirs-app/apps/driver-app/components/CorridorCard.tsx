@@ -23,6 +23,7 @@ import { driversApi, mapsApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 interface Props {
   driver: any;
@@ -107,7 +108,7 @@ export function CorridorCard({ driver, onChanged }: Props) {
           </Pressable>
         </View>
         <Text style={[styles.sub, { color: theme.textSecond }]} numberOfLines={2}>
-          Heading to {driver.corridorLabel || 'your destination'} until {until}{tr('auto.corridorcard.jobsAlongYourLineReach', '. Jobs along your line reach you first.')}
+          Heading to {driver.corridorLabel || tx9('auto.parcelRequests.yourDestination', 'your destination')} until {until}{tr('auto.corridorcard.jobsAlongYourLineReach', '. Jobs along your line reach you first.')}
         </Text>
       </View>
     );

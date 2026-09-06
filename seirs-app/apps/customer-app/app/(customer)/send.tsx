@@ -64,6 +64,7 @@ import { showDialog } from '@/components/SeirsDialog';
 import { TERMS_URL } from '@/constants/config';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const VEHICLES = PACKAGE_VEHICLES;
 // Business Vehicle step, ported verbatim (founder 2026-08-21: exactly).
@@ -72,8 +73,8 @@ const VEHICLE_LABEL: Record<string, string> = {
   // person with no vehicle at all can carry a schoolbook 2km and get
   // paid. It was wrongly dropped in the business-parity port; business
   // gets it too, not the other way round.
-  bicycle: 'Bicycle / On-foot', motorcycle: 'Okada', tricycle: 'Keke',
-  car: 'Car', van: 'Danfo / Van', truck_small: 'Small Truck', truck_large: 'Large Truck',
+  bicycle: tx9('auto.send.bicycleOnFoot', 'Bicycle / On-foot'), motorcycle: 'Okada', tricycle: 'Keke',
+  car: 'Car', van: tx9('auto.send.danfoVan', 'Danfo / Van'), truck_small: tx9('auto.send.smallTruck', 'Small Truck'), truck_large: tx9('auto.send.largeTruck', 'Large Truck'),
 };
 const VEHICLE_ORDER = ['bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'];
 // The customer card and pricing use LOCAL vehicle ids (keke, truck_sm);
@@ -166,11 +167,11 @@ export const emptyPackage = (): PackageDraft => ({
  * replaces.
  */
 const ZONE_TIER_LABEL: Record<string, string> = {
-  intraStateLongHaul: 'Long trip within one state',
-  interStateAdjacent: 'Crossing into the next state',
-  interStateDistant:  'Crossing to a further state',
-  crossZone:          'Crossing to another part of the country',
-  interState:         'Crossing a state line',
+  intraStateLongHaul: tx9('auto.receiptDetail.longTripWithinOneState', 'Long trip within one state'),
+  interStateAdjacent: tx9('auto.receiptDetail.crossingIntoTheNextState', 'Crossing into the next state'),
+  interStateDistant:  tx9('auto.receiptDetail.crossingToAFurtherState', 'Crossing to a further state'),
+  crossZone:          tx9('auto.receiptDetail.crossingToAnotherPartOf', 'Crossing to another part of the country'),
+  interState:         tx9('auto.receiptDetail.crossingAStateLine', 'Crossing a state line'),
 };
 
 // Hard ceiling on one run. Vehicle capacity is the real limit and is
@@ -1612,10 +1613,10 @@ export default function SendScreen() {
               dropped in assets/illustrations/. */}
           {(() => {
             const SLOTS = [
-              { name: 'send-package',  captionKey: 'step1Caption' },
-              { name: 'send-address',  captionKey: 'step2Caption' },
-              { name: 'send-vehicle',  captionKey: 'step3Caption' },
-              { name: 'send-fare',     captionKey: 'step4Caption' },
+              { name: 'send-package',  captionKey: tx9('auto.send.step1caption', 'step1Caption') },
+              { name: 'send-address',  captionKey: tx9('auto.send.step2caption', 'step2Caption') },
+              { name: 'send-vehicle',  captionKey: tx9('auto.send.step3caption', 'step3Caption') },
+              { name: 'send-fare',     captionKey: tx9('auto.send.step4caption', 'step4Caption') },
             ];
             const slot = SLOTS[step];
             if (!slot) return null;
@@ -2526,9 +2527,9 @@ export default function SendScreen() {
                         {disabled
                           ? blocked
                             ? t('send.vehicleBlocked', { defaultValue: 'Not allowed for this package type' })
-                            : overKm ? `Under ${maxKm}km trips only`
-                            : overCount ? `Max ${cap} packages` : `Max ${payload}kg`
-                          : `Up to ${cap} packages${payload > 0 ? ` · ${payload}kg payload` : ''}${maxKm > 0 ? ` · under ${maxKm}km` : ''}`}
+                            : overKm ? tx9('auto.send.underKmTripsOnly', 'Under {{maxKm}}km trips only', { maxKm })
+                            : overCount ? tx9('auto.send.maxPackages', 'Max {{cap}} packages', { cap }) : tx9('auto.send.maxKg', 'Max {{payload}}kg', { payload })
+                          : tx9('auto.send.upToPackages', 'Up to {{cap}} packages{{v1}}{{v2}}', { cap, v1: payload > 0 ? ` · ${payload}kg payload` : '', v2: maxKm > 0 ? ` · under ${maxKm}km` : '' })}
                       </Text>
                     </View>
                     {active && <CheckCircle size={18} color={theme.primary} strokeWidth={2} />}
@@ -2673,7 +2674,7 @@ export default function SendScreen() {
                               return (
                                 <View style={[styles.recBadge, { backgroundColor: theme.surfaceSecond }]}>
                                   <Text style={[styles.recText, { color: theme.textSecond }]}>
-                                    {visit === 1 ? '1st' : visit === 2 ? '2nd' : visit === 3 ? '3rd' : `${visit}th`}
+                                    {visit === 1 ? tx9('auto.send.1st', '1st') : visit === 2 ? tx9('auto.send.2nd', '2nd') : visit === 3 ? tx9('auto.send.3rd', '3rd') : `${visit}th`}
                                   </Text>
                                 </View>
                               );

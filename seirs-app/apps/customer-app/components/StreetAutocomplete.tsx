@@ -21,6 +21,7 @@ import { mapsApi } from '@/services/api';
 import { derivePlace } from '@seirs/shared/models/cities';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 // Places lookups go through our backend (security review 2026-08-12):
 // the Google key is no longer shipped inside the app.
@@ -178,7 +179,7 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
           onChangeText={onChange}
           onFocus={(e) => { setFocused(true); onFocus?.(e); }}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
-          placeholder={placeholder ?? 'Start typing a street or landmark…'}
+          placeholder={placeholder ?? tx('auto.streetautocomplete.startTypingAStreetOr', 'Start typing a street or landmark…')}
           placeholderTextColor={colors.textThird}
         />
         {searching && <ActivityIndicator size="small" color={colors.accent} />}

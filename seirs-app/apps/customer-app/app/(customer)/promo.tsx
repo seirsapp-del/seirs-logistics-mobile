@@ -13,11 +13,12 @@ import { promotionsApi, type PromoDTO } from '@/services/api';
 import { useSendDraftStore } from '@/store/useSendDraftStore';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
+import { tx as tr } from '@/i18n/tx';
 
 const describePromo = (p: PromoDTO) => {
   if (p.description) return p.description;
-  if (p.type === 'free_delivery') return 'Free delivery on your next order';
-  if (p.type === 'percent')       return `${p.value}% off your next order`;
+  if (p.type === 'free_delivery') return tr('auto.promo.freeDeliveryOnYourNext', 'Free delivery on your next order');
+  if (p.type === 'percent')       return tr('auto.promo.offYourNextOrder', '{{value}}% off your next order', { value: p.value });
   return `${naira(p.value)} off your next order`;
 };
 

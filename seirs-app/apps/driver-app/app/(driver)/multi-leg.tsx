@@ -13,6 +13,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { driversApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8 §1 / §2.15: driver's view of a corridor pool trip with up
 // to 4 simultaneous active legs. Each leg shows pickup, dropoff, status
@@ -103,7 +104,7 @@ export default function MultiLegScreen() {
             <Text style={styles.capacitySub}>
               {slotsFree > 0
                 ? `${slotsFree} slot${slotsFree === 1 ? '' : 's'} open: system can insert more legs along your corridor`
-                : 'At cap: no new insertions until a leg completes'}
+                : tx9('auto.multiLeg.atCapNoNewInsertions', 'At cap: no new insertions until a leg completes')}
             </Text>
           </View>
           {/* Was a "{poolEtaMin}m" badge built from a hardcoded 8 minutes
@@ -144,7 +145,7 @@ export default function MultiLegScreen() {
                   <View style={styles.legType}>
                     <Icon size={14} color={theme.primary} />
                     <Text style={[styles.legTypeText, { color: theme.primary }]}>
-                      {leg.type === 'passenger' ? 'Passenger' : 'Package'}
+                      {leg.type === 'passenger' ? tx9('auto.active.passenger', 'Passenger') : tx9('auto.multiLeg.package', 'Package')}
                     </Text>
                   </View>
                   <Text style={[styles.statusBadge, { color: meta.color, borderColor: meta.color }]}>

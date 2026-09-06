@@ -28,6 +28,7 @@ import { alertDialog } from '@/components/SeirsDialog';
 import { savePdf } from '@seirs/shared/utils/dataExport';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // The marketing site is the single home for FAQ and the legal documents:
 // it is edited without shipping a release, and it teaches people SEIRS
@@ -296,7 +297,7 @@ export default function DriverProfileScreen() {
               style={[styles.avatarWrap, { borderColor: theme.primary + '50' }]}
               onPress={() => router.push('/(driver)/edit-profile' as any)}
               accessibilityRole="button"
-              accessibilityLabel={user?.profilePhoto ? 'Change profile photo' : 'Add your profile photo'}
+              accessibilityLabel={user?.profilePhoto ? tx9('auto.profile.changeProfilePhoto', 'Change profile photo') : tx9('auto.profile.addYourProfilePhoto', 'Add your profile photo')}
             >
               <Avatar name={displayName} uri={user?.profilePhoto} size={72} />
               <View style={[styles.onlineDot, { backgroundColor: isOnline ? '#16A34A' : '#9CA3AF', borderColor: theme.surface }]} />
@@ -310,7 +311,7 @@ export default function DriverProfileScreen() {
                     honest online state instead. */}
                 <View style={[styles.tierBadge, { backgroundColor: (isOnline ? '#16A34A' : '#9CA3AF') + '18', borderColor: (isOnline ? '#16A34A' : '#9CA3AF') + '40' }]}>
                   <Ionicons name={isOnline ? 'wifi-outline' : 'moon-outline'} size={11} color={isOnline ? '#16A34A' : '#9CA3AF'} />
-                  <Text style={[styles.tierText, { color: isOnline ? '#16A34A' : '#9CA3AF' }]}>{isOnline ? 'Online' : 'Offline'}</Text>
+                  <Text style={[styles.tierText, { color: isOnline ? '#16A34A' : '#9CA3AF' }]}>{isOnline ? tx9('auto.profile.online', 'Online') : tx9('auto.profile.offline', 'Offline')}</Text>
                 </View>
                 {/* ID-Verified badge is now tied to user.identityVerifiedAt.
                     Previously hardcoded to always show, which was misleading.

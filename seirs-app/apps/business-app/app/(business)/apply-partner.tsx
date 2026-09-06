@@ -32,6 +32,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 interface ApplicationStatus {
   storeId:    string;
@@ -364,8 +365,8 @@ export default function ApplyPartnerScreen() {
           onPick={captureStorefront}
           hint={
             storefrontWhere
-              ? `Taken at your shop, accurate to about ${storefrontWhere.accuracyM} m`
-              : 'Stand outside your shop and take this one now. It is how we put your shop on the map.'
+              ? tx9('auto.applyPartner.takenAtYourShopAccurate', 'Taken at your shop, accurate to about {{accuracyM}} m', { accuracyM: storefrontWhere.accuracyM })
+              : tx9('auto.applyPartner.standOutsideYourShopAnd', 'Stand outside your shop and take this one now. It is how we put your shop on the map.')
           }
         />
         <PhotoSlot

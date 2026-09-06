@@ -30,6 +30,7 @@ import { useColors } from '@/context/ThemeContext';
 import { naira as nairaFmt } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type PresetKey = 'this_month' | 'last_month' | 'last_2_months' | 'last_90';
 
@@ -184,7 +185,7 @@ export default function PartnerStatementScreen() {
                 statements: a total with no dates over it is the thing
                 these screens exist to stop. */}
             <Text style={[styles.period, { color: colors.textThird }]}>
-              {periodLabel(statement?.from, statement?.to) || 'SELECT A PERIOD'}
+              {periodLabel(statement?.from, statement?.to) || tx9('auto.billing.selectAPeriod', 'SELECT A PERIOD')}
             </Text>
             <Text style={[styles.heroValue, { color: colors.text }]}>{nairaFmt(paidNgn)}</Text>
             <Text style={[styles.heroSub, { color: colors.textSecond }]}>
@@ -224,7 +225,7 @@ export default function PartnerStatementScreen() {
             >
               <Icon name="Download" size={16} color={colors.textOnPrimary} />
               <Text style={[styles.exportBtnText, { color: colors.textOnPrimary }]}>
-                {exporting ? 'Preparing...' : 'Export this statement'}
+                {exporting ? 'Preparing...' : tx9('auto.billing.exportThisStatement', 'Export this statement')}
               </Text>
             </Pressable>
           )}

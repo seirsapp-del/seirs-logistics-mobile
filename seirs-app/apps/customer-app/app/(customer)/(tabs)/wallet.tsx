@@ -17,6 +17,7 @@ import {
 import { HamburgerButton } from '@/components/HamburgerButton';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Rewards tab hub.
@@ -48,8 +49,8 @@ import { tx as tr } from '@/i18n/tx';
  * shared module, not to let this screen quote a price it cannot honour.
  */
 const POINT_USES = () => [
-  { cost: 500,  label: tr('auto.wallet.500OffADelivery', '₦500 off a delivery'), desc: 'Comes off the price before you pay.' },
-  { cost: 1000, label: tr('auto.wallet.aFreeDelivery', 'A free delivery'),       desc: 'Covers one booking up to ₦2,000.' },
+  { cost: 500,  label: tr('auto.wallet.500OffADelivery', '₦500 off a delivery'), desc: tx9('auto.wallet.comesOffThePriceBefore', 'Comes off the price before you pay.') },
+  { cost: 1000, label: tr('auto.wallet.aFreeDelivery', 'A free delivery'),       desc: tx9('auto.wallet.coversOneBookingUpTo', 'Covers one booking up to ₦2,000.') },
 ];
 
 interface Achievement {
@@ -398,7 +399,7 @@ export default function WalletScreen() {
               </Text>
               <Text style={[styles.streakSub, { color: theme.textSecond }]}>
                 {streak >= 4
-                  ? "You're on fire. Keep it going!"
+                  ? tx9('auto.wallet.youReOnFireKeep', 'You\'re on fire. Keep it going!')
                   : `${4 - streak} more week${4 - streak === 1 ? '' : 's'} to unlock the streak achievement.`}
               </Text>
             </View>
@@ -521,7 +522,7 @@ export default function WalletScreen() {
           </View>
 
           <Text style={[styles.panelFigure, { color: chart.earned > 0 ? POS : theme.textSecond }]}>
-            {chart.earned > 0 ? '+' + chart.earned.toLocaleString() + ' pts' : 'Nothing earned yet'}
+            {chart.earned > 0 ? '+' + chart.earned.toLocaleString() + ' pts' : tx9('auto.wallet.nothingEarnedYet', 'Nothing earned yet')}
           </Text>
 
           <View style={[styles.bars, { gap: range === 7 ? 6 : 2 }]}>
@@ -613,7 +614,7 @@ export default function WalletScreen() {
                   <Text style={[styles.useDesc, { color: theme.textSecond }]}>{u.desc}</Text>
                 </View>
                 <Text style={[styles.useReady, { color: ready ? theme.primary : theme.textThird }]}>
-                  {ready ? 'Ready' : (u.cost - balance).toLocaleString() + ' to go'}
+                  {ready ? tx9('auto.wallet.ready', 'Ready') : (u.cost - balance).toLocaleString() + ' to go'}
                 </Text>
               </View>
             );
@@ -659,19 +660,19 @@ export default function WalletScreen() {
 // would read as two different events.
 function activityLabel(reason: string): string {
   switch (reason) {
-    case 'delivery_complete':    return 'Delivery completed';
-    case 'bank_transfer_bonus':  return 'Bank transfer bonus';
-    case 'referral_bonus':       return 'Referral bonus';
-    case 'rate_driver':          return 'Rated a driver';
-    case 'monthly_streak':       return 'Monthly streak bonus';
-    case 'redeem_discount':      return 'Redeemed ₦500 off';
-    case 'redeem_free_delivery': return 'Redeemed free delivery';
-    case 'redeem_priority':      return 'Redeemed priority dispatch';
-    case 'redeem_insurance':     return 'Redeemed insurance cover';
+    case 'delivery_complete':    return tx9('auto.wallet.deliveryCompleted', 'Delivery completed');
+    case 'bank_transfer_bonus':  return tx9('auto.wallet.bankTransferBonus', 'Bank transfer bonus');
+    case 'referral_bonus':       return tx9('auto.wallet.referralBonus', 'Referral bonus');
+    case 'rate_driver':          return tx9('auto.wallet.ratedADriver', 'Rated a driver');
+    case 'monthly_streak':       return tx9('auto.wallet.monthlyStreakBonus', 'Monthly streak bonus');
+    case 'redeem_discount':      return tx9('auto.wallet.redeemed500Off', 'Redeemed ₦500 off');
+    case 'redeem_free_delivery': return tx9('auto.wallet.redeemedFreeDelivery', 'Redeemed free delivery');
+    case 'redeem_priority':      return tx9('auto.wallet.redeemedPriorityDispatch', 'Redeemed priority dispatch');
+    case 'redeem_insurance':     return tx9('auto.wallet.redeemedInsuranceCover', 'Redeemed insurance cover');
     case 'admin_adjustment':     return 'Adjustment';
-    case 'refund_clawback':      return 'Refund adjustment';
-    case 'expired':              return 'Points expired';
-    case 'tier_warning':         return 'Tier warning sent';
+    case 'refund_clawback':      return tx9('auto.wallet.refundAdjustment', 'Refund adjustment');
+    case 'expired':              return tx9('auto.wallet.pointsExpired', 'Points expired');
+    case 'tier_warning':         return tx9('auto.wallet.tierWarningSent', 'Tier warning sent');
     default:                     return reason;
   }
 }

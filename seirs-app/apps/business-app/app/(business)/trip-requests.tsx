@@ -27,6 +27,7 @@ import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type Req = {
   id: string;
@@ -188,7 +189,7 @@ export default function TripRequestsScreen() {
                     <Text style={[styles.counterNote, { color: theme.textSecond }]}>{r.counterNote}</Text>
                   )}
                   <Text style={[styles.counterPrice, { color: theme.text }]}>
-                    {r.counterQuotedNgn != null ? naira(Number(r.counterQuotedNgn)) : 'Price to confirm'}
+                    {r.counterQuotedNgn != null ? naira(Number(r.counterQuotedNgn)) : tx9('auto.tripRequests.priceToConfirm', 'Price to confirm')}
                     {r.counterQuotedKm != null ? `  ·  ${Number(r.counterQuotedKm)} km` : ''}
                   </Text>
                 </View>

@@ -27,6 +27,7 @@ import { showDialog } from '@/components/SeirsDialog';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type Req = {
   id: string;
@@ -244,7 +245,7 @@ export default function ParcelRequestsScreen() {
               <View style={styles.row}>
                 <Armchair size={13} color={theme.primary} strokeWidth={2} />
                 <Text style={[styles.addr, { color: theme.text }]} numberOfLines={1}>
-                  {b.board?.city ?? 'Start'} to {b.alight?.city ?? 'End'}
+                  {b.board?.city ?? tx9('auto.parcelRequests.start', 'Start')} to {b.alight?.city ?? tx9('auto.parcelRequests.end', 'End')}
                 </Text>
               </View>
               <View style={styles.factRow}>
@@ -273,7 +274,7 @@ export default function ParcelRequestsScreen() {
                   <Text style={[styles.spotLabel, { color: theme.textThird }]}>{tr('auto.parcelRequests.whereToMeet', 'WHERE TO MEET')}</Text>
                   <Text style={[styles.spotAddr, { color: theme.text }]}>{b.board.address}</Text>
                   {!!b.board.description && (
-                    <Text style={[styles.spotNote, { color: theme.textSecond }]}>{b.driver?.name?.split(' ')[0] ?? 'The driver'} says: {b.board.description}</Text>
+                    <Text style={[styles.spotNote, { color: theme.textSecond }]}>{b.driver?.name?.split(' ')[0] ?? tx9('auto.parcelRequests.theDriver', 'The driver')} says: {b.board.description}</Text>
                   )}
                   {!!b.board.mapsUrl && (
                     <Pressable onPress={() => Linking.openURL(b.board.mapsUrl!).catch(() => {})} style={styles.mapsLink}>
@@ -360,7 +361,7 @@ export default function ParcelRequestsScreen() {
                     <Text style={[styles.counterNote, { color: theme.textSecond }]}>{r.counterNote}</Text>
                   )}
                   <Text style={[styles.counterPrice, { color: theme.text }]}>
-                    {r.counterQuotedNgn != null ? naira(Number(r.counterQuotedNgn)) : 'Price to confirm'}
+                    {r.counterQuotedNgn != null ? naira(Number(r.counterQuotedNgn)) : tx9('auto.parcelRequests.priceToConfirm', 'Price to confirm')}
                     {r.counterQuotedKm != null ? `  ·  ${Number(r.counterQuotedKm)} km` : ''}
                   </Text>
                 </View>

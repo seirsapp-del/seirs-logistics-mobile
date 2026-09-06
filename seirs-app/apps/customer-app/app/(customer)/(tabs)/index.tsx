@@ -27,6 +27,7 @@ import {
   // who reaches for one.
   Map as MapIcon,
 } from 'lucide-react-native';
+import { tx } from '@/i18n/tx';
 
 type TripTab = 'in_progress' | 'delivered' | 'cancelled';
 

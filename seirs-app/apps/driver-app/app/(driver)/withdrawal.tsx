@@ -22,6 +22,7 @@ import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Withdraw screen: THE single real money-out path for drivers.
@@ -199,7 +200,7 @@ export default function WithdrawalScreen() {
         </View>
         <Text style={[styles.successTitle, { color: theme.text }]}>{tx('auto.withdrawal.withdrawalSent', 'Withdrawal Sent!')}</Text>
         <Text style={[styles.successSub, { color: theme.textSecond }]}>
-          {naira(paidAmount)} {tr('auto.withdrawal.isOnItsWayTo', 'is on its way to')} {bank?.bankName ?? 'your bank'} ({bank?.bankAccountNumber}{tr('auto.withdrawal.arrivalTimeDependsOnYour', '). Arrival time depends on your bank.')}
+          {naira(paidAmount)} {tr('auto.withdrawal.isOnItsWayTo', 'is on its way to')} {bank?.bankName ?? tx9('auto.withdrawal.yourBank', 'your bank')} ({bank?.bankAccountNumber}{tr('auto.withdrawal.arrivalTimeDependsOnYour', '). Arrival time depends on your bank.')}
         </Text>
         {paidAmount < numericAmount && (
           <Text style={[styles.successNote, { color: theme.textThird }]}>
@@ -217,8 +218,8 @@ export default function WithdrawalScreen() {
             */}
             You asked for {naira(numericAmount)} and {naira(paidAmount)} was sent.
             {holdbackApplies
-              ? ` New drivers keep ${holdbackPct}% back for the first few weeks, so ${naira(round2(numericAmount - paidAmount))} stays in your balance for next time.`
-              : ' Withdrawals match whole deliveries, so the rest stays available.'}
+              ? tx9('auto.withdrawal.newDriversKeepBackFor', 'New drivers keep {{holdbackPct}}% back for the first few weeks, so {{v1}} stays in your balance for next time.', { holdbackPct, v1: naira(round2(numericAmount - paidAmount)) })
+              : tx9('auto.withdrawal.withdrawalsMatchWholeDeliveriesSo', 'Withdrawals match whole deliveries, so the rest stays available.')}
           </Text>
         )}
         <Pressable style={[styles.doneBtn, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
@@ -259,7 +260,7 @@ export default function WithdrawalScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.frozenTitle, { color: '#D97706' }]}>{tx('auto.withdrawal.withdrawalsPaused', 'Withdrawals paused')}</Text>
                 <Text style={[styles.frozenText, { color: theme.textSecond }]}>
-                  {tr('auto.withdrawal.yourBankAccountChange', 'Your bank account change (')}{bank?.pendingBankName ?? 'new bank'}, ending {String(bank?.pendingBankAccountNumber ?? '').slice(-4)}{tr('auto.withdrawal.isUnderReviewForYour', ') is under review. For your protection, withdrawals resume once support confirms it (up to 3 business days).')}
+                  {tr('auto.withdrawal.yourBankAccountChange', 'Your bank account change (')}{bank?.pendingBankName ?? tx9('auto.withdrawal.newBank', 'new bank')}, ending {String(bank?.pendingBankAccountNumber ?? '').slice(-4)}{tr('auto.withdrawal.isUnderReviewForYour', ') is under review. For your protection, withdrawals resume once support confirms it (up to 3 business days).')}
                 </Text>
               </View>
             </View>
@@ -335,7 +336,7 @@ export default function WithdrawalScreen() {
             <View style={styles.bankCardHeader}>
               <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.withdrawal.destination', 'Destination')}</Text>
               <Pressable onPress={() => router.push('/(driver)/add-bank')}>
-                <Text style={[styles.addBankLink, { color: theme.primary }]}>{hasBank ? 'Change' : '+ Add Bank'}</Text>
+                <Text style={[styles.addBankLink, { color: theme.primary }]}>{hasBank ? tx9('auto.withdrawal.change', 'Change') : tx9('auto.withdrawal.addBank', '+ Add Bank')}</Text>
               </Pressable>
             </View>
             {hasBank ? (
@@ -344,7 +345,7 @@ export default function WithdrawalScreen() {
                   <Ionicons name="business-outline" size={20} color={theme.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.bankName, { color: theme.text }]}>{bank?.bankName ?? 'Bank account'}</Text>
+                  <Text style={[styles.bankName, { color: theme.text }]}>{bank?.bankName ?? tx9('auto.withdrawal.bankAccount', 'Bank account')}</Text>
                   <Text style={[styles.bankAccount, { color: theme.textSecond }]}>
                     {bank?.bankAccountName} · {bank?.bankAccountNumber}
                   </Text>
@@ -388,7 +389,7 @@ export default function WithdrawalScreen() {
           >
             <Ionicons name="arrow-up-circle-outline" size={20} color={canWithdraw ? '#fff' : theme.textThird} />
             <Text style={[styles.withdrawBtnText, { color: canWithdraw ? '#fff' : theme.textThird }]}>
-              {submitting ? 'Processing…' : `Withdraw${numericAmount >= MIN_WITHDRAWAL ? ` ${naira(numericAmount)}` : ''}`}
+              {submitting ? tx9('auto.withdrawal.processing', 'Processing…') : `Withdraw${numericAmount >= MIN_WITHDRAWAL ? ` ${naira(numericAmount)}` : ''}`}
             </Text>
           </Pressable>
         </View>

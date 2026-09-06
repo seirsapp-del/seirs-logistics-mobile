@@ -55,6 +55,7 @@ import { businessApi } from '@/services/api';
 import { trackUrl } from '@/constants/config';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * The ticket is deliberately the same paper white in both themes.
@@ -290,7 +291,7 @@ export default function BusinessPackageQrScreen() {
           <View style={styles.kicker}>
             <View style={styles.kickerDot} />
             <Text style={styles.kickerText}>
-              {showPager ? `PACKAGE ${activeIndex + 1} OF ${total}` : 'PACKAGE QR'}
+              {showPager ? tx9('auto.packageQr.packageOf', 'PACKAGE {{v0}} OF {{total}}', { v0: activeIndex + 1, total }) : tx9('auto.packageQr.packageQr2', 'PACKAGE QR')}
             </Text>
             <View style={styles.kickerDot} />
           </View>
@@ -351,7 +352,7 @@ export default function BusinessPackageQrScreen() {
           >
             <Icon name={copied ? 'Check' : 'Copy'} size={17} color={copied ? colors.success : colors.primary} />
             <Text style={[styles.actionText, { color: copied ? colors.success : colors.primary }]}>
-              {copied ? 'Copied' : 'Copy code'}
+              {copied ? tx9('auto.deliveryDetail.copied', 'Copied') : tx9('auto.packageQr.copyCode', 'Copy code')}
             </Text>
           </Pressable>
 

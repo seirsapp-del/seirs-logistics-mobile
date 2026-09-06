@@ -37,6 +37,7 @@ import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 import { collectUrl } from '@/constants/config';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
@@ -49,11 +50,11 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled:  '#6B7280',
 };
 
-const PAYMENT_LABELS: Record<string, string> = {
-  card:          'Paid by card',
-  bank_transfer: 'Paid by bank transfer',
-  ussd:          'Paid by USSD',
-};
+const PAYMENT_LABELS = (): Record<string, string> => ({
+  card:          tx9('auto.tripDetail.paidByCard', 'Paid by card'),
+  bank_transfer: tx9('auto.tripDetail.paidByBankTransfer', 'Paid by bank transfer'),
+  ussd:          tx9('auto.tripDetail.paidByUssd', 'Paid by USSD'),
+});
 
 
 
@@ -63,13 +64,13 @@ const PAYMENT_LABELS: Record<string, string> = {
  * Zone tiers in the uppercase register this card's other fare labels
  * use, so the new line does not look pasted in from another screen.
  */
-const ZONE_TIER_LABEL: Record<string, string> = {
-  intraStateLongHaul: 'LONG TRIP SURCHARGE',
-  interStateAdjacent: 'NEXT-STATE SURCHARGE',
-  interStateDistant:  'FAR-STATE SURCHARGE',
-  crossZone:          'CROSS-COUNTRY SURCHARGE',
-  interState:         'INTERSTATE SURCHARGE',
-};
+const ZONE_TIER_LABEL = (): Record<string, string> => ({
+  intraStateLongHaul: tx9('auto.tripDetail.longTripSurcharge', 'LONG TRIP SURCHARGE'),
+  interStateAdjacent: tx9('auto.tripDetail.nextStateSurcharge', 'NEXT-STATE SURCHARGE'),
+  interStateDistant:  tx9('auto.tripDetail.farStateSurcharge', 'FAR-STATE SURCHARGE'),
+  crossZone:          tx9('auto.tripDetail.crossCountrySurcharge', 'CROSS-COUNTRY SURCHARGE'),
+  interState:         tx9('auto.tripDetail.interstateSurcharge', 'INTERSTATE SURCHARGE'),
+});
 
 export default function TripDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -124,7 +125,7 @@ export default function TripDetailsScreen() {
 
   const shareCode = (code: string, receiver?: string) => {
     Share.share({
-      message: `Hi${receiver ? ` ${receiver}` : ''}, track your package with SEIRS using code ${code}.`,
+      message: tx9('auto.tripDetail.hiTrackYourPackageWith', 'Hi{{v0}}, track your package with SEIRS using code {{code}}.', { v0: receiver ? ` ${receiver}` : '', code }),
     }).catch(() => {});
   };
 
@@ -196,7 +197,7 @@ export default function TripDetailsScreen() {
    * priceBreakdown, which only the business path ever wrote.
    */
   const zoneTierLabel = d.zoneTier
-    ? (ZONE_TIER_LABEL[d.zoneTier] ?? 'DISTANCE SURCHARGE')
+    ? (ZONE_TIER_LABEL()[d.zoneTier] ?? 'DISTANCE SURCHARGE')
     : null;
 
   const fareLines: Array<[string, number]> = ([
@@ -289,11 +290,11 @@ export default function TripDetailsScreen() {
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.text }]}>{d.trackingCode ?? 'Trip'}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{d.trackingCode ?? tx9('auto.tripDetail.trip', 'Trip')}</Text>
           <Text style={[styles.sub, { color: colors.textThird }]}>
             {d.kind === 'ride'
-              ? 'Ride'
-              : stops.length > 1 ? `${stops.length} packages · one payment` : 'Single package'}
+              ? tx9('auto.tripDetail.ride', 'Ride')
+              : stops.length > 1 ? `${stops.length} packages · one payment` : tx9('auto.tripDetail.singlePackage', 'Single package')}
           </Text>
         </View>
         <View style={[styles.badge, { backgroundColor: runColor + '20' }]}>
@@ -310,11 +311,11 @@ export default function TripDetailsScreen() {
           {/* A seat is not collected from anywhere: the passenger goes to
               the driver. Say where, in the driver's words, and hand over
               the route (founder 2026-09-06). */}
-          <Text style={[styles.cardLabel, { color: colors.textThird }]}>{d.tripId ? 'WHERE TO MEET' : 'COLLECTED FROM'}</Text>
+          <Text style={[styles.cardLabel, { color: colors.textThird }]}>{d.tripId ? tx9('auto.parcelRequests.whereToMeet', 'WHERE TO MEET') : tx9('auto.tripDetail.collectedFrom', 'COLLECTED FROM')}</Text>
           <Text style={[styles.cardValue, { color: colors.text }]}>{d.pickupAddress}</Text>
           {!!d.tripId && !!seat?.board?.description && (
             <Text style={{ fontSize: 13, color: colors.textSecond, marginTop: 2 }}>
-              {String(seat?.driver?.name ?? 'The driver').split(' ')[0]} says: {seat.board.description}
+              {String(seat?.driver?.name ?? tx9('auto.parcelRequests.theDriver', 'The driver')).split(' ')[0]} says: {seat.board.description}
             </Text>
           )}
           {!!d.tripId && !!meetUrl && (
@@ -335,7 +336,7 @@ export default function TripDetailsScreen() {
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.rowBetween}>
             <Text style={[styles.cardLabel, { color: colors.textThird }]}>
-              {neverPaid ? 'TOTAL' : 'TOTAL PAID'}
+              {neverPaid ? 'TOTAL' : tx9('auto.tripDetail.totalPaid', 'TOTAL PAID')}
             </Text>
             <Text style={[styles.cardValue, { color: colors.text }]}>{naira(d.price)}</Text>
           </View>
@@ -349,10 +350,10 @@ export default function TripDetailsScreen() {
               "Paid by card" here; never again. */}
           <Text style={{ fontSize: 13, color: isUnpaid ? '#DC2626' : colors.textThird }}>
             {isUnpaid
-              ? 'Not paid yet'
+              ? tx9('auto.tripDetail.notPaidYet', 'Not paid yet')
               : neverPaid
-                ? 'Nothing was charged for this trip'
-                : (PAYMENT_LABELS[d.paymentMethod] ?? 'Paid on this account')}
+                ? tx9('auto.tripDetail.nothingWasChargedForThis', 'Nothing was charged for this trip')
+                : (PAYMENT_LABELS()[d.paymentMethod] ?? tx9('auto.tripDetail.paidOnThisAccount', 'Paid on this account'))}
           </Text>
         </View>
 
@@ -446,8 +447,8 @@ export default function TripDetailsScreen() {
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
               Going back to {d.pickupAddress}.
-              {d.returnStatus === 'pending' ? ' Support is reviewing it.' : ''}
-              {d.returnStatus === 'applied' ? ' On its way back to you.' : ''}
+              {d.returnStatus === 'pending' ? tx9('auto.track.supportIsReviewingIt', 'Support is reviewing it.') : ''}
+              {d.returnStatus === 'applied' ? tx9('auto.track.onItsWayBackTo', 'On its way back to you.') : ''}
             </Text>
             {d.returnStatus === 'approved' && !d.returnPaidAt && (
               <Pressable
@@ -489,7 +490,7 @@ export default function TripDetailsScreen() {
                 <Text style={{ fontSize: 13, color: colors.textSecond, marginTop: 1 }}>
                   {driver.trips > 0
                     ? `★ ${driver.rating.toFixed(1)} · ${driver.trips} trips`
-                    : 'New driver'}
+                    : tx9('auto.tripDetail.newDriver', 'New driver')}
                 </Text>
                 {!!(driver.vehicle || driver.plate) && (
                   <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 1 }} numberOfLines={1}>
@@ -526,7 +527,7 @@ export default function TripDetailsScreen() {
               <View style={styles.rowBetween}>
                 <Text style={[styles.pkgTitle, { color: colors.text }]} numberOfLines={1}>
                   {d.kind === 'ride'
-                    ? (receiver || 'You')
+                    ? (receiver || tx9('auto.tripDetail.you', 'You'))
                     : (st.packageDescription?.trim() || `Package ${st.sequenceOrder ?? i + 1}`)}
                 </Text>
                 <View style={[styles.badge, { backgroundColor: c + '20' }]}>
@@ -556,7 +557,7 @@ export default function TripDetailsScreen() {
                 <Text style={[styles.pkgMeta, { color: colors.textSecond }]}>
                   Delivered {fmtWhen(st.deliveredAt ?? d.deliveredAt)}
                   {d.receivedByRelation && d.receivedByRelation !== 'recipient' && d.receivedByName
-                    ? ` · left with ${d.receivedByName}` : ''}
+                    ? tx9('auto.tripDetail.leftWith', '· left with {{receivedByName}}', { receivedByName: d.receivedByName }) : ''}
                 </Text>
               )}
 
@@ -600,7 +601,7 @@ export default function TripDetailsScreen() {
                   <Pressable onPress={() => copyCode(code)} hitSlop={8} style={styles.codeBtn}>
                     <Icon name={copied === code ? 'Check' : 'Copy'} size={14} color={colors.primary} />
                     <Text style={[styles.codeBtnText, { color: colors.primary }]}>
-                      {copied === code ? 'Copied' : 'Copy'}
+                      {copied === code ? tx9('auto.packageQr.copied', 'Copied') : tx9('auto.profile.copy', 'Copy')}
                     </Text>
                   </Pressable>
                   <Pressable onPress={() => shareCode(code, st.receiverFirstName)} hitSlop={8} style={styles.codeBtn}>
@@ -691,8 +692,8 @@ export default function TripDetailsScreen() {
             </Text>
             <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
               {stops.length > 1
-                ? `Reuse all ${stops.length} packages, then edit anything`
-                : 'Reuse these details, then edit anything'}
+                ? tx9('auto.tripDetail.reuseAllPackagesThenEdit', 'Reuse all {{length}} packages, then edit anything', { length: stops.length })
+                : tx9('auto.tripDetail.reuseTheseDetailsThenEdit', 'Reuse these details, then edit anything')}
             </Text>
           </Pressable>
         )}

@@ -24,6 +24,7 @@ import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 interface Readiness {
   ready:    boolean;
@@ -168,7 +169,7 @@ export default function DeleteAccountScreen() {
                   <View key={i} style={{ marginTop: 8 }}>
                     <Text style={[styles.blockerLabel, { color: '#92400E' }]}>
                       {b.type === 'active_deliveries' ? `${b.count} active deliver${b.count === 1 ? 'y' : 'ies'}` :
-                       b.type === 'wallet_balance'    ? `Wallet balance: ${naira(b.count)}` :
+                       b.type === 'wallet_balance'    ? tx9('auto.deleteAccount.walletBalance', 'Wallet balance: {{v0}}', { v0: naira(b.count) }) :
                        `${b.type}: ${b.count}`}
                     </Text>
                     <Text style={[styles.blockerAction, { color: '#92400E' }]}>{b.action}</Text>
@@ -180,19 +181,19 @@ export default function DeleteAccountScreen() {
 
           <Text style={[styles.what, { color: theme.text }]}>{tx('auto.deleteAccount.whatGetsDeleted', 'What gets deleted')}</Text>
           {[
-            'Your driver profile, KYC documents, and ratings',
-            'Your trip history (after the 30-day grace window)',
-            'Your wallet balance: withdraw it before deleting',
-            'Your bank details + saved payout info',
+            tx9('auto.deleteAccount.yourDriverProfileKycDocuments', 'Your driver profile, KYC documents, and ratings'),
+            tx9('auto.deleteAccount.yourTripHistoryAfterThe', 'Your trip history (after the 30-day grace window)'),
+            tx9('auto.deleteAccount.yourWalletBalanceWithdrawIt', 'Your wallet balance: withdraw it before deleting'),
+            tx9('auto.deleteAccount.yourBankDetailsSavedPayout', 'Your bank details + saved payout info'),
           ].map(t => (
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
           ))}
 
           <Text style={[styles.what, { color: theme.text, marginTop: Spacing.md }]}>{tx('auto.deleteAccount.whatStays', 'What stays')}</Text>
           {[
-            'Audit trails for any open complaints or disputes',
-            'Tax records we are legally required to retain (FIRS / NDPR)',
-            'Anonymised analytics: you are not personally identifiable',
+            tx9('auto.deleteAccount.auditTrailsForAnyOpen', 'Audit trails for any open complaints or disputes'),
+            tx9('auto.deleteAccount.taxRecordsWeAreLegally', 'Tax records we are legally required to retain (FIRS / NDPR)'),
+            tx9('auto.deleteAccount.anonymisedAnalyticsYouAreNot', 'Anonymised analytics: you are not personally identifiable'),
           ].map(t => (
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
           ))}

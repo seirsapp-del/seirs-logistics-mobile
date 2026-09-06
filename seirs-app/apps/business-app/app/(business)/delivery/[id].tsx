@@ -33,6 +33,7 @@ import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
 import { Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Status colour now comes from constants/tint.ts (2026-08-24), shared
@@ -169,7 +170,7 @@ export default function DeliveryDetailScreen() {
 
   const shareCode = (code: string, receiver?: string) => {
     Share.share({
-      message: `Hi${receiver ? ` ${receiver}` : ''}, track your package with SEIRS using code ${code}.`,
+      message: tx9('auto.deliveryDetail.hiTrackYourPackageWith', 'Hi{{v0}}, track your package with SEIRS using code {{code}}.', { v0: receiver ? ` ${receiver}` : '', code }),
     }).catch(() => {});
   };
 
@@ -370,9 +371,9 @@ export default function DeliveryDetailScreen() {
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.text }]}>{d.trackingCode ?? 'Delivery'}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{d.trackingCode ?? tx9('auto.billing.delivery', 'Delivery')}</Text>
           <Text style={[styles.sub, { color: colors.textThird }]}>
-            {stops.length > 1 ? `${stops.length} packages · one payment` : 'Single package'}
+            {stops.length > 1 ? `${stops.length} packages · one payment` : tx9('auto.deliveryDetail.singlePackage', 'Single package')}
           </Text>
         </View>
         <View style={[styles.badge, { backgroundColor: runTint.bg }]}>
@@ -384,7 +385,7 @@ export default function DeliveryDetailScreen() {
         {!!d.pickupLat && !!dropPoint && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, padding: 0, overflow: 'hidden', marginBottom: 12 }]}>
             <Text style={[styles.cardLabel, { color: colors.textThird, paddingHorizontal: 16, paddingTop: 16 }]}>
-              {String(d.status) === 'delivered' ? 'WHERE IT WENT' : 'WHERE IT IS'}
+              {String(d.status) === 'delivered' ? tx9('auto.deliveryDetail.whereItWent', 'WHERE IT WENT') : tx9('auto.deliveryDetail.whereItIs', 'WHERE IT IS')}
             </Text>
             {/* Say WHICH parcel the pin belongs to. One drop pin on a
                 five-package run would otherwise read as the whole run's
@@ -392,8 +393,8 @@ export default function DeliveryDetailScreen() {
             {stops.length > 1 && openStopIndex >= 0 && (
               <Text style={{ color: colors.textSecond, fontSize: FontSize.xs, paddingHorizontal: 16, paddingTop: 2 }}>
                 {String(d.status) === 'delivered'
-                  ? `Last drop · package ${openStopIndex + 1} of ${stops.length}`
-                  : `Drop pin: package ${openStopIndex + 1} of ${stops.length}`}
+                  ? tx9('auto.deliveryDetail.lastDropPackageOf', 'Last drop · package {{v0}} of {{length}}', { v0: openStopIndex + 1, length: stops.length })
+                  : tx9('auto.deliveryDetail.dropPinPackageOf', 'Drop pin: package {{v0}} of {{length}}', { v0: openStopIndex + 1, length: stops.length })}
               </Text>
             )}
             <DeliveryTrackMap
@@ -434,7 +435,7 @@ export default function DeliveryDetailScreen() {
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.rowBetween}>
             <Text style={[styles.cardLabel, { color: colors.textThird }]}>
-              {isUnpaid ? 'TOTAL DUE' : 'TOTAL PAID'}
+              {isUnpaid ? tx9('auto.deliveryDetail.totalDue', 'TOTAL DUE') : tx9('auto.deliveryDetail.totalPaid', 'TOTAL PAID')}
             </Text>
             <Text style={[styles.cardValue, { color: colors.text }]}>{naira(d.price)}</Text>
           </View>
@@ -451,8 +452,8 @@ export default function DeliveryDetailScreen() {
             <>
               <Text style={{ color: colors.textSecond, fontSize: FontSize.xs, marginTop: 6, lineHeight: 17 }}>
                 {d.isRecurring
-                  ? 'This is a recurring run at today\'s price. It is not paid for and nothing is charged on its own: pay through checkout before pickup time and it goes out.'
-                  : 'This booking is saved but not paid for. A driver is matched once payment goes through.'}
+                  ? tx9('auto.deliveryDetail.thisIsARecurringRun', 'This is a recurring run at today\'s price. It is not paid for and nothing is charged on its own: pay through checkout before pickup time and it goes out.')
+                  : tx9('auto.deliveryDetail.thisBookingIsSavedBut', 'This booking is saved but not paid for. A driver is matched once payment goes through.')}
               </Text>
               {procPct !== null && (
                 <Text style={{ color: colors.textSecond, fontSize: FontSize.xs, marginTop: 4, lineHeight: 17 }}>
@@ -493,7 +494,7 @@ export default function DeliveryDetailScreen() {
                       style={[styles.redeemBtn, { borderColor: colors.primary }, !!redeeming && { opacity: 0.6 }]}
                     >
                       <Text style={[styles.redeemText, { color: colors.primary }]}>
-                        {redeeming === r.type ? 'Applying…' : `${r.label} for ${r.cost.toLocaleString()} pts`}
+                        {redeeming === r.type ? tx9('auto.deliveryDetail.applying', 'Applying…') : `${r.label} for ${r.cost.toLocaleString()} pts`}
                       </Text>
                     </Pressable>
                   ))}
@@ -514,7 +515,7 @@ export default function DeliveryDetailScreen() {
                 ]}
               >
                 <Text style={styles.payBtnText}>
-                  {paying ? 'Opening…' : `Pay ${naira(d.price)}`}
+                  {paying ? tx9('auto.deliveries.opening', 'Opening…') : `Pay ${naira(d.price)}`}
                 </Text>
               </Pressable>
               {/* Same reasoning as the customer app: this screen is where
@@ -580,8 +581,8 @@ export default function DeliveryDetailScreen() {
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
               Going back to {d.pickupAddress}.
-              {d.returnStatus === 'pending' ? ' Support is reviewing it.' : ''}
-              {d.returnStatus === 'applied' ? ' On its way back to you.' : ''}
+              {d.returnStatus === 'pending' ? tx9('auto.deliveryDetail.supportIsReviewingIt', 'Support is reviewing it.') : ''}
+              {d.returnStatus === 'applied' ? tx9('auto.deliveryDetail.onItsWayBackTo', 'On its way back to you.') : ''}
             </Text>
             {d.returnStatus === 'approved' && !d.returnPaidAt && (
               <Pressable
@@ -656,7 +657,7 @@ export default function DeliveryDetailScreen() {
                     <Pressable onPress={() => copyCode(code)} hitSlop={8} style={styles.codeBtn}>
                       <Icon name={copied === code ? 'Check' : 'Copy'} size={14} color={colors.primary} />
                       <Text style={[styles.codeBtnText, { color: colors.primary }]}>
-                        {copied === code ? 'Copied' : 'Copy'}
+                        {copied === code ? tx9('auto.deliveryDetail.copied', 'Copied') : tx9('auto.deliveryDetail.copy', 'Copy')}
                       </Text>
                     </Pressable>
                     <Pressable onPress={() => shareCode(code, st.receiverFirstName)} hitSlop={8} style={styles.codeBtn}>
@@ -723,7 +724,7 @@ export default function DeliveryDetailScreen() {
         {stops.length === 0 && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={{ color: colors.textSecond, fontSize: 14 }}>
-              {d.dropoffAddress ?? 'No package details recorded for this delivery.'}
+              {d.dropoffAddress ?? tx9('auto.deliveryDetail.noPackageDetailsRecordedFor', 'No package details recorded for this delivery.')}
             </Text>
 
             {/* Older bookings predate per-package codes and carry only the
@@ -791,8 +792,8 @@ export default function DeliveryDetailScreen() {
             <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>{tx('auto.id.sendAgain', 'Send again')}</Text>
             <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
               {stops.length > 1
-                ? `Reuse all ${stops.length} packages, then edit anything`
-                : 'Reuse these details, then edit anything'}
+                ? tx9('auto.deliveryDetail.reuseAllPackagesThenEdit', 'Reuse all {{length}} packages, then edit anything', { length: stops.length })
+                : tx9('auto.deliveryDetail.reuseTheseDetailsThenEdit', 'Reuse these details, then edit anything')}
             </Text>
           </Pressable>
         )}

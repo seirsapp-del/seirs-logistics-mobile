@@ -16,6 +16,7 @@ import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 // My Trips rebuilt as the business Deliveries screen, exactly (founder
 // 2026-08-22: "the exact same as deliveries on the business app, that's
 // what I wanted"). Layout, rail, card and style values are copied from
@@ -24,14 +25,14 @@ import { tx as tr } from '@/i18n/tx';
 
 const STATUSES = ['all', 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled'];
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL = (): Record<string, string> => ({
   all:        'All',
   pending:    'Pending',
   assigned:   'Assigned',
-  in_transit: 'In Transit',
+  in_transit: tx9('auto.history.inTransit', 'In Transit'),
   delivered:  'Delivered',
   cancelled:  'Cancelled',
-};
+});
 
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
@@ -274,7 +275,7 @@ export default function HistoryScreen() {
                 style={[styles.payLink, { borderColor: theme.primary }]}
               >
                 <Text style={[styles.payLinkText, { color: theme.primary }]}>
-                  {paying === item.id ? 'Opening…' : 'Pay now'}
+                  {paying === item.id ? tx9('auto.history.opening', 'Opening…') : tx9('auto.parcelRequests.payNow', 'Pay now')}
                 </Text>
               </Pressable>
             )}
@@ -321,7 +322,7 @@ export default function HistoryScreen() {
                 hitSlop={8}
               >
                 <Text style={styles.cancelBtnText}>
-                  {cancelling === item.id ? 'Checking…' : 'Cancel'}
+                  {cancelling === item.id ? tx9('auto.history.checking', 'Checking…') : tx9('auto.AddressPicker.cancel', 'Cancel')}
                 </Text>
               </Pressable>
             )}
@@ -392,7 +393,7 @@ export default function HistoryScreen() {
                 { color: theme.text },
                 active && { color: '#fff' },
               ]}>
-                {STATUS_LABEL[s]}
+                {STATUS_LABEL()[s]}
               </Text>
             </Pressable>
           );

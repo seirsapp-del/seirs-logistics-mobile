@@ -32,13 +32,14 @@ import { chatApi, uploadApi } from '@/services/api';
 import { SOCKET_URL } from '@/constants/config';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 // Customer-side canned messages. Kept short so they fit on chips + are
 // actionable. Translated via i18n keys chat.quickReplies.customer.*
-const QUICK_REPLIES = [
-  { key: 'atGate',       fallback: "I'm at the gate" },
-  { key: 'ringDoorbell', fallback: 'Ring the doorbell' },
-  { key: 'leaveGuard',   fallback: 'Leave with security' },
-  { key: 'callWhenNear', fallback: 'Call when you arrive' },
+const QUICK_REPLIES = () => [
+  { key: 'atGate',       fallback: tx('auto.messagesDetail.iMAtTheGate', 'I\'m at the gate') },
+  { key: 'ringDoorbell', fallback: tx('auto.messagesDetail.ringTheDoorbell', 'Ring the doorbell') },
+  { key: 'leaveGuard',   fallback: tx('auto.messagesDetail.leaveWithSecurity', 'Leave with security') },
+  { key: 'callWhenNear', fallback: tx('auto.messagesDetail.callWhenYouArrive', 'Call when you arrive') },
   { key: 'thanks',       fallback: 'Thanks!' },
 ];
 
@@ -287,7 +288,7 @@ export default function ChatScreen() {
           contentContainerStyle={styles.quickReplyRow}
           keyboardShouldPersistTaps="handled"
         >
-          {QUICK_REPLIES.map((qr) => (
+          {QUICK_REPLIES().map((qr) => (
             <Pressable
               key={qr.key}
               onPress={() => handleSend(t(`chat.quickReplies.customer.${qr.key}`, { defaultValue: qr.fallback }))}

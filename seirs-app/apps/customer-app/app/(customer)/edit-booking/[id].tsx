@@ -39,6 +39,7 @@ import { alertDialog } from '@/components/SeirsDialog';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /* The same input filters the Send wizard uses. Typed on a phone, a
    decimal field will happily take "3Chidinma" unless something stops
@@ -281,7 +282,7 @@ export default function EditBooking() {
 
           {isSeat ? (
             <>
-              {field('How many seats', (
+              {field(tx9('auto.editBookingDetail.howManySeats', 'How many seats'), (
                 <View style={styles.row}>
                   {[1, 2, 3, 4].map(n => (
                     <Pressable
@@ -298,7 +299,7 @@ export default function EditBooking() {
                   ))}
                 </View>
               ))}
-              {field('Luggage', (
+              {field(tx9('auto.editBookingDetail.luggage', 'Luggage'), (
                 <View style={styles.row}>
                   {LUGGAGE().filter(l => luggageOk.includes(l.id)).map(l => (
                     <Pressable
@@ -318,7 +319,7 @@ export default function EditBooking() {
               ))}
               {stops.length > 1 ? (
                 <>
-                  {field('Where you board', (
+                  {field(tx9('auto.editBookingDetail.whereYouBoard', 'Where you board'), (
                     <View style={styles.stopList}>
                       {stops.slice(0, -1).map(st => (
                         <Pressable
@@ -340,7 +341,7 @@ export default function EditBooking() {
                       ))}
                     </View>
                   ))}
-                  {field('Where you get off', (
+                  {field(tx9('auto.editBookingDetail.whereYouGetOff', 'Where you get off'), (
                     <View style={styles.stopList}>
                       {stops.slice(1).map(st => {
                         // A stop at or before the boarding point cannot be
@@ -388,13 +389,13 @@ export default function EditBooking() {
           ) : (
             <>
               <InlineAddressPicker
-                label={isRide ? 'Pick you up at' : 'Collect from'}
+                label={isRide ? tx9('auto.editBookingDetail.pickYouUpAt', 'Pick you up at') : tx9('auto.editBookingDetail.collectFrom', 'Collect from')}
                 dotColor={theme.primary}
                 value={pickup?.address ?? ''}
                 onSelect={(p: any) => setPickup({ address: p.address, lat: p.lat, lng: p.lng })}
               />
               <InlineAddressPicker
-                label={isRide ? 'Going to' : 'Deliver to'}
+                label={isRide ? tx9('auto.editBookingDetail.goingTo', 'Going to') : tx9('auto.editBookingDetail.deliverTo', 'Deliver to')}
                 dotColor={theme.error}
                 value={dropoff?.address ?? ''}
                 onSelect={(p: any) => setDropoff({ address: p.address, lat: p.lat, lng: p.lng })}
@@ -402,12 +403,12 @@ export default function EditBooking() {
 
               {!isRide && (
                 <>
-                  {field('Weight (kg)', input(weightKg, v => setWeightKg(onlyDecimal(v)), 'e.g. 2.5', { keyboardType: 'decimal-pad' }))}
-                  {field('What is inside', input(description, setDescription, 'e.g. Two cartons of books', { multiline: true }))}
-                  {field('Declared value (NGN)', input(declared, v => setDeclared(onlyDecimal(v)), 'Leave blank if not insured', { keyboardType: 'number-pad' }))}
-                  {field('Receiver first name', input(rcvFirst, v => setRcvFirst(onlyName(v)), 'e.g. Chidinma'))}
-                  {field('Receiver last name',  input(rcvLast,  v => setRcvLast(onlyName(v)),  'e.g. Okafor'))}
-                  {field('Receiver phone',      input(rcvPhone, v => setRcvPhone(onlyDigits(v)), '08012345678', { keyboardType: 'phone-pad' }))}
+                  {field(tx9('auto.editBookingDetail.weightKg', 'Weight (kg)'), input(weightKg, v => setWeightKg(onlyDecimal(v)), 'e.g. 2.5', { keyboardType: 'decimal-pad' }))}
+                  {field(tx9('auto.editBookingDetail.whatIsInside', 'What is inside'), input(description, setDescription, tx9('auto.editBookingDetail.eGTwoCartonsOf', 'e.g. Two cartons of books'), { multiline: true }))}
+                  {field(tx9('auto.editBookingDetail.declaredValueNgn', 'Declared value (NGN)'), input(declared, v => setDeclared(onlyDecimal(v)), tx9('auto.editBookingDetail.leaveBlankIfNotInsured', 'Leave blank if not insured'), { keyboardType: 'number-pad' }))}
+                  {field(tx9('auto.editBookingDetail.receiverFirstName', 'Receiver first name'), input(rcvFirst, v => setRcvFirst(onlyName(v)), tx9('auto.editBookingDetail.eGChidinma', 'e.g. Chidinma')))}
+                  {field(tx9('auto.editBookingDetail.receiverLastName', 'Receiver last name'),  input(rcvLast,  v => setRcvLast(onlyName(v)),  tx9('auto.editBookingDetail.eGOkafor', 'e.g. Okafor')))}
+                  {field(tx9('auto.editBookingDetail.receiverPhone', 'Receiver phone'),      input(rcvPhone, v => setRcvPhone(onlyDigits(v)), '08012345678', { keyboardType: 'phone-pad' }))}
                 </>
               )}
             </>

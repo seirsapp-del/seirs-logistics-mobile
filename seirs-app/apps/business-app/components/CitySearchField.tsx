@@ -18,6 +18,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { searchCities, type NgCity } from '@seirs/shared/models/cities';
+import { tx } from '@/i18n/tx';
 
 interface Props {
   label:        string;
@@ -60,7 +61,7 @@ export function CitySearchField({
         {onLocate ? (
           <Pressable onPress={onLocate} hitSlop={8} disabled={locating}>
             <Text style={[styles.locate, { color: locating ? theme.textThird : theme.primary }]}>
-              {locating ? 'Finding you...' : 'Use my location'}
+              {locating ? tx('auto.citysearchfield.findingYou', 'Finding you...') : tx('auto.citysearchfield.useMyLocation', 'Use my location')}
             </Text>
           </Pressable>
         ) : null}

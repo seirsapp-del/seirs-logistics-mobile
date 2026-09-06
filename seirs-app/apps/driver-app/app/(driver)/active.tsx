@@ -28,6 +28,7 @@ import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const STATUS_STEPS = (): {
   key: string; label: string; icon: string;
@@ -133,10 +134,10 @@ export default function ActiveDeliveryScreen() {
     const t = new Date(jobStartedAt);
     if (isNaN(t.getTime())) return null;
     const mins = Math.floor((Date.now() - t.getTime()) / 60000);
-    if (mins < 1)  return 'Just started';
-    if (mins < 60) return `On this job ${mins} min`;
+    if (mins < 1)  return tx9('auto.active.justStarted', 'Just started');
+    if (mins < 60) return tx9('auto.active.onThisJobMin', 'On this job {{mins}} min', { mins });
     const h = Math.floor(mins / 60);
-    return `On this job ${h}h ${mins % 60}m`;
+    return tx9('auto.active.onThisJobHM', 'On this job {{h}}h {{v1}}m', { h, v1: mins % 60 });
   })();
   /**
    * Clear the system navigation bar with room to spare.
@@ -653,7 +654,7 @@ export default function ActiveDeliveryScreen() {
         if (remainingActive > 0) {
           setSheet({
             title: tr('auto.active.trunkCheck', 'Trunk check'),
-            message: `Delivered ${delivery.trackingCode}. You still have ${remainingActive} package${remainingActive > 1 ? 's' : ''} on board: take a quick photo of the remaining cargo. It protects YOU in any dispute.`,
+            message: tx9('auto.active.deliveredYouStillHavePackage', 'Delivered {{trackingCode}}. You still have {{remainingActive}} package{{v2}} on board: take a quick photo of the remaining cargo. It protects YOU in any dispute.', { trackingCode: delivery.trackingCode, remainingActive, v2: remainingActive > 1 ? 's' : '' }),
             options: [{
               label: tr('auto.active.takeTheTrunkPhoto', 'Take the trunk photo'),
               variant: 'primary',
@@ -691,7 +692,7 @@ export default function ActiveDeliveryScreen() {
               : `Your earnings for this trip clear in ${clearanceDays} business day${clearanceDays === 1 ? '' : 's'}, then you can withdraw them.`;
         setSheet({
           title: tr('auto.active.deliveryComplete', 'Delivery complete'),
-          message: `You've successfully delivered ${delivery.trackingCode}.\n\n${clearanceLine}`,
+          message: tx9('auto.active.youVeSuccessfullyDelivered', 'You\'ve successfully delivered {{trackingCode}}. {{clearanceLine}}', { trackingCode: delivery.trackingCode, clearanceLine }),
           options: [{
             label: tr('auto.active.backToJobs', 'Back to jobs'),
             variant: 'primary',
@@ -783,7 +784,7 @@ export default function ActiveDeliveryScreen() {
          * the driver's delivery payload, which is a server change rather than
          * something this screen can reach for.
          */
-        storeName:    'Partner counter',
+        storeName:    tx9('auto.active.partnerCounter', 'Partner counter'),
         storeAddress: delivery.dropoffAddress ?? '',
       };
     }
@@ -792,7 +793,7 @@ export default function ActiveDeliveryScreen() {
         direction: 'collect',
         title: tr('auto.active.collectFromThePartnerCounter', 'Collect from the partner counter'),
         sub:   tr('auto.active.scanTheParcelThenThe2', 'Scan the parcel, then the counter signs it out. After that it is on you.'),
-        storeName:    'Partner counter',
+        storeName:    tx9('auto.active.partnerCounter', 'Partner counter'),
         storeAddress: delivery.pickupAddress ?? '',
         // The handover screen swaps the placeholder above for the shop's real
         // name, hours and phone once it has looked this up.
@@ -854,7 +855,7 @@ export default function ActiveDeliveryScreen() {
               {!!elapsedLabel && <Text style={styles.bannerSub}>{elapsedLabel}</Text>}
               <View style={styles.gpsPill}>
                 <View style={styles.gpsDot} />
-                <Text style={styles.gpsText}>{bgTracking ? 'GPS ALWAYS' : 'GPS'}</Text>
+                <Text style={styles.gpsText}>{bgTracking ? tx9('auto.active.gpsAlways', 'GPS ALWAYS') : 'GPS'}</Text>
               </View>
             </View>
           </LinearGradient>
@@ -1062,12 +1063,12 @@ export default function ActiveDeliveryScreen() {
             are true for them: distance and their own pay. Rows with a missing
             value are dropped rather than rendered as "NaN km" (D-10.5). */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>{isRide ? 'Trip Details' : 'Package Details'}</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>{isRide ? tx9('auto.active.tripDetails', 'Trip Details') : tx9('auto.active.packageDetails', 'Package Details')}</Text>
           {[
             ...(isRide ? [] : [
               { label: tr('auto.active.description', 'Description'), value: delivery.packageDescription,                        icon: 'cube-outline' },
               { label: tr('auto.active.size', 'Size'),        value: delivery.packageSize,                               icon: 'resize-outline' },
-              { label: tr('auto.id.fragile', 'Fragile'),     value: delivery.isFragile ? 'Yes: handle carefully' : 'No', icon: 'warning-outline' },
+              { label: tr('auto.id.fragile', 'Fragile'),     value: delivery.isFragile ? tx9('auto.active.yesHandleCarefully', 'Yes: handle carefully') : 'No', icon: 'warning-outline' },
             ]),
             {
               label: tr('auto.id.distance', 'Distance'),
@@ -1139,12 +1140,12 @@ export default function ActiveDeliveryScreen() {
             <View style={styles.customerRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.customerName, { color: theme.text }]}>
-                  {delivery.receiverFirstName || 'Passenger'}
+                  {delivery.receiverFirstName || tx9('auto.active.passenger', 'Passenger')}
                 </Text>
                 <Text style={[styles.customerPhone, { color: theme.textSecond }]}>
-                  {delivery.packageDescription === 'Ride · large luggage' ? 'Travelling with large luggage'
-                    : delivery.packageDescription === 'Ride · small bag' ? 'Travelling with a small bag'
-                    : 'No luggage'}
+                  {delivery.packageDescription === 'Ride · large luggage' ? tx9('auto.active.travellingWithLargeLuggage', 'Travelling with large luggage')
+                    : delivery.packageDescription === 'Ride · small bag' ? tx9('auto.active.travellingWithASmallBag', 'Travelling with a small bag')
+                    : tx9('auto.active.noLuggage', 'No luggage')}
                 </Text>
               </View>
               <Pressable
@@ -1166,7 +1167,7 @@ export default function ActiveDeliveryScreen() {
             <View style={styles.customerRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.customerName, { color: theme.text }]}>
-                  {[delivery.receiverFirstName, delivery.receiverLastName].filter(Boolean).join(' ') || 'Not named'}
+                  {[delivery.receiverFirstName, delivery.receiverLastName].filter(Boolean).join(' ') || tx9('auto.active.notNamed', 'Not named')}
                 </Text>
                 {!!delivery.receiverPhone && (
                   <Text style={[styles.customerPhone, { color: theme.textSecond }]}>{delivery.receiverPhone}</Text>
@@ -1203,7 +1204,7 @@ export default function ActiveDeliveryScreen() {
           >
             <Ionicons name="alert-circle-outline" size={18} color="#DC2626" />
             <Text style={styles.reportBtnText}>
-              {reporting ? 'Reporting...' : 'Report a problem'}
+              {reporting ? 'Reporting...' : tx9('auto.active.reportAProblem', 'Report a problem')}
             </Text>
           </Pressable>
         )}

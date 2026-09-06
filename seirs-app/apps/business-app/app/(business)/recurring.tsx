@@ -12,6 +12,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * Recurring runs.
@@ -50,20 +51,20 @@ interface Template {
   payload:    any;
 }
 
-const CADENCE_LABEL: Record<Cadence, string> = {
-  daily:   'Every day',
-  weekly:  'Every week',
-  monthly: 'Every month',
-};
+const CADENCE_LABEL = (): Record<Cadence, string> => ({
+  daily:   tx9('auto.recurring.everyDay', 'Every day'),
+  weekly:  tx9('auto.recurring.everyWeek', 'Every week'),
+  monthly: tx9('auto.recurring.everyMonth', 'Every month'),
+});
 
 const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const pad = (n: number) => String(n).padStart(2, '0');
 
 const cadenceFullLabel = (t: Template) => {
   const time = `${pad(t.hour)}:${pad(t.minute)}`;
-  if (t.cadence === 'daily')   return `Every day at ${time}`;
-  if (t.cadence === 'weekly')  return `Every ${DOW_SHORT[t.dayOfWeek ?? 1]} at ${time}`;
-  return `Day ${t.dayOfMonth ?? 1} of each month at ${time}`;
+  if (t.cadence === 'daily')   return tx9('auto.recurring.everyDayAt', 'Every day at {{time}}', { time });
+  if (t.cadence === 'weekly')  return tx9('auto.recurring.everyAt', 'Every {{v0}} at {{time}}', { v0: DOW_SHORT[t.dayOfWeek ?? 1], time });
+  return tx9('auto.recurring.dayOfEachMonthAt', 'Day {{v0}} of each month at {{time}}', { v0: t.dayOfMonth ?? 1, time });
 };
 
 const fmtNext = (iso: string) =>
@@ -207,7 +208,7 @@ export default function RecurringScreen() {
                     )}
                     <Text style={[styles.templateMeta, { color: colors.textThird }]}>
                       {t.fireCount} run{t.fireCount === 1 ? '' : 's'} created so far
-                      {t.errorCount > 0 ? ` · ${t.errorCount} could not be created` : ''}
+                      {t.errorCount > 0 ? tx9('auto.recurring.couldNotBeCreated', '· {{errorCount}} could not be created', { errorCount: t.errorCount }) : ''}
                     </Text>
                     {t.lastError && (
                       <Text style={styles.errorLine}>Last problem: {t.lastError}</Text>
@@ -401,7 +402,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
                         {/* Multi-package runs carry no dropoffAddress; the last stop is the destination. */}
                         {d.dropoffAddress
                           ?? (Array.isArray(d.stops) && d.stops.length ? `${d.stops[d.stops.length - 1]?.address ?? ''}${d.stops.length > 1 ? ` (+${d.stops.length - 1} more)` : ''}` : null)
-                          ?? d.trackingCode ?? 'Delivery'}
+                          ?? d.trackingCode ?? tx9('auto.billing.delivery', 'Delivery')}
                       </Text>
                       <Text style={{ color: colors.textSecond, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
                         from {d.pickupAddress ?? '?'}{d.distanceKm ? ` · ${d.distanceKm} km` : ''}
@@ -437,7 +438,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
                   }]}
                 >
                   <Text style={{ color: on ? '#fff' : colors.text, fontWeight: '600', fontSize: 14 }}>
-                    {CADENCE_LABEL[c]}
+                    {CADENCE_LABEL()[c]}
                   </Text>
                 </Pressable>
               );

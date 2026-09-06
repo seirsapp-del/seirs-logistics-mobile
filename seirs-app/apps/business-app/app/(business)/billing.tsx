@@ -36,6 +36,7 @@ import { useColors } from '@/context/ThemeContext';
 import { naira as nairaFmt, nairaFromKobo } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type Payment = {
   id: string;
@@ -313,7 +314,7 @@ export default function BillingScreen() {
           const { uri } = await Print.printToFileAsync({ html: buildStatementHtml(statement) });
           await Sharing.shareAsync(uri, {
             mimeType: 'application/pdf',
-            dialogTitle: `SEIRS statement ${periodLabel(statement.from, statement.to)}`,
+            dialogTitle: tx9('auto.billing.seirsStatement', 'SEIRS statement {{v0}}', { v0: periodLabel(statement.from, statement.to) }),
           });
           return;
         } catch { /* fall through to the text share */ }
@@ -407,7 +408,7 @@ export default function BillingScreen() {
             {/* The period is printed ABOVE the figure, always. A total with
                 no dates over it is the thing this screen exists to stop. */}
             <Text style={[styles.period, { color: colors.textThird }]}>
-              {periodLabel(statement?.from, statement?.to) || 'SELECT A PERIOD'}
+              {periodLabel(statement?.from, statement?.to) || tx9('auto.billing.selectAPeriod', 'SELECT A PERIOD')}
             </Text>
             <Text style={[styles.heroValue, { color: colors.text }]}>{nairaFmt(totalNgn)}</Text>
             <Text style={[styles.heroSub, { color: colors.textSecond }]}>
@@ -459,7 +460,7 @@ export default function BillingScreen() {
             >
               <Icon name="Download" size={16} color={colors.textOnPrimary} />
               <Text style={[styles.shareBtnText, { color: colors.textOnPrimary }]}>
-                {exporting ? 'Preparing...' : 'Export this statement'}
+                {exporting ? 'Preparing...' : tx9('auto.billing.exportThisStatement', 'Export this statement')}
               </Text>
             </Pressable>
           )}
@@ -472,7 +473,7 @@ export default function BillingScreen() {
                   <View key={p.id} style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.rowTitle, { color: colors.text }]} numberOfLines={1}>
-                        {p.delivery?.trackingCode ?? p.providerReference ?? 'Charge'}
+                        {p.delivery?.trackingCode ?? p.providerReference ?? tx9('auto.billing.charge', 'Charge')}
                       </Text>
                       <Text style={[styles.rowSub, { color: colors.textThird }]} numberOfLines={1}>
                         {dayMonth(p.createdAt)}

@@ -3,6 +3,7 @@ import { View, TextInput, Pressable, StyleSheet, TextInputProps } from 'react-na
 import { Eye, EyeOff } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors, Radius, Spacing, FontSize } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 interface Props extends Omit<TextInputProps, 'secureTextEntry'> {
   // Optional: falls back to theme tokens when not supplied. Form screens
@@ -40,7 +41,7 @@ export function PasswordInput({ borderColor, backgroundColor, style, ...props }:
         hitSlop={8}
         style={styles.toggle}
         accessibilityRole="button"
-        accessibilityLabel={show ? 'Hide password' : 'Show password'}
+        accessibilityLabel={show ? tx('auto.passwordinput.hidePassword', 'Hide password') : tx('auto.passwordinput.showPassword', 'Show password')}
       >
         <Icon size={18} color={theme.textSecond} strokeWidth={1.5} />
       </Pressable>

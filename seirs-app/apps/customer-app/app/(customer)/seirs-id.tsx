@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8 §1.9 + §1.17: customer presents this screen when collecting
 // at a partner store or as the recipient at the door. Partner staff /
@@ -74,7 +75,7 @@ export default function SeirsIdScreen() {
               ? <ActivityIndicator color="#fff" size="small" />
               : <RefreshCw size={15} color="#fff" strokeWidth={2} />}
             <Text style={{ color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
-              {refreshing ? 'Refreshing…' : 'Try again'}
+              {refreshing ? tx9('auto.seirsId.refreshing', 'Refreshing…') : tx9('auto.seirsId.tryAgain', 'Try again')}
             </Text>
           </Pressable>
         </View>
@@ -132,7 +133,7 @@ export default function SeirsIdScreen() {
                 ? <CheckCircle size={14} color="#fff" strokeWidth={2} />
                 : <Copy        size={14} color="#fff" strokeWidth={2} />
               }
-              <Text style={styles.copyBtnText}>{copied ? 'Copied' : 'Copy'}</Text>
+              <Text style={styles.copyBtnText}>{copied ? tx9('auto.packageQr.copied', 'Copied') : tx9('auto.profile.copy', 'Copy')}</Text>
             </Pressable>
           </View>
         </View>

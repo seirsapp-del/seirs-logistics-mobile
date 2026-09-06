@@ -14,6 +14,7 @@ import { naira } from '@/utils/money';
 import { driversApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const SCHEDULE_STORAGE_KEY = 'seirs_driver_working_hours';
 
@@ -285,7 +286,7 @@ export default function ScheduleScreen() {
             {pickerOpen && (
               <View style={[styles.pickerOverlay, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.md]}>
                 <Text style={[styles.pickerTitle, { color: theme.text }]}>
-                  {DAY_LABELS[pickerOpen.day]}: {pickerOpen.field === 'start' ? 'Start' : 'End'} time
+                  {DAY_LABELS[pickerOpen.day]}: {pickerOpen.field === 'start' ? tx9('auto.schedule.start', 'Start') : tx9('auto.corridorcard.end', 'End')} time
                 </Text>
                 {/* nestedScrollEnabled: this list sits inside the screen's
                     own ScrollView, and on Android the outer one takes the
@@ -311,7 +312,7 @@ export default function ScheduleScreen() {
               onPress={handleSave}
               disabled={saving}
             >
-              <Text style={styles.saveBtnText}>{saving ? 'Saving…' : saved ? 'Saved' : 'Save my hours'}</Text>
+              <Text style={styles.saveBtnText}>{saving ? tx9('auto.addBank.saving', 'Saving…') : saved ? tx9('auto.schedule.saved', 'Saved') : tx9('auto.schedule.saveMyHours', 'Save my hours')}</Text>
             </Pressable>
           </View>
         )}

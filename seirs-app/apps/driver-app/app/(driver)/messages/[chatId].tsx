@@ -39,16 +39,17 @@ import { useChat } from '@seirs/shared/hooks/useChat';
 import { chatApi, uploadApi } from '@/services/api';
 import { SOCKET_URL } from '@/constants/config';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Driver-side canned messages. Different from customer's, these are
 // what a driver on an okada/keke actually needs to say on the road,
 // tuned to Nigerian traffic + drop-off flow. i18n keys chat.quickReplies.driver.*
-const QUICK_REPLIES = [
-  { key: 'onMyWay',    fallback: 'On my way' },
-  { key: 'traffic',    fallback: 'In traffic, running late' },
+const QUICK_REPLIES = () => [
+  { key: 'onMyWay',    fallback: tx('auto.messagesDetail.onMyWay', 'On my way') },
+  { key: 'traffic',    fallback: tx('auto.messagesDetail.inTrafficRunningLate', 'In traffic, running late') },
   { key: 'fiveMin',    fallback: '5 min out' },
-  { key: 'arrived',    fallback: "I've arrived" },
-  { key: 'delivered',  fallback: 'Package delivered' },
+  { key: 'arrived',    fallback: tx('auto.deliveryDetail.iVeArrived', 'I\'ve arrived') },
+  { key: 'delivered',  fallback: tx('auto.messagesDetail.packageDelivered', 'Package delivered') },
 ];
 
 export default function DriverChatScreen() {
@@ -292,7 +293,7 @@ export default function DriverChatScreen() {
           contentContainerStyle={styles.quickReplyRow}
           keyboardShouldPersistTaps="handled"
         >
-          {QUICK_REPLIES.map((qr) => (
+          {QUICK_REPLIES().map((qr) => (
             <Pressable
               key={qr.key}
               onPress={() => handleSend(t(`chat.quickReplies.driver.${qr.key}`, { defaultValue: qr.fallback }))}

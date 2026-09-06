@@ -29,6 +29,7 @@ import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8 §2.18: driver declares an upcoming intercity trip
 // (Lagos → Ibadan, etc.). System surfaces matching packages along
@@ -77,7 +78,7 @@ const POPULAR_ROUTES = [
   { from: 'Ibadan',  to: 'Abuja' },
   { from: 'Lagos',   to: 'Benin' },
   { from: 'Abuja',   to: 'Kano' },
-  { from: 'Lagos',   to: 'Port Harcourt' },
+  { from: 'Lagos',   to: tx9('auto.interstate.portHarcourt', 'Port Harcourt') },
 ];
 
 /**
@@ -840,7 +841,7 @@ export default function InterstateScreen() {
       };
       setSheet({
         title: tr('auto.interstate.tripDeclared', 'Trip declared'),
-        message: `You are listed for ${routeLine} on ${when}.\n\n${lines}`,
+        message: tx9('auto.interstate.youAreListedForOn', 'You are listed for {{routeLine}} on {{when}}. {{lines}}', { routeLine, when, lines }),
         options: [{
           label: tr('auto.profile.done', 'Done'),
           variant: 'primary',
@@ -923,7 +924,7 @@ export default function InterstateScreen() {
                     bug rather than an instruction. One word, and the label
                     above already says CITY.
                   */}
-                  {stop.city || 'Auto'}
+                  {stop.city || tx9('auto.interstate.auto', 'Auto')}
                 </Text>
               )}
             </View>
@@ -938,7 +939,7 @@ export default function InterstateScreen() {
                 query: t, place: null, city: '', cityGuessed: false, cityLoading: false,
               })}
               onPicked={(pl) => onStopPicked(stop.key, pl)}
-              placeholder={isOrigin ? 'e.g. Berger Bus Stop' : isDest ? 'Where you finish' : 'Where you stop'}
+              placeholder={isOrigin ? tx9('auto.interstate.eGBergerBusStop', 'e.g. Berger Bus Stop') : isDest ? tx9('auto.interstate.whereYouFinish', 'Where you finish') : tx9('auto.interstate.whereYouStop', 'Where you stop')}
               theme={theme as any}
             />
           </View>
@@ -1024,8 +1025,8 @@ export default function InterstateScreen() {
                 <Text style={[styles.prefTitle, { color: theme.text }]}>{tx('auto.interstate.takeInterstateWork', 'Take interstate work')}</Text>
                 <Text style={[styles.prefSub, { color: theme.textSecond }]}>
                   {acceptsInterstate
-                    ? 'Runs that leave your state can be offered to you.'
-                    : 'You will only be offered runs inside your own state.'}
+                    ? tx9('auto.interstate.runsThatLeaveYourState', 'Runs that leave your state can be offered to you.')
+                    : tx9('auto.interstate.youWillOnlyBeOffered', 'You will only be offered runs inside your own state.')}
                 </Text>
               </View>
               <Switch
@@ -1054,7 +1055,7 @@ export default function InterstateScreen() {
                   disabled={prefSaving}
                   style={[styles.prefSaveBtn, { backgroundColor: prefSaving ? theme.border : theme.primary }]}
                 >
-                  <Text style={styles.prefSaveTxt}>{prefSaving ? 'Saving' : 'Save'}</Text>
+                  <Text style={styles.prefSaveTxt}>{prefSaving ? tx9('auto.interstate.saving', 'Saving') : tx9('auto.earnings.save', 'Save')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -1101,17 +1102,17 @@ export default function InterstateScreen() {
                       </Text>
                       <Text style={{ color: theme.textThird, fontSize: FontSize.xs, marginTop: 2 }}>
                         {tr.acceptsPackages
-                          ? `Packages${kg > 0 ? `, ${kg}kg spare` : ''}`
-                          : 'No packages'}
+                          ? `Packages${kg > 0 ? tx9('auto.interstate.kgSpare', ', {{kg}}kg spare', { kg }) : ''}`
+                          : tx9('auto.interstate.noPackages', 'No packages')}
                         {' · '}
-                        {tr.acceptsPassengers ? `${total} seat${total === 1 ? '' : 's'}` : 'No seats'}
-                        {midStops > 0 ? ` · ${midStops} stop${midStops === 1 ? '' : 's'} on the way` : ''}
-                        {tr.pickupAddress ? ` · boards at ${tr.pickupAddress}` : ''}
+                        {tr.acceptsPassengers ? `${total} seat${total === 1 ? '' : 's'}` : tx9('auto.interstate.noSeats', 'No seats')}
+                        {midStops > 0 ? tx9('auto.interstate.stopOnTheWay', '· {{midStops}} stop{{v1}} on the way', { midStops, v1: midStops === 1 ? '' : 's' }) : ''}
+                        {tr.pickupAddress ? tx9('auto.interstate.boardsAt', '· boards at {{pickupAddress}}', { pickupAddress: tr.pickupAddress }) : ''}
                       </Text>
                       {tr.acceptsPassengers && booked > 0 && (
                         <Text style={{ color: theme.primary, fontSize: FontSize.xs, fontWeight: '700', marginTop: 4 }}>
                           {booked} seat{booked === 1 ? '' : 's'} booked and paid
-                          {left > 0 ? `, ${left} still open` : ', full'}
+                          {left > 0 ? tx9('auto.interstate.stillOpen', ', {{left}} still open', { left }) : tx9('auto.interstate.full', ', full')}
                         </Text>
                       )}
                     </View>
@@ -1352,7 +1353,7 @@ export default function InterstateScreen() {
                 color: departAt ? theme.text : theme.textThird,
                 fontSize: FontSize.md,
               }}>
-                {departAt ? prettyDepart(departDate, departTime) : 'Choose a day and time'}
+                {departAt ? prettyDepart(departDate, departTime) : tx9('auto.interstate.chooseADayAndTime', 'Choose a day and time')}
               </Text>
             </Pressable>
 
@@ -1398,11 +1399,9 @@ export default function InterstateScreen() {
                         * notice", which is not a sentence anybody says.
                         * Minutes under an hour, hours above it.
                         */}
-                      {`Give at least ${
-                        minLeadMins < 60
+                      {tx9('auto.interstate.giveAtLeastNoticeSo', 'Give at least {{v0}} notice, so a sender can find your trip, agree a price and reach you.', { v0: minLeadMins < 60
                           ? `${Math.round(minLeadMins)} minute${Math.round(minLeadMins) === 1 ? '' : 's'}`
-                          : `${Math.round((minLeadMins / 60) * 10) / 10} hour${minLeadMins === 60 ? '' : 's'}`
-                      } notice, so a sender can find your trip, agree a price and reach you.`}
+                          : `${Math.round((minLeadMins / 60) * 10) / 10} hour${minLeadMins === 60 ? '' : 's'}` })}
                     </Text>
                   )}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -1532,8 +1531,8 @@ export default function InterstateScreen() {
               <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>{tx('auto.interstate.carryPassengers', 'Carry passengers')}</Text>
               <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
                 {seatCap === 0
-                  ? `A ${vehicleLabel(vehicleType)} is not a passenger class on SEIRS. Packages only on this run.`
-                  : 'Real seats only: SEIRS blocks overloading. No doubling the front seat, ever.'}
+                  ? tx9('auto.interstate.aIsNotAPassenger', 'A {{v0}} is not a passenger class on SEIRS. Packages only on this run.', { v0: vehicleLabel(vehicleType) })
+                  : tx9('auto.interstate.realSeatsOnlySeirsBlocks', 'Real seats only: SEIRS blocks overloading. No doubling the front seat, ever.')}
               </Text>
             </View>
             <Text style={{ color: takePassengers ? theme.primary : theme.textThird, fontWeight: '700' }}>
@@ -1546,8 +1545,8 @@ export default function InterstateScreen() {
               <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginBottom: 4 }}>
                   {seatCap != null && seatCap > 0
-                    ? `Seats you're selling (a ${vehicleType} sells up to ${seatCap})`
-                    : "Seats you're selling (your vehicle class caps this)"}
+                    ? tx9('auto.interstate.seatsYouReSellingA', 'Seats you\'re selling (a {{vehicleType}} sells up to {{seatCap}})', { vehicleType, seatCap })
+                    : tx9('auto.interstate.seatsYouReSellingYour', 'Seats you\'re selling (your vehicle class caps this)')}
                 </Text>
                 <TextInput
                   value={seats}
@@ -1581,8 +1580,8 @@ export default function InterstateScreen() {
                 */}
               <Text style={{ color: theme.textThird, fontSize: FontSize.xs, lineHeight: 17 }}>
                 {origin.place
-                  ? `Passengers board at ${origin.city || origin.place.primary} and get a map pin on ${origin.place.primary}${origin.description.trim() ? `, plus your note: ${origin.description.trim()}` : ''}. The stops in between are what your route really is, and the fare is measured along them rather than city centre to city centre.`
-                  : 'Set your starting point above. Passengers get a map pin on it, so it has to be a place you will really be standing.'}
+                  ? tx9('auto.interstate.passengersBoardAtAndGet', 'Passengers board at {{v0}} and get a map pin on {{primary}}{{v2}}. The stops in between are what your route really is, and the fare is measured along them rather than city centre to city centre.', { v0: origin.city || origin.place.primary, primary: origin.place.primary, v2: origin.description.trim() ? `, plus your note: ${origin.description.trim()}` : '' })
+                  : tx9('auto.interstate.setYourStartingPointAbove', 'Set your starting point above. Passengers get a map pin on it, so it has to be a place you will really be standing.')}
               </Text>
             </View>
           )}

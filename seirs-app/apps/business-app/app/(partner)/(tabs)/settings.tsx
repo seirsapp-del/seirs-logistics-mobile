@@ -13,6 +13,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 type DayId = typeof DAYS[number];
 
@@ -262,7 +263,7 @@ export default function PartnerSettingsScreen() {
           <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.settings.storeAddress', 'Store Address')}</Text>
           <View style={[styles.readonlyBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <Text style={[styles.readonlyText, { color: colors.text }]}>
-              {settings.storeAddress || 'No address on file'}
+              {settings.storeAddress || tx9('auto.settings.noAddressOnFile', 'No address on file')}
             </Text>
           </View>
           <Pressable
@@ -449,7 +450,7 @@ export default function PartnerSettingsScreen() {
                 <Text style={[styles.setHoursBtnText, {
                   color: wantedName.trim() ? colors.primary : colors.textThird,
                 }]}>
-                  {askingName ? 'Sending...' : 'Send the request'}
+                  {askingName ? 'Sending...' : tx9('auto.settings.sendTheRequest', 'Send the request')}
                 </Text>
               </Pressable>
             </Pressable>
@@ -463,7 +464,7 @@ export default function PartnerSettingsScreen() {
               onPress={(e) => e.stopPropagation()}
             >
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                {pickerOpen ? `${pickerOpen.day}: ${pickerOpen.field === 'start' ? 'opens at' : 'closes at'}` : ''}
+                {pickerOpen ? `${pickerOpen.day}: ${pickerOpen.field === 'start' ? tx9('auto.settings.opensAt', 'opens at') : tx9('auto.settings.closesAt', 'closes at')}` : ''}
               </Text>
               <ScrollView style={{ maxHeight: 320 }}>
                 {TIME_OPTIONS.map((o) => {
@@ -541,7 +542,7 @@ export default function PartnerSettingsScreen() {
             )}
             <View style={{ flex: 1 }}>
               <Text style={[styles.accountLabel, { color: colors.text }]} numberOfLines={1}>
-                {settings.storeName || 'Your store'}
+                {settings.storeName || tx9('auto.settings.yourStore', 'Your store')}
               </Text>
               {settings.storeCode ? (
                 <Text style={{ fontSize: 12, color: colors.textThird, marginTop: 2, letterSpacing: 0.5 }}>
@@ -855,7 +856,7 @@ function ClosingSection({ storeId }: { storeId: string }) {
         onPress={handleClose}
       >
         <Text style={[styles.closeBtnText, !readiness?.ready && styles.closeBtnTextDisabled]}>
-          {readiness?.ready ? 'Close store' : 'Resolve blockers first'}
+          {readiness?.ready ? tx9('auto.settings.closeStore', 'Close store') : tx9('auto.settings.resolveBlockersFirst', 'Resolve blockers first')}
         </Text>
       </Pressable>
     </View>

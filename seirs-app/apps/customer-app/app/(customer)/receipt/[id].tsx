@@ -20,19 +20,20 @@ import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 /**
  * The engine's zone tiers in the same words the Send screen used at
  * checkout. A receipt that renames the charge is a receipt the sender
  * cannot reconcile against what they agreed to.
  */
-const ZONE_TIER_LABEL: Record<string, string> = {
-  intraStateLongHaul: 'Long trip within one state',
-  interStateAdjacent: 'Crossing into the next state',
-  interStateDistant:  'Crossing to a further state',
-  crossZone:          'Crossing to another part of the country',
-  interState:         'Crossing a state line',
-};
+const ZONE_TIER_LABEL = (): Record<string, string> => ({
+  intraStateLongHaul: tx9('auto.receiptDetail.longTripWithinOneState', 'Long trip within one state'),
+  interStateAdjacent: tx9('auto.receiptDetail.crossingIntoTheNextState', 'Crossing into the next state'),
+  interStateDistant:  tx9('auto.receiptDetail.crossingToAFurtherState', 'Crossing to a further state'),
+  crossZone:          tx9('auto.receiptDetail.crossingToAnotherPartOf', 'Crossing to another part of the country'),
+  interState:         tx9('auto.receiptDetail.crossingAStateLine', 'Crossing a state line'),
+});
 
 export default function ReceiptScreen() {
   const router = useRouter();
@@ -114,7 +115,7 @@ export default function ReceiptScreen() {
    */
   const zoneTierNgn = Number(trip.zoneTierNgn ?? 0);
   const zoneTierRow = trip.zoneTier && zoneTierNgn > 0
-    ? { label: ZONE_TIER_LABEL[trip.zoneTier] ?? 'Distance surcharge', amount: zoneTierNgn }
+    ? { label: ZONE_TIER_LABEL()[trip.zoneTier] ?? 'Distance surcharge', amount: zoneTierNgn }
     : null;
   const routeStates = trip.pickupStateCode && trip.dropoffStateCode
       && trip.pickupStateCode !== trip.dropoffStateCode
@@ -177,7 +178,7 @@ export default function ReceiptScreen() {
   const onShare = async () => {
     try {
       await Share.share({
-        message: `SEIRS receipt ${trackingCode}: ${naira(totalAmount)}${paymentMethod ? ` paid by ${paymentMethod.replace('_', ' ')}` : ''}`,
+        message: tx9('auto.receiptDetail.seirsReceipt', 'SEIRS receipt {{trackingCode}}: {{v1}}{{v2}}', { trackingCode, v1: naira(totalAmount), v2: paymentMethod ? ` paid by ${paymentMethod.replace('_', ' ')}` : '' }),
       });
     } catch {}
   };
@@ -233,7 +234,7 @@ export default function ReceiptScreen() {
               <Ionicons name="checkmark-circle" size={36} color={isDark ? '#86EFAC' : '#22C55E'} />
             </View>
             <Text style={[styles.successTitle, { color: isDark ? '#86EFAC' : '#15803D' }]}>
-              {isRide ? 'Trip Completed' : 'Delivery Completed'}
+              {isRide ? tx9('auto.receiptDetail.tripCompleted', 'Trip Completed') : tx9('auto.receiptDetail.deliveryCompleted', 'Delivery Completed')}
             </Text>
             <Text style={[styles.successDate,  { color: isDark ? '#8B949E' : '#4B5563' }]}>{formatDate(completedDate)}</Text>
           </View>
@@ -256,7 +257,7 @@ export default function ReceiptScreen() {
                       screen reads it from. Reading driver.name gave
                       undefined, so every receipt was signed "Driver". */}
                   <Text style={[styles.driverName, { color: theme.text }]}>
-                    {trip.driver.user?.name ?? trip.driver.name ?? 'Driver'}
+                    {trip.driver.user?.name ?? trip.driver.name ?? tx9('auto.DeliveryTrackMap.driver', 'Driver')}
                   </Text>
                   <Text style={[styles.driverSub,  { color: theme.textSecond }]}>{trip.driver.vehicleNumber ?? trip.driver.plate ?? ''}</Text>
                 </View>
@@ -317,7 +318,7 @@ export default function ReceiptScreen() {
             {/* Fare */}
             <View style={styles.fareSection}>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>
-                {fareRows.length > 0 ? 'Fare Breakdown' : 'Amount'}
+                {fareRows.length > 0 ? tx9('auto.receiptDetail.fareBreakdown', 'Fare Breakdown') : tx9('auto.receiptDetail.amount', 'Amount')}
               </Text>
               {fareRows.map(row => (
                 <View key={row.label} style={styles.fareRow}>

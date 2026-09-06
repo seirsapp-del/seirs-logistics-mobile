@@ -18,6 +18,7 @@ import { driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 // Spec V8 §2.11: driver wind-down toggle. When enabled, the matching
 // service stops auto-assigning new jobs while the driver finishes the
@@ -139,7 +140,7 @@ export default function LastOrderScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardLabel, { color: theme.textSecond }]}>STATUS</Text>
                   <Text style={[styles.cardValue, { color: enabled ? '#16A34A' : theme.text }]}>
-                    {enabled ? 'Winding down' : 'Accepting jobs'}
+                    {enabled ? tx9('auto.lastOrder.windingDown', 'Winding down') : tx9('auto.lastOrder.acceptingJobs', 'Accepting jobs')}
                   </Text>
                 </View>
                 <Switch
@@ -163,8 +164,8 @@ export default function LastOrderScreen() {
                   <Text style={[styles.cardValue, { color: theme.text }]}>{activeJobs}</Text>
                   <Text style={[styles.cardSub, { color: theme.textSecond }]}>
                     {activeJobs === 0
-                      ? 'No active jobs: you can sign off normally.'
-                      : `Complete these ${activeJobs} before fully signing off.`}
+                      ? tx9('auto.lastOrder.noActiveJobsYouCan', 'No active jobs: you can sign off normally.')
+                      : tx9('auto.lastOrder.completeTheseBeforeFullySigning', 'Complete these {{activeJobs}} before fully signing off.', { activeJobs })}
                   </Text>
                 </View>
               </View>
@@ -198,9 +199,9 @@ export default function LastOrderScreen() {
             <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.lastOrder.whatHappensWhenYouWind', 'What happens when you wind down')}</Text>
               {[
-                'Dispatcher stops sending you new job offers',
-                'Active jobs continue normally: complete them at your pace',
-                'You can\'t re-enable jobs without fully signing off (one-way toggle)',
+                tx9('auto.lastOrder.dispatcherStopsSendingYouNew', 'Dispatcher stops sending you new job offers'),
+                tx9('auto.lastOrder.activeJobsContinueNormallyComplete', 'Active jobs continue normally: complete them at your pace'),
+                tx9('auto.lastOrder.youCanTReEnable', 'You can\'t re-enable jobs without fully signing off (one-way toggle)'),
               ].map(t => (
                 <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
               ))}

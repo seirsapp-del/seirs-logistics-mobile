@@ -16,6 +16,7 @@ import { PasswordInput } from '@/components/PasswordInput';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 const CONFIRM_PHRASE = 'delete my account';
 
 // Spec V8: NDPR right to erasure. Soft-deletes (isActive=false) with
@@ -118,19 +119,19 @@ export default function DeleteAccountScreen() {
 
           <Text style={[styles.what, { color: theme.text }]}>{tx('auto.deleteAccount.whatGetsDeleted', 'What gets deleted')}</Text>
           {[
-            'Your profile, name, phone, photo',
-            'Your delivery history (after the 30-day grace window)',
-            'Your reward points and tier, which cannot be transferred or paid out',
-            'Your saved payment + bank details',
+            tx9('auto.deleteAccount.yourProfileNamePhonePhoto', 'Your profile, name, phone, photo'),
+            tx9('auto.deleteAccount.yourDeliveryHistoryAfterThe', 'Your delivery history (after the 30-day grace window)'),
+            tx9('auto.deleteAccount.yourRewardPointsAndTier', 'Your reward points and tier, which cannot be transferred or paid out'),
+            tx9('auto.deleteAccount.yourSavedPaymentBankDetails', 'Your saved payment + bank details'),
           ].map(t => (
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
           ))}
 
           <Text style={[styles.what, { color: theme.text, marginTop: Spacing.md }]}>{tx('auto.deleteAccount.whatStays', 'What stays')}</Text>
           {[
-            'Audit trails for any open disputes against your account',
-            'Tax records we are legally required to retain (FIRS / NDPR)',
-            'Anonymised analytics: you are not personally identifiable',
+            tx9('auto.deleteAccount.auditTrailsForAnyOpen', 'Audit trails for any open disputes against your account'),
+            tx9('auto.deleteAccount.taxRecordsWeAreLegally', 'Tax records we are legally required to retain (FIRS / NDPR)'),
+            tx9('auto.deleteAccount.anonymisedAnalyticsYouAreNot', 'Anonymised analytics: you are not personally identifiable'),
           ].map(t => (
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
           ))}

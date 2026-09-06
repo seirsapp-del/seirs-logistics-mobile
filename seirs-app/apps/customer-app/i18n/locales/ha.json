@@ -681,7 +681,7 @@
     "enterLocationsToContinue": "Shigar da wurare don ci gaba"
   },
   "settings": {
-    "languageTitle": "Harshe & Yanki",
+    "languageTitle": "Harshe",
     "appLanguage": "Harshen App",
     "displayCurrency": "Kuɗin Nuni",
     "currencyNote": "Duk hada-hadar ana yin su a Naira ta Najeriya (NGN). Sauran kuɗi don nuni ne kawai.",
@@ -1081,18 +1081,6 @@
       "atLeast8Characters": "Aƙalla haruffa 8",
       "home": "Gida",
       "iAgreeToThe": "Na yarda da"
-    },
-    "resetPassword": {
-      "atLeast8Characters": "Aƙalla haruffa 8",
-      "invalidLink": "Mahaɗin ba daidai ba",
-      "backToSignIn": "Koma shiga",
-      "passwordReset": "Sake saita kalmar sirri",
-      "signIn": "Shiga",
-      "setNewPassword": "Saita sabuwar kalmar sirri",
-      "newPassword": "Sabuwar kalmar sirri",
-      "confirmPassword": "Tabbatar da kalmar sirri",
-      "resetPassword": "Sake saita kalmar sirri",
-      "repeatYourPassword": "Maimaita kalmar sirrinka"
     },
     "history": {
       "trackLive": "Bibiya kai tsaye",

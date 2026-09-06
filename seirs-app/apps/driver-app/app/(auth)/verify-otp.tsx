@@ -13,6 +13,7 @@ import { authApi } from '@/services/api';
 import { tx } from '@/i18n/tx';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 const RESEND_COOLDOWN = 60;
 
@@ -186,7 +187,7 @@ export default function VerifyOtpScreen() {
             <View style={styles.btnRow}>
               <RefreshCw size={16} color={theme.primary} strokeWidth={1.5} />
               <Text style={[styles.resendText, { color: theme.primary }]}>
-                {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
+                {cooldown > 0 ? tx9('auto.verifyOtp.resendInS', 'Resend in {{cooldown}}s', { cooldown }) : tx9('auto.verifyOtp.resendCode', 'Resend code')}
               </Text>
             </View>
           )}

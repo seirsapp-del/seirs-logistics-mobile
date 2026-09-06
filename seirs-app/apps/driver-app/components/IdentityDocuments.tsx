@@ -29,6 +29,7 @@ import { alertDialog } from '@/components/SeirsDialog';
 import type { SeirsSheetSpec } from '@/components/SeirsSheet';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 type DocStatus = 'not_uploaded' | 'uploaded' | 'verified' | 'rejected' | 'expired' | 'needs_replacing';
 
@@ -72,11 +73,11 @@ const STATUS_CONFIG = (): Record<DocStatus, { label: string; color: string; Icon
  * insurance_cert are deliberately absent: they were the duplicates.
  */
 const IDENTITY_DOCS = (): DocItem[] => [
-  { id: 'national_id_front', label: tr('auto.identitydocuments.nationalIdFront', 'National ID: Front'), desc: 'Government-issued ID or NIN slip, front side',           Icon: CreditCard, required: true,  status: 'not_uploaded' },
-  { id: 'national_id_back',  label: tr('auto.identitydocuments.nationalIdBack', 'National ID: Back'),  desc: 'Back side of the same ID or NIN slip',                   Icon: CreditCard, required: true,  status: 'not_uploaded' },
-  { id: 'selfie',            label: tr('auto.identitydocuments.selfie', 'Selfie'),             desc: 'A clear photo of your face, used on your rider profile', Icon: Camera,     required: true,  status: 'not_uploaded' },
-  { id: 'drivers_license',   label: tr('auto.identitydocuments.driverLicence', 'Driver licence'),     desc: 'A valid Nigerian driver licence',                        Icon: Car,        required: true,  status: 'not_uploaded' },
-  { id: 'guarantor',         label: tr('auto.identitydocuments.guarantorLetter', 'Guarantor letter'),   desc: 'A letter from a guarantor. Recommended, not required',   Icon: Users,      required: false, status: 'not_uploaded' },
+  { id: 'national_id_front', label: tr('auto.identitydocuments.nationalIdFront', 'National ID: Front'), desc: tx9('auto.identitydocuments.governmentIssuedIdOrNin', 'Government-issued ID or NIN slip, front side'),           Icon: CreditCard, required: true,  status: 'not_uploaded' },
+  { id: 'national_id_back',  label: tr('auto.identitydocuments.nationalIdBack', 'National ID: Back'),  desc: tx9('auto.identitydocuments.backSideOfTheSame', 'Back side of the same ID or NIN slip'),                   Icon: CreditCard, required: true,  status: 'not_uploaded' },
+  { id: 'selfie',            label: tr('auto.identitydocuments.selfie', 'Selfie'),             desc: tx9('auto.identitydocuments.aClearPhotoOfYour', 'A clear photo of your face, used on your rider profile'), Icon: Camera,     required: true,  status: 'not_uploaded' },
+  { id: 'drivers_license',   label: tr('auto.identitydocuments.driverLicence', 'Driver licence'),     desc: tx9('auto.identitydocuments.aValidNigerianDriverLicence', 'A valid Nigerian driver licence'),                        Icon: Car,        required: true,  status: 'not_uploaded' },
+  { id: 'guarantor',         label: tr('auto.identitydocuments.guarantorLetter', 'Guarantor letter'),   desc: tx9('auto.identitydocuments.aLetterFromAGuarantor', 'A letter from a guarantor. Recommended, not required'),   Icon: Users,      required: false, status: 'not_uploaded' },
 ];
 
 /** The doc ids map 1:1 onto the has* flags on the driver record. */
@@ -225,7 +226,7 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
           style={[styles.docCard, { backgroundColor: theme.background, borderColor: theme.border }, Shadows.xs]}
           onPress={() => doc.status !== 'verified' && choose(doc)}
           disabled={busy || doc.status === 'verified'}
-          accessibilityLabel={doc.status === 'expired' ? `${doc.label}, expired, tap to replace` : doc.label}
+          accessibilityLabel={doc.status === 'expired' ? tx9('auto.identitydocuments.expiredTapToReplace', '{{label}}, expired, tap to replace', { label: doc.label }) : doc.label}
         >
           <View style={[styles.docIconWrap, { backgroundColor: theme.primary + '15' }]}>
             <doc.Icon size={22} color={theme.primary} strokeWidth={1.5} />
@@ -250,8 +251,8 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
         {doc.status === 'needs_replacing' && (
           <Text style={[styles.rejectNote, { color: theme.warning }]}>
             {doc.rejectionReason
-              ? `${doc.rejectionReason} Nothing is wrong with what you sent. Tap to upload the current one.`
-              : 'This is no longer current. Nothing is wrong with what you sent: tap to upload the current one.'}
+              ? tx9('auto.identitydocuments.nothingIsWrongWithWhat', '{{rejectionReason}} Nothing is wrong with what you sent. Tap to upload the current one.', { rejectionReason: doc.rejectionReason })
+              : tx9('auto.identitydocuments.thisIsNoLongerCurrent', 'This is no longer current. Nothing is wrong with what you sent: tap to upload the current one.')}
           </Text>
         )}
         {doc.status === 'expired' && (

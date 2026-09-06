@@ -31,6 +31,7 @@ import { supportApi, uploadApi, type SupportThreadDTO } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 export default function DriverSupportThreadScreen() {
   const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
@@ -135,7 +136,7 @@ export default function DriverSupportThreadScreen() {
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.subject, { color: theme.text }]} numberOfLines={1}>{thread?.ticket.subject ?? 'Support'}</Text>
+          <Text style={[styles.subject, { color: theme.text }]} numberOfLines={1}>{thread?.ticket.subject ?? tx9('auto.profile.support', 'Support')}</Text>
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>SEIRS Support · {thread?.ticket.status ?? '…'}</Text>
         </View>
       </View>
@@ -192,7 +193,7 @@ export default function DriverSupportThreadScreen() {
                       <Ionicons name="document-text-outline" size={22} color={theme.primary} />
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.docName, { color: theme.text }]} numberOfLines={1}>
-                          {decodeURIComponent((attachedUrl!.split('/').pop() ?? 'Document').split('?')[0])}
+                          {decodeURIComponent((attachedUrl!.split('/').pop() ?? tx9('auto.supportDetail.document', 'Document')).split('?')[0])}
                         </Text>
                         <Text style={[styles.docHint, { color: theme.textThird }]}>{tx('auto.ticketId.tapToOpen', 'Tap to open')}</Text>
                       </View>

@@ -16,6 +16,7 @@ import { tint, statusTint } from '@/constants/tint';
 import { naira } from '@/utils/money';
 import { tx } from '@/i18n/tx';
 import { tx as tr } from '@/i18n/tx';
+import { tx as tx9 } from '@/i18n/tx';
 
 export default function BusinessDashboard() {
   const router   = useRouter();
@@ -88,9 +89,9 @@ export default function BusinessDashboard() {
             <View style={[styles.activeDot, { backgroundColor: '#FFBE0B' }]} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.activeBannerTitle, { color: colors.text }]}>
-                {data.awaitingPayment.isRecurring ? 'Recurring run waiting for payment' : 'Waiting for payment'}
+                {data.awaitingPayment.isRecurring ? tx9('auto.tabsIndex.recurringRunWaitingForPayment', 'Recurring run waiting for payment') : tx9('auto.tabsIndex.waitingForPayment', 'Waiting for payment')}
                 {data.awaitingPayment.scheduledFor
-                  ? ` · pay before ${new Date(data.awaitingPayment.scheduledFor).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}`
+                  ? tx9('auto.tabsIndex.payBefore', '· pay before {{v0}}', { v0: new Date(data.awaitingPayment.scheduledFor).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }) })
                   : ''}
               </Text>
               <Text style={[styles.activeBannerSub, { color: colors.textSecond }]} numberOfLines={1}>

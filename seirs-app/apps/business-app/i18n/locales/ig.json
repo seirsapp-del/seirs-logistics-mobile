@@ -1020,17 +1020,6 @@
       "thisTicketIsClosedOpen": "Emechiela tiketi a. Mepee nke ọhụrụ ma ọ bụrụ na ị ka chọrọ enyemaka.",
       "typeAMessage": "Pịa ozi…"
     },
-    "resetPassword": {
-      "invalidLink": "Njikọ ezighị ezi",
-      "backToSignIn": "Laghachi na mbanye",
-      "signIn": "Banye",
-      "confirmPassword": "Kwenye paswọdụ",
-      "newPassword": "Paswọdụ ọhụrụ",
-      "passwordUpdated": "Emelitela paswọdụ",
-      "chooseANewPassword": "Họrọ paswọdụ ọhụrụ",
-      "updatePassword": "Melite paswọdụ",
-      "repeatNewPassword": "Tinyegharịa paswọdụ ọhụrụ"
-    },
     "SocialSignIn": {
       "continueWithGoogle": "Gaa n'ihu na Google",
       "signInWithApple": "Banye na Apple"
