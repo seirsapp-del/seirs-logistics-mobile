@@ -10,6 +10,7 @@ import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §4.10: partner sees overstayed packages with accruing storage
 // fees. Packages enter the list once they cross 24hr in-store. Tier_1
@@ -89,7 +90,7 @@ export default function PartnerStorageScreen() {
         <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.surface }]}>
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>Storage Fees</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{tx('auto.storage.storageFees', 'Storage Fees')}</Text>
         <View style={{ width: 32 }} />
       </View>
 

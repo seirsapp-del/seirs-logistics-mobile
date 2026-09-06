@@ -25,6 +25,7 @@ import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { collectUrl, trackUrl } from '@/constants/config';
+import { tx } from '@/i18n/tx';
 
 // Labels looked up via t(`tracking.step${cap}`) at render so language
 // switches reflect live.
@@ -474,7 +475,7 @@ export default function TrackScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Track Package</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.track.trackPackage', 'Track Package')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
             Enter your tracking code
           </Text>
@@ -500,7 +501,7 @@ export default function TrackScreen() {
           >
             {searching
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={styles.searchBtnText}>Track</Text>}
+              : <Text style={styles.searchBtnText}>{tx('auto.track.track', 'Track')}</Text>}
           </Pressable>
         </View>
 
@@ -577,7 +578,7 @@ export default function TrackScreen() {
               >
                 <Ionicons name="qr-code-outline" size={18} color={theme.primary} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.redirectTitle, { color: theme.text }]}>Show package QR</Text>
+                  <Text style={[styles.redirectTitle, { color: theme.text }]}>{tx('auto.track.showPackageQr', 'Show package QR')}</Text>
                   <Text style={[styles.redirectSub, { color: theme.textSecond }]}>
                     Screenshot it for whoever is receiving. The driver scans it at handover.
                   </Text>
@@ -591,7 +592,7 @@ export default function TrackScreen() {
                 all, and its final node showed a bare number where every
                 other node showed a check. */}
             <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>Journey</Text>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.track.journey', 'Journey')}</Text>
               {journey.map(step => (
                 <View key={step.key} style={styles.tlRow}>
                   <View style={[
@@ -620,7 +621,7 @@ export default function TrackScreen() {
                 { backgroundColor: theme.surface, borderLeftColor: theme.primary },
                 Shadows.sm,
               ]}>
-                <Text style={[styles.cardTitle, { color: theme.text }]}>Who has it</Text>
+                <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.track.whoHasIt', 'Who has it')}</Text>
                 <Text style={[styles.custodyWho, { color: theme.text }]}>{custody.who}</Text>
                 {!!custody.detail && (
                   <Text style={[styles.custodyLine, { color: theme.textSecond }]}>{custody.detail}</Text>
@@ -671,7 +672,7 @@ export default function TrackScreen() {
             {/* Driver card */}
             {(assignedDriver ?? deliveryData.driver) && (
               <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-                <Text style={[styles.cardTitle, { color: theme.text }]}>Your Driver</Text>
+                <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.track.yourDriver', 'Your Driver')}</Text>
                 <View style={styles.driverRow}>
                   <View style={[styles.driverAvatar, { backgroundColor: theme.primary }]}>
                     <Text style={styles.driverAvatarText}>
@@ -752,7 +753,7 @@ export default function TrackScreen() {
                         }).catch(() => {})}
                       >
                         <Ionicons name="share-social-outline" size={16} color={theme.text} />
-                        <Text style={{ color: theme.text, fontWeight: '600', fontSize: FontSize.sm }}>Share this trip</Text>
+                        <Text style={{ color: theme.text, fontWeight: '600', fontSize: FontSize.sm }}>{tx('auto.track.shareThisTrip', 'Share this trip')}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -910,7 +911,7 @@ export default function TrackScreen() {
                   >
                     <Ionicons name="location-outline" size={18} color={theme.primary} />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.redirectTitle, { color: theme.text }]}>Wrong address?</Text>
+                      <Text style={[styles.redirectTitle, { color: theme.text }]}>{tx('auto.track.wrongAddress', 'Wrong address?')}</Text>
                       <Text style={{ fontSize: FontSize.xs, color: theme.textThird }}>
                         Support can move it, priced from where your driver is now
                       </Text>
@@ -925,7 +926,7 @@ export default function TrackScreen() {
                   >
                     <Ionicons name="arrow-undo-outline" size={18} color={theme.primary} />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.redirectTitle, { color: theme.text }]}>Need it back?</Text>
+                      <Text style={[styles.redirectTitle, { color: theme.text }]}>{tx('auto.track.needItBack', 'Need it back?')}</Text>
                       <Text style={{ fontSize: FontSize.xs, color: theme.textThird }}>
                         Priced from where it is now, back to your pickup address
                       </Text>
@@ -944,7 +945,7 @@ export default function TrackScreen() {
               >
                 <Ionicons name="storefront-outline" size={18} color={theme.primary} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.redirectTitle, { color: theme.text }]}>Recipient not available?</Text>
+                  <Text style={[styles.redirectTitle, { color: theme.text }]}>{tx('auto.track.recipientNotAvailable', 'Recipient not available?')}</Text>
                   <Text style={[styles.redirectSub, { color: theme.textSecond }]}>
                     Redirect the drop-off to a partner store near the destination.
                   </Text>
@@ -955,11 +956,11 @@ export default function TrackScreen() {
 
             {/* Delivery details */}
             <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>Delivery Details</Text>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.track.deliveryDetails', 'Delivery Details')}</Text>
               <View style={styles.detailRow}>
                 <View style={[styles.dot, { backgroundColor: theme.success }]} />
                 <View style={styles.detailText}>
-                  <Text style={[styles.detailLabel, { color: theme.textSecond }]}>Pickup</Text>
+                  <Text style={[styles.detailLabel, { color: theme.textSecond }]}>{tx('auto.track.pickup', 'Pickup')}</Text>
                   <Text style={[styles.detailValue, { color: theme.text }]}>{deliveryData.pickupAddress}</Text>
                 </View>
               </View>
@@ -967,7 +968,7 @@ export default function TrackScreen() {
               <View style={styles.detailRow}>
                 <View style={[styles.dot, { backgroundColor: theme.error }]} />
                 <View style={styles.detailText}>
-                  <Text style={[styles.detailLabel, { color: theme.textSecond }]}>Dropoff</Text>
+                  <Text style={[styles.detailLabel, { color: theme.textSecond }]}>{tx('auto.track.dropoff', 'Dropoff')}</Text>
                   <Text style={[styles.detailValue, { color: theme.text }]}>{deliveryData.dropoffAddress}</Text>
                 </View>
               </View>
@@ -1008,7 +1009,7 @@ export default function TrackScreen() {
             <View style={[styles.placeholderIconWrap, { backgroundColor: theme.surface }]}>
               <Ionicons name="cube-outline" size={52} color={theme.textThird} />
             </View>
-            <Text style={[styles.placeholderTitle, { color: theme.text }]}>Track your delivery</Text>
+            <Text style={[styles.placeholderTitle, { color: theme.text }]}>{tx('auto.track.trackYourDelivery', 'Track your delivery')}</Text>
             <Text style={[styles.placeholderDesc, { color: theme.textSecond }]}>
               Enter a tracking code above to see live status and driver location.
             </Text>
@@ -1029,7 +1030,7 @@ export default function TrackScreen() {
             { backgroundColor: theme.surface, paddingBottom: Spacing.lg + insets.bottom },
           ]}>
             <View style={styles.redirectHandle} />
-            <Text style={[styles.redirectModalTitle, { color: theme.text }]}>Redirect to a partner store</Text>
+            <Text style={[styles.redirectModalTitle, { color: theme.text }]}>{tx('auto.track.redirectToAPartnerStore', 'Redirect to a partner store')}</Text>
             <Text style={[styles.redirectModalSub, { color: theme.textSecond }]}>
               For when the recipient cannot receive the package. Stores are sorted nearest to the delivery address.
               One redirect per delivery.
@@ -1062,7 +1063,7 @@ export default function TrackScreen() {
               ))}
             </ScrollView>
             <Pressable style={[styles.redirectClose, { backgroundColor: theme.surfaceSecond }]} onPress={() => setRedirectOpen(false)}>
-              <Text style={{ color: theme.text, fontWeight: FontWeight.semibold }}>Cancel</Text>
+              <Text style={{ color: theme.text, fontWeight: FontWeight.semibold }}>{tx('auto.track.cancel', 'Cancel')}</Text>
             </Pressable>
           </View>
         </View>
@@ -1107,7 +1108,7 @@ export default function TrackScreen() {
             </Pressable>
 
             <Pressable onPress={() => setAddrOpen(false)} style={{ marginTop: 10, paddingVertical: 10, alignItems: 'center' }}>
-              <Text style={{ color: theme.textSecond, fontSize: FontSize.sm }}>Cancel</Text>
+              <Text style={{ color: theme.textSecond, fontSize: FontSize.sm }}>{tx('auto.track.cancel', 'Cancel')}</Text>
             </Pressable>
           </View>
         </View>

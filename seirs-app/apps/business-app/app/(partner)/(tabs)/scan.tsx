@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useColors } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 type ScanResult = { trackingNumber: string; recipientName: string; status: string };
 
 export default function ScanScreen() {
@@ -30,10 +31,10 @@ export default function ScanScreen() {
     return (
       <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <Icon name="Camera" size={48} color={colors.textThird} />
-        <Text style={[styles.permTitle, { color: colors.text }]}>Camera Access Required</Text>
-        <Text style={[styles.permSub, { color: colors.textSecond }]}>Seirs needs camera access to scan package QR codes</Text>
+        <Text style={[styles.permTitle, { color: colors.text }]}>{tx('auto.scan.cameraAccessRequired', 'Camera Access Required')}</Text>
+        <Text style={[styles.permSub, { color: colors.textSecond }]}>{tx('auto.scan.seirsNeedsCameraAccessTo', 'Seirs needs camera access to scan package QR codes')}</Text>
         <Pressable style={[styles.permBtn, { backgroundColor: colors.primary }]} onPress={requestPermission}>
-          <Text style={styles.permBtnText}>Grant Permission</Text>
+          <Text style={styles.permBtnText}>{tx('auto.scan.grantPermission', 'Grant Permission')}</Text>
         </Pressable>
       </View>
     );
@@ -101,7 +102,7 @@ export default function ScanScreen() {
         <Pressable style={styles.closeBtn} onPress={() => router.back()}>
           <Icon name="X" size={22} color="#fff" />
         </Pressable>
-        <Text style={styles.overlayTitle}>Scan Package QR</Text>
+        <Text style={styles.overlayTitle}>{tx('auto.scan.scanPackageQr', 'Scan Package QR')}</Text>
       </View>
 
       {/* Finder */}
@@ -113,7 +114,7 @@ export default function ScanScreen() {
             <View style={[styles.corner, styles.cornerBL]} />
             <View style={[styles.corner, styles.cornerBR]} />
           </View>
-          <Text style={styles.finderHint}>Point camera at the package QR code</Text>
+          <Text style={styles.finderHint}>{tx('auto.scan.pointCameraAtThePackage', 'Point camera at the package QR code')}</Text>
         </View>
       )}
 
@@ -130,10 +131,10 @@ export default function ScanScreen() {
           <View style={styles.resultIcon}>
             <Icon name="AlertCircle" size={32} color="#DC2626" />
           </View>
-          <Text style={[styles.resultTitle, { color: colors.text }]}>Not Found</Text>
+          <Text style={[styles.resultTitle, { color: colors.text }]}>{tx('auto.scan.notFound', 'Not Found')}</Text>
           <Text style={[styles.resultSub, { color: colors.textSecond }]}>{error}</Text>
           <Pressable style={[styles.retryBtn, { backgroundColor: colors.primary }]} onPress={reset}>
-            <Text style={styles.retryBtnText}>Try Again</Text>
+            <Text style={styles.retryBtnText}>{tx('auto.scan.tryAgain', 'Try Again')}</Text>
           </Pressable>
         </View>
       )}
@@ -155,12 +156,12 @@ export default function ScanScreen() {
           </Text>
           <View style={styles.resultBtns}>
             <Pressable style={[styles.cancelBtn, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={reset}>
-              <Text style={[styles.cancelBtnText, { color: colors.textSecond }]}>Cancel</Text>
+              <Text style={[styles.cancelBtnText, { color: colors.textSecond }]}>{tx('auto.scan.cancel', 'Cancel')}</Text>
             </Pressable>
             <Pressable style={[styles.confirmBtn, { backgroundColor: colors.primary }]} onPress={confirmCollect} disabled={loading}>
               {loading
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.confirmBtnText}>Confirm Collection</Text>}
+                : <Text style={styles.confirmBtnText}>{tx('auto.scan.confirmCollection', 'Confirm Collection')}</Text>}
             </Pressable>
           </View>
         </View>

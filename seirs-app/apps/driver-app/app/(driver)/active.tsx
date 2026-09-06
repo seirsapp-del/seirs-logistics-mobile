@@ -26,6 +26,7 @@ import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Avatar } from '@/components/ui/Avatar';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 const STATUS_STEPS: {
   key: string; label: string; icon: string;
@@ -723,9 +724,9 @@ export default function ActiveDeliveryScreen() {
           <View style={[styles.emptyIconWrap, { backgroundColor: theme.surface }]}>
             <Ionicons name="cube-outline" size={52} color={theme.textThird} />
           </View>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>Delivery not found</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.active.deliveryNotFound', 'Delivery not found')}</Text>
           <Pressable onPress={() => router.back()} style={[styles.actionBtn, { backgroundColor: theme.primary, marginTop: Spacing.md }]}>
-            <Text style={styles.actionBtnText}>Go Back</Text>
+            <Text style={styles.actionBtnText}>{tx('auto.active.goBack', 'Go Back')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -810,7 +811,7 @@ export default function ActiveDeliveryScreen() {
           </Pressable>
         )}
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Active Delivery</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.active.activeDelivery', 'Active Delivery')}</Text>
           <Text style={[styles.trackCode, { color: theme.textSecond }]}>{delivery.trackingCode}</Text>
         </View>
         <Pressable
@@ -865,13 +866,13 @@ export default function ActiveDeliveryScreen() {
         {!bgTracking && (
           <Pressable onPress={enableBackgroundTracking} style={styles.bgPrompt}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.bgPromptTitle}>Your map stops when your screen locks</Text>
+              <Text style={styles.bgPromptTitle}>{tx('auto.active.yourMapStopsWhenYour', 'Your map stops when your screen locks')}</Text>
               <Text style={styles.bgPromptBody}>
                 Tap to keep sharing while your phone is in your pocket. Choose
                 "Allow all the time". It stops on its own when the job ends.
               </Text>
             </View>
-            <Text style={styles.bgPromptCta}>Turn on</Text>
+            <Text style={styles.bgPromptCta}>{tx('auto.active.turnOn', 'Turn on')}</Text>
           </Pressable>
         )}
 
@@ -994,18 +995,18 @@ export default function ActiveDeliveryScreen() {
               onPress={openInGoogleMaps}
             >
               <Ionicons name="open-outline" size={16} color={theme.primary} />
-              <Text style={[styles.mapsBtnText, { color: theme.primary }]}>Open directions in Google Maps</Text>
+              <Text style={[styles.mapsBtnText, { color: theme.primary }]}>{tx('auto.active.openDirectionsInGoogleMaps', 'Open directions in Google Maps')}</Text>
             </Pressable>
           </View>
         )}
 
         {/* Route card */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Delivery Route</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.active.deliveryRoute', 'Delivery Route')}</Text>
           <View style={styles.routeRow}>
             <View style={[styles.routeDot, { backgroundColor: '#22C55E' }]} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.routeLabel, { color: theme.textSecond }]}>Pickup</Text>
+              <Text style={[styles.routeLabel, { color: theme.textSecond }]}>{tx('auto.active.pickup', 'Pickup')}</Text>
               <Text style={[styles.routeAddr, { color: theme.text }]}>{delivery.pickupAddress}</Text>
             </View>
           </View>
@@ -1013,7 +1014,7 @@ export default function ActiveDeliveryScreen() {
           <View style={styles.routeRow}>
             <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.routeLabel, { color: theme.textSecond }]}>Dropoff</Text>
+              <Text style={[styles.routeLabel, { color: theme.textSecond }]}>{tx('auto.active.dropoff', 'Dropoff')}</Text>
               <Text style={[styles.routeAddr, { color: theme.text }]}>{delivery.dropoffAddress}</Text>
             </View>
           </View>
@@ -1101,10 +1102,10 @@ export default function ActiveDeliveryScreen() {
             above the card that honours it (sweep 2026-08-23). */}
         {delivery.customer && (delivery as any).kind !== 'ride' && (
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-            <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 2 }]}>Customer</Text>
+            <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 2 }]}>{tx('auto.active.customer', 'Customer')}</Text>
           {/* The split is deliberate and was invisible, so it read as a
               missing button (founder 2026-08-24). */}
-          <Text style={[styles.contactHint, { color: theme.textThird }]}>Not at the drop-off. Message them.</Text>
+          <Text style={[styles.contactHint, { color: theme.textThird }]}>{tx('auto.active.notAtTheDropOff', 'Not at the drop-off. Message them.')}</Text>
             <View style={styles.customerRow}>
               <Avatar name={delivery.customer.name ?? 'Customer'} uri={delivery.customer.profilePhoto} size={44} />
               <View style={{ flex: 1 }}>
@@ -1134,7 +1135,7 @@ export default function ActiveDeliveryScreen() {
              phone on the driver's screen: the chat button is the line.
              Admin keeps the full identity for emergencies. */
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Passenger</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.active.passenger', 'Passenger')}</Text>
             <View style={styles.customerRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.customerName, { color: theme.text }]}>
@@ -1160,8 +1161,8 @@ export default function ActiveDeliveryScreen() {
           </View>
         ) : (delivery.receiverFirstName || delivery.receiverPhone) && (
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-            <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 2 }]}>Receiver</Text>
-            <Text style={[styles.contactHint, { color: theme.textThird }]}>Call them when you arrive.</Text>
+            <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 2 }]}>{tx('auto.active.receiver', 'Receiver')}</Text>
+            <Text style={[styles.contactHint, { color: theme.textThird }]}>{tx('auto.active.callThemWhenYouArrive', 'Call them when you arrive.')}</Text>
             <View style={styles.customerRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.customerName, { color: theme.text }]}>
@@ -1210,7 +1211,7 @@ export default function ActiveDeliveryScreen() {
         {/* Proof of delivery */}
         {needsProof && (
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Proof of Delivery</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.active.proofOfDelivery', 'Proof of Delivery')}</Text>
             <Text style={[styles.proofHint, { color: theme.textSecond }]}>
               Take a photo when you hand over the package. Required to confirm delivery.
             </Text>
@@ -1219,13 +1220,13 @@ export default function ActiveDeliveryScreen() {
                 <Image source={{ uri: proofUri }} style={styles.proofImage} resizeMode="cover" />
                 <Pressable onPress={takeProofPhoto} style={[styles.retakeBtn, { borderColor: theme.border }]}>
                   <Ionicons name="camera-outline" size={16} color={theme.primary} />
-                  <Text style={[styles.retakeText, { color: theme.primary }]}>Retake Photo</Text>
+                  <Text style={[styles.retakeText, { color: theme.primary }]}>{tx('auto.active.retakePhoto', 'Retake Photo')}</Text>
                 </Pressable>
               </View>
             ) : (
               <Pressable onPress={takeProofPhoto} style={[styles.cameraBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '08' }]}>
                 <Ionicons name="camera-outline" size={36} color={theme.primary} />
-                <Text style={[styles.cameraBtnText, { color: theme.primary }]}>Take Proof Photo</Text>
+                <Text style={[styles.cameraBtnText, { color: theme.primary }]}>{tx('auto.active.takeProofPhoto', 'Take Proof Photo')}</Text>
               </Pressable>
             )}
           </View>
@@ -1233,7 +1234,7 @@ export default function ActiveDeliveryScreen() {
 
         {/* Progress steps */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Progress</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.active.progress', 'Progress')}</Text>
           {steps.filter(s => s.key !== 'delivered').map((s, i) => {
             const thisIndex = steps.findIndex(x => x.key === s.key);
             const done      = thisIndex < statusIndex || delivery.status === 'delivered';
@@ -1338,7 +1339,7 @@ export default function ActiveDeliveryScreen() {
               onPress={openInGoogleMaps}
             >
               <Ionicons name="open-outline" size={18} color="#fff" />
-              <Text style={styles.actionBtnText}>Open directions in Google Maps</Text>
+              <Text style={styles.actionBtnText}>{tx('auto.active.openDirectionsInGoogleMaps', 'Open directions in Google Maps')}</Text>
             </Pressable>
           </View>
         </View>
@@ -1411,7 +1412,7 @@ export default function ActiveDeliveryScreen() {
       >
         <View style={styles.receiverBackdrop}>
           <View style={[styles.receiverCard, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.receiverTitle, { color: theme.text }]}>Who accepted it?</Text>
+            <Text style={[styles.receiverTitle, { color: theme.text }]}>{tx('auto.active.whoAcceptedIt', 'Who accepted it?')}</Text>
             <Text style={[styles.receiverBody, { color: theme.textSecond }]}>
               Their name, as they gave it to you. This goes on the delivery record.
             </Text>
@@ -1428,7 +1429,7 @@ export default function ActiveDeliveryScreen() {
                 style={styles.receiverBtn}
                 onPress={() => setShowReceiverPrompt(false)}
               >
-                <Text style={{ color: theme.textSecond, fontWeight: FontWeight.semibold as any }}>Cancel</Text>
+                <Text style={{ color: theme.textSecond, fontWeight: FontWeight.semibold as any }}>{tx('auto.active.cancel', 'Cancel')}</Text>
               </Pressable>
               <Pressable
                 style={[styles.receiverBtn, { backgroundColor: theme.primary, borderRadius: Radius.md }]}
@@ -1439,7 +1440,7 @@ export default function ActiveDeliveryScreen() {
                   doUpdate('delivered', { relation: 'other', name: clean });
                 }}
               >
-                <Text style={{ color: '#fff', fontWeight: FontWeight.bold as any }}>Confirm Delivered</Text>
+                <Text style={{ color: '#fff', fontWeight: FontWeight.bold as any }}>{tx('auto.active.confirmDelivered', 'Confirm Delivered')}</Text>
               </Pressable>
             </View>
           </View>

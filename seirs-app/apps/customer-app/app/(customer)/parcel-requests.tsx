@@ -25,6 +25,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { deliveriesApi, travelBuddyApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 type Req = {
   id: string;
@@ -210,7 +211,7 @@ export default function ParcelRequestsScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Your trip requests</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.parcelRequests.yourTripRequests', 'Your trip requests')}</Text>
       </View>
 
       <ScrollView
@@ -224,7 +225,7 @@ export default function ParcelRequestsScreen() {
         {!loading && rows.length === 0 && seats.length === 0 && (
           <View style={styles.empty}>
             <Package size={40} color={theme.textThird} strokeWidth={1.5} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>Nothing asked yet</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.parcelRequests.nothingAskedYet', 'Nothing asked yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
               Find a driver already going your way under Travel Buddy and ask for
               a seat or for them to carry your parcel. Nothing is charged until they agree.
@@ -256,7 +257,7 @@ export default function ParcelRequestsScreen() {
               {open && (
                 <View style={styles.row}>
                   <Clock size={12} color={theme.textThird} strokeWidth={2} />
-                  <Text style={[styles.fact, { color: theme.textThird }]}>Nothing is charged while you wait.</Text>
+                  <Text style={[styles.fact, { color: theme.textThird }]}>{tx('auto.parcelRequests.nothingIsChargedWhileYou', 'Nothing is charged while you wait.')}</Text>
                 </View>
               )}
               {canPay && (
@@ -277,7 +278,7 @@ export default function ParcelRequestsScreen() {
                   {!!b.board.mapsUrl && (
                     <Pressable onPress={() => Linking.openURL(b.board.mapsUrl!).catch(() => {})} style={styles.mapsLink}>
                       <Navigation size={13} color={theme.primary} strokeWidth={2} />
-                      <Text style={[styles.mapsLinkTxt, { color: theme.primary }]}>Open in Google Maps</Text>
+                      <Text style={[styles.mapsLinkTxt, { color: theme.primary }]}>{tx('auto.parcelRequests.openInGoogleMaps', 'Open in Google Maps')}</Text>
                     </Pressable>
                   )}
                   {!!b.alight?.address && (
@@ -287,7 +288,7 @@ export default function ParcelRequestsScreen() {
                       {!!b.alight.mapsUrl && (
                         <Pressable onPress={() => Linking.openURL(b.alight.mapsUrl!).catch(() => {})} style={styles.mapsLink}>
                           <Navigation size={13} color={theme.primary} strokeWidth={2} />
-                          <Text style={[styles.mapsLinkTxt, { color: theme.primary }]}>Open in Google Maps</Text>
+                          <Text style={[styles.mapsLinkTxt, { color: theme.primary }]}>{tx('auto.parcelRequests.openInGoogleMaps', 'Open in Google Maps')}</Text>
                         </Pressable>
                       )}
                     </>
@@ -297,7 +298,7 @@ export default function ParcelRequestsScreen() {
               <View style={styles.actions}>
                 {open && (
                   <Pressable disabled={busy === b.id} onPress={() => withdrawSeat(b)} style={[styles.ghostBtn, { borderColor: theme.border }]}>
-                    <Text style={[styles.ghostTxt, { color: theme.textSecond }]}>Withdraw</Text>
+                    <Text style={[styles.ghostTxt, { color: theme.textSecond }]}>{tx('auto.parcelRequests.withdraw', 'Withdraw')}</Text>
                   </Pressable>
                 )}
                 {canPay && (
@@ -309,7 +310,7 @@ export default function ParcelRequestsScreen() {
                 )}
                 {b.deliveryId && (b.status === 'booked' || b.status === 'boarded') && (
                   <Pressable onPress={() => router.push({ pathname: '/(customer)/trip/[id]', params: { id: b.deliveryId } } as any)} style={[styles.ghostBtn, { borderColor: theme.border }]}>
-                    <Text style={[styles.ghostTxt, { color: theme.textSecond }]}>Track</Text>
+                    <Text style={[styles.ghostTxt, { color: theme.textSecond }]}>{tx('auto.parcelRequests.track', 'Track')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -385,7 +386,7 @@ export default function ParcelRequestsScreen() {
                     onPress={() => withdraw(r)}
                     style={[styles.ghostBtn, { borderColor: theme.border }]}
                   >
-                    <Text style={[styles.ghostTxt, { color: theme.textSecond }]}>Withdraw</Text>
+                    <Text style={[styles.ghostTxt, { color: theme.textSecond }]}>{tx('auto.parcelRequests.withdraw', 'Withdraw')}</Text>
                   </Pressable>
                 )}
                 {r.status === 'countered' && (
@@ -396,12 +397,12 @@ export default function ParcelRequestsScreen() {
                   >
                     {busy === r.id
                       ? <ActivityIndicator color="#fff" size="small" />
-                      : <Text style={styles.primaryTxt}>Accept and pay</Text>}
+                      : <Text style={styles.primaryTxt}>{tx('auto.parcelRequests.acceptAndPay', 'Accept and pay')}</Text>}
                   </Pressable>
                 )}
                 {r.status === 'accepted' && r.deliveryId && (
                   <Pressable onPress={() => payFor(r)} style={[styles.primaryBtn, { backgroundColor: theme.primary }]}>
-                    <Text style={styles.primaryTxt}>Pay now</Text>
+                    <Text style={styles.primaryTxt}>{tx('auto.parcelRequests.payNow', 'Pay now')}</Text>
                   </Pressable>
                 )}
               </View>

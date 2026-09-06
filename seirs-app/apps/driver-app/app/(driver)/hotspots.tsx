@@ -10,6 +10,7 @@ import MapView, { Marker, Circle, Callout, PROVIDER_GOOGLE } from 'react-native-
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { driversApi, dropoffApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 /**
  * Hotspots: full-screen demand map so drivers know where to position
@@ -107,7 +108,7 @@ export default function HotspotsScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Demand Hotspots</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.hotspots.demandHotspots', 'Demand Hotspots')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -118,7 +119,7 @@ export default function HotspotsScreen() {
       ) : !me ? (
         <View style={styles.emptyWrap}>
           <Ionicons name="location-outline" size={44} color={theme.textThird} />
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>No location yet</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.hotspots.noLocationYet', 'No location yet')}</Text>
           <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
             Go online so SEIRS knows where you are, then check back for demand around you.
           </Text>
@@ -188,7 +189,7 @@ export default function HotspotsScreen() {
                 <Text style={[styles.legendText, { color: theme.textSecond }]}>{x.l}</Text>
               </View>
             ))}
-            <Text style={[styles.legendHint, { color: theme.textThird }]}>Orders in the last hours</Text>
+            <Text style={[styles.legendHint, { color: theme.textThird }]}>{tx('auto.hotspots.ordersInTheLastHours', 'Orders in the last hours')}</Text>
           </View>
 
           {/* Ranked zones */}

@@ -10,6 +10,7 @@ import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { authApi } from '@/services/api';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 /**
  * Forgot password, and the "check your inbox" state that follows it.
@@ -85,7 +86,7 @@ export default function ForgotPasswordScreen() {
             <View style={[styles.sentIconWrap, { backgroundColor: theme.primary + (isDark ? '26' : '18') }]}>
               <Icon name="Mail" size={40} color={theme.primary} />
             </View>
-            <Text style={[styles.sentTitle, { color: theme.text }]}>Check your inbox</Text>
+            <Text style={[styles.sentTitle, { color: theme.text }]}>{tx('auto.forgotPassword.checkYourInbox', 'Check your inbox')}</Text>
             <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
               If an account exists for {email.trim().toLowerCase()}, we sent a reset link.
               It expires in 15 minutes. Check spam if you do not see it.
@@ -93,7 +94,7 @@ export default function ForgotPasswordScreen() {
           </View>
 
           <Pressable style={[styles.btn, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
-            <Text style={[styles.btnText, { color: theme.textOnPrimary }]}>Back to Sign In</Text>
+            <Text style={[styles.btnText, { color: theme.textOnPrimary }]}>{tx('auto.forgotPassword.backToSignIn', 'Back to Sign In')}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -126,7 +127,7 @@ export default function ForgotPasswordScreen() {
         {Lockup}
 
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Forgot password?</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.forgotPassword.forgotPassword', 'Forgot password?')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
             Enter your email and we&apos;ll send you a link to reset your password.
           </Text>
@@ -141,7 +142,7 @@ export default function ForgotPasswordScreen() {
           )}
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Email address</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.forgotPassword.emailAddress', 'Email address')}</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Icon name="Mail" size={17} color={theme.textThird} />
               <TextInput
@@ -164,7 +165,7 @@ export default function ForgotPasswordScreen() {
           >
             {loading ? <ActivityIndicator color={theme.textOnPrimary} /> : (
               <View style={styles.btnRow}>
-                <Text style={[styles.btnText, { color: theme.textOnPrimary }]}>Send Reset Link</Text>
+                <Text style={[styles.btnText, { color: theme.textOnPrimary }]}>{tx('auto.forgotPassword.sendResetLink', 'Send Reset Link')}</Text>
                 <Icon name="ArrowRight" size={18} color={theme.textOnPrimary} />
               </View>
             )}
@@ -172,9 +173,9 @@ export default function ForgotPasswordScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>Remember your password?</Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>{tx('auto.forgotPassword.rememberYourPassword', 'Remember your password?')}</Text>
           <Pressable onPress={() => router.back()}>
-            <Text style={[styles.footerLink, { color: theme.accent }]}> Sign In</Text>
+            <Text style={[styles.footerLink, { color: theme.accent }]}> {tx('auto.forgotPassword.signIn', 'Sign In')}</Text>
           </Pressable>
         </View>
       </ScrollView>

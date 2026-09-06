@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePoolCap } from '@/hooks/usePoolCap';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §1 / §2.15: driver's view of a corridor pool trip with up
 // to 4 simultaneous active legs. Each leg shows pickup, dropoff, status
@@ -87,7 +88,7 @@ export default function MultiLegScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Active Pool Trip</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.multiLeg.activePoolTrip', 'Active Pool Trip')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -121,7 +122,7 @@ export default function MultiLegScreen() {
         ) : legs.length === 0 ? (
           <View style={styles.empty}>
             <Package size={32} color={theme.textThird} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No active legs</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.multiLeg.noActiveLegs', 'No active legs')}</Text>
             <Text style={[styles.emptySub,   { color: theme.textSecond }]}>
               When you accept a job, it appears here. Multiple legs along the same corridor get bundled into a pool trip.
             </Text>
@@ -174,7 +175,7 @@ export default function MultiLegScreen() {
                     onPress={() => router.push({ pathname: '/(driver)/delivery/[id]' as any, params: { id: leg.id } })}
                     style={[styles.viewBtn, { backgroundColor: theme.primary + '15' }]}
                   >
-                    <Text style={[styles.viewBtnText, { color: theme.primary }]}>Open delivery</Text>
+                    <Text style={[styles.viewBtnText, { color: theme.primary }]}>{tx('auto.multiLeg.openDelivery', 'Open delivery')}</Text>
                     <ChevronRight size={14} color={theme.primary} />
                   </Pressable>
                 )}
@@ -185,7 +186,7 @@ export default function MultiLegScreen() {
 
         <View style={[styles.note, { backgroundColor: theme.primary + '08' }]}>
           <Text style={[styles.noteText, { color: theme.textSecond }]}>
-            <Text style={{ fontWeight: '700' as any }}>How pooling works:</Text> The dispatcher silently inserts legs that lie within 1km of your route + add ≤20% to your time. You don&apos;t need to accept each insertion: just complete legs in the order shown.
+            <Text style={{ fontWeight: '700' as any }}>{tx('auto.multiLeg.howPoolingWorks', 'How pooling works:')}</Text> The dispatcher silently inserts legs that lie within 1km of your route + add ≤20% to your time. You don&apos;t need to accept each insertion: just complete legs in the order shown.
           </Text>
         </View>
       </ScrollView>

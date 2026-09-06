@@ -14,6 +14,7 @@ import { usersApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 const CONFIRM_PHRASE = 'delete my account';
 
 // Spec V8: NDPR right to erasure. Soft-deletes (isActive=false) with
@@ -97,7 +98,7 @@ export default function DeleteAccountScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Delete Account</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.deleteAccount.deleteAccount', 'Delete Account')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -107,14 +108,14 @@ export default function DeleteAccountScreen() {
           <View style={styles.warnBanner}>
             <AlertTriangle size={20} color="#DC2626" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.warnTitle}>Permanent after 30 days</Text>
+              <Text style={styles.warnTitle}>{tx('auto.deleteAccount.permanentAfter30Days', 'Permanent after 30 days')}</Text>
               <Text style={styles.warnSub}>
                 Soft-deleted now; sign in within 30 days to cancel. After that, all your data is permanently removed.
               </Text>
             </View>
           </View>
 
-          <Text style={[styles.what, { color: theme.text }]}>What gets deleted</Text>
+          <Text style={[styles.what, { color: theme.text }]}>{tx('auto.deleteAccount.whatGetsDeleted', 'What gets deleted')}</Text>
           {[
             'Your profile, name, phone, photo',
             'Your delivery history (after the 30-day grace window)',
@@ -124,7 +125,7 @@ export default function DeleteAccountScreen() {
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
           ))}
 
-          <Text style={[styles.what, { color: theme.text, marginTop: Spacing.md }]}>What stays</Text>
+          <Text style={[styles.what, { color: theme.text, marginTop: Spacing.md }]}>{tx('auto.deleteAccount.whatStays', 'What stays')}</Text>
           {[
             'Audit trails for any open disputes against your account',
             'Tax records we are legally required to retain (FIRS / NDPR)',

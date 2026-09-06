@@ -18,6 +18,7 @@ import { documentToHtml } from '@seirs/shared/utils/documentPdf';
 import { useTheme } from '@/context/ThemeContext';
 import { documentsApi, businessApi, partnerApi, type UserDocumentDTO } from '@/services/api';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 
 interface SpendYear   { year: number; spentNgn: number; payments: number; toppedUpNgn: number }
@@ -158,7 +159,7 @@ export default function BusinessDocumentsScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Back">
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Documents</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.documents.documents', 'Documents')}</Text>
         <View style={{ width: 20 }} />
       </View>
 
@@ -220,7 +221,7 @@ export default function BusinessDocumentsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <Icon name="FileText" size={44} color={theme.textSecond} />
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>No documents yet</Text>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.documents.noDocumentsYet', 'No documents yet')}</Text>
               <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
                 Contracts, official letters from SEIRS, and your statements will appear here.
               </Text>
@@ -293,7 +294,7 @@ export default function BusinessDocumentsScreen() {
                 </Text>
               </Pressable>
               <Pressable style={[styles.modalBtn, { backgroundColor: theme.primary }]} onPress={() => setViewing(null)}>
-                <Text style={{ color: '#fff', fontWeight: '700' }}>Close</Text>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>{tx('auto.documents.close', 'Close')}</Text>
               </Pressable>
             </View>
           </View>

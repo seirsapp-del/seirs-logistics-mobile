@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { notificationsApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 type NotifType = 'job' | 'payment' | 'system' | 'rating';
 
@@ -220,11 +221,11 @@ export default function DriverNotificationsScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Notifications</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.notifications.notifications', 'Notifications')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
           {unreadCount > 0 && (
             <Pressable onPress={markAllRead}>
-              <Text style={[styles.markAll, { color: theme.primary }]}>Mark all read</Text>
+              <Text style={[styles.markAll, { color: theme.primary }]}>{tx('auto.notifications.markAllRead', 'Mark all read')}</Text>
             </Pressable>
           )}
           {notifs.length > 0 && (
@@ -247,7 +248,7 @@ export default function DriverNotificationsScreen() {
           ) : (
             <View style={styles.empty}>
               <Ionicons name="notifications-off-outline" size={48} color={theme.textThird} />
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>No notifications</Text>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.notifications.noNotifications', 'No notifications')}</Text>
             </View>
           )
         }
@@ -260,7 +261,7 @@ export default function DriverNotificationsScreen() {
               renderRightActions={() => (
                 <Pressable style={styles.dismissAction} onPress={() => dismissOne(item.id)}>
                   <Ionicons name="trash-outline" size={20} color="#fff" />
-                  <Text style={styles.dismissText}>Dismiss</Text>
+                  <Text style={styles.dismissText}>{tx('auto.notifications.dismiss', 'Dismiss')}</Text>
                 </Pressable>
               )}
             >

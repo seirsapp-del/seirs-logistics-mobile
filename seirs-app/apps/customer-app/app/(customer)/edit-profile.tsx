@@ -23,6 +23,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { useAuth } from '@/context/AuthContext';
 import { usersApi, uploadApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // ─── Validation (must stay in sync with backend UpdateProfileDto) ───────────
 
@@ -333,7 +334,7 @@ export default function EditProfileScreen() {
             {saving ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Save size={16} color="#fff" />
-                <Text style={styles.primaryBtnText}>Save changes</Text>
+                <Text style={styles.primaryBtnText}>{tx('auto.editProfile.saveChanges', 'Save changes')}</Text>
               </>
             )}
           </Pressable>
@@ -343,7 +344,7 @@ export default function EditProfileScreen() {
             style={[styles.primaryBtn, { backgroundColor: theme.surfaceSecond, marginTop: Spacing.sm }]}
           >
             <Lock size={16} color={theme.text} />
-            <Text style={[styles.primaryBtnText, { color: theme.text }]}>Change password</Text>
+            <Text style={[styles.primaryBtnText, { color: theme.text }]}>{tx('auto.editProfile.changePassword', 'Change password')}</Text>
           </Pressable>
 
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: Spacing.md }}>

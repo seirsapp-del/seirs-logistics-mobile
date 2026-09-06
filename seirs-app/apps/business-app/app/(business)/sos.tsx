@@ -20,6 +20,7 @@ import { sosApi } from '@/services/api';
 import type { EmergencyContactDTO } from '@seirs/shared/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 /** Which glyph a directory entry gets, from the category an admin set. */
 const CATEGORY_ICON: Record<string, IconName> = {
   emergency: 'AlertCircle',
@@ -205,7 +206,7 @@ export default function BusinessSosScreen() {
         <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
           <Icon name="ArrowLeft" size={20} color="#fff" />
         </Pressable>
-        <Text style={styles.title}>SOS Emergency</Text>
+        <Text style={styles.title}>{tx('auto.sos.sosEmergency', 'SOS Emergency')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -276,7 +277,7 @@ export default function BusinessSosScreen() {
         )}
 
         <View style={styles.emergencySection}>
-          <Text style={styles.emergencySectionTitle}>Quick Dial</Text>
+          <Text style={styles.emergencySectionTitle}>{tx('auto.sos.quickDial', 'Quick Dial')}</Text>
           <View style={styles.emergencyRow}>
             {contacts.map(c => {
               const dial = c.numbers[0];
@@ -327,7 +328,7 @@ export default function BusinessSosScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <View style={styles.noteCard}>
-            <Text style={styles.noteTitle}>What is happening?</Text>
+            <Text style={styles.noteTitle}>{tx('auto.sos.whatIsHappening', 'What is happening?')}</Text>
             <Text style={styles.noteSub}>
               Support is already alerted and your location is being shared.
               This is optional: it only tells them what they are coming into.
@@ -358,7 +359,7 @@ export default function BusinessSosScreen() {
               >
                 {noteSaving
                   ? <ActivityIndicator size="small" color="#7F1D1D" />
-                  : <Text style={styles.noteSendText}>Send to support</Text>}
+                  : <Text style={styles.noteSendText}>{tx('auto.sos.sendToSupport', 'Send to support')}</Text>}
               </Pressable>
             </View>
           </View>

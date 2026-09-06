@@ -35,6 +35,7 @@ import { Colors } from '@/constants/theme';
 import { paymentsApi, statementsApi } from '@/services/api';
 import type { CustomerStatement, StatementEntry } from '@/services/api';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 type PresetKey = 'this_month' | 'last_month' | 'last_2_months' | 'last_90';
 
@@ -172,7 +173,7 @@ export default function CustomerStatementScreen() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color={theme.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Spending Statement</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.statement.spendingStatement', 'Spending Statement')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -243,7 +244,7 @@ export default function CustomerStatementScreen() {
                 </Pressable>
               ))}
               <View style={[styles.runningRow, { borderTopColor: theme.border, backgroundColor: theme.surfaceSecond }]}>
-                <Text style={[styles.runningLabel, { color: theme.textSecond }]}>Running total</Text>
+                <Text style={[styles.runningLabel, { color: theme.textSecond }]}>{tx('auto.statement.runningTotal', 'Running total')}</Text>
                 <Text style={[styles.runningValue, { color: theme.text }]}>
                   {naira(entries[entries.length - 1]?.runningTotalNgn ?? 0)}
                 </Text>

@@ -31,6 +31,7 @@ import { naira } from '@/utils/money';
 import DeliveryTrackMap from '@/components/DeliveryTrackMap';
 import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
 import { Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 /**
  * Status colour now comes from constants/tint.ts (2026-08-24), shared
@@ -209,9 +210,9 @@ export default function DeliveryDetailScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={styles.center}>
-          <Text style={{ color: colors.textSecond }}>Could not load this delivery.</Text>
+          <Text style={{ color: colors.textSecond }}>{tx('auto.id.couldNotLoadThisDelivery', 'Could not load this delivery.')}</Text>
           <Pressable onPress={() => router.back()} style={{ marginTop: 12 }}>
-            <Text style={{ color: colors.primary, fontWeight: '700' }}>Go back</Text>
+            <Text style={{ color: colors.primary, fontWeight: '700' }}>{tx('auto.id.goBack', 'Go back')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -679,7 +680,7 @@ export default function DeliveryDetailScreen() {
                     ]}
                   >
                     <Icon name="QrCode" size={16} color={colors.primary} />
-                    <Text style={[styles.qrBtnText, { color: colors.primary }]}>Show package QR</Text>
+                    <Text style={[styles.qrBtnText, { color: colors.primary }]}>{tx('auto.id.showPackageQr', 'Show package QR')}</Text>
                   </Pressable>
                 </>
               )}
@@ -740,7 +741,7 @@ export default function DeliveryDetailScreen() {
                 ]}
               >
                 <Icon name="QrCode" size={16} color={colors.primary} />
-                <Text style={[styles.qrBtnText, { color: colors.primary }]}>Show package QR</Text>
+                <Text style={[styles.qrBtnText, { color: colors.primary }]}>{tx('auto.id.showPackageQr', 'Show package QR')}</Text>
               </Pressable>
             )}
           </View>
@@ -789,7 +790,7 @@ export default function DeliveryDetailScreen() {
             }}
             style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}
           >
-            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>Send again</Text>
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>{tx('auto.id.sendAgain', 'Send again')}</Text>
             <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
               {stops.length > 1
                 ? `Reuse all ${stops.length} packages, then edit anything`
@@ -806,7 +807,7 @@ export default function DeliveryDetailScreen() {
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 18 }}
         >
           <Icon name="Flag" size={16} color={colors.primary} />
-          <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600' }}>Report an issue</Text>
+          <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600' }}>{tx('auto.id.reportAnIssue', 'Report an issue')}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

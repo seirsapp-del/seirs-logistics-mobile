@@ -53,6 +53,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 import { VEHICLE_LABEL } from '@/constants/vehicles';
 import { TERMS_URL } from '@/constants/config';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 const STEPS = ['Packages', 'Pickup', 'Vehicle', 'Review'] as const;
 const STEP_SLOTS = ['send-package', 'send-address', 'send-vehicle', 'send-fare'] as const;
@@ -1110,7 +1111,7 @@ export default function SendPackageScreen() {
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.text }]}>Send a Package</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{tx('auto.sendPackage.sendAPackage', 'Send a Package')}</Text>
           <Text style={[styles.subtitle, { color: colors.textSecond }]}>
             Step {step + 1} of {STEPS.length} · {STEPS[step]}
           </Text>
@@ -1120,7 +1121,7 @@ export default function SendPackageScreen() {
         {(hasDraft || step > 0) ? (
           <Pressable onPress={startOver} hitSlop={8} style={[styles.startOverBtn, { borderColor: colors.border }]}>
             <Icon name="RotateCcw" size={14} color={colors.textSecond} />
-            <Text style={[styles.startOverText, { color: colors.textSecond }]}>Start over</Text>
+            <Text style={[styles.startOverText, { color: colors.textSecond }]}>{tx('auto.sendPackage.startOver', 'Start over')}</Text>
           </Pressable>
         ) : (
           <View style={styles.dots}>
@@ -1167,10 +1168,10 @@ export default function SendPackageScreen() {
                   </View>
                   <View style={{ gap: 6 }}>
                     <Pressable onPress={() => setShowResume(false)} style={[styles.resumeBtn, { backgroundColor: colors.primary }]}>
-                      <Text style={[styles.resumeBtnText, { color: '#fff' }]}>Continue</Text>
+                      <Text style={[styles.resumeBtnText, { color: '#fff' }]}>{tx('auto.sendPackage.continue', 'Continue')}</Text>
                     </Pressable>
                     <Pressable onPress={clearBooking} style={[styles.resumeBtn, { borderWidth: 1, borderColor: colors.primary }]}>
-                      <Text style={[styles.resumeBtnText, { color: colors.primary }]}>Start fresh</Text>
+                      <Text style={[styles.resumeBtnText, { color: colors.primary }]}>{tx('auto.sendPackage.startFresh', 'Start fresh')}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -1221,7 +1222,7 @@ export default function SendPackageScreen() {
                     )}
                   </View>
 
-                  <Text style={[styles.label, { color: colors.textSecond }]}>What is it?</Text>
+                  <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.sendPackage.whatIsIt', 'What is it?')}</Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={s.packageDescription ?? ''}
@@ -1369,7 +1370,7 @@ export default function SendPackageScreen() {
                             updateStop(i, { destinationStoreId: undefined, destinationStoreName: undefined, destinationStoreInfo: null });
                             if (s.lat != null && s.lng != null) findStoresNear(i, s.lat, s.lng);
                           }}>
-                            <Text style={[styles.changeTxt, { color: colors.primary }]}>Change</Text>
+                            <Text style={[styles.changeTxt, { color: colors.primary }]}>{tx('auto.sendPackage.change', 'Change')}</Text>
                           </Pressable>
                         </View>
                       ) : nearbyBusy[i] ? (
@@ -1416,7 +1417,7 @@ export default function SendPackageScreen() {
                     </View>
                   )}
 
-                  <Text style={[styles.label, { color: colors.textSecond }]}>If nobody is available</Text>
+                  <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.sendPackage.ifNobodyIsAvailable', 'If nobody is available')}</Text>
                   <View style={styles.chipWrap}>
                     {([
                       { key: 'hand_only', label: 'Hand to receiver only' },
@@ -1494,7 +1495,7 @@ export default function SendPackageScreen() {
                     onPress={() => { addStop({ address: '', recipientName: '', recipientPhone: '' }); setPkgQueries(q => [...q, '']); }}
                   >
                     <Icon name="Plus" size={16} color={colors.accent} />
-                    <Text style={[styles.addBtnText, { color: colors.accent }]}>Add another package</Text>
+                    <Text style={[styles.addBtnText, { color: colors.accent }]}>{tx('auto.sendPackage.addAnotherPackage', 'Add another package')}</Text>
                   </Pressable>
                   <Text style={[styles.capNote, { color: colors.textThird }]}>
                     {draft.stops.length} package{draft.stops.length === 1 ? '' : 's'} so far
@@ -1606,7 +1607,7 @@ export default function SendPackageScreen() {
                           findStoresNear(-1, draft.pickupLat, draft.pickupLng);
                         }
                       }}>
-                        <Text style={[styles.changeTxt, { color: colors.primary }]}>Change</Text>
+                        <Text style={[styles.changeTxt, { color: colors.primary }]}>{tx('auto.sendPackage.change', 'Change')}</Text>
                       </Pressable>
                     </Pressable>
                   ) : nearbyBusy[-1] ? (
@@ -1652,13 +1653,13 @@ export default function SendPackageScreen() {
 
               <Pressable style={styles.useLocRow} onPress={useMyLocation}>
                 <Icon name="MapPin" size={16} color={colors.accent} />
-                <Text style={[styles.useLocTxt, { color: colors.accent }]}>Use my current location</Text>
+                <Text style={[styles.useLocTxt, { color: colors.accent }]}>{tx('auto.sendPackage.useMyCurrentLocation', 'Use my current location')}</Text>
               </Pressable>
 
               {/* When: two real option cards, not two anonymous pills
                   (founder 2026-08-16: "it should be more visible and
                   properly designed so they can see it"). */}
-              <Text style={[styles.label, { color: colors.textSecond, marginTop: 14 }]}>When should the driver come?</Text>
+              <Text style={[styles.label, { color: colors.textSecond, marginTop: 14 }]}>{tx('auto.sendPackage.whenShouldTheDriverCome', 'When should the driver come?')}</Text>
               {([
                 { now: true,  title: 'Send now',      sub: 'We match a driver straight away', icon: 'Zap' },
                 { now: false, title: 'Schedule it',   sub: 'Pick a pickup hour, today or tomorrow', icon: 'Clock' },
@@ -1707,7 +1708,7 @@ export default function SendPackageScreen() {
                     })}
                   </View>
 
-                  <Text style={[styles.label, { color: colors.textSecond }]}>Pickup hour</Text>
+                  <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.sendPackage.pickupHour', 'Pickup hour')}</Text>
                   <View style={styles.chipWrap}>
                     {TIME_SLOTS.map(({ hour, label }) => {
                       // Scheduled pickups run 5 AM to 9 PM; past hours today
@@ -1778,7 +1779,7 @@ export default function SendPackageScreen() {
                         <Text style={[styles.vehName, { color: colors.text }]}>{VEHICLE_LABEL[v]}</Text>
                         {isRecommended && !disabled && (
                           <View style={[styles.recBadge, { backgroundColor: colors.accent }]}>
-                            <Text style={styles.recTxt}>Recommended</Text>
+                            <Text style={styles.recTxt}>{tx('auto.sendPackage.recommended', 'Recommended')}</Text>
                           </View>
                         )}
                       </View>
@@ -1853,7 +1854,7 @@ export default function SendPackageScreen() {
                   />
                   <View style={[styles.expandChip, { backgroundColor: colors.surface }]}>
                     <Icon name="Maximize2" size={13} color={colors.text} />
-                    <Text style={[styles.mapBadgeTxt, { color: colors.text }]}>Tap to expand</Text>
+                    <Text style={[styles.mapBadgeTxt, { color: colors.text }]}>{tx('auto.sendPackage.tapToExpand', 'Tap to expand')}</Text>
                   </View>
                   <View style={[styles.mapBadge, { backgroundColor: colors.surface }]}>
                     <Text style={[styles.mapBadgeTxt, { color: colors.text }]}>
@@ -1866,7 +1867,7 @@ export default function SendPackageScreen() {
               )}
 
               <View style={[styles.sumCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.sumTitle, { color: colors.text }]}>Route</Text>
+                <Text style={[styles.sumTitle, { color: colors.text }]}>{tx('auto.sendPackage.route', 'Route')}</Text>
                 <Text style={[styles.sumLine, { color: colors.textSecond }]} numberOfLines={2}>
                   {draft.pickupMode === 'store' && draft.pickupStoreName
                     ? `You drop at ${draft.pickupStoreName} · driver collects there`
@@ -1879,7 +1880,7 @@ export default function SendPackageScreen() {
               </View>
 
               <View style={[styles.sumCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.sumTitle, { color: colors.text }]}>Packages</Text>
+                <Text style={[styles.sumTitle, { color: colors.text }]}>{tx('auto.sendPackage.packages', 'Packages')}</Text>
                 {draft.stops.map((s, i) => (
                   <View key={i}>
                     <Pressable style={styles.lineRow} onPress={() => setExpandedPkg(expandedPkg === i ? null : i)}>
@@ -1919,7 +1920,7 @@ export default function SendPackageScreen() {
                             onPress={() => { setExpandedPkg(null); removeStop(i); setPkgQueries(q => q.filter((_, j) => j !== i)); }}
                           >
                             <Icon name="X" size={13} color="#DC2626" />
-                            <Text style={[styles.lineSub, { color: '#DC2626', fontWeight: '600' }]}>Remove this package</Text>
+                            <Text style={[styles.lineSub, { color: '#DC2626', fontWeight: '600' }]}>{tx('auto.sendPackage.removeThisPackage', 'Remove this package')}</Text>
                           </Pressable>
                         )}
                       </View>
@@ -1984,7 +1985,7 @@ export default function SendPackageScreen() {
               {/* Run-level Order Summary, ported from the customer's hybrid
                   review at the founder's request, payment row omitted. */}
               <View style={[styles.sumCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.sumTitle, { color: colors.text }]}>Order Summary</Text>
+                <Text style={[styles.sumTitle, { color: colors.text }]}>{tx('auto.sendPackage.orderSummary', 'Order Summary')}</Text>
                 {/* Who this load is going to, when it came from Cargo Space. */}
                 {postToTripId && (
                   <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start', paddingVertical: 8 }}>
@@ -2085,7 +2086,7 @@ export default function SendPackageScreen() {
                   <View style={[styles.sheetRow, { borderTopColor: colors.border }]}>
                     <Icon name="Clock" size={16} color={colors.textThird} />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.sheetLabel, { color: colors.textThird }]}>Opening hours</Text>
+                      <Text style={[styles.sheetLabel, { color: colors.textThird }]}>{tx('auto.sendPackage.openingHours', 'Opening hours')}</Text>
                       <Text style={[styles.sheetValue, { color: colors.text }]}>
                         {storeSheet.openTime && storeSheet.closeTime
                           ? `${storeSheet.openTime} - ${storeSheet.closeTime}`
@@ -2106,7 +2107,7 @@ export default function SendPackageScreen() {
                     <View style={[styles.sheetRow, { borderTopColor: colors.border }]}>
                       <Icon name="Phone" size={16} color={colors.textThird} />
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.sheetLabel, { color: colors.textThird }]}>Counter phone</Text>
+                        <Text style={[styles.sheetLabel, { color: colors.textThird }]}>{tx('auto.sendPackage.counterPhone', 'Counter phone')}</Text>
                         <Text style={[styles.sheetValue, { color: colors.text }]}>{storeSheet.phone}</Text>
                       </View>
                       <Pressable
@@ -2122,7 +2123,7 @@ export default function SendPackageScreen() {
                     <View style={[styles.sheetRow, { borderTopColor: colors.border }]}>
                       <Icon name="MapPin" size={16} color={colors.textThird} />
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.sheetLabel, { color: colors.textThird }]}>Distance</Text>
+                        <Text style={[styles.sheetLabel, { color: colors.textThird }]}>{tx('auto.sendPackage.distance', 'Distance')}</Text>
                         <Text style={[styles.sheetValue, { color: colors.text }]}>
                           {storeSheet.distanceKm < 1 ? 'Under 1km away' : `${storeSheet.distanceKm}km away`}
                         </Text>

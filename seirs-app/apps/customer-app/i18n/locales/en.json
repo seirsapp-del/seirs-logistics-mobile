@@ -1047,5 +1047,252 @@
       "sendTitle": "Could not send",
       "uploadTitle": "Could not upload photo"
     }
+  },
+  "auto": {
+    "login": {
+      "donTHaveAnAccount": "Don't have an account?",
+      "signUp": "Sign Up"
+    },
+    "onboarding": {
+      "createAnAccount": "Create an Account"
+    },
+    "register": {
+      "termsOfService": "Terms of Service",
+      "privacyPolicy": "Privacy Policy"
+    },
+    "history": {
+      "trackLive": "Track live",
+      "rateThisTrip": "Rate this trip"
+    },
+    "profile": {
+      "verified": "Verified",
+      "yourSeirsId": "Your SEIRS ID"
+    },
+    "wallet": {
+      "totalRewards": "Total rewards",
+      "redeem": "Redeem",
+      "earnMore": "Earn more",
+      "achievements": "Achievements",
+      "pointsEarned": "Points earned",
+      "today": "Today",
+      "recentPoints": "Recent points",
+      "viewAll": "View all",
+      "whatYourPointsAreFor": "What your points are for",
+      "redeemPoints": "Redeem points",
+      "startEarning": "Start earning",
+      "bookADelivery": "Book a delivery"
+    },
+    "id": {
+      "readThisOnTheSeirs": "Read this on the SEIRS website",
+      "editBooking": "Edit booking",
+      "saveChanges": "Save changes",
+      "goBack": "Go back",
+      "receipt": "Receipt",
+      "trackingCode": "Tracking Code",
+      "route": "Route",
+      "totalPaid": "Total Paid",
+      "share": "Share",
+      "emailReceipt": "Email Receipt",
+      "yourQuote": "Your quote",
+      "whatItIsMadeUp": "What it is made up of",
+      "total": "Total",
+      "acceptAndContinue": "Accept and continue",
+      "cancelThisRequest": "Cancel this request",
+      "couldNotLoadThisTrip": "Could not load this trip.",
+      "openInGoogleMaps": "Open in Google Maps",
+      "showPackageQr": "Show package QR",
+      "bookAgain": "Book again"
+    },
+    "confirmRide": {
+      "orderSummary": "Order Summary"
+    },
+    "deleteAccount": {
+      "deleteAccount": "Delete Account",
+      "permanentAfter30Days": "Permanent after 30 days",
+      "whatGetsDeleted": "What gets deleted",
+      "whatStays": "What stays"
+    },
+    "documents": {
+      "documents": "Documents",
+      "noDocumentsYet": "No documents yet",
+      "close": "Close"
+    },
+    "editProfile": {
+      "saveChanges": "Save changes",
+      "changePassword": "Change password"
+    },
+    "help": {
+      "noResultsFound": "No results found",
+      "reportATripIssue": "Report a Trip Issue",
+      "lostItemDriverComplaintOvercharge": "Lost item, driver complaint, overcharge"
+    },
+    "notifications": {
+      "notifications": "Notifications",
+      "markAllRead": "Mark all read",
+      "noNotifications": "No notifications",
+      "dismiss": "Dismiss"
+    },
+    "packageQr": {
+      "packageQr": "Package QR",
+      "sendCode": "Send code"
+    },
+    "parcelRequests": {
+      "yourTripRequests": "Your trip requests",
+      "nothingAskedYet": "Nothing asked yet",
+      "nothingIsChargedWhileYou": "Nothing is charged while you wait.",
+      "openInGoogleMaps": "Open in Google Maps",
+      "withdraw": "Withdraw",
+      "track": "Track",
+      "acceptAndPay": "Accept and pay",
+      "payNow": "Pay now"
+    },
+    "deliveryId": {
+      "payment": "Payment",
+      "amountToPay": "Amount to pay",
+      "cardProcessingIsAddedAt": "Card processing is added at checkout.",
+      "orderSummary": "Order Summary",
+      "total": "Total",
+      "useYourPoints": "Use your points",
+      "paymentProtection": "Payment Protection",
+      "trackThisDelivery": "Track this delivery"
+    },
+    "promo": {
+      "promoCode": "Promo Code",
+      "codeSavedItGoesWith": "Code saved. It goes with your next booking.",
+      "availablePromos": "Available Promos",
+      "noActivePromos": "No active promos",
+      "checkBackSoonNewOffers": "Check back soon: new offers go live regularly."
+    },
+    "promotions": {
+      "applyCode": "Apply Code"
+    },
+    "recipientId": {
+      "twoWaysToVerify": "Two ways to verify"
+    },
+    "referral": {
+      "inviteFriendsEarnRewards": "Invite friends, earn Rewards",
+      "howItWorks": "How it works",
+      "referralHistory": "Referral History",
+      "noReferralsYet": "No referrals yet",
+      "pending": "Pending"
+    },
+    "report": {
+      "reportReceived": "Report received",
+      "reportAnIssue": "Report an issue",
+      "allOrders": "All orders",
+      "notAboutOneSpecificDelivery": "Not about one specific delivery",
+      "sendReport": "Send report"
+    },
+    "rewards": {
+      "yourPoints": "Your points",
+      "last7Days": "Last 7 days",
+      "redeemYourPoints": "Redeem your points",
+      "redeem": "Redeem",
+      "membershipTiers": "Membership tiers",
+      "current": "Current",
+      "recentActivity": "Recent activity",
+      "noActivityYet": "No activity yet",
+      "howToEarn": "How to earn"
+    },
+    "seirsId": {
+      "mySeirsId": "My SEIRS ID",
+      "howHandoffVerificationWorks": "How handoff verification works",
+      "receivingAPackage": "Receiving a package?",
+      "keepThisCodePrivate": "Keep this code private"
+    },
+    "sos": {
+      "quickDial": "Quick Dial"
+    },
+    "specialRequest": {
+      "getAQuote": "Get a quote",
+      "sendForAQuote": "Send for a quote"
+    },
+    "statement": {
+      "spendingStatement": "Spending Statement",
+      "runningTotal": "Running total"
+    },
+    "stories": {
+      "readTheStory": "Read the story"
+    },
+    "new": {
+      "ourSupportTeamIsStanding": "Our support team is standing by",
+      "topic": "Topic",
+      "change": "Change",
+      "noRecentDeliveriesFound": "No recent deliveries found.",
+      "cancel": "Cancel",
+      "attachADelivery": "Attach a delivery",
+      "subject": "Subject",
+      "describeWhatHappened": "Describe what happened",
+      "sendToSupport": "Send to support"
+    },
+    "ticketId": {
+      "tapToOpen": "Tap to open"
+    },
+    "track": {
+      "trackPackage": "Track Package",
+      "track": "Track",
+      "showPackageQr": "Show package QR",
+      "journey": "Journey",
+      "whoHasIt": "Who has it",
+      "yourDriver": "Your Driver",
+      "shareThisTrip": "Share this trip",
+      "wrongAddress": "Wrong address?",
+      "needItBack": "Need it back?",
+      "recipientNotAvailable": "Recipient not available?",
+      "deliveryDetails": "Delivery Details",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "trackYourDelivery": "Track your delivery",
+      "redirectToAPartnerStore": "Redirect to a partner store",
+      "cancel": "Cancel"
+    },
+    "travelBuddy": {
+      "travelBuddy": "Travel Buddy",
+      "findTrips": "Find trips",
+      "bookASeat": "Book a seat",
+      "sendAParcel": "Send a parcel"
+    },
+    "verifyIdentity": {
+      "verifyIdentity": "Verify Identity",
+      "whyVerify": "Why verify?",
+      "previousSubmissionRejected": "Previous submission rejected",
+      "verificationRevoked": "Verification revoked",
+      "yourIdHasExpired": "Your ID has expired",
+      "submitForReview": "Submit for review",
+      "youReVerified": "You’re verified",
+      "underReview": "Under review",
+      "pdfAttached": "PDF attached",
+      "replace": "Replace"
+    },
+    "NotFound": {
+      "screenNotFound": "Screen not found",
+      "goToHome": "Go to home"
+    },
+    "resetPassword": {
+      "invalidLink": "Invalid Link",
+      "backToSignIn": "Back to Sign In",
+      "passwordReset": "Password Reset",
+      "signIn": "Sign In",
+      "setNewPassword": "Set new password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "resetPassword": "Reset Password"
+    },
+    "AddressPicker": {
+      "cancel": "Cancel",
+      "useMyCurrentLocation": "Use my current location",
+      "searchAboveOrTapThe": "Search above or tap the map to pin a location",
+      "confirmLocation": "Confirm Location"
+    },
+    "InlineAddressPicker": {
+      "useMyCurrentLocation": "Use my current location"
+    },
+    "SocialSignIn": {
+      "continueWithGoogle": "Continue with Google",
+      "signInWithApple": "Sign in with Apple"
+    },
+    "StatePicker": {
+      "selectState": "Select State"
+    }
   }
 }

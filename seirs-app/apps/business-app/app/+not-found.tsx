@@ -1,5 +1,6 @@
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { tx } from '@/i18n/tx';
 
 export default function NotFound() {
   const router = useRouter();
@@ -9,7 +10,7 @@ export default function NotFound() {
         Page not found
       </Text>
       <Pressable onPress={() => router.replace('/(auth)/login' as any)}>
-        <Text style={{ color: '#3A7BD5', fontSize: 15 }}>Go to login</Text>
+        <Text style={{ color: '#3A7BD5', fontSize: 15 }}>{tx('auto.NotFound.goToLogin', 'Go to login')}</Text>
       </Pressable>
     </View>
   );

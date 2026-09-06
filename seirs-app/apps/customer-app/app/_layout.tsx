@@ -18,6 +18,7 @@ import { configureApi } from '@/services/api';
 import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
 import { initI18n } from '@/i18n';
+import { useTranslation } from 'react-i18next';
 import { usePushRegistration } from '@seirs/shared/hooks/usePushRegistration';
 import { ErrorBoundary } from '@seirs/shared/components/ErrorBoundary';
 import {
@@ -99,6 +100,13 @@ function NavigationGuard() {
 function RootStack() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
+  /*
+   * Remount the navigator when the language changes (2026-09-06). Screens
+   * converted from hard-coded English read their text through tx(), which
+   * has no hook to re-render them; keying the stack on the language makes
+   * every mounted screen, tabs included, come back in the new language.
+   */
+  const { i18n } = useTranslation();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -109,6 +117,7 @@ function RootStack() {
       <DeletionPendingBanner />
       <View style={{ flex: 1 }}>
         <Stack
+          key={i18n.language}
           screenOptions={{
             headerStyle: { backgroundColor: theme.surface },
             headerTintColor: theme.text,

@@ -11,6 +11,7 @@ import { partnerApi, uploadApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 // Spec V8 §3 / §4.7: partner staff scans incoming sender drop-off,
 // confirms details + photo + sender OTP, transitions to RECEIVED_AT_STORE.
 // Three steps: SCAN → DETAILS → CONFIRM.
@@ -265,13 +266,13 @@ export default function ReceiveDropoffScreen() {
     return (
       <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <Icon name="Camera" size={48} color={colors.textThird} />
-        <Text style={[styles.permTitle, { color: colors.text }]}>Camera Access Required</Text>
-        <Text style={[styles.permSub, { color: colors.textSecond }]}>Needed to scan drop-off QR codes. You can also enter the code manually below.</Text>
+        <Text style={[styles.permTitle, { color: colors.text }]}>{tx('auto.receiveDropoff.cameraAccessRequired', 'Camera Access Required')}</Text>
+        <Text style={[styles.permSub, { color: colors.textSecond }]}>{tx('auto.receiveDropoff.neededToScanDropOff', 'Needed to scan drop-off QR codes. You can also enter the code manually below.')}</Text>
         <Pressable style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={requestPermission}>
-          <Text style={styles.primaryBtnText}>Grant Camera Permission</Text>
+          <Text style={styles.primaryBtnText}>{tx('auto.receiveDropoff.grantCameraPermission', 'Grant Camera Permission')}</Text>
         </Pressable>
         <Pressable onPress={() => setScanning(false)}>
-          <Text style={[styles.linkText, { color: colors.accent }]}>Use manual code entry instead</Text>
+          <Text style={[styles.linkText, { color: colors.accent }]}>{tx('auto.receiveDropoff.useManualCodeEntryInstead', 'Use manual code entry instead')}</Text>
         </Pressable>
       </View>
     );
@@ -292,7 +293,7 @@ export default function ReceiveDropoffScreen() {
           <Pressable style={styles.closeBtn} onPress={() => router.back()}>
             <Icon name="X" size={22} color="#fff" />
           </Pressable>
-          <Text style={styles.overlayTitle}>Receive Drop-off</Text>
+          <Text style={styles.overlayTitle}>{tx('auto.receiveDropoff.receiveDropOff', 'Receive Drop-off')}</Text>
         </View>
 
         {scanning && !loading && (
@@ -303,17 +304,17 @@ export default function ReceiveDropoffScreen() {
               <View style={[styles.corner, styles.cornerBL]} />
               <View style={[styles.corner, styles.cornerBR]} />
             </View>
-            <Text style={styles.finderHint}>Scan the SDR-XXXX code on the package</Text>
+            <Text style={styles.finderHint}>{tx('auto.receiveDropoff.scanTheSdrXxxxCode', 'Scan the SDR-XXXX code on the package')}</Text>
             <Pressable onPress={() => setScanning(false)} style={styles.secondaryBtn}>
-              <Text style={styles.secondaryBtnText}>Enter code manually</Text>
+              <Text style={styles.secondaryBtnText}>{tx('auto.receiveDropoff.enterCodeManually', 'Enter code manually')}</Text>
             </Pressable>
           </View>
         )}
 
         {!scanning && (
           <View style={[styles.manualSheet, { bottom: kbHeight > 0 ? kbHeight + insets.bottom : 0, paddingBottom: (kbHeight > 0 ? 24 : insets.bottom + 24), backgroundColor: colors.surface }]}>
-            <Text style={[styles.sheetTitle, { color: colors.text }]}>Enter drop-off code</Text>
-            <Text style={[styles.sheetSub, { color: colors.textSecond }]}>SDR-XXXXXXXX or 6-character backup</Text>
+            <Text style={[styles.sheetTitle, { color: colors.text }]}>{tx('auto.receiveDropoff.enterDropOffCode', 'Enter drop-off code')}</Text>
+            <Text style={[styles.sheetSub, { color: colors.textSecond }]}>{tx('auto.receiveDropoff.sdrXxxxxxxxOr6Character', 'SDR-XXXXXXXX or 6-character backup')}</Text>
             <TextInput
               autoCapitalize="characters"
               autoFocus
@@ -326,10 +327,10 @@ export default function ReceiveDropoffScreen() {
             {error !== '' && <Text style={styles.errorText}>{error}</Text>}
             <View style={styles.row}>
               <Pressable style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => { setScanning(true); setError(''); }}>
-                <Text style={[styles.cancelBtnText, { color: colors.textSecond }]}>Back to scan</Text>
+                <Text style={[styles.cancelBtnText, { color: colors.textSecond }]}>{tx('auto.receiveDropoff.backToScan', 'Back to scan')}</Text>
               </Pressable>
               <Pressable style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleManualLookup} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Look up</Text>}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{tx('auto.receiveDropoff.lookUp', 'Look up')}</Text>}
               </Pressable>
             </View>
           </View>
@@ -353,7 +354,7 @@ export default function ReceiveDropoffScreen() {
             <Pressable onPress={reset} style={[styles.backBtn, { backgroundColor: colors.surface }]}>
               <Icon name="ArrowLeft" size={20} color={colors.text} />
             </Pressable>
-            <Text style={[styles.formTitle, { color: colors.text }]}>Confirm Package</Text>
+            <Text style={[styles.formTitle, { color: colors.text }]}>{tx('auto.receiveDropoff.confirmPackage', 'Confirm Package')}</Text>
             <View style={{ width: 32 }} />
           </View>
 
@@ -399,22 +400,22 @@ export default function ReceiveDropoffScreen() {
               placeholderTextColor={colors.textThird}
               style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             />
-            <Text style={[styles.helperText, { color: colors.textSecond }]}>If the actual weight differs, the system will recalculate any weight-based fees.</Text>
+            <Text style={[styles.helperText, { color: colors.textSecond }]}>{tx('auto.receiveDropoff.ifTheActualWeightDiffers', 'If the actual weight differs, the system will recalculate any weight-based fees.')}</Text>
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Package photo</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{tx('auto.receiveDropoff.packagePhoto', 'Package photo')}</Text>
             {photoUri ? (
               <View style={{ gap: 12 }}>
                 <Image source={{ uri: photoUri }} style={[styles.preview, { backgroundColor: colors.surfaceSecond }]} />
                 <Pressable onPress={pickPhoto} style={[styles.secondaryBtn, { backgroundColor: colors.accent + '18' }]}>
-                  <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>Retake photo</Text>
+                  <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>{tx('auto.receiveDropoff.retakePhoto', 'Retake photo')}</Text>
                 </Pressable>
               </View>
             ) : (
               <Pressable onPress={pickPhoto} style={[styles.photoBox, { borderColor: colors.accent, backgroundColor: colors.accent + '08' }]}>
                 <Icon name="Camera" size={28} color={colors.accent} />
-                <Text style={[styles.photoHint, { color: colors.textSecond }]}>Tap to take a photo of the package on your counter</Text>
+                <Text style={[styles.photoHint, { color: colors.textSecond }]}>{tx('auto.receiveDropoff.tapToTakeAPhoto', 'Tap to take a photo of the package on your counter')}</Text>
               </Pressable>
             )}
           </View>
@@ -422,7 +423,7 @@ export default function ReceiveDropoffScreen() {
           {error !== '' && <Text style={styles.errorText}>{error}</Text>}
 
           <Pressable style={[styles.primaryBtnLarge, { backgroundColor: colors.primary }]} onPress={submitDetails} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Continue</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{tx('auto.receiveDropoff.continue', 'Continue')}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -437,7 +438,7 @@ export default function ReceiveDropoffScreen() {
             <Pressable onPress={() => setStep('details')} style={[styles.backBtn, { backgroundColor: colors.surface }]}>
               <Icon name="ArrowLeft" size={20} color={colors.text} />
             </Pressable>
-            <Text style={[styles.formTitle, { color: colors.text }]}>Verify Sender</Text>
+            <Text style={[styles.formTitle, { color: colors.text }]}>{tx('auto.receiveDropoff.verifySender', 'Verify Sender')}</Text>
             <View style={{ width: 32 }} />
           </View>
 
@@ -502,7 +503,7 @@ export default function ReceiveDropoffScreen() {
           {error !== '' && <Text style={styles.errorText}>{error}</Text>}
 
           <Pressable style={[styles.primaryBtnLarge, { backgroundColor: colors.primary }]} onPress={submitFinal} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Confirm receipt</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{tx('auto.receiveDropoff.confirmReceipt', 'Confirm receipt')}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

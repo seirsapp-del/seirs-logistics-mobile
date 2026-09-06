@@ -14,6 +14,7 @@ import { Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { sosApi, apiRequest } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 /**
  * One row of the emergency directory. Admin-managed and served from
  * GET /config/emergency-contacts so the numbers can be corrected without
@@ -358,7 +359,7 @@ export default function SOSScreen() {
             {/* Small uppercase label and nothing else, as driver and
                 business have it. The old bold title plus an explanatory
                 subtitle was two lines of reading above the numbers. */}
-            <Text style={styles.emergencySectionTitle}>Quick Dial</Text>
+            <Text style={styles.emergencySectionTitle}>{tx('auto.sos.quickDial', 'Quick Dial')}</Text>
 
             {contacts === null ? (
               <View style={styles.directoryLoading}>

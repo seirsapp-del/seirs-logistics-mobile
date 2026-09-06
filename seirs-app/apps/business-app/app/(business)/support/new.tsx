@@ -21,6 +21,7 @@ import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { supportApi, type TicketTopic } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 const TOPICS: { key: TicketTopic; label: string; icon: any }[] = [
   { key: 'delivery', label: 'Delivery',      icon: 'Package' },
@@ -62,7 +63,7 @@ export default function BusinessNewTicketScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>New support ticket</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.new.newSupportTicket', 'New support ticket')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -117,7 +118,7 @@ export default function BusinessNewTicketScreen() {
             disabled={!canSubmit}
             style={[styles.submitBtn, { backgroundColor: canSubmit ? theme.primary : theme.border }]}
           >
-            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Open ticket</Text>}
+            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>{tx('auto.new.openTicket', 'Open ticket')}</Text>}
           </Pressable>
 
           <Text style={[styles.hint, { color: theme.textSecond }]}>

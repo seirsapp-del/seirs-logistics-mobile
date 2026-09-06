@@ -9,6 +9,7 @@ import { Icon } from '@/components/Icon';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { FontWeight, Shadows } from '@/constants/theme';
 import { businessApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 /**
  * Redeem, for business accounts.
@@ -84,7 +85,7 @@ export default function BusinessRewardsScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Icon name="ArrowLeft" size={22} color={colors.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Rewards</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{tx('auto.rewards.rewards', 'Rewards')}</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -96,7 +97,7 @@ export default function BusinessRewardsScreen() {
         >
           <View style={styles.heroTop}>
             <View>
-              <Text style={styles.heroLabel}>Your points</Text>
+              <Text style={styles.heroLabel}>{tx('auto.rewards.yourPoints', 'Your points')}</Text>
               <Text style={styles.heroBig}>{loading ? '—' : points.toLocaleString()}</Text>
             </View>
             <View style={[styles.tierPill, { backgroundColor: metal + '2E', borderColor: metal + '99' }]}>
@@ -123,7 +124,7 @@ export default function BusinessRewardsScreen() {
           )}
         </LinearGradient>
 
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Redeem your points</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.rewards.redeemYourPoints', 'Redeem your points')}</Text>
         {REDEMPTIONS.map((r) => {
           const afford = r.live && points >= r.cost;
           return (
@@ -163,12 +164,12 @@ export default function BusinessRewardsScreen() {
           onPress={() => router.navigate('/(business)/(tabs)/deliveries' as any)}
           style={[styles.cta, { borderColor: colors.primary }]}
         >
-          <Text style={[styles.ctaText, { color: colors.primary }]}>Open an unpaid booking to redeem</Text>
+          <Text style={[styles.ctaText, { color: colors.primary }]}>{tx('auto.rewards.openAnUnpaidBookingTo', 'Open an unpaid booking to redeem')}</Text>
           <Icon name="ArrowRight" size={16} color={colors.primary} />
         </Pressable>
 
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>How to earn</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{tx('auto.rewards.howToEarn', 'How to earn')}</Text>
           {HOW_TO_EARN.map((h) => (
             <View key={h.pts} style={styles.earnRow}>
               <Text style={[styles.earnPts, { color: colors.primary }]}>{h.pts}</Text>

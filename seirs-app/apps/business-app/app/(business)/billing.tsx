@@ -34,6 +34,7 @@ import { paymentsApi, businessApi, statementsApi } from '@/services/api';
 import type { BusinessStatement, StatementEntry } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { naira as nairaFmt, nairaFromKobo } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 type Payment = {
   id: string;
@@ -184,13 +185,13 @@ function buildStatementHtml(st: BusinessStatement): string {
     .ref { display: block; font-size: 10px; color: #9CA3AF; }
     .foot { margin-top: 22px; font-size: 10px; color: #6B7280; line-height: 1.6; }
   </style></head><body>
-    <h1>Statement</h1>
+    <h1>${tx('auto.billing.statement', 'Statement')}</h1>
     <p class="co">${escapeHtml(st.companyName ?? '')}</p>
     <p class="period">${periodLabel(st.from, st.to)}</p>
     <p class="total">${nairaFmt(st.totals.paidNgn)}</p>
     <p class="sub">paid in this period &middot; ${st.totals.entries} ${st.totals.entries === 1 ? 'charge' : 'charges'}</p>
     <table>
-      <thead><tr><th>Date</th><th>Description</th><th>Paid by</th><th style="text-align:right">Amount</th><th style="text-align:right">Running</th></tr></thead>
+      <thead><tr><th>Date</th><th>${tx('auto.billing.description', 'Description')}</th><th>Paid by</th><th style="text-align:right">Amount</th><th style="text-align:right">Running</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <p class="foot">
@@ -414,7 +415,7 @@ export default function BillingScreen() {
             {preset === 'custom' && (
               <Pressable onPress={() => setCustomOpen(true)} style={styles.changeRange}>
                 <Icon name="Calendar" size={14} color={colors.primary} />
-                <Text style={[styles.changeRangeText, { color: colors.primary }]}>Change period</Text>
+                <Text style={[styles.changeRangeText, { color: colors.primary }]}>{tx('auto.billing.changePeriod', 'Change period')}</Text>
               </Pressable>
             )}
           </View>
@@ -441,7 +442,7 @@ export default function BillingScreen() {
                 </Pressable>
               ))}
               <View style={[styles.runningRow, { borderTopColor: colors.border, backgroundColor: colors.surfaceSecond }]}>
-                <Text style={[styles.runningLabel, { color: colors.textSecond }]}>Running total</Text>
+                <Text style={[styles.runningLabel, { color: colors.textSecond }]}>{tx('auto.billing.runningTotal', 'Running total')}</Text>
                 <Text style={[styles.runningValue, { color: colors.text }]}>
                   {nairaFmt(entries[entries.length - 1]?.runningTotalNgn ?? 0)}
                 </Text>
@@ -526,7 +527,7 @@ export default function BillingScreen() {
 
                 <Pressable onPress={() => shareLine(openLine)} style={[styles.shareBtn, { backgroundColor: colors.primary }]}>
                   <Icon name="Share2" size={16} color={colors.textOnPrimary} />
-                  <Text style={[styles.shareBtnText, { color: colors.textOnPrimary }]}>Share receipt</Text>
+                  <Text style={[styles.shareBtnText, { color: colors.textOnPrimary }]}>{tx('auto.billing.shareReceipt', 'Share receipt')}</Text>
                 </Pressable>
               </>
             )}
@@ -541,7 +542,7 @@ export default function BillingScreen() {
             style={[styles.sheet, { backgroundColor: colors.surface, paddingBottom: insets.bottom + 20 }]}
             onPress={e => e.stopPropagation()}
           >
-            <Text style={[styles.sheetTitle, { color: colors.text }]}>Choose a period</Text>
+            <Text style={[styles.sheetTitle, { color: colors.text }]}>{tx('auto.billing.chooseAPeriod', 'Choose a period')}</Text>
             <Text style={[styles.rowSub, { color: colors.textSecond, marginBottom: 16 }]}>
               Whole months, from the start of the first to the end of the last.
             </Text>
@@ -556,7 +557,7 @@ export default function BillingScreen() {
             />
 
             <Pressable onPress={() => setCustomOpen(false)} style={[styles.shareBtn, { backgroundColor: colors.primary, marginTop: 18 }]}>
-              <Text style={[styles.shareBtnText, { color: colors.textOnPrimary }]}>Show this period</Text>
+              <Text style={[styles.shareBtnText, { color: colors.textOnPrimary }]}>{tx('auto.billing.showThisPeriod', 'Show this period')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>

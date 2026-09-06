@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { earningsApi, type DriverEarning } from '@/services/api';
 import { naira } from '@/utils/money';
+import { tx as tr } from '@/i18n/tx';
 
 const STATUS_LABEL: Record<string, string> = {
   pending:   'Clearing',
@@ -60,7 +61,7 @@ export default function DriverTransactionDetailScreen() {
           This entry is not in your recent earnings. Older entries are not available on this screen yet.
         </Text>
         <Pressable onPress={() => router.back()} style={{ backgroundColor: theme.primary, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10 }}>
-          <Text style={{ color: '#fff', fontWeight: FontWeight.bold }}>Go back</Text>
+          <Text style={{ color: '#fff', fontWeight: FontWeight.bold }}>{tr('auto.id.goBack2', 'Go back')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -110,7 +111,7 @@ export default function DriverTransactionDetailScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Transaction Details</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tr('auto.id.transactionDetails', 'Transaction Details')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -122,7 +123,7 @@ export default function DriverTransactionDetailScreen() {
             <Ionicons name={iconName as any} size={36} color={iconColor} />
           </View>
           <Text style={[styles.heroAmount, { color: amtColor }]}>{amtSign}{naira(net)}</Text>
-          <Text style={[styles.heroLabel, { color: theme.textSecond }]}>Delivery earnings</Text>
+          <Text style={[styles.heroLabel, { color: theme.textSecond }]}>{tr('auto.id.deliveryEarnings', 'Delivery earnings')}</Text>
           <View style={[styles.statusPill, { backgroundColor: statusColor + '18' }]}>
             <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
             <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
@@ -159,7 +160,7 @@ export default function DriverTransactionDetailScreen() {
             <View style={[styles.tripLinkIcon, { backgroundColor: theme.primary + '15' }]}>
               <Ionicons name="navigate-outline" size={20} color={theme.primary} />
             </View>
-            <Text style={[styles.tripLinkText, { color: theme.text }]}>View Trip Details</Text>
+            <Text style={[styles.tripLinkText, { color: theme.text }]}>{tr('auto.id.viewTripDetails', 'View Trip Details')}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
           </Pressable>
         )}

@@ -11,6 +11,7 @@ import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 
 export default function PartnerDashboard() {
@@ -52,7 +53,7 @@ export default function PartnerDashboard() {
         >
           <View style={styles.headerRow}>
             <View>
-              <Text style={styles.partnerLabel}>Partner Store</Text>
+              <Text style={styles.partnerLabel}>{tx('auto.index.partnerStore', 'Partner Store')}</Text>
               <Text style={styles.storeName}>{data?.storeName ?? user?.storeName ?? user?.name}</Text>
               {/* The SHOP's public code, not the owner's account ID
                   (2026-08-12): this line used to print the BIZ- account
@@ -67,7 +68,7 @@ export default function PartnerDashboard() {
               onPress={() => router.replace('/(business)/(tabs)' as any)}
             >
               <Icon name="ArrowLeft" size={13} color="#fff" />
-              <Text style={styles.switchText}>Back to business</Text>
+              <Text style={styles.switchText}>{tx('auto.index.backToBusiness', 'Back to business')}</Text>
             </Pressable>
             </View>
             <Pressable style={styles.menuBtn} onPress={() => setDrawerOpen(true)}>
@@ -77,7 +78,7 @@ export default function PartnerDashboard() {
 
           <View style={styles.capacityCard}>
             <View style={styles.capacityTop}>
-              <Text style={styles.capacityLabel}>Store Capacity</Text>
+              <Text style={styles.capacityLabel}>{tx('auto.index.storeCapacity', 'Store Capacity')}</Text>
               <Text style={[styles.capacityPct, { color: capacityColor }]}>{capacityPct}%</Text>
             </View>
             <View style={styles.capacityTrack}>
@@ -107,9 +108,9 @@ export default function PartnerDashboard() {
               {/* Earnings card stays navy: feature card */}
               <View style={styles.earningsCard}>
                 <View style={styles.earningsLeft}>
-                  <Text style={styles.earningsLabel}>This Week's Earnings</Text>
+                  <Text style={styles.earningsLabel}>{tx('auto.index.thisWeekSEarnings', 'This Week\'s Earnings')}</Text>
                   <Text style={styles.earningsAmount}>{naira(data?.weekEarnings ?? 0)}</Text>
-                  <Text style={styles.earningsSub}>Payout every Monday</Text>
+                  <Text style={styles.earningsSub}>{tx('auto.index.payoutEveryMonday', 'Payout every Monday')}</Text>
                 </View>
                 <Pressable
                   style={styles.earningsBtn}
@@ -133,8 +134,8 @@ export default function PartnerDashboard() {
                   <Icon name="PackagePlus" size={24} color="#D97706" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.scanLabel, { color: colors.text }]}>Receive Drop-off</Text>
-                  <Text style={[styles.scanSub, { color: isDark ? '#F59E0B' : '#92400E' }]}>Sender walking in to drop a package at your store</Text>
+                  <Text style={[styles.scanLabel, { color: colors.text }]}>{tx('auto.index.receiveDropOff', 'Receive Drop-off')}</Text>
+                  <Text style={[styles.scanSub, { color: isDark ? '#F59E0B' : '#92400E' }]}>{tx('auto.index.senderWalkingInToDrop', 'Sender walking in to drop a package at your store')}</Text>
                 </View>
                 <Icon name="ChevronRight" size={18} color="#9CA3AF" />
               </Pressable>
@@ -148,7 +149,7 @@ export default function PartnerDashboard() {
                   <Icon name="PackageCheck" size={24} color="#16A34A" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.scanLabel, { color: colors.text }]}>Release to Recipient</Text>
+                  <Text style={[styles.scanLabel, { color: colors.text }]}>{tx('auto.index.releaseToRecipient', 'Release to Recipient')}</Text>
                   <Text style={[styles.scanSub, { color: isDark ? '#86EFAC' : '#14532D' }]}>Hand a package to recipient with ID + OTP verification</Text>
                 </View>
                 <Icon name="ChevronRight" size={18} color="#9CA3AF" />
@@ -165,8 +166,8 @@ export default function PartnerDashboard() {
                 <View style={{ flex: 1 }}>
                   {/* "Quick Scan (legacy)" and "BusinessPackage" are our
                       words, not a shopkeeper's (founder QA 2026-08-17). */}
-                  <Text style={[styles.scanLabel, { color: colors.text }]}>Scan a package code</Text>
-                  <Text style={[styles.scanSub, { color: colors.textSecond }]}>Mark a package collected by typing or scanning its code</Text>
+                  <Text style={[styles.scanLabel, { color: colors.text }]}>{tx('auto.index.scanAPackageCode', 'Scan a package code')}</Text>
+                  <Text style={[styles.scanSub, { color: colors.textSecond }]}>{tx('auto.index.markAPackageCollectedBy', 'Mark a package collected by typing or scanning its code')}</Text>
                 </View>
                 <Icon name="ChevronRight" size={18} color={colors.textThird} />
               </Pressable>
@@ -174,29 +175,29 @@ export default function PartnerDashboard() {
               <View style={styles.manageRow}>
                 <Pressable style={[styles.manageTile, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(partner)/capacity' as any)}>
                   <Icon name="Gauge" size={20} color={colors.accent} />
-                  <Text style={[styles.manageLabel, { color: colors.text }]}>Capacity</Text>
+                  <Text style={[styles.manageLabel, { color: colors.text }]}>{tx('auto.index.capacity', 'Capacity')}</Text>
                 </Pressable>
                 <Pressable style={[styles.manageTile, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(partner)/storage' as any)}>
                   <Icon name="Clock" size={20} color="#D97706" />
-                  <Text style={[styles.manageLabel, { color: colors.text }]}>Storage Fees</Text>
+                  <Text style={[styles.manageLabel, { color: colors.text }]}>{tx('auto.index.storageFees', 'Storage Fees')}</Text>
                 </Pressable>
                 <Pressable style={[styles.manageTile, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(partner)/billing' as any)}>
                   <Icon name="TrendingUp" size={20} color="#16A34A" />
-                  <Text style={[styles.manageLabel, { color: colors.text }]}>Sponsored</Text>
+                  <Text style={[styles.manageLabel, { color: colors.text }]}>{tx('auto.index.sponsored', 'Sponsored')}</Text>
                 </Pressable>
               </View>
 
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Packages</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.index.recentPackages', 'Recent Packages')}</Text>
                 <Pressable onPress={() => router.push('/(partner)/inventory' as any)}>
-                  <Text style={[styles.viewAll, { color: colors.accent }]}>View all</Text>
+                  <Text style={[styles.viewAll, { color: colors.accent }]}>{tx('auto.index.viewAll', 'View all')}</Text>
                 </Pressable>
               </View>
 
               {(data?.recentPackages ?? []).length === 0 ? (
                 <View style={styles.empty}>
                   <Icon name="Package" size={32} color={colors.textThird} />
-                  <Text style={[styles.emptyText, { color: colors.textThird }]}>No packages in store yet</Text>
+                  <Text style={[styles.emptyText, { color: colors.textThird }]}>{tx('auto.index.noPackagesInStoreYet', 'No packages in store yet')}</Text>
                 </View>
               ) : (
                 data.recentPackages.map((p: any) => (

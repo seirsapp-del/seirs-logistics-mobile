@@ -11,6 +11,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 // Spec V8 §4.11: partner sponsored-placement billing view. Live monthly
 // fee is read from the Fee Catalogue (admin-editable, propagates within
 // 60s) so the displayed price always matches what would actually be
@@ -107,7 +108,7 @@ export default function PartnerBillingScreen() {
         <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.surface }]}>
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>Sponsored Placement</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{tx('auto.billing.sponsoredPlacement', 'Sponsored Placement')}</Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -116,7 +117,7 @@ export default function PartnerBillingScreen() {
         <View style={styles.heroIcon}>
           <Icon name="TrendingUp" size={20} color="#fff" />
         </View>
-        <Text style={styles.heroTitle}>Be the first store customers see</Text>
+        <Text style={styles.heroTitle}>{tx('auto.billing.beTheFirstStoreCustomers', 'Be the first store customers see')}</Text>
         <Text style={styles.heroSub}>
           Sponsored stores appear pinned at the top of the customer map and in the drop-off picker: significantly more drop-offs and impressions per week.
         </Text>
@@ -136,7 +137,7 @@ export default function PartnerBillingScreen() {
           </View>
         </View>
 
-        <Text style={[styles.planName, { color: colors.text }]}>Sponsored Placement</Text>
+        <Text style={[styles.planName, { color: colors.text }]}>{tx('auto.billing.sponsoredPlacement', 'Sponsored Placement')}</Text>
 
         {loading ? (
           <ActivityIndicator color={colors.accent} style={{ alignSelf: 'flex-start', marginVertical: 8 }} />
@@ -145,7 +146,7 @@ export default function PartnerBillingScreen() {
             {naira(monthlyPrice)}<Text style={[styles.planPriceSecond, { color: colors.textSecond }]}> /month</Text>
           </Text>
         ) : (
-          <Text style={[styles.planPrice, { color: colors.text }]}>Price unavailable</Text>
+          <Text style={[styles.planPrice, { color: colors.text }]}>{tx('auto.billing.priceUnavailable', 'Price unavailable')}</Text>
         )}
 
         <Text style={[styles.planSub, { color: colors.textSecond }]}>
@@ -169,7 +170,7 @@ export default function PartnerBillingScreen() {
       </View>
 
       <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text style={[styles.statsTitle, { color: colors.text }]}>This Month</Text>
+        <Text style={[styles.statsTitle, { color: colors.text }]}>{tx('auto.billing.thisMonth', 'This Month')}</Text>
         <View style={[styles.statsRow, { backgroundColor: colors.surfaceSecond }]}>
           <Stat label="Impressions"     value={IMPRESSIONS_TRACKED ? '0' : '-'} />
           <View style={[styles.statsDivider, { backgroundColor: colors.border }]} />

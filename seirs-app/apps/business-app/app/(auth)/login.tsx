@@ -14,6 +14,7 @@ import { authApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 /**
  * Business sign-in.
@@ -112,8 +113,8 @@ export default function LoginScreen() {
             <Text style={[styles.brand,    { color: theme.primary }]}>SEIRS</Text>
             <Text style={[styles.brandSub, { color: theme.textThird }]}>BUSINESS &amp; PARTNERS</Text>
           </View>
-          <Text style={[styles.title,    { color: theme.text }]}>Welcome back</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecond }]}>Sign in to continue</Text>
+          <Text style={[styles.title,    { color: theme.text }]}>{tx('auto.login.welcomeBack', 'Welcome back')}</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecond }]}>{tx('auto.login.signInToContinue', 'Sign in to continue')}</Text>
         </View>
 
         {/* Form card */}
@@ -126,7 +127,7 @@ export default function LoginScreen() {
           )}
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Email address</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.login.emailAddress', 'Email address')}</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Icon name="Mail" size={17} color={theme.textThird} />
               <TextInput
@@ -143,7 +144,7 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Password</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.login.password', 'Password')}</Text>
             <PasswordInput
               placeholder="Your password"
               placeholderTextColor={theme.textThird}
@@ -168,11 +169,11 @@ export default function LoginScreen() {
               ]}>
                 {rememberMe && <Text style={styles.checkmark}>{'✓'}</Text>}
               </View>
-              <Text style={[styles.rememberText, { color: theme.textSecond }]}>Remember me</Text>
+              <Text style={[styles.rememberText, { color: theme.textSecond }]}>{tx('auto.login.rememberMe', 'Remember me')}</Text>
             </Pressable>
 
             <Pressable onPress={() => router.push('/(auth)/forgot-password' as any)}>
-              <Text style={[styles.forgotText, { color: theme.accent }]}>Forgot password?</Text>
+              <Text style={[styles.forgotText, { color: theme.accent }]}>{tx('auto.login.forgotPassword', 'Forgot password?')}</Text>
             </Pressable>
           </View>
 
@@ -183,7 +184,7 @@ export default function LoginScreen() {
           >
             {loading ? <ActivityIndicator color={theme.textOnPrimary} /> : (
               <View style={styles.submitRow}>
-                <Text style={[styles.submitText, { color: theme.textOnPrimary }]}>Sign In</Text>
+                <Text style={[styles.submitText, { color: theme.textOnPrimary }]}>{tx('auto.login.signIn', 'Sign In')}</Text>
                 <Icon name="ArrowRight" size={18} color={theme.textOnPrimary} />
               </View>
             )}
@@ -210,7 +211,7 @@ export default function LoginScreen() {
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecond }]}>Don&apos;t have an account?</Text>
           <Pressable onPress={() => router.push('/(auth)/register' as any)}>
-            <Text style={[styles.footerLink, { color: theme.accent }]}> Sign Up</Text>
+            <Text style={[styles.footerLink, { color: theme.accent }]}> {tx('auto.login.signUp', 'Sign Up')}</Text>
           </Pressable>
         </View>
       </ScrollView>

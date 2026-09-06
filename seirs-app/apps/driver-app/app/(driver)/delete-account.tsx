@@ -22,6 +22,7 @@ import { usersApi, driversApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 interface Readiness {
   ready:    boolean;
@@ -123,7 +124,7 @@ export default function DeleteAccountScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Delete Account</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.deleteAccount.deleteAccount', 'Delete Account')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -133,7 +134,7 @@ export default function DeleteAccountScreen() {
           <View style={styles.warnBanner}>
             <AlertTriangle size={20} color="#DC2626" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.warnTitle}>Permanent after 30 days</Text>
+              <Text style={styles.warnTitle}>{tx('auto.deleteAccount.permanentAfter30Days', 'Permanent after 30 days')}</Text>
               <Text style={styles.warnSub}>
                 Soft-deleted now; sign in within 30 days to cancel.
               </Text>
@@ -151,8 +152,8 @@ export default function DeleteAccountScreen() {
             <View style={[styles.readyBanner, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}>
               <CheckCircle size={20} color="#16A34A" />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.readyTitle, { color: '#15803D' }]}>Ready to delete</Text>
-                <Text style={[styles.readySub,   { color: '#166534' }]}>No active deliveries, wallet is empty.</Text>
+                <Text style={[styles.readyTitle, { color: '#15803D' }]}>{tx('auto.deleteAccount.readyToDelete', 'Ready to delete')}</Text>
+                <Text style={[styles.readySub,   { color: '#166534' }]}>{tx('auto.deleteAccount.noActiveDeliveriesWalletIs', 'No active deliveries, wallet is empty.')}</Text>
               </View>
             </View>
           ) : (
@@ -176,7 +177,7 @@ export default function DeleteAccountScreen() {
             </View>
           )}
 
-          <Text style={[styles.what, { color: theme.text }]}>What gets deleted</Text>
+          <Text style={[styles.what, { color: theme.text }]}>{tx('auto.deleteAccount.whatGetsDeleted', 'What gets deleted')}</Text>
           {[
             'Your driver profile, KYC documents, and ratings',
             'Your trip history (after the 30-day grace window)',
@@ -186,7 +187,7 @@ export default function DeleteAccountScreen() {
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
           ))}
 
-          <Text style={[styles.what, { color: theme.text, marginTop: Spacing.md }]}>What stays</Text>
+          <Text style={[styles.what, { color: theme.text, marginTop: Spacing.md }]}>{tx('auto.deleteAccount.whatStays', 'What stays')}</Text>
           {[
             'Audit trails for any open complaints or disputes',
             'Tax records we are legally required to retain (FIRS / NDPR)',

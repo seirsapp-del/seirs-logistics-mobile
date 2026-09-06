@@ -17,6 +17,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 const PARTNERS = [
   { name: 'AXA Mansard',          desc: 'Vehicle and third-party cover',   url: 'https://axamansard.com' },
@@ -37,7 +38,7 @@ export function InsurancePartners() {
         onPress={() => setOpen(v => !v)}
       >
         <Ionicons name="shield-outline" size={18} color={theme.primary} />
-        <Text style={[styles.headerText, { color: theme.text }]}>Do you need insurance?</Text>
+        <Text style={[styles.headerText, { color: theme.text }]}>{tx('auto.InsurancePartners.doYouNeedInsurance', 'Do you need insurance?')}</Text>
         <Ionicons
           name={open ? 'chevron-up' : 'chevron-down'}
           size={16}

@@ -14,6 +14,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { savePdf } from '@seirs/shared/utils/dataExport';
 import { documentToHtml } from '@seirs/shared/utils/documentPdf';
 import { documentsApi, type UserDocumentDTO } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 // Icon per document category (admin-sent official docs).
 const DOC_ICON: Record<string, any> = {
@@ -78,7 +79,7 @@ export default function TaxDocsScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Documents</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.documents.documents', 'Documents')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -119,7 +120,7 @@ export default function TaxDocsScreen() {
           <View style={[styles.intro, { backgroundColor: theme.primary + '12' }]}>
             <FileText size={20} color={theme.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.introTitle, { color: theme.text }]}>All your documents, one place</Text>
+              <Text style={[styles.introTitle, { color: theme.text }]}>{tx('auto.documents.allYourDocumentsOnePlace', 'All your documents, one place')}</Text>
               <Text style={[styles.introSub, { color: theme.textSecond }]}>
                 Official documents from SEIRS (contracts, letters, policies) will appear here when sent to you,
                 alongside your earnings statements below.
@@ -191,7 +192,7 @@ export default function TaxDocsScreen() {
                 </Text>
               </Pressable>
               <Pressable style={[styles.docModalBtn, { backgroundColor: theme.primary }]} onPress={() => setViewing(null)}>
-                <Text style={{ color: '#fff', fontWeight: FontWeight.bold }}>Close</Text>
+                <Text style={{ color: '#fff', fontWeight: FontWeight.bold }}>{tx('auto.documents.close', 'Close')}</Text>
               </Pressable>
             </View>
           </View>

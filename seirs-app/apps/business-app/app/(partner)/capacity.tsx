@@ -16,6 +16,7 @@ import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §4.9: partner staff sees real-time store load + can pause
 // incoming bookings when overwhelmed. Backend enforces capacity preflight,
@@ -137,7 +138,7 @@ export default function PartnerCapacityScreen() {
         <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.surface }]}>
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>Store Capacity</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{tx('auto.capacity.storeCapacity', 'Store Capacity')}</Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -164,7 +165,7 @@ export default function PartnerCapacityScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.toggleRow}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.toggleTitle, { color: colors.text }]}>Accept new drop-offs</Text>
+                <Text style={[styles.toggleTitle, { color: colors.text }]}>{tx('auto.capacity.acceptNewDropOffs', 'Accept new drop-offs')}</Text>
                 <Text style={[styles.toggleSub, { color: colors.textSecond }]}>
                   When off, customers won&apos;t be able to schedule new drop-offs at this store. In-store packages and driver pickups continue normally.
                 </Text>
@@ -206,15 +207,15 @@ export default function PartnerCapacityScreen() {
           <View style={styles.actionRow}>
             <Pressable style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(partner)/storage' as any)}>
               <Icon name="Clock" size={18} color="#D97706" />
-              <Text style={[styles.actionLabel, { color: colors.text }]}>Overstays</Text>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>{tx('auto.capacity.overstays', 'Overstays')}</Text>
             </Pressable>
             <Pressable style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(partner)/receive-dropoff' as any)}>
               <Icon name="PackagePlus" size={18} color={colors.accent} />
-              <Text style={[styles.actionLabel, { color: colors.text }]}>Receive</Text>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>{tx('auto.capacity.receive', 'Receive')}</Text>
             </Pressable>
             <Pressable style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(partner)/release-pickup' as any)}>
               <Icon name="PackageCheck" size={18} color="#16A34A" />
-              <Text style={[styles.actionLabel, { color: colors.text }]}>Release</Text>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>{tx('auto.capacity.release', 'Release')}</Text>
             </Pressable>
           </View>
 
@@ -230,7 +231,7 @@ export default function PartnerCapacityScreen() {
           {dropoffs.length === 0 ? (
             <View style={styles.empty}>
               <Icon name="Package" size={28} color={colors.textThird} />
-              <Text style={[styles.emptyText, { color: colors.textSecond }]}>No packages currently in your store.</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecond }]}>{tx('auto.capacity.noPackagesCurrentlyInYour', 'No packages currently in your store.')}</Text>
             </View>
           ) : (
             dropoffs.map(d => {

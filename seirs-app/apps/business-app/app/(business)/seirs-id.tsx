@@ -15,6 +15,7 @@ import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 export default function BusinessSeirsIdScreen() {
   const router     = useRouter();
@@ -34,7 +35,7 @@ export default function BusinessSeirsIdScreen() {
           Your SEIRS ID is being provisioned. Signing out and back in usually clears this.
         </Text>
         <Pressable onPress={() => router.back()} style={{ marginTop: 12 }}>
-          <Text style={{ color: theme.primary, fontWeight: '700' }}>Go back</Text>
+          <Text style={{ color: theme.primary, fontWeight: '700' }}>{tx('auto.seirsId.goBack', 'Go back')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -54,7 +55,7 @@ export default function BusinessSeirsIdScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>My SEIRS ID</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.seirsId.mySeirsId', 'My SEIRS ID')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -95,7 +96,7 @@ export default function BusinessSeirsIdScreen() {
 
         {/* What it's for: the sender hat */}
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.howTitle, { color: theme.text }]}>When you send packages</Text>
+          <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.seirsId.whenYouSendPackages', 'When you send packages')}</Text>
           {[
             'Dropping a run at a partner counter: staff scan this to book the packages against your account.',
             'A driver collecting from your premises can confirm they are at the right business.',
@@ -112,7 +113,7 @@ export default function BusinessSeirsIdScreen() {
 
         {/* What it's for: the partner-counter hat */}
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.howTitle, { color: theme.text }]}>If you run a partner counter</Text>
+          <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.seirsId.ifYouRunAPartner', 'If you run a partner counter')}</Text>
           {[
             'SEIRS drivers collecting from your counter verify they are dealing with the registered store keeper.',
             'Payout questions: this ID ties your counter’s earnings ledger to you and nobody else.',
@@ -142,7 +143,7 @@ export default function BusinessSeirsIdScreen() {
         >
           <View style={styles.alertRow}>
             <Icon name="AlertTriangle" size={16} color={isDark ? '#FCD34D' : '#92400E'} />
-            <Text style={[styles.alertText, { color: isDark ? '#FCD34D' : '#92400E' }]}>Keep this code private</Text>
+            <Text style={[styles.alertText, { color: isDark ? '#FCD34D' : '#92400E' }]}>{tx('auto.seirsId.keepThisCodePrivate', 'Keep this code private')}</Text>
           </View>
         </Pressable>
       </ScrollView>

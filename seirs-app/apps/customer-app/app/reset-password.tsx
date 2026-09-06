@@ -10,6 +10,7 @@ import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword, PASSWORD_HELP_TEXT } from '@seirs/shared';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react-native';
+import { tx } from '@/i18n/tx';
 
 // This screen handles the deep link: seirscustomer://reset-password?token=xxx
 
@@ -63,13 +64,13 @@ export default function ResetPasswordScreen() {
         <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
           <View style={styles.header}>
             <AlertTriangle size={56} color={theme.warning} strokeWidth={1.5} style={styles.headerIcon} />
-            <Text style={[styles.title, { color: theme.text }]}>Invalid Link</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{tx('auto.resetPassword.invalidLink', 'Invalid Link')}</Text>
             <Text style={[styles.subtitle, { color: theme.textSecond }]}>
               This reset link is missing or invalid. Please request a new password reset from the login screen.
             </Text>
           </View>
           <Pressable style={[styles.btn, { backgroundColor: theme.primary }]} onPress={() => router.replace('/(auth)/login')}>
-            <Text style={styles.btnText}>Back to Sign In</Text>
+            <Text style={styles.btnText}>{tx('auto.resetPassword.backToSignIn', 'Back to Sign In')}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -82,13 +83,13 @@ export default function ResetPasswordScreen() {
         <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
           <View style={styles.header}>
             <CheckCircle2 size={56} color={theme.success ?? '#16A34A'} strokeWidth={1.5} style={styles.headerIcon} />
-            <Text style={[styles.title, { color: theme.text }]}>Password Reset</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{tx('auto.resetPassword.passwordReset', 'Password Reset')}</Text>
             <Text style={[styles.subtitle, { color: theme.textSecond }]}>
               Your password has been updated successfully. You can now sign in with your new password.
             </Text>
           </View>
           <Pressable style={[styles.btn, { backgroundColor: theme.primary }]} onPress={() => router.replace('/(auth)/login')}>
-            <Text style={styles.btnText}>Sign In</Text>
+            <Text style={styles.btnText}>{tx('auto.resetPassword.signIn', 'Sign In')}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -103,7 +104,7 @@ export default function ResetPasswordScreen() {
       >
         <View style={styles.header}>
           <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
-          <Text style={[styles.title, { color: theme.text }]}>Set new password</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.resetPassword.setNewPassword', 'Set new password')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
             {PASSWORD_HELP_TEXT}
           </Text>
@@ -117,7 +118,7 @@ export default function ResetPasswordScreen() {
           ) : null}
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>New Password</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.resetPassword.newPassword', 'New Password')}</Text>
             <PasswordInput
               placeholder="At least 8 characters"
               placeholderTextColor={theme.textSecond}
@@ -129,7 +130,7 @@ export default function ResetPasswordScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm Password</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.resetPassword.confirmPassword', 'Confirm Password')}</Text>
             <PasswordInput
               placeholder="Repeat your password"
               placeholderTextColor={theme.textSecond}
@@ -145,7 +146,7 @@ export default function ResetPasswordScreen() {
             onPress={handleReset}
             disabled={loading}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Reset Password</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{tx('auto.resetPassword.resetPassword', 'Reset Password')}</Text>}
           </Pressable>
         </View>
       </ScrollView>

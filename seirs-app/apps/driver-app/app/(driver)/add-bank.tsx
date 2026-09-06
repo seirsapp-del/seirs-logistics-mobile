@@ -21,6 +21,7 @@ import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { paymentsApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 /**
  * Payout bank account setup: fully live.
@@ -179,7 +180,7 @@ export default function AddBankScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Payout Bank Account</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.addBank.payoutBankAccount', 'Payout Bank Account')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -193,7 +194,7 @@ export default function AddBankScreen() {
                 <Ionicons name="business-outline" size={20} color={theme.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.currentLabel, { color: theme.textThird }]}>Current payout account</Text>
+                <Text style={[styles.currentLabel, { color: theme.textThird }]}>{tx('auto.addBank.currentPayoutAccount', 'Current payout account')}</Text>
                 <Text style={[styles.currentValue, { color: theme.text }]}>
                   {current.bankName ?? 'Bank'} · {current.bankAccountName} · {current.bankAccountNumber}
                 </Text>
@@ -206,7 +207,7 @@ export default function AddBankScreen() {
             <View style={[styles.currentCard, { backgroundColor: theme.warning + (isDark ? '22' : '14'), borderColor: theme.warning + '40' }]}>
               <Ionicons name="hourglass-outline" size={20} color={theme.warning} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.currentLabel, { color: theme.warning }]}>Change under review</Text>
+                <Text style={[styles.currentLabel, { color: theme.warning }]}>{tx('auto.addBank.changeUnderReview', 'Change under review')}</Text>
                 <Text style={[styles.currentValue, { color: theme.text }]}>
                   {current.pendingBankName ?? 'New bank'} account ending {String(current.pendingBankAccountNumber).slice(-4)}.
                   Review takes up to 3 business days.
@@ -232,7 +233,7 @@ export default function AddBankScreen() {
 
           {/* Account number */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Account Number</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.addBank.accountNumber', 'Account Number')}</Text>
             <View style={[styles.inputRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
@@ -258,7 +259,7 @@ export default function AddBankScreen() {
             <View style={[styles.nameCard, { backgroundColor: isDark ? '#001800' : '#F0FDF4', borderColor: '#22C55E30' }]}>
               <Ionicons name="person-circle-outline" size={20} color="#22C55E" />
               <View>
-                <Text style={[styles.nameLabel, { color: theme.textThird }]}>Account Name</Text>
+                <Text style={[styles.nameLabel, { color: theme.textThird }]}>{tx('auto.addBank.accountName', 'Account Name')}</Text>
                 <Text style={[styles.nameValue, { color: '#22C55E' }]}>{accountName}</Text>
               </View>
             </View>
@@ -298,7 +299,7 @@ export default function AddBankScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: theme.surface, paddingBottom: Spacing.lg + insets.bottom }]}>
             <View style={styles.modalHandle} />
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Select Bank</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>{tx('auto.addBank.selectBank', 'Select Bank')}</Text>
             <View style={[styles.searchWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Ionicons name="search-outline" size={16} color={theme.textThird} />
               <TextInput

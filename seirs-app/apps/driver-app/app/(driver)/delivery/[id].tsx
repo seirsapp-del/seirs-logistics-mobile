@@ -33,6 +33,7 @@ import { driversApi, uploadApi } from '@/services/api';
 
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 interface Stop {
   id:             string;
@@ -325,7 +326,7 @@ export default function DeliveryDetailScreen() {
           {delivery.routeWasAutoOptimized && (
             <View style={styles.optBadge}>
               <Ionicons name="navigate" size={11} color="#3A7BD5" />
-              <Text style={styles.optBadgeText}>Optimised</Text>
+              <Text style={styles.optBadgeText}>{tx('auto.id.optimised', 'Optimised')}</Text>
             </View>
           )}
         </View>
@@ -336,13 +337,13 @@ export default function DeliveryDetailScreen() {
             rule that removed the "~? min" placeholder from job/[id]. */}
         <View style={[styles.statsRow]}>
           <View style={[styles.statCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-            <Text style={[styles.statLabel, { color: theme.textSecond }]}>Earning</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecond }]}>{tx('auto.id.earning', 'Earning')}</Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
               {naira(delivery.driverEarnings)}
             </Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-            <Text style={[styles.statLabel, { color: theme.textSecond }]}>Distance</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecond }]}>{tx('auto.id.distance', 'Distance')}</Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
               {Number(delivery.distanceKm ?? 0).toFixed(1)} km
             </Text>
@@ -370,7 +371,7 @@ export default function DeliveryDetailScreen() {
         <View style={[styles.locationCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
           <View style={styles.locationHeader}>
             <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
-            <Text style={[styles.locationLabel, { color: theme.textSecond }]}>Pickup</Text>
+            <Text style={[styles.locationLabel, { color: theme.textSecond }]}>{tx('auto.id.pickup', 'Pickup')}</Text>
           </View>
           <Text style={[styles.locationAddress, { color: theme.text }]}>{delivery.pickupAddress}</Text>
           <Pressable
@@ -378,7 +379,7 @@ export default function DeliveryDetailScreen() {
             onPress={() => openMaps(delivery.pickupLat, delivery.pickupLng, delivery.pickupAddress)}
           >
             <Ionicons name="navigate" size={14} color="#fff" />
-            <Text style={styles.navBtnText}>Navigate to pickup</Text>
+            <Text style={styles.navBtnText}>{tx('auto.id.navigateToPickup', 'Navigate to pickup')}</Text>
           </Pressable>
         </View>
 
@@ -458,7 +459,7 @@ export default function DeliveryDetailScreen() {
                     onPress={() => openMaps(stop.lat, stop.lng, stop.address)}
                   >
                     <Ionicons name="navigate" size={14} color={theme.text} />
-                    <Text style={[styles.stopActionText, { color: theme.text }]}>Navigate</Text>
+                    <Text style={[styles.stopActionText, { color: theme.text }]}>{tx('auto.id.navigate', 'Navigate')}</Text>
                   </Pressable>
                   <Pressable
                     style={[styles.stopActionBtn, { backgroundColor: theme.surfaceThird ?? '#E5E7EB' }]}
@@ -493,7 +494,7 @@ export default function DeliveryDetailScreen() {
                       ? <ActivityIndicator color="#fff" />
                       : <>
                           <Ionicons name="camera" size={16} color="#fff" />
-                          <Text style={styles.primaryBtnText}>Photo and deliver</Text>
+                          <Text style={styles.primaryBtnText}>{tx('auto.id.photoAndDeliver', 'Photo and deliver')}</Text>
                         </>}
                   </Pressable>
                 ) : (
@@ -513,7 +514,7 @@ export default function DeliveryDetailScreen() {
           <View style={[styles.locationCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <View style={styles.locationHeader}>
               <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
-              <Text style={[styles.locationLabel, { color: theme.textSecond }]}>Dropoff</Text>
+              <Text style={[styles.locationLabel, { color: theme.textSecond }]}>{tx('auto.id.dropoff', 'Dropoff')}</Text>
             </View>
             <Text style={[styles.locationAddress, { color: theme.text }]}>{delivery.dropoffAddress}</Text>
             {delivery.dropoffLat != null && (
@@ -522,7 +523,7 @@ export default function DeliveryDetailScreen() {
                 onPress={() => openMaps(delivery.dropoffLat!, delivery.dropoffLng!, delivery.dropoffAddress!)}
               >
                 <Ionicons name="navigate" size={14} color="#fff" />
-                <Text style={styles.navBtnText}>Navigate to dropoff</Text>
+                <Text style={styles.navBtnText}>{tx('auto.id.navigateToDropoff', 'Navigate to dropoff')}</Text>
               </Pressable>
             )}
           </View>

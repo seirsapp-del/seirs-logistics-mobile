@@ -10,6 +10,7 @@ import { tint } from '@/constants/tint';
 import { useSeirsDialog } from '@/components/SeirsDialog';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { businessApi, supportApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 /**
  * Report an issue for business senders (founder 2026-08-22: the
@@ -94,7 +95,7 @@ export default function BusinessReportScreen() {
           <View style={[styles.doneIcon, { backgroundColor: tint('green', isDark).bg }]}>
             <Icon name="Check" size={34} color={tint('green', isDark).fg} />
           </View>
-          <Text style={[styles.doneTitle, { color: colors.text }]}>Report received</Text>
+          <Text style={[styles.doneTitle, { color: colors.text }]}>{tx('auto.report.reportReceived', 'Report received')}</Text>
           <Text style={[styles.doneBody, { color: colors.textSecond }]}>
             Support has your report and will reply in Messages. You can add
             more detail there any time.
@@ -119,7 +120,7 @@ export default function BusinessReportScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <Icon name="ArrowLeft" size={22} color={colors.text} />
         </Pressable>
-        <Text style={[styles.heading, { color: colors.text }]}>Report an issue</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>{tx('auto.report.reportAnIssue', 'Report an issue')}</Text>
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -160,8 +161,8 @@ export default function BusinessReportScreen() {
               {orderId === 'all' && <Icon name="Check" size={11} color="#fff" />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.orderTitle, { color: colors.text }]}>All orders</Text>
-              <Text style={[styles.orderSub, { color: colors.textThird }]}>Not about one specific delivery</Text>
+              <Text style={[styles.orderTitle, { color: colors.text }]}>{tx('auto.report.allOrders', 'All orders')}</Text>
+              <Text style={[styles.orderSub, { color: colors.textThird }]}>{tx('auto.report.notAboutOneSpecificDelivery', 'Not about one specific delivery')}</Text>
             </View>
           </Pressable>
           {ordersBusy ? (
@@ -211,7 +212,7 @@ export default function BusinessReportScreen() {
           >
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.ctaText}>Send report</Text>}
+              : <Text style={styles.ctaText}>{tx('auto.report.sendReport', 'Send report')}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

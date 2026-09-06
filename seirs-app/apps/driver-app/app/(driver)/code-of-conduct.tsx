@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 const LAST_UPDATED = '9 August 2026';
 const TERMS_URL = 'https://seirs-website.vercel.app/terms-of-service';
@@ -151,7 +152,7 @@ export default function CodeOfConductScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Driver Code of Conduct</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.codeOfConduct.driverCodeOfConduct', 'Driver Code of Conduct')}</Text>
         <View style={{ width: 36 }} />
       </View>
 

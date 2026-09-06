@@ -354,5 +354,31 @@
     "support": "Enyemaka",
     "seirsIdTap": "SEIRS ID · PII MAKA QR",
     "qrHint": "Gosi nke a nʼụlọ ahịa mmekọ na mgbe nnyefe."
+  },
+  "auto": {
+    "index": {
+      "stories": "Akụkọ",
+      "alerts": "Ọkwa",
+      "quickActions": "Omume ngwa ngwa",
+      "recentDeliveries": "Nnyefe ndị ọhụrụ",
+      "viewAll": "Lee ha niile",
+      "noDeliveriesYet": "Enweghị nnyefe ma",
+      "createYourFirstDelivery": "Mepụta nnyefe mbụ gị",
+      "partnerStore": "Ụlọ ahịa mmekọ",
+      "backToBusiness": "Laghachi n’azụmahịa",
+      "storeCapacity": "Ohere ụlọ ahịa",
+      "thisWeekSEarnings": "Ego izu a",
+      "payoutEveryMonday": "Ịkwụ ụgwọ kwa Mọnde",
+      "receiveDropOff": "Nara ngwugwu",
+      "senderWalkingInToDrop": "Onye zitere na-abata itinye ngwugwu n’ụlọ ahịa gị",
+      "releaseToRecipient": "Nyefee onye nnata",
+      "scanAPackageCode": "Nyochaa koodu ngwugwu",
+      "markAPackageCollectedBy": "Kaa ngwugwu dị ka e nyefere site n’ịpị ma ọ bụ nyochaa koodu ya",
+      "capacity": "Ohere",
+      "storageFees": "Ụgwọ nchekwa",
+      "sponsored": "Nkwado",
+      "recentPackages": "Ngwugwu ndị ọhụrụ",
+      "noPackagesInStoreYet": "Enweghị ngwugwu n’ụlọ ahịa ma"
+    }
   }
 }

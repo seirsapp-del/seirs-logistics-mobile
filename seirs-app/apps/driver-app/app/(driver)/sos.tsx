@@ -13,6 +13,7 @@ import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { sosApi, apiRequest } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Spec V8: driver-side SOS. Mirrors customer SOS using the same
 // /sos/trigger backend endpoint. Optional ?deliveryId= when fired
@@ -281,7 +282,7 @@ export default function DriverSosScreen() {
           <Pressable style={[styles.backBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </Pressable>
-          <Text style={styles.headerTitle}>SOS Emergency</Text>
+          <Text style={styles.headerTitle}>{tx('auto.sos.sosEmergency', 'SOS Emergency')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -323,7 +324,7 @@ export default function DriverSosScreen() {
               </Text>
               {countdown > 0 && (
                 <Pressable style={styles.cancelBtn} onPress={cancelSOS}>
-                  <Text style={styles.cancelBtnText}>Cancel SOS</Text>
+                  <Text style={styles.cancelBtnText}>{tx('auto.sos.cancelSos', 'Cancel SOS')}</Text>
                 </Pressable>
               )}
 
@@ -355,7 +356,7 @@ export default function DriverSosScreen() {
           )}
 
           <View style={styles.emergencySection}>
-            <Text style={styles.emergencySectionTitle}>Quick Dial</Text>
+            <Text style={styles.emergencySectionTitle}>{tx('auto.sos.quickDial', 'Quick Dial')}</Text>
             {contactsOffline && (
               <Text style={styles.emergencyOffline}>
                 Could not load the full directory. These national numbers still work.
@@ -418,7 +419,7 @@ export default function DriverSosScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             <View style={styles.noteCard}>
-              <Text style={styles.noteTitle}>What is happening?</Text>
+              <Text style={styles.noteTitle}>{tx('auto.sos.whatIsHappening', 'What is happening?')}</Text>
               <Text style={styles.noteSub}>
                 Support is already alerted and your location is being shared.
                 This is optional: it just tells them what they are coming into.
@@ -449,7 +450,7 @@ export default function DriverSosScreen() {
                 >
                   {noteSaving
                     ? <ActivityIndicator size="small" color="#7F1D1D" />
-                    : <Text style={styles.noteSendText}>Send to ops</Text>}
+                    : <Text style={styles.noteSendText}>{tx('auto.sos.sendToOps', 'Send to ops')}</Text>}
                 </Pressable>
               </View>
             </View>

@@ -23,6 +23,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usersApi, uploadApi } from '@/services/api';
 import { isValidNigerianMobile, toE164Ng } from '@/constants/phone';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Spec V8: driver standalone profile editor. Mirrors the customer version.
 // Vehicle fields are NOT exposed here; those live on the KYC re-submission
@@ -159,7 +160,7 @@ export default function EditProfileScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Edit Profile</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.editProfile.editProfile', 'Edit Profile')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -179,7 +180,7 @@ export default function EditProfileScreen() {
                 {uploading ? <ActivityIndicator color="#fff" size="small" /> : <Camera size={14} color="#fff" />}
               </View>
             </Pressable>
-            <Text style={[styles.tapHint, { color: theme.textSecond }]}>Tap to change photo</Text>
+            <Text style={[styles.tapHint, { color: theme.textSecond }]}>{tx('auto.editProfile.tapToChangePhoto', 'Tap to change photo')}</Text>
           </View>
 
           {/* SEIRS ID: read-only, tap-to-copy in the profile card display. */}
@@ -265,7 +266,7 @@ export default function EditProfileScreen() {
             {saving ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Save size={16} color="#fff" />
-                <Text style={styles.primaryBtnText}>Save changes</Text>
+                <Text style={styles.primaryBtnText}>{tx('auto.editProfile.saveChanges', 'Save changes')}</Text>
               </>
             )}
           </Pressable>
@@ -275,7 +276,7 @@ export default function EditProfileScreen() {
             style={[styles.primaryBtn, { backgroundColor: theme.surfaceSecond, marginTop: Spacing.sm }]}
           >
             <Lock size={16} color={theme.text} />
-            <Text style={[styles.primaryBtnText, { color: theme.text }]}>Change password</Text>
+            <Text style={[styles.primaryBtnText, { color: theme.text }]}>{tx('auto.editProfile.changePassword', 'Change password')}</Text>
           </Pressable>
 
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: Spacing.md }}>

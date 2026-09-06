@@ -25,6 +25,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useSeirsDialog } from '@/components/SeirsDialog';
 import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 type Req = {
   id: string;
@@ -120,7 +121,7 @@ export default function TripRequestsScreen() {
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Trip requests</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.tripRequests.tripRequests', 'Trip requests')}</Text>
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
             Loads you have asked drivers to carry
           </Text>
@@ -138,7 +139,7 @@ export default function TripRequestsScreen() {
         {!loading && rows.length === 0 && (
           <View style={styles.empty}>
             <Icon name="Truck" size={40} color={theme.textSecond} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>Nothing asked yet</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.tripRequests.nothingAskedYet', 'Nothing asked yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
               Find a driver already making your route under Cargo Space and ask
               them to carry your load. Nothing is charged until they agree.
@@ -210,7 +211,7 @@ export default function TripRequestsScreen() {
                     onPress={() => withdraw(r)}
                     style={[styles.ghostBtn, { borderColor: theme.border }]}
                   >
-                    <Text style={[styles.ghostTxt, { color: theme.textSecond }]}>Withdraw</Text>
+                    <Text style={[styles.ghostTxt, { color: theme.textSecond }]}>{tx('auto.tripRequests.withdraw', 'Withdraw')}</Text>
                   </Pressable>
                 )}
                 {r.status === 'countered' && (
@@ -221,7 +222,7 @@ export default function TripRequestsScreen() {
                   >
                     {busy === r.id
                       ? <ActivityIndicator color="#fff" size="small" />
-                      : <Text style={styles.primaryTxt}>Accept and pay</Text>}
+                      : <Text style={styles.primaryTxt}>{tx('auto.tripRequests.acceptAndPay', 'Accept and pay')}</Text>}
                   </Pressable>
                 )}
                 {r.status === 'accepted' && r.deliveryId && (
@@ -229,7 +230,7 @@ export default function TripRequestsScreen() {
                     onPress={() => router.push({ pathname: '/(business)/delivery/[id]', params: { id: r.deliveryId } } as any)}
                     style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
                   >
-                    <Text style={styles.primaryTxt}>Open and pay</Text>
+                    <Text style={styles.primaryTxt}>{tx('auto.tripRequests.openAndPay', 'Open and pay')}</Text>
                   </Pressable>
                 )}
               </View>

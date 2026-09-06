@@ -17,6 +17,7 @@ import { SocialSignIn } from '@/components/SocialSignIn';
 import {
   ArrowLeft, Mail, ArrowRight, Truck,
 } from 'lucide-react-native';
+import { tx } from '@/i18n/tx';
 
 export default function LoginScreen() {
   const router      = useRouter();
@@ -220,9 +221,9 @@ export default function LoginScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>Don't have an account?</Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>{tx('auto.login.donTHaveAnAccount', 'Don\'t have an account?')}</Text>
           <Pressable onPress={() => router.push('/(auth)/register' as any)}>
-            <Text style={[styles.footerLink, { color: theme.accent }]}> Sign Up</Text>
+            <Text style={[styles.footerLink, { color: theme.accent }]}> {tx('auto.login.signUp', 'Sign Up')}</Text>
           </Pressable>
         </View>
       </ScrollView>

@@ -20,6 +20,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { mapsApi } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 // Places and geocoding now go through our backend (security review
 // 2026-08-12). The Google key used to sit in this file, which meant it
 // shipped inside the installed app where anyone could extract it and
@@ -193,7 +194,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
           {/* Modal header */}
           <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
             <Pressable onPress={() => setOpen(false)} style={styles.cancelBtn}>
-              <Text style={[styles.cancelText, { color: theme.textSecond }]}>Cancel</Text>
+              <Text style={[styles.cancelText, { color: theme.textSecond }]}>{tx('auto.AddressPicker.cancel', 'Cancel')}</Text>
             </Pressable>
             <Text style={[styles.modalTitle, { color: theme.text }]}>{label}</Text>
             {pinned ? (
@@ -226,7 +227,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
             onPress={useMyLocation}
           >
             <Navigation size={18} color={theme.primary} strokeWidth={1.5} style={styles.myLocationIcon} />
-            <Text style={[styles.myLocationText, { color: theme.primary }]}>Use my current location</Text>
+            <Text style={[styles.myLocationText, { color: theme.primary }]}>{tx('auto.AddressPicker.useMyCurrentLocation', 'Use my current location')}</Text>
           </Pressable>
 
           {/* Autocomplete results */}
@@ -288,7 +289,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
             </MapView>
             {!pinned && (
               <View style={styles.mapHint}>
-                <Text style={styles.mapHintText}>Search above or tap the map to pin a location</Text>
+                <Text style={styles.mapHintText}>{tx('auto.AddressPicker.searchAboveOrTapThe', 'Search above or tap the map to pin a location')}</Text>
               </View>
             )}
           </View>
@@ -298,7 +299,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
             <View style={[styles.confirmWrap, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
               <Text style={[styles.confirmAddr, { color: theme.text }]} numberOfLines={2}>{query}</Text>
               <Pressable style={[styles.confirmBtn, { backgroundColor: theme.primary }]} onPress={confirm}>
-                <Text style={styles.confirmBtnText}>Confirm Location</Text>
+                <Text style={styles.confirmBtnText}>{tx('auto.AddressPicker.confirmLocation', 'Confirm Location')}</Text>
               </Pressable>
             </View>
           )}

@@ -354,5 +354,398 @@
     "support": "Support",
     "seirsIdTap": "SEIRS ID · TAP FOR QR",
     "qrHint": "Show this at partner counters and handoffs."
+  },
+  "auto": {
+    "forgotPassword": {
+      "checkYourInbox": "Check your inbox",
+      "backToSignIn": "Back to Sign In",
+      "forgotPassword": "Forgot password?",
+      "emailAddress": "Email address",
+      "sendResetLink": "Send Reset Link",
+      "rememberYourPassword": "Remember your password?",
+      "signIn": "Sign In"
+    },
+    "login": {
+      "welcomeBack": "Welcome back",
+      "signInToContinue": "Sign in to continue",
+      "emailAddress": "Email address",
+      "password": "Password",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "signIn": "Sign In",
+      "signUp": "Sign Up"
+    },
+    "onboarding": {
+      "createAnAccount": "Create an Account"
+    },
+    "register": {
+      "createBusinessAccount": "Create Business Account",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "createAccount": "Create Account",
+      "alreadyHaveAnAccount": "Already have an account?",
+      "signIn": "Sign In"
+    },
+    "verifyOtp": {
+      "verifyYourEmail": "Verify your email",
+      "codeExpiresIn15Minutes": "Code expires in 15 minutes.",
+      "verifyEmail": "Verify Email"
+    },
+    "deliveries": {
+      "cancel": "Cancel",
+      "deliveries": "Deliveries"
+    },
+    "index": {
+      "stories": "Stories",
+      "alerts": "Alerts",
+      "quickActions": "Quick Actions",
+      "recentDeliveries": "Recent Deliveries",
+      "viewAll": "View all",
+      "noDeliveriesYet": "No deliveries yet",
+      "createYourFirstDelivery": "Create your first delivery",
+      "partnerStore": "Partner Store",
+      "backToBusiness": "Back to business",
+      "storeCapacity": "Store Capacity",
+      "thisWeekSEarnings": "This Week's Earnings",
+      "payoutEveryMonday": "Payout every Monday",
+      "receiveDropOff": "Receive Drop-off",
+      "senderWalkingInToDrop": "Sender walking in to drop a package at your store",
+      "releaseToRecipient": "Release to Recipient",
+      "scanAPackageCode": "Scan a package code",
+      "markAPackageCollectedBy": "Mark a package collected by typing or scanning its code",
+      "capacity": "Capacity",
+      "storageFees": "Storage Fees",
+      "sponsored": "Sponsored",
+      "recentPackages": "Recent Packages",
+      "noPackagesInStoreYet": "No packages in store yet"
+    },
+    "wallet": {
+      "totalRewards": "Total rewards",
+      "redeem": "Redeem",
+      "earnMore": "Earn more",
+      "seirsOwesYourStore": "SEIRS owes your store",
+      "earnWithSeirs": "Earn with SEIRS",
+      "today": "Today",
+      "recentPoints": "Recent points",
+      "payouts": "Payouts"
+    },
+    "applyPartner": {
+      "applicationUnderReview": "Application under review",
+      "applyToBeAPartner": "Apply to be a Partner Store",
+      "previousApplicationRejected": "Previous application rejected",
+      "storeName": "Store Name",
+      "phoneNumber": "Phone Number",
+      "maxPackageCapacity": "Max Package Capacity",
+      "kycDocuments": "KYC Documents",
+      "submitApplication": "Submit Application",
+      "tapToUpload": "Tap to upload"
+    },
+    "id": {
+      "readThisOnTheSeirs": "Read this on the SEIRS website",
+      "couldNotLoadThisDelivery": "Could not load this delivery.",
+      "goBack": "Go back",
+      "showPackageQr": "Show package QR",
+      "sendAgain": "Send again",
+      "reportAnIssue": "Report an issue",
+      "editOrder": "Edit order",
+      "receiverName": "Receiver name",
+      "receiverPhone": "Receiver phone",
+      "instructionsForTheDriver": "Instructions for the driver",
+      "saveChanges": "Save changes",
+      "yourQuote": "Your quote",
+      "whatItIsMadeUp": "What it is made up of",
+      "total": "Total",
+      "acceptAndContinue": "Accept and continue",
+      "cancelThisRequest": "Cancel this request"
+    },
+    "billing": {
+      "statement": "Statement",
+      "description": "Description",
+      "changePeriod": "Change period",
+      "runningTotal": "Running total",
+      "shareReceipt": "Share receipt",
+      "chooseAPeriod": "Choose a period",
+      "showThisPeriod": "Show this period",
+      "sponsoredPlacement": "Sponsored Placement",
+      "beTheFirstStoreCustomers": "Be the first store customers see",
+      "priceUnavailable": "Price unavailable",
+      "thisMonth": "This Month"
+    },
+    "cargoSpace": {
+      "cargoSpace": "Cargo Space",
+      "findSpace": "Find space",
+      "sendALoadOnThis": "Send a load on this trip"
+    },
+    "deleteAccount": {
+      "deleteAccount": "Delete Account",
+      "permanentAfter30Days": "Permanent after 30 days",
+      "finishTheseFirst": "Finish these first",
+      "whatGetsDeleted": "What gets deleted",
+      "whatWeKeep": "What we keep"
+    },
+    "documents": {
+      "documents": "Documents",
+      "noDocumentsYet": "No documents yet",
+      "close": "Close"
+    },
+    "editProfile": {
+      "editBusinessDetails": "Edit Business Details",
+      "emergencyContact": "Emergency contact",
+      "businessAccount": "Business Account",
+      "saveChanges": "Save changes"
+    },
+    "notifications": {
+      "notifications": "Notifications",
+      "markAllRead": "Mark all read",
+      "noNotifications": "No notifications",
+      "dismiss": "Dismiss"
+    },
+    "packageQr": {
+      "packageQr": "Package QR",
+      "sendCode": "Send code"
+    },
+    "recurring": {
+      "recurringDeliveries": "Recurring Deliveries",
+      "repeatARunWithoutRepeating": "Repeat a run without repeating the typing",
+      "noSchedulesYet": "No schedules yet",
+      "paused": "Paused",
+      "deleteSchedule": "Delete schedule",
+      "newScheduleFromAPast": "New schedule from a past delivery",
+      "newSchedule": "New schedule",
+      "readThem": "Read them",
+      "saveSchedule": "Save schedule"
+    },
+    "referral": {
+      "referEarn": "Refer & Earn",
+      "inviteABusinessEarnRewards": "Invite a business, earn Rewards",
+      "shareInviteLink": "Share invite link",
+      "howItWorks": "How it works",
+      "referralHistory": "Referral history",
+      "noReferralsYet": "No referrals yet"
+    },
+    "report": {
+      "reportReceived": "Report received",
+      "reportAnIssue": "Report an issue",
+      "allOrders": "All orders",
+      "notAboutOneSpecificDelivery": "Not about one specific delivery",
+      "sendReport": "Send report"
+    },
+    "rewards": {
+      "rewards": "Rewards",
+      "yourPoints": "Your points",
+      "redeemYourPoints": "Redeem your points",
+      "openAnUnpaidBookingTo": "Open an unpaid booking to redeem",
+      "howToEarn": "How to earn"
+    },
+    "seirsId": {
+      "goBack": "Go back",
+      "mySeirsId": "My SEIRS ID",
+      "whenYouSendPackages": "When you send packages",
+      "ifYouRunAPartner": "If you run a partner counter",
+      "keepThisCodePrivate": "Keep this code private"
+    },
+    "sendPackage": {
+      "sendAPackage": "Send a Package",
+      "startOver": "Start over",
+      "continue": "Continue",
+      "startFresh": "Start fresh",
+      "whatIsIt": "What is it?",
+      "change": "Change",
+      "ifNobodyIsAvailable": "If nobody is available",
+      "addAnotherPackage": "Add another package",
+      "useMyCurrentLocation": "Use my current location",
+      "whenShouldTheDriverCome": "When should the driver come?",
+      "pickupHour": "Pickup hour",
+      "recommended": "Recommended",
+      "tapToExpand": "Tap to expand",
+      "route": "Route",
+      "packages": "Packages",
+      "removeThisPackage": "Remove this package",
+      "orderSummary": "Order Summary",
+      "openingHours": "Opening hours",
+      "counterPhone": "Counter phone",
+      "distance": "Distance"
+    },
+    "sos": {
+      "sosEmergency": "SOS Emergency",
+      "quickDial": "Quick Dial",
+      "whatIsHappening": "What is happening?",
+      "sendToSupport": "Send to support"
+    },
+    "specialRequest": {
+      "getAQuote": "Get a quote",
+      "sendForAQuote": "Send for a quote"
+    },
+    "stories": {
+      "readTheStory": "Read the story"
+    },
+    "new": {
+      "newSupportTicket": "New support ticket",
+      "openTicket": "Open ticket"
+    },
+    "ticketId": {
+      "thisThreadIsEmpty": "This thread is empty.",
+      "tapToOpen": "Tap to open",
+      "thisTicketIsClosedOpen": "This ticket is closed. Open a new one if you still need help."
+    },
+    "tripRequests": {
+      "tripRequests": "Trip requests",
+      "nothingAskedYet": "Nothing asked yet",
+      "withdraw": "Withdraw",
+      "acceptAndPay": "Accept and pay",
+      "openAndPay": "Open and pay"
+    },
+    "earnings": {
+      "earnings": "Earnings",
+      "totalEarned": "Total Earned",
+      "perPackage": "Per Package",
+      "pendingPayout": "Pending Payout",
+      "nextTransfer": "Next Transfer",
+      "change": "Change",
+      "dailyEarnings": "Daily Earnings",
+      "payoutHistory": "Payout History",
+      "fullStatement": "Full statement",
+      "noPayoutsYet": "No payouts yet"
+    },
+    "inventory": {
+      "markCollected": "Mark Collected",
+      "packageInventory": "Package Inventory",
+      "noPackagesFound": "No packages found"
+    },
+    "scan": {
+      "cameraAccessRequired": "Camera Access Required",
+      "seirsNeedsCameraAccessTo": "Seirs needs camera access to scan package QR codes",
+      "grantPermission": "Grant Permission",
+      "scanPackageQr": "Scan Package QR",
+      "pointCameraAtThePackage": "Point camera at the package QR code",
+      "notFound": "Not Found",
+      "tryAgain": "Try Again",
+      "cancel": "Cancel",
+      "confirmCollection": "Confirm Collection"
+    },
+    "settings": {
+      "storeSettings": "Store Settings",
+      "storeInformation": "Store Information",
+      "storeName": "Store Name",
+      "askToChangeTheShop": "Ask to change the shop name",
+      "storeAddress": "Store Address",
+      "movingToANewShop": "Moving to a new shop?",
+      "phoneNumber": "Phone Number",
+      "openingHours": "Opening Hours",
+      "setYourOpeningHours": "Set your opening hours",
+      "closed": "Closed",
+      "newName": "New name",
+      "whyIsItChanging": "Why is it changing?",
+      "notifications": "Notifications",
+      "everyStoreAlertIsOn": "Every store alert is on",
+      "account": "Account",
+      "payoutAccount": "Payout account",
+      "statement": "Statement",
+      "documents": "Documents",
+      "storeVerification": "Store verification",
+      "language": "Language",
+      "saveChanges": "Save Changes",
+      "signOut": "Sign Out",
+      "closeThisStore": "Close This Store"
+    },
+    "capacity": {
+      "storeCapacity": "Store Capacity",
+      "acceptNewDropOffs": "Accept new drop-offs",
+      "overstays": "Overstays",
+      "receive": "Receive",
+      "release": "Release",
+      "noPackagesCurrentlyInYour": "No packages currently in your store."
+    },
+    "move": {
+      "movingShop": "Moving shop",
+      "waitingOnUs": "Waiting on us",
+      "neededBeforeWeCanApprove": "Needed before we can approve",
+      "cancelThisMoveRequest": "Cancel this move request",
+      "yourLastMoveWasNot": "Your last move was not approved",
+      "sendMoveRequest": "Send move request"
+    },
+    "payoutAccount": {
+      "payoutAccount": "Payout account",
+      "yourBank": "Your bank",
+      "cancel": "Cancel"
+    },
+    "receiveDropoff": {
+      "cameraAccessRequired": "Camera Access Required",
+      "neededToScanDropOff": "Needed to scan drop-off QR codes. You can also enter the code manually below.",
+      "grantCameraPermission": "Grant Camera Permission",
+      "useManualCodeEntryInstead": "Use manual code entry instead",
+      "receiveDropOff": "Receive Drop-off",
+      "scanTheSdrXxxxCode": "Scan the SDR-XXXX code on the package",
+      "enterCodeManually": "Enter code manually",
+      "enterDropOffCode": "Enter drop-off code",
+      "sdrXxxxxxxxOr6Character": "SDR-XXXXXXXX or 6-character backup",
+      "backToScan": "Back to scan",
+      "lookUp": "Look up",
+      "confirmPackage": "Confirm Package",
+      "ifTheActualWeightDiffers": "If the actual weight differs, the system will recalculate any weight-based fees.",
+      "packagePhoto": "Package photo",
+      "retakePhoto": "Retake photo",
+      "tapToTakeAPhoto": "Tap to take a photo of the package on your counter",
+      "continue": "Continue",
+      "verifySender": "Verify Sender",
+      "confirmReceipt": "Confirm receipt"
+    },
+    "releasePickup": {
+      "cameraAccessRequired": "Camera Access Required",
+      "grantCameraPermission": "Grant Camera Permission",
+      "useManualCodeEntryInstead": "Use manual code entry instead",
+      "releasePackage": "Release Package",
+      "scanThePackageLabel": "Scan the package label",
+      "enterCodeManually": "Enter code manually",
+      "enterPackageCode": "Enter package code",
+      "backToScan": "Back to scan",
+      "lookUp": "Look up",
+      "verifyRecipient": "Verify Recipient",
+      "highValuePackageIdPhoto": "High-value package: ID photo required at handoff",
+      "verificationMethod": "Verification method",
+      "continue": "Continue",
+      "confirmIdentity": "Confirm Identity",
+      "idType": "ID Type",
+      "idNumber": "ID Number",
+      "onlyTheLast4Digits": "Only the last 4 digits are stored for audit.",
+      "emailOtp": "Email OTP",
+      "resendOtp": "Resend OTP",
+      "scanTheirAppQrOr": "Scan their app QR or have them read the code aloud.",
+      "askTheRecipientToSpeak": "Ask the recipient to speak their full name. Type EXACTLY what they say below.",
+      "collectionPhoto": "Collection photo",
+      "retakePhoto": "Retake photo",
+      "releasePackage2": "Release package"
+    },
+    "statement": {
+      "statement": "Statement",
+      "runningTotal": "Running total"
+    },
+    "storage": {
+      "storageFees": "Storage Fees"
+    },
+    "verification": {
+      "documents": "Documents"
+    },
+    "NotFound": {
+      "goToLogin": "Go to login"
+    },
+    "resetPassword": {
+      "invalidLink": "Invalid Link",
+      "backToSignIn": "Back to Sign In",
+      "passwordUpdated": "Password Updated",
+      "signIn": "Sign In",
+      "chooseANewPassword": "Choose a new password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "updatePassword": "Update Password"
+    },
+    "SocialSignIn": {
+      "continueWithGoogle": "Continue with Google",
+      "signInWithApple": "Sign in with Apple"
+    },
+    "StatePicker": {
+      "selectState": "Select State"
+    }
   }
 }

@@ -17,6 +17,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { earningsApi } from '@/services/api';
 import { EarningsCalendar } from '@/components/EarningsCalendar';
 import { naira, nairaShort, nairaAxis } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -180,7 +181,7 @@ export default function EarningsScreen() {
         <View style={styles.pageHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <HamburgerButton />
-            <Text style={[styles.pageTitle, { color: theme.text }]}>Earnings</Text>
+            <Text style={[styles.pageTitle, { color: theme.text }]}>{tx('auto.earnings.earnings', 'Earnings')}</Text>
           </View>
           <Pressable style={[styles.headerBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.push('/(driver)/notifications' as any)}>
             <Bell size={20} color={theme.text} strokeWidth={1.75} />
@@ -218,11 +219,11 @@ export default function EarningsScreen() {
             <View style={styles.walletActions}>
               <Pressable style={styles.walletBtn} onPress={() => router.push('/(driver)/withdrawal' as any)}>
                 <ArrowUpCircle size={16} color="#fff" strokeWidth={1.75} />
-                <Text style={styles.walletBtnText}>Withdraw</Text>
+                <Text style={styles.walletBtnText}>{tx('auto.earnings.withdraw', 'Withdraw')}</Text>
               </Pressable>
               <Pressable style={styles.walletBtn} onPress={() => router.push('/(driver)/add-bank' as any)}>
                 <Landmark size={16} color="#fff" strokeWidth={1.75} />
-                <Text style={styles.walletBtnText}>Bank Accounts</Text>
+                <Text style={styles.walletBtnText}>{tx('auto.earnings.bankAccounts', 'Bank Accounts')}</Text>
               </Pressable>
             </View>
           </LinearGradient>
@@ -237,7 +238,7 @@ export default function EarningsScreen() {
           <View style={styles.goalTop}>
             <View style={styles.goalLabel}>
               <Target size={18} color="#D97706" strokeWidth={1.75} />
-              <Text style={[styles.goalTitle, { color: theme.text }]}>My Weekly Goal</Text>
+              <Text style={[styles.goalTitle, { color: theme.text }]}>{tx('auto.earnings.myWeeklyGoal', 'My Weekly Goal')}</Text>
             </View>
             <Text style={[styles.goalPct, { color: goalPct >= 100 ? '#16A34A' : '#D97706' }]}>{Math.round(goalPct)}%</Text>
           </View>
@@ -267,7 +268,7 @@ export default function EarningsScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
             <View style={[styles.goalModalCard, { backgroundColor: theme.surface }]}>
-              <Text style={[styles.goalModalTitle, { color: theme.text }]}>Set your weekly goal</Text>
+              <Text style={[styles.goalModalTitle, { color: theme.text }]}>{tx('auto.earnings.setYourWeeklyGoal', 'Set your weekly goal')}</Text>
               <Text style={[styles.goalModalSub, { color: theme.textSecond }]}>
                 Your personal target. Set it to match your hustle; you can change it any time.
               </Text>
@@ -285,7 +286,7 @@ export default function EarningsScreen() {
               </View>
               <View style={styles.goalModalBtns}>
                 <Pressable style={[styles.goalModalBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => setGoalEditOpen(false)}>
-                  <Text style={{ color: theme.text, fontWeight: FontWeight.semibold as any }}>Cancel</Text>
+                  <Text style={{ color: theme.text, fontWeight: FontWeight.semibold as any }}>{tx('auto.earnings.cancel', 'Cancel')}</Text>
                 </Pressable>
                 <Pressable style={[styles.goalModalBtn, { backgroundColor: theme.primary }]} onPress={saveGoal}>
                   <Text style={{ color: '#fff', fontWeight: FontWeight.bold as any }}>Save</Text>
@@ -313,7 +314,7 @@ export default function EarningsScreen() {
           <View style={styles.chartHeader}>
             {/* Rolling window, not the calendar week: the bars cover the last
                 7 days including today, so the title must not say "This Week". */}
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Last 7 days</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.earnings.last7Days', 'Last 7 days')}</Text>
             <Text style={[styles.chartTotal, { color: '#16A34A' }]}>{naira(rollingTotal)}</Text>
           </View>
           <View style={styles.barRow}>
@@ -348,15 +349,15 @@ export default function EarningsScreen() {
         {/* Recent transactions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Recent Transactions</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.earnings.recentTransactions', 'Recent Transactions')}</Text>
             <Pressable onPress={() => router.push('/(driver)/(tabs)/history' as any)}>
-              <Text style={[styles.seeAll, { color: theme.primary }]}>See all</Text>
+              <Text style={[styles.seeAll, { color: theme.primary }]}>{tx('auto.earnings.seeAll', 'See all')}</Text>
             </Pressable>
           </View>
 
           {recentEarnings.length === 0 ? (
             <View style={{ paddingVertical: Spacing.lg, alignItems: 'center' }}>
-              <Text style={{ color: theme.textThird }}>No transactions yet.</Text>
+              <Text style={{ color: theme.textThird }}>{tx('auto.earnings.noTransactionsYet', 'No transactions yet.')}</Text>
             </View>
           ) : recentEarnings.map((tx: any) => {
             const amount   = Number(tx.driverNet ?? tx.driverEarnings ?? tx.amount ?? 0);

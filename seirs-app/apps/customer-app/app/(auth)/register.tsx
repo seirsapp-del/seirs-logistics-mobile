@@ -23,6 +23,7 @@ import { isValidNigerianMobile, toE164Ng, toNationalInput, NG_PHONE_HINT } from 
 import {
   ArrowLeft, ArrowRight, Truck, User, Mail, Phone, CheckSquare, Square,
 } from 'lucide-react-native';
+import { tx } from '@/i18n/tx';
 
 // Nigerian mobile validation lives in shared/utils/ngPhone.ts. This file
 // used to carry its own fixed prefix list, which meant a network code the
@@ -369,12 +370,12 @@ export default function RegisterScreen() {
                   <Text
                     style={[styles.linkText, { color: theme.accent }]}
                     onPress={() => Linking.openURL(TERMS_URL)}
-                  >Terms of Service</Text>
+                  >{tx('auto.register.termsOfService', 'Terms of Service')}</Text>
                   {' '}and{' '}
                   <Text
                     style={[styles.linkText, { color: theme.accent }]}
                     onPress={() => Linking.openURL(PRIVACY_URL)}
-                  >Privacy Policy</Text>
+                  >{tx('auto.register.privacyPolicy', 'Privacy Policy')}</Text>
                 </Text>
               }
               sublabel={t('auth.termsNote')}

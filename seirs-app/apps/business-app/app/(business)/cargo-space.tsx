@@ -38,6 +38,7 @@ import { derivePlace } from '@seirs/shared/models/cities';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 import { CitySearchField } from '@/components/CitySearchField';
 import { Calendar as RNCalendar } from 'react-native-calendars';
+import { tx } from '@/i18n/tx';
 
 /**
  * The corridors a trader is most likely to want, so the common case is
@@ -285,7 +286,7 @@ export default function CargoSpaceScreen() {
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Cargo Space</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.cargoSpace.cargoSpace', 'Cargo Space')}</Text>
           {/* Says what it is for in the first line (founder 2026-09-06). */}
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
             Interstate trips: room on a run somebody is already making
@@ -421,7 +422,7 @@ export default function CargoSpaceScreen() {
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.searchTxt}>Find space</Text>}
+            : <Text style={styles.searchTxt}>{tx('auto.cargoSpace.findSpace', 'Find space')}</Text>}
         </Pressable>
         {!!error && <Text style={[styles.error, { color: '#DC2626' }]}>{error}</Text>}
 
@@ -634,7 +635,7 @@ export default function CargoSpaceScreen() {
                   },
                 } as any)}
               >
-                <Text style={styles.sendTxt}>Send a load on this trip</Text>
+                <Text style={styles.sendTxt}>{tx('auto.cargoSpace.sendALoadOnThis', 'Send a load on this trip')}</Text>
               </Pressable>
             </View>
           );

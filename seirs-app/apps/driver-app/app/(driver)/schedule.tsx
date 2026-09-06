@@ -12,6 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { naira } from '@/utils/money';
 import { driversApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 const SCHEDULE_STORAGE_KEY = 'seirs_driver_working_hours';
 
@@ -169,7 +170,7 @@ export default function ScheduleScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} strokeWidth={1.75} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Schedule</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.schedule.schedule', 'Schedule')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -179,7 +180,7 @@ export default function ScheduleScreen() {
         <View style={styles.sectionRow}>
           <View style={styles.sectionLeft}>
             <Calendar size={18} color={theme.primary} strokeWidth={1.75} />
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Upcoming Jobs</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.schedule.upcomingJobs', 'Upcoming Jobs')}</Text>
           </View>
           <Text style={[styles.sectionCount, { color: theme.textThird }]}>{PREBOOKED.length} scheduled</Text>
         </View>
@@ -187,7 +188,7 @@ export default function ScheduleScreen() {
         {PREBOOKED.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Package size={32} color={theme.textThird} strokeWidth={1.5} />
-            <Text style={[styles.emptyText, { color: theme.textSecond }]}>No scheduled jobs yet</Text>
+            <Text style={[styles.emptyText, { color: theme.textSecond }]}>{tx('auto.schedule.noScheduledJobsYet', 'No scheduled jobs yet')}</Text>
           </View>
         ) : (
           PREBOOKED.map(job => (
@@ -229,7 +230,7 @@ export default function ScheduleScreen() {
         <Pressable style={styles.sectionRow} onPress={() => setShowSched(v => !v)}>
           <View style={styles.sectionLeft}>
             <Clock size={18} color={theme.primary} strokeWidth={1.75} />
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>My Working Hours</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.schedule.myWorkingHours', 'My Working Hours')}</Text>
           </View>
           <View style={styles.sectionRight}>
             <Text style={[styles.sectionCount, { color: theme.textThird }]}>{activeDays} days active</Text>
@@ -274,7 +275,7 @@ export default function ScheduleScreen() {
                     </Pressable>
                   </View>
                 ) : (
-                  <Text style={[styles.dayOff, { color: theme.textThird }]}>Day off</Text>
+                  <Text style={[styles.dayOff, { color: theme.textThird }]}>{tx('auto.schedule.dayOff', 'Day off')}</Text>
                 )}
               </View>
             ))}

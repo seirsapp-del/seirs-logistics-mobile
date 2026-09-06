@@ -18,6 +18,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 /**
  * The engine's zone tiers in the same words the Send screen used at
@@ -72,7 +73,7 @@ export default function ReceiptScreen() {
           Receipt not available. The trip may not be completed yet.
         </Text>
         <Pressable onPress={() => router.back()} style={{ marginTop: Spacing.lg }}>
-          <Text style={{ color: theme.primary, fontWeight: '600' }}>Go back</Text>
+          <Text style={{ color: theme.primary, fontWeight: '600' }}>{tx('auto.id.goBack', 'Go back')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -205,7 +206,7 @@ export default function ReceiptScreen() {
           <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
-          <Text style={[styles.title, { color: theme.text }]}>Receipt</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.id.receipt', 'Receipt')}</Text>
           <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={onShare}>
             <Ionicons name="share-outline" size={20} color={theme.text} />
           </Pressable>
@@ -241,7 +242,7 @@ export default function ReceiptScreen() {
 
             {/* Tracking code */}
             <View style={[styles.trackRow, { backgroundColor: theme.surfaceSecond }]}>
-              <Text style={[styles.trackLabel, { color: theme.textSecond }]}>Tracking Code</Text>
+              <Text style={[styles.trackLabel, { color: theme.textSecond }]}>{tx('auto.id.trackingCode', 'Tracking Code')}</Text>
               <Text style={[styles.trackCode,  { color: theme.primary }]}>{trackingCode}</Text>
             </View>
 
@@ -270,7 +271,7 @@ export default function ReceiptScreen() {
 
             {/* Route */}
             <View style={[styles.routeSection, { borderTopColor: theme.border }]}>
-              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Route</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{tx('auto.id.route', 'Route')}</Text>
               <View style={styles.routeRow}>
                 <View style={styles.routeIcons}>
                   <View style={[styles.routeDot, { backgroundColor: '#22C55E' }]} />
@@ -324,7 +325,7 @@ export default function ReceiptScreen() {
                 </View>
               ))}
               <View style={[styles.totalRow, { borderTopColor: theme.border }]}>
-                <Text style={[styles.totalLabel, { color: theme.text }]}>Total Paid</Text>
+                <Text style={[styles.totalLabel, { color: theme.text }]}>{tx('auto.id.totalPaid', 'Total Paid')}</Text>
                 <Text style={[styles.totalAmt,   { color: theme.primary }]}>{naira(totalAmount)}</Text>
               </View>
               {paymentMethod ? (
@@ -342,11 +343,11 @@ export default function ReceiptScreen() {
           <View style={styles.actions}>
             <Pressable style={[styles.actionBtn, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]} onPress={onShare}>
               <Ionicons name="share-outline" size={20} color={theme.text} />
-              <Text style={[styles.actionBtnText, { color: theme.text }]}>Share</Text>
+              <Text style={[styles.actionBtnText, { color: theme.text }]}>{tx('auto.id.share', 'Share')}</Text>
             </Pressable>
             <Pressable style={[styles.actionBtn, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '40' }, Shadows.xs]} onPress={onEmailReceipt}>
               <Ionicons name="mail-outline" size={20} color={theme.primary} />
-              <Text style={[styles.actionBtnText, { color: theme.primary }]}>Email Receipt</Text>
+              <Text style={[styles.actionBtnText, { color: theme.primary }]}>{tx('auto.id.emailReceipt', 'Email Receipt')}</Text>
             </Pressable>
           </View>
 

@@ -32,6 +32,7 @@ import { Colors } from '@/constants/theme';
 import { specialRequestsApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 /**
  * What each status means TO THE SENDER, in their words.
@@ -146,7 +147,7 @@ export default function BusinessSpecialRequestDetail() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Your quote</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.id.yourQuote', 'Your quote')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -173,7 +174,7 @@ export default function BusinessSpecialRequestDetail() {
 
           {!!quote && lines.length > 0 && (
             <View style={[styles.quoteCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={[styles.quoteHead, { color: theme.text }]}>What it is made up of</Text>
+              <Text style={[styles.quoteHead, { color: theme.text }]}>{tx('auto.id.whatItIsMadeUp', 'What it is made up of')}</Text>
 
               {lines.map((l, i) => (
                 <View key={`${l.kind}-${i}`} style={[styles.line, i > 0 && { borderTopWidth: 1, borderTopColor: theme.divider }]}>
@@ -190,7 +191,7 @@ export default function BusinessSpecialRequestDetail() {
               ))}
 
               <View style={[styles.total, { borderTopColor: theme.border }]}>
-                <Text style={[styles.totalLabel, { color: theme.text }]}>Total</Text>
+                <Text style={[styles.totalLabel, { color: theme.text }]}>{tx('auto.id.total', 'Total')}</Text>
                 <Text style={[styles.totalAmt, { color: theme.text }]}>{naira(Number(quote.totalNgn ?? 0))}</Text>
               </View>
 
@@ -210,13 +211,13 @@ export default function BusinessSpecialRequestDetail() {
               disabled={busy || (hoursLeft !== null && hoursLeft <= 0)}
               style={[styles.accept, { backgroundColor: busy || (hoursLeft !== null && hoursLeft <= 0) ? theme.border : theme.primary }]}
             >
-              {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.acceptText}>Accept and continue</Text>}
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.acceptText}>{tx('auto.id.acceptAndContinue', 'Accept and continue')}</Text>}
             </Pressable>
           )}
 
           {['submitted', 'in_review', 'quoted', 'escalated'].includes(status) && (
             <Pressable onPress={withdraw} style={styles.withdraw}>
-              <Text style={[styles.withdrawText, { color: '#DC2626' }]}>Cancel this request</Text>
+              <Text style={[styles.withdrawText, { color: '#DC2626' }]}>{tx('auto.id.cancelThisRequest', 'Cancel this request')}</Text>
             </Pressable>
           )}
 

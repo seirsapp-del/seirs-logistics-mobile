@@ -22,6 +22,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
 import { normaliseRc, isValidRc, canonicalRc, RC_ERROR } from '@seirs/shared/utils/rcNumber';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §4. business / partner profile editor. Edits both the User
 // row (name, phone) AND the BusinessAccount row (companyName, RC,
@@ -207,7 +208,7 @@ export default function BusinessEditProfileScreen() {
         <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.surfaceSecond }]}>
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>Edit Business Details</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{tx('auto.editProfile.editBusinessDetails', 'Edit Business Details')}</Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -303,7 +304,7 @@ export default function BusinessEditProfileScreen() {
 
           {/* Emergency contact: escalation contact for the account. */}
           <View style={[styles.sectionHeader]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Emergency contact</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.editProfile.emergencyContact', 'Emergency contact')}</Text>
           </View>
           <Text style={{ fontSize: 12, color: colors.textThird, marginTop: -4 }}>
             Who should we call if there is a critical issue with your account (unauthorised access, urgent dispute)? Update any time.
@@ -336,7 +337,7 @@ export default function BusinessEditProfileScreen() {
           ) : biz ? (
             <>
               <View style={[styles.sectionHeader]}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Business Account</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.editProfile.businessAccount', 'Business Account')}</Text>
                 {myRoleLabel && (
                   <View style={[styles.roleChip, { backgroundColor: colors.accent + '18' }]}>
                     <Text style={[styles.roleChipText, { color: colors.accent }]}>{myRoleLabel}</Text>
@@ -433,7 +434,7 @@ export default function BusinessEditProfileScreen() {
             onPress={handleSave}
             style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
           >
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Save changes</Text>}
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{tx('auto.editProfile.saveChanges', 'Save changes')}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

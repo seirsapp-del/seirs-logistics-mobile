@@ -326,5 +326,22 @@
     "threadEmpty": "Babu saƙo a nan.",
     "closedNote": "An rufe wannan takardar. Buɗe sabuwa idan har kana buƙatar taimako.",
     "hoursHint": "Lokutan tallafi: 6na safe–10na dare WAT. Saƙonnin da aka aika a wajen waɗannan lokutan za su sami amsa da zarar mun buɗe da 6na safe."
+  },
+  "auto": {
+    "index": {
+      "poolTripActive": "Tafiyar haɗin gwiwa tana gudana",
+      "demandHotspots": "Wuraren buƙata",
+      "openMap": "Buɗe taswira",
+      "goOnlineToSeeDemand": "Shiga kan layi don ganin buƙata kusa da kai",
+      "doneToday": "An gama yau",
+      "rating": "Ƙima",
+      "requests": "Buƙatu",
+      "declareAnIntercityTrip": "Sanar da tafiya tsakanin birane",
+      "availableJobs": "Ayyukan da ake da su",
+      "youReOffline": "Ba ka kan layi",
+      "goOnlineToStartReceiving": "Shiga kan layi don fara karɓar buƙatun aiki.",
+      "noJobsNearbyStayOnline": "Babu aiki kusa. Kasance kan layi: sababbin buƙatu suna zuwa akai-akai.",
+      "youEarn": "Kana samun"
+    }
   }
 }

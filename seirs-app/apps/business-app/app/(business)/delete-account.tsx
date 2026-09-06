@@ -26,6 +26,7 @@ import { usersApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 const CONFIRM_PHRASE = 'delete my account';
 
@@ -106,7 +107,7 @@ export default function DeleteBusinessAccountScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: colors.surfaceSecond }]} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>Delete Account</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{tx('auto.deleteAccount.deleteAccount', 'Delete Account')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -116,7 +117,7 @@ export default function DeleteBusinessAccountScreen() {
           <View style={[styles.warnBanner, { backgroundColor: colors.error + '14', borderColor: colors.error + '55' }]}>
             <Icon name="AlertTriangle" size={20} color={colors.error} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.warnTitle, { color: colors.error }]}>Permanent after 30 days</Text>
+              <Text style={[styles.warnTitle, { color: colors.error }]}>{tx('auto.deleteAccount.permanentAfter30Days', 'Permanent after 30 days')}</Text>
               <Text style={[styles.warnSub, { color: colors.textSecond }]}>
                 Deactivated now. Sign in within 30 days to cancel. After that everything below is
                 removed for good.
@@ -124,7 +125,7 @@ export default function DeleteBusinessAccountScreen() {
             </View>
           </View>
 
-          <Text style={[styles.what, { color: colors.text }]}>Finish these first</Text>
+          <Text style={[styles.what, { color: colors.text }]}>{tx('auto.deleteAccount.finishTheseFirst', 'Finish these first')}</Text>
           {[
             'Deliveries still in progress: let them complete or cancel them',
             'Packages sitting at a partner store waiting to be collected',
@@ -133,7 +134,7 @@ export default function DeleteBusinessAccountScreen() {
             <Text key={line} style={[styles.bullet, { color: colors.textSecond }]}>{'•'} {line}</Text>
           ))}
 
-          <Text style={[styles.what, { color: colors.text }]}>What gets deleted</Text>
+          <Text style={[styles.what, { color: colors.text }]}>{tx('auto.deleteAccount.whatGetsDeleted', 'What gets deleted')}</Text>
           {[
             'Your business profile, contact details and logo',
             'Your delivery history and itemised statements, after the grace window',
@@ -144,7 +145,7 @@ export default function DeleteBusinessAccountScreen() {
             <Text key={line} style={[styles.bullet, { color: colors.textSecond }]}>{'•'} {line}</Text>
           ))}
 
-          <Text style={[styles.what, { color: colors.text }]}>What we keep</Text>
+          <Text style={[styles.what, { color: colors.text }]}>{tx('auto.deleteAccount.whatWeKeep', 'What we keep')}</Text>
           {[
             'Records tied to an open dispute, until it is settled',
             'Invoices and tax records we are legally required to retain',

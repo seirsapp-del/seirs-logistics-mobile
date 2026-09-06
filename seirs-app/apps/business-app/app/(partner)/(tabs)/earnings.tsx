@@ -9,6 +9,7 @@ import { partnerApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 const PERIODS = ['week', 'month'] as const;
 type Period = typeof PERIODS[number];
@@ -52,7 +53,7 @@ export default function EarningsScreen() {
         backgroundColor: colors.surface,
         borderBottomColor: colors.border,
       }]}>
-        <Text style={[styles.heading, { color: colors.text }]}>Earnings</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>{tx('auto.earnings.earnings', 'Earnings')}</Text>
         <View style={styles.periodToggle}>
           {PERIODS.map((p) => {
             const active = period === p;
@@ -81,7 +82,7 @@ export default function EarningsScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.summaryRow}>
             <View style={[styles.summaryCard, { flex: 2, backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.summaryLabel, { color: colors.textThird }]}>Total Earned</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textThird }]}>{tx('auto.earnings.totalEarned', 'Total Earned')}</Text>
               <Text style={[styles.summaryAmount, { color: colors.text }]}>{naira(data?.totalEarnings ?? 0)}</Text>
               <View style={styles.summaryMeta}>
                 <Icon name="Package" size={12} color={colors.textThird} />
@@ -89,7 +90,7 @@ export default function EarningsScreen() {
               </View>
             </View>
             <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.summaryLabel, { color: colors.textThird }]}>Per Package</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textThird }]}>{tx('auto.earnings.perPackage', 'Per Package')}</Text>
               {/* The handling fee is tiered by weight and split with the
                   platform, so a single "flat rate" figure told partners
                   they keep the whole fee when they keep a share of it
@@ -108,12 +109,12 @@ export default function EarningsScreen() {
             <View style={styles.payoutLeft}>
               <Icon name="Wallet" size={20} color={colors.accent} />
               <View>
-                <Text style={[styles.payoutLabel, { color: colors.textSecond }]}>Pending Payout</Text>
+                <Text style={[styles.payoutLabel, { color: colors.textSecond }]}>{tx('auto.earnings.pendingPayout', 'Pending Payout')}</Text>
                 <Text style={[styles.payoutAmount, { color: colors.text }]}>{naira(data?.pendingPayout ?? 0)}</Text>
               </View>
             </View>
             <View style={styles.payoutRight}>
-              <Text style={[styles.payoutDateLabel, { color: colors.textThird }]}>Next Transfer</Text>
+              <Text style={[styles.payoutDateLabel, { color: colors.textThird }]}>{tx('auto.earnings.nextTransfer', 'Next Transfer')}</Text>
               <Text style={[styles.payoutDate, { color: colors.text }]}>{data?.nextPayoutDate ?? 'Monday'}</Text>
             </View>
           </View>
@@ -143,13 +144,13 @@ export default function EarningsScreen() {
                 {(data as any)?.payoutAccountLabel ?? 'Your payout account'}
               </Text>
             </View>
-            <Text style={[styles.destAction, { color: colors.primary }]}>Change</Text>
+            <Text style={[styles.destAction, { color: colors.primary }]}>{tx('auto.earnings.change', 'Change')}</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
 
           {days.length > 0 && (
             <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.chartTitle, { color: colors.text }]}>Daily Earnings</Text>
+              <Text style={[styles.chartTitle, { color: colors.text }]}>{tx('auto.earnings.dailyEarnings', 'Daily Earnings')}</Text>
               <View style={styles.chart}>
                 {days.map((d) => {
                   const pct = (d.amount / maxAmt) * 100;
@@ -169,14 +170,14 @@ export default function EarningsScreen() {
           )}
 
           <View style={[styles.sectionHeader, styles.sectionHeaderRow]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Payout History</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.earnings.payoutHistory', 'Payout History')}</Text>
             {/* The way out to a statement you can hand an accountant.
                 The windowed route and its PDF have existed since 10 and
                 19 August and were reachable from nowhere, so a shop
                 asking which packages made up a figure had no answer
                 inside the app (2026-09-02). */}
             <Pressable onPress={() => router.push('/(partner)/statement' as any)} style={styles.stmtLink}>
-              <Text style={[styles.stmtLinkText, { color: colors.primary }]}>Full statement</Text>
+              <Text style={[styles.stmtLinkText, { color: colors.primary }]}>{tx('auto.earnings.fullStatement', 'Full statement')}</Text>
               <Icon name="ChevronRight" size={16} color={colors.primary} />
             </Pressable>
           </View>
@@ -184,7 +185,7 @@ export default function EarningsScreen() {
           {(data?.payouts ?? []).length === 0 ? (
             <View style={styles.empty}>
               <Icon name="Banknote" size={36} color={colors.textThird} />
-              <Text style={[styles.emptyText, { color: colors.textThird }]}>No payouts yet</Text>
+              <Text style={[styles.emptyText, { color: colors.textThird }]}>{tx('auto.earnings.noPayoutsYet', 'No payouts yet')}</Text>
             </View>
           ) : (
             (data?.payouts ?? []).map((pay) => {

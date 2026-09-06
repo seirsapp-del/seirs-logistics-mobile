@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { NIGERIAN_STATES } from '@/constants/nigerian-states';
 import { useColors } from '@/context/ThemeContext';
+import { tx } from '@/i18n/tx';
 
 interface Props {
   label?:    string;
@@ -64,7 +65,7 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
             <Pressable style={styles.closeBtn} onPress={() => setOpen(false)}>
               <Icon name="X" size={22} color={colors.text} />
             </Pressable>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Select State</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{tx('auto.StatePicker.selectState', 'Select State')}</Text>
             <View style={{ width: 40 }} />
           </View>
 

@@ -15,6 +15,7 @@ import { uploadApi } from '@/services/api';
 import { DocUploadTile } from '@/components/DocUploadTile';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 /**
  * "Is this vehicle yours?" and, when it is not, the owner's recorded
@@ -174,7 +175,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
   return (
     <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
-      <Text style={[styles.cardTitle, { color: theme.text }]}>Who owns this vehicle?</Text>
+      <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.VehicleOwnershipForm.whoOwnsThisVehicle', 'Who owns this vehicle?')}</Text>
       <Text style={[styles.cardHint, { color: theme.textSecond }]}>
         Plenty of riders work a vehicle that is not theirs. That is fine, and it is
         not a problem for your application. We only need the owner to confirm
@@ -298,7 +299,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
           {/* Typed name as signature, Evidence Act section 84. Same standard
               the delivery handover records use, rather than a second one. */}
           <View style={[styles.sigBox, { borderColor: theme.border, backgroundColor: theme.surfaceSecond }]}>
-            <Text style={[styles.sigTitle, { color: theme.text }]}>Owner signs here</Text>
+            <Text style={[styles.sigTitle, { color: theme.text }]}>{tx('auto.VehicleOwnershipForm.ownerSignsHere', 'Owner signs here')}</Text>
             <Text style={[styles.sigHint, { color: theme.textSecond }]}>
               Hand your phone to the owner. Typing their full name here is a legal
               signature in Nigeria, exactly like signing the paper. It has to match
@@ -325,7 +326,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
 
           {!locked && ownershipProblems(value, riderName).length > 0 && (
             <View style={[styles.problems, { borderColor: '#D9770640', backgroundColor: isDark ? '#1F1500' : '#FFFBEB' }]}>
-              <Text style={[styles.problemsTitle, { color: '#D97706' }]}>Still needed</Text>
+              <Text style={[styles.problemsTitle, { color: '#D97706' }]}>{tx('auto.VehicleOwnershipForm.stillNeeded', 'Still needed')}</Text>
               {ownershipProblems(value, riderName).map(p => (
                 <Text key={p} style={[styles.problemLine, { color: theme.textSecond }]}>{'•'}  {p}</Text>
               ))}

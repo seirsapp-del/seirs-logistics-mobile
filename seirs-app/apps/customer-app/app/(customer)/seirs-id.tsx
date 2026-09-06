@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §1.9 + §1.17: customer presents this screen when collecting
 // at a partner store or as the recipient at the door. Partner staff /
@@ -52,7 +53,7 @@ export default function SeirsIdScreen() {
           <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
             <ArrowLeft size={20} color={theme.text} strokeWidth={1.75} />
           </Pressable>
-          <Text style={[styles.title, { color: theme.text }]}>My SEIRS ID</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.seirsId.mySeirsId', 'My SEIRS ID')}</Text>
           <View style={{ width: 36 }} />
         </View>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl, gap: Spacing.md }}>
@@ -94,7 +95,7 @@ export default function SeirsIdScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} strokeWidth={1.75} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>My SEIRS ID</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.seirsId.mySeirsId', 'My SEIRS ID')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -137,7 +138,7 @@ export default function SeirsIdScreen() {
 
         {/* How it works */}
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.howTitle, { color: theme.text }]}>How handoff verification works</Text>
+          <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.seirsId.howHandoffVerificationWorks', 'How handoff verification works')}</Text>
           {[
             { step: '1', text: 'Partner staff (or your driver) scans this QR, or types the SEIRS ID shown above.' },
             { step: '2', text: 'They see your registered name on their screen.' },
@@ -165,7 +166,7 @@ export default function SeirsIdScreen() {
             <Package size={18} color={theme.primary} strokeWidth={1.75} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.receiveTitle, { color: theme.text }]}>Receiving a package?</Text>
+            <Text style={[styles.receiveTitle, { color: theme.text }]}>{tx('auto.seirsId.receivingAPackage', 'Receiving a package?')}</Text>
             <Text style={[styles.receiveSub, { color: theme.textSecond }]}>
               Open your collection pass: ID + email code, or SEIRS ID + typed name.
             </Text>
@@ -182,7 +183,7 @@ export default function SeirsIdScreen() {
         >
           <View style={styles.alertRow}>
             <AlertTriangle size={16} color="#92400E" strokeWidth={1.75} />
-            <Text style={styles.alertText}>Keep this code private</Text>
+            <Text style={styles.alertText}>{tx('auto.seirsId.keepThisCodePrivate', 'Keep this code private')}</Text>
           </View>
         </Pressable>
       </ScrollView>

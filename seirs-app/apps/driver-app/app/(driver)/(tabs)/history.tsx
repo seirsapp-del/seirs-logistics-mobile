@@ -11,6 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
 import { driversApi, earningsApi } from '@/services/api';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   delivered:  { label: 'Delivered',   color: '#16A34A', icon: 'checkmark-circle' },
@@ -159,7 +160,7 @@ export default function DriverHistoryScreen() {
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <HamburgerButton />
-          <Text style={[styles.title, { color: theme.text }]}>My Trips</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.history.myTrips', 'My Trips')}</Text>
         </View>
         <View style={[styles.earnBadge, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '40' }]}>
           <Ionicons name="trending-up" size={13} color={theme.primary} />
@@ -194,8 +195,8 @@ export default function DriverHistoryScreen() {
               <View style={[styles.emptyIcon, { backgroundColor: theme.surfaceSecond }]}>
                 <Ionicons name="car-outline" size={44} color={theme.textThird} />
               </View>
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips yet</Text>
-              <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>Complete deliveries to see them here.</Text>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.history.noTripsYet', 'No trips yet')}</Text>
+              <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>{tx('auto.history.completeDeliveriesToSeeThem', 'Complete deliveries to see them here.')}</Text>
             </View>
           )
         }

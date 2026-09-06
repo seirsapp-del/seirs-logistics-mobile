@@ -45,6 +45,7 @@ import { Colors, FontSize, FontWeight, Radius, Shadows, Spacing } from '@/consta
 import { deliveriesApi, dropoffApi, identityApi, uploadApi } from '@/services/api';
 import { PackageCodeCapture } from '@/components/PackageCodeCapture';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
+import { tx } from '@/i18n/tx';
 
 type Direction = 'collect' | 'drop';
 type Step      = 'scan' | 'sign' | 'done';
@@ -385,7 +386,7 @@ export default function StoreHandoffScreen() {
               {scanState === 'bad' && (
                 <View style={[styles.verdict, { backgroundColor: theme.error }]}>
                   <Ionicons name="alert-circle" size={30} color="#fff" />
-                  <Text style={styles.verdictTitle}>Wrong parcel</Text>
+                  <Text style={styles.verdictTitle}>{tx('auto.storeHandoff.wrongParcel', 'Wrong parcel')}</Text>
                   <Text style={styles.verdictSub}>
                     Got {scanned || 'nothing'}{'\n'}Expected {expected}. Do not hand it over.
                   </Text>
@@ -403,7 +404,7 @@ export default function StoreHandoffScreen() {
                   <Text style={[styles.scannedCode, { color: theme.text }]}>{scanned}</Text>
                 </View>
                 <Pressable onPress={() => { cooldown.current = false; setStep('scan'); setScanned(''); }} hitSlop={10}>
-                  <Text style={[styles.rescan, { color: theme.primary }]}>Rescan</Text>
+                  <Text style={[styles.rescan, { color: theme.primary }]}>{tx('auto.storeHandoff.rescan', 'Rescan')}</Text>
                 </Pressable>
               </View>
 
@@ -499,11 +500,11 @@ export default function StoreHandoffScreen() {
               <Text style={[styles.doneTitle, { color: theme.text }]}>{copy.doneTitle}</Text>
               <Text style={[styles.doneBody, { color: theme.textSecond }]}>{copy.doneBody}</Text>
               <View style={[styles.doneRow, { borderTopColor: theme.border }]}>
-                <Text style={[styles.doneKey, { color: theme.textThird }]}>Parcel</Text>
+                <Text style={[styles.doneKey, { color: theme.textThird }]}>{tx('auto.storeHandoff.parcel', 'Parcel')}</Text>
                 <Text style={[styles.doneVal, { color: theme.text }]}>{scanned}</Text>
               </View>
               <View style={[styles.doneRow, { borderTopColor: theme.border }]}>
-                <Text style={[styles.doneKey, { color: theme.textThird }]}>Signed by</Text>
+                <Text style={[styles.doneKey, { color: theme.textThird }]}>{tx('auto.storeHandoff.signedBy', 'Signed by')}</Text>
                 <Text style={[styles.doneVal, { color: theme.text }]}>{staffName.trim()}</Text>
               </View>
               <View style={[styles.doneRow, { borderTopColor: theme.border }]}>
@@ -534,7 +535,7 @@ export default function StoreHandoffScreen() {
               </Pressable>
             ) : (
               <Pressable style={[styles.cta, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
-                <Text style={[styles.ctaText, { color: '#fff' }]}>Back to the job</Text>
+                <Text style={[styles.ctaText, { color: '#fff' }]}>{tx('auto.storeHandoff.backToTheJob', 'Back to the job')}</Text>
               </Pressable>
             )}
           </View>

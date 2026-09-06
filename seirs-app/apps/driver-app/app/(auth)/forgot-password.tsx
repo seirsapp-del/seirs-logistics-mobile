@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows, Palette } from '@/constants/theme';
 import { authApi } from '@/services/api';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
+import { tx } from '@/i18n/tx';
 
 export default function ForgotPasswordScreen() {
   const router      = useRouter();
@@ -94,7 +95,7 @@ export default function ForgotPasswordScreen() {
             <View style={[styles.sentIconWrap, { backgroundColor: theme.primary + '18' }]}>
               <Ionicons name="mail-outline" size={40} color={theme.primary} />
             </View>
-            <Text style={[styles.sentTitle, { color: theme.text }]}>Check your inbox</Text>
+            <Text style={[styles.sentTitle, { color: theme.text }]}>{tx('auto.forgotPassword.checkYourInbox', 'Check your inbox')}</Text>
             <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
               If an account exists for <Text style={{ fontWeight: FontWeight.semibold, color: theme.text }}>{email.trim().toLowerCase()}</Text>,
               we sent a reset link. It expires in 15 minutes. Check spam if you do not see it.
@@ -108,7 +109,7 @@ export default function ForgotPasswordScreen() {
                 screen, so two controls with the same glyph did the same
                 thing. The button keeps the words, the circle keeps the
                 glyph. */}
-            <Text style={styles.btnText}>Back to Sign In</Text>
+            <Text style={styles.btnText}>{tx('auto.forgotPassword.backToSignIn', 'Back to Sign In')}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -140,7 +141,7 @@ export default function ForgotPasswordScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Forgot password?</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.forgotPassword.forgotPassword', 'Forgot password?')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
             Enter your email and we'll send you a link to reset your password.
           </Text>
@@ -156,7 +157,7 @@ export default function ForgotPasswordScreen() {
           ) : null}
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Email address</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.forgotPassword.emailAddress', 'Email address')}</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Ionicons name="mail-outline" size={18} color={theme.textThird} style={styles.inputIcon} />
               <TextInput
@@ -179,7 +180,7 @@ export default function ForgotPasswordScreen() {
           >
             {loading ? <ActivityIndicator color="#fff" /> : (
               <View style={styles.btnRow}>
-                <Text style={styles.btnText}>Send Reset Link</Text>
+                <Text style={styles.btnText}>{tx('auto.forgotPassword.sendResetLink', 'Send Reset Link')}</Text>
                 <Ionicons name="arrow-forward" size={18} color="#fff" />
               </View>
             )}
@@ -188,9 +189,9 @@ export default function ForgotPasswordScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>Remember your password?</Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>{tx('auto.forgotPassword.rememberYourPassword', 'Remember your password?')}</Text>
           <Pressable onPress={() => router.back()}>
-            <Text style={[styles.footerLink, { color: theme.primary }]}> Sign In</Text>
+            <Text style={[styles.footerLink, { color: theme.primary }]}> {tx('auto.forgotPassword.signIn', 'Sign In')}</Text>
           </Pressable>
         </View>
       </ScrollView>

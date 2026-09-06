@@ -37,6 +37,7 @@ import { Colors } from '@/constants/theme';
 import { earningsApi, statementsApi, type DriverEarning } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 type PresetKey = 'this_month' | 'last_month' | 'last_2_months' | 'last_90' | 'this_year' | 'last_year';
 
@@ -232,7 +233,7 @@ Sharing the figures as text instead.`);
         <Pressable style={styles.back} onPress={() => router.back()}>
           <ArrowLeft size={22} color={theme.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Earnings Statement</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.statement.earningsStatement', 'Earnings Statement')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -306,7 +307,7 @@ Sharing the figures as text instead.`);
                 );
               })}
               <View style={[styles.runningRow, { borderTopColor: theme.border, backgroundColor: theme.background }]}>
-                <Text style={[styles.runningLabel, { color: theme.textSecond }]}>Running total</Text>
+                <Text style={[styles.runningLabel, { color: theme.textSecond }]}>{tx('auto.statement.runningTotal', 'Running total')}</Text>
                 <Text style={[styles.runningValue, { color: theme.text }]}>{naira(running)}</Text>
               </View>
             </View>

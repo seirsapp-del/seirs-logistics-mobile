@@ -41,6 +41,7 @@ import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { partnerApi, uploadApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 /** Matches the server. A reading looser than this is offered for a retry. */
 const ACCURACY_LIMIT_M = 50;
@@ -222,7 +223,7 @@ export default function PartnerMoveScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}>
           <Icon name="ArrowLeft" size={22} color={colors.text} strokeWidth={1.75} />
         </Pressable>
-        <Text style={[styles.heading, { color: colors.text }]}>Moving shop</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>{tx('auto.move.movingShop', 'Moving shop')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
@@ -245,7 +246,7 @@ export default function PartnerMoveScreen() {
               <View style={styles.rowBetween}>
                 <Text style={[styles.cardLabel, { color: colors.textSecond }]}>UNDER REVIEW</Text>
                 <View style={[styles.pill, { backgroundColor: colors.warning + '22' }]}>
-                  <Text style={[styles.pillText, { color: colors.warning }]}>Waiting on us</Text>
+                  <Text style={[styles.pillText, { color: colors.warning }]}>{tx('auto.move.waitingOnUs', 'Waiting on us')}</Text>
                 </View>
               </View>
               <Text style={[styles.address, { color: colors.text }]}>{req.newStoreAddress}</Text>
@@ -298,7 +299,7 @@ export default function PartnerMoveScreen() {
                       {doc ? 'Sent. Our team will look at it.' : DOC_HINT[docId] ?? ''}
                     </Text>
                     {!doc && required && (
-                      <Text style={[styles.docHint, { color: colors.warning }]}>Needed before we can approve</Text>
+                      <Text style={[styles.docHint, { color: colors.warning }]}>{tx('auto.move.neededBeforeWeCanApprove', 'Needed before we can approve')}</Text>
                     )}
                   </View>
                   <Pressable
@@ -315,14 +316,14 @@ export default function PartnerMoveScreen() {
             })}
 
             <Pressable style={styles.linkBtn} onPress={withdraw}>
-              <Text style={[styles.linkBtnText, { color: colors.error }]}>Cancel this move request</Text>
+              <Text style={[styles.linkBtnText, { color: colors.error }]}>{tx('auto.move.cancelThisMoveRequest', 'Cancel this move request')}</Text>
             </Pressable>
           </>
         ) : (
           <>
             {req?.status === 'rejected' && (
               <View style={[styles.card, styles.alert, { backgroundColor: colors.error + '12', borderColor: colors.error }]}>
-                <Text style={[styles.alertTitle, { color: colors.text }]}>Your last move was not approved</Text>
+                <Text style={[styles.alertTitle, { color: colors.text }]}>{tx('auto.move.yourLastMoveWasNot', 'Your last move was not approved')}</Text>
                 {!!req.decisionNote && (
                   <Text style={[styles.note, { color: colors.textSecond }]}>{req.decisionNote}</Text>
                 )}
@@ -418,7 +419,7 @@ export default function PartnerMoveScreen() {
             >
               {saving
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.primaryBtnText}>Send move request</Text>}
+                : <Text style={styles.primaryBtnText}>{tx('auto.move.sendMoveRequest', 'Send move request')}</Text>}
             </Pressable>
 
             <Text style={[styles.note, { color: colors.textSecond, textAlign: 'center', marginTop: 10 }]}>

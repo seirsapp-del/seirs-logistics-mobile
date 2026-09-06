@@ -16,6 +16,7 @@ import { findHeroCardById, HERO_CARDS, type HeroCard } from '@/constants/heroCar
 import { useBookmarks } from '@/hooks/use-bookmarks';
 import { calcReadingMinutes, relativeDate } from '@/utils/articleMeta';
 import { storiesApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 /**
  * Article view: opened when a customer taps a hero carousel card.
@@ -312,7 +313,7 @@ export default function ArticleScreen() {
             style={[styles.webLink, { borderColor: theme.border, backgroundColor: theme.surface }]}
           >
             <Ionicons name="globe-outline" size={16} color={theme.accent} />
-            <Text style={[styles.webLinkText, { color: theme.accent }]}>Read this on the SEIRS website</Text>
+            <Text style={[styles.webLinkText, { color: theme.accent }]}>{tx('auto.id.readThisOnTheSeirs', 'Read this on the SEIRS website')}</Text>
             <Ionicons name="open-outline" size={14} color={theme.accent} />
           </Pressable>
         ) : null}

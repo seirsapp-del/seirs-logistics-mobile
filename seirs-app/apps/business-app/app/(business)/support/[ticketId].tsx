@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supportApi, uploadApi, type SupportThreadDTO } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 export default function BusinessSupportThreadScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
@@ -125,7 +126,7 @@ export default function BusinessSupportThreadScreen() {
             keyExtractor={m => m.id}
             contentContainerStyle={styles.msgList}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-            ListEmptyComponent={<View style={styles.emptyWrap}><Text style={{ color: theme.textSecond, fontSize: 14 }}>This thread is empty.</Text></View>}
+            ListEmptyComponent={<View style={styles.emptyWrap}><Text style={{ color: theme.textSecond, fontSize: 14 }}>{tx('auto.ticketId.thisThreadIsEmpty', 'This thread is empty.')}</Text></View>}
             renderItem={({ item }) => {
               if (!item.senderId && (item as any).systemType) {
                 return (
@@ -169,7 +170,7 @@ export default function BusinessSupportThreadScreen() {
                         <Text style={[styles.docName, { color: theme.text }]} numberOfLines={1}>
                           {decodeURIComponent((attachedUrl!.split('/').pop() ?? 'Document').split('?')[0])}
                         </Text>
-                        <Text style={[styles.docHint, { color: theme.textThird }]}>Tap to open</Text>
+                        <Text style={[styles.docHint, { color: theme.textThird }]}>{tx('auto.ticketId.tapToOpen', 'Tap to open')}</Text>
                       </View>
                     </Pressable>
                   ) : (
@@ -190,7 +191,7 @@ export default function BusinessSupportThreadScreen() {
 
         {isClosed ? (
           <View style={[styles.inputBar, { backgroundColor: theme.surface, borderTopColor: theme.border, justifyContent: 'center' }]}>
-            <Text style={{ color: theme.textSecond, fontSize: 14 }}>This ticket is closed. Open a new one if you still need help.</Text>
+            <Text style={{ color: theme.textSecond, fontSize: 14 }}>{tx('auto.ticketId.thisTicketIsClosedOpen', 'This ticket is closed. Open a new one if you still need help.')}</Text>
           </View>
         ) : (
           <View style={[styles.inputBar, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>

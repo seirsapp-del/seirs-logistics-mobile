@@ -63,6 +63,7 @@ import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { PasswordInput } from '@/components/PasswordInput';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 export default function RegisterScreen() {
   const router     = useRouter();
@@ -244,7 +245,7 @@ export default function RegisterScreen() {
             <Text style={[styles.brand,    { color: theme.primary }]}>SEIRS</Text>
             <Text style={[styles.brandSub, { color: theme.textThird }]}>BUSINESS &amp; PARTNERS</Text>
           </View>
-          <Text style={[styles.title, { color: theme.text }]}>Create Business Account</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.register.createBusinessAccount', 'Create Business Account')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
             Sign up as a Business Sender. You can apply to also become a Partner Store
             from your Settings after signup.
@@ -350,7 +351,7 @@ export default function RegisterScreen() {
 
           {/* Password */}
           <View style={styles.field} onLayout={(e) => rememberY('password', e.nativeEvent.layout.y)}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.textThird }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.register.password', 'Password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="At least 8 characters"
               placeholderTextColor={theme.textThird}
@@ -367,7 +368,7 @@ export default function RegisterScreen() {
               whose two entries disagree can actually look at what they
               typed instead of guessing. */}
           <View style={styles.field} onLayout={(e) => rememberY('confirm', e.nativeEvent.layout.y)}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm Password<Text style={{ color: theme.textThird }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.register.confirmPassword', 'Confirm Password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="Repeat password"
               placeholderTextColor={theme.textThird}
@@ -378,7 +379,7 @@ export default function RegisterScreen() {
               onChangeText={(v) => set('confirmPassword', v)}
             />
             {form.confirmPassword.length > 0 && !passMatch
-              ? <Text style={[styles.fieldError, { color: theme.error }]}>Passwords do not match</Text>
+              ? <Text style={[styles.fieldError, { color: theme.error }]}>{tx('auto.register.passwordsDoNotMatch', 'Passwords do not match')}</Text>
               : null}
           </View>
 
@@ -430,7 +431,7 @@ export default function RegisterScreen() {
           >
             {loading ? <ActivityIndicator color={theme.textOnPrimary} /> : (
               <View style={styles.submitRow}>
-                <Text style={[styles.submitText, { color: theme.textOnPrimary }]}>Create Account</Text>
+                <Text style={[styles.submitText, { color: theme.textOnPrimary }]}>{tx('auto.register.createAccount', 'Create Account')}</Text>
                 <Icon name="ArrowRight" size={18} color={theme.textOnPrimary} />
               </View>
             )}
@@ -453,9 +454,9 @@ export default function RegisterScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>Already have an account?</Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>{tx('auto.register.alreadyHaveAnAccount', 'Already have an account?')}</Text>
           <Pressable onPress={() => router.push('/(auth)/login' as any)}>
-            <Text style={[styles.footerLink, { color: theme.accent }]}> Sign In</Text>
+            <Text style={[styles.footerLink, { color: theme.accent }]}> {tx('auto.register.signIn', 'Sign In')}</Text>
           </Pressable>
         </View>
       </ScrollView>

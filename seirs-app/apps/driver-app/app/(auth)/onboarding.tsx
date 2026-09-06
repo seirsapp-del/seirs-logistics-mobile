@@ -14,6 +14,7 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
+import { tx } from '@/i18n/tx';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -199,7 +200,7 @@ export default function OnboardingScreen() {
           style={[styles.primaryBtn, { backgroundColor: '#0F2B4C' }]}
           onPress={() => router.push('/(auth)/driver-register' as any)}
         >
-          <Text style={styles.primaryBtnText}>Become a Driver</Text>
+          <Text style={styles.primaryBtnText}>{tx('auto.onboarding.becomeADriver', 'Become a Driver')}</Text>
           <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
         </Pressable>
 

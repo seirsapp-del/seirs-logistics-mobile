@@ -31,6 +31,7 @@ import { uploadApi, partnerApi } from '@/services/api';
 import type { PartnerDocument, PartnerDocGroup } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 /**
  * Above this many metres of reported uncertainty the fix is too vague to
@@ -219,7 +220,7 @@ export default function PartnerDocumentsScreen() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={22} color={colors.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Documents</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{tx('auto.verification.documents', 'Documents')}</Text>
         <View style={{ width: 40 }} />
       </View>
 

@@ -8,6 +8,7 @@ import { partnerApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 const STATUSES = ['all', 'in_store', 'awaiting_pickup', 'collected', 'returned'];
 
 const STATUS_COLOR: Record<string, string> = {
@@ -113,7 +114,7 @@ export default function InventoryScreen() {
                 ? <ActivityIndicator size="small" color="#fff" />
                 : <>
                     <Icon name="CheckSquare" size={13} color="#fff" />
-                    <Text style={styles.collectBtnText}>Mark Collected</Text>
+                    <Text style={styles.collectBtnText}>{tx('auto.inventory.markCollected', 'Mark Collected')}</Text>
                   </>}
             </Pressable>
           )}
@@ -129,7 +130,7 @@ export default function InventoryScreen() {
         backgroundColor: colors.surface,
         borderBottomColor: colors.border,
       }]}>
-        <Text style={[styles.heading, { color: colors.text }]}>Package Inventory</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>{tx('auto.inventory.packageInventory', 'Package Inventory')}</Text>
       </View>
 
       <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -186,7 +187,7 @@ export default function InventoryScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Icon name="PackageX" size={40} color={colors.textThird} />
-              <Text style={[styles.emptyText, { color: colors.textThird }]}>No packages found</Text>
+              <Text style={[styles.emptyText, { color: colors.textThird }]}>{tx('auto.inventory.noPackagesFound', 'No packages found')}</Text>
             </View>
           }
         />

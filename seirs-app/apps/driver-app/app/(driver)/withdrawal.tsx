@@ -20,6 +20,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { earningsApi, paymentsApi, type EarningsDashboard } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 /**
  * Withdraw screen: THE single real money-out path for drivers.
@@ -195,7 +196,7 @@ export default function WithdrawalScreen() {
         <View style={[styles.successCircle, { backgroundColor: '#22C55E18' }]}>
           <Ionicons name="checkmark-circle" size={64} color="#22C55E" />
         </View>
-        <Text style={[styles.successTitle, { color: theme.text }]}>Withdrawal Sent!</Text>
+        <Text style={[styles.successTitle, { color: theme.text }]}>{tx('auto.withdrawal.withdrawalSent', 'Withdrawal Sent!')}</Text>
         <Text style={[styles.successSub, { color: theme.textSecond }]}>
           {naira(paidAmount)} is on its way to {bank?.bankName ?? 'your bank'} ({bank?.bankAccountNumber}).
           Arrival time depends on your bank.
@@ -239,7 +240,7 @@ export default function WithdrawalScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Withdraw Earnings</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.withdrawal.withdrawEarnings', 'Withdraw Earnings')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -256,7 +257,7 @@ export default function WithdrawalScreen() {
             <View style={[styles.frozenCard, { backgroundColor: isDark ? '#D9770622' : '#FFFBEB', borderColor: '#D9770640' }]}>
               <Ionicons name="lock-closed-outline" size={20} color="#D97706" />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.frozenTitle, { color: '#D97706' }]}>Withdrawals paused</Text>
+                <Text style={[styles.frozenTitle, { color: '#D97706' }]}>{tx('auto.withdrawal.withdrawalsPaused', 'Withdrawals paused')}</Text>
                 <Text style={[styles.frozenText, { color: theme.textSecond }]}>
                   Your bank account change ({bank?.pendingBankName ?? 'new bank'}, ending {String(bank?.pendingBankAccountNumber ?? '').slice(-4)})
                   is under review. For your protection, withdrawals resume once support confirms it (up to 3 business days).
@@ -268,7 +269,7 @@ export default function WithdrawalScreen() {
           {/* Balance (neutral card per founder feedback 2026-08-09: the
               green wash background clashed; green stays on the number) */}
           <View style={[styles.balCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-            <Text style={[styles.balLabel, { color: theme.textSecond }]}>Available to withdraw</Text>
+            <Text style={[styles.balLabel, { color: theme.textSecond }]}>{tx('auto.withdrawal.availableToWithdraw', 'Available to withdraw')}</Text>
             <Text style={[styles.balAmount, { color: '#16A34A' }]}>{naira(available)}</Text>
             <Text style={[styles.balMin, { color: theme.textThird }]}>Minimum withdrawal {naira(MIN_WITHDRAWAL)}</Text>
             {pending > 0 && (
@@ -284,7 +285,7 @@ export default function WithdrawalScreen() {
 
           {/* Amount input */}
           <View style={[styles.amountCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Amount</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.withdrawal.amount', 'Amount')}</Text>
             <View style={[styles.amountInputWrap, { borderColor: numericAmount > available ? '#EF4444' : theme.border, backgroundColor: theme.background }]}>
               <Text style={[styles.nairaSign, { color: numericAmount > 0 ? theme.text : theme.textThird }]}>₦</Text>
               <TextInput
@@ -297,7 +298,7 @@ export default function WithdrawalScreen() {
               />
             </View>
             {numericAmount > available && (
-              <Text style={styles.amountError}>Amount exceeds available balance</Text>
+              <Text style={styles.amountError}>{tx('auto.withdrawal.amountExceedsAvailableBalance', 'Amount exceeds available balance')}</Text>
             )}
             {/* Quick amounts + withdraw-all. Always visible so drivers
                 learn them; amounts above the balance are grayed, not
@@ -333,7 +334,7 @@ export default function WithdrawalScreen() {
           {/* Destination: the registered payout account */}
           <View style={[styles.bankCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
             <View style={styles.bankCardHeader}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>Destination</Text>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.withdrawal.destination', 'Destination')}</Text>
               <Pressable onPress={() => router.push('/(driver)/add-bank')}>
                 <Text style={[styles.addBankLink, { color: theme.primary }]}>{hasBank ? 'Change' : '+ Add Bank'}</Text>
               </Pressable>

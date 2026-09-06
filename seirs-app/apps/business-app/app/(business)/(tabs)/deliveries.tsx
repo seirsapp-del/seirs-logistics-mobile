@@ -12,6 +12,7 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 import { statusTint } from '@/constants/tint';
 import { vehicleLabel } from '@/constants/vehicles';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 const STATUSES = ['all', 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled'];
 
@@ -269,7 +270,7 @@ export default function DeliveriesScreen() {
               style={styles.cancelBtn}
               hitSlop={8}
             >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+              <Text style={styles.cancelBtnText}>{tx('auto.deliveries.cancel', 'Cancel')}</Text>
             </Pressable>
           )}
         </View>
@@ -290,7 +291,7 @@ export default function DeliveriesScreen() {
         <Pressable onPress={() => setDrawerOpen(true)} hitSlop={10}>
           <Icon name="AlignLeft" size={22} color={colors.text} />
         </Pressable>
-        <Text style={[styles.heading, { color: colors.text }]}>Deliveries</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>{tx('auto.deliveries.deliveries', 'Deliveries')}</Text>
       </View>
 
       <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>

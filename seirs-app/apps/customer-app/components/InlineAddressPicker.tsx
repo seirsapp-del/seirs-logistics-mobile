@@ -21,6 +21,7 @@ import type { PickedAddress } from '@/components/AddressPicker';
 import { mapsApi } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 // Places and geocoding go through our backend (security review
 // 2026-08-12): the Google key is no longer shipped inside the app.
 
@@ -172,7 +173,7 @@ export default function InlineAddressPicker({ label, dotColor, value, onSelect, 
         <View style={[styles.dropdown, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Pressable style={styles.useLocBtn} onPress={useMyLocation}>
             <Ionicons name="locate" size={18} color={theme.primary} />
-            <Text style={[styles.useLocText, { color: theme.primary }]}>Use my current location</Text>
+            <Text style={[styles.useLocText, { color: theme.primary }]}>{tx('auto.InlineAddressPicker.useMyCurrentLocation', 'Use my current location')}</Text>
           </Pressable>
           {predictions.map((p) => (
             <Pressable

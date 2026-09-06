@@ -9,6 +9,7 @@ import { ArrowLeft, Newspaper, ExternalLink } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { storiesApi, type StoryDTO } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 /**
  * SEIRS Stories (founder 2026-08-12). The "Stories" chip on home used
@@ -130,7 +131,7 @@ export default function StoriesScreen() {
                   <Text style={[styles.excerpt, { color: theme.textSecond }]} numberOfLines={3}>{story.excerpt}</Text>
                 )}
                 <View style={styles.readRow}>
-                  <Text style={[styles.readMore, { color: theme.accent }]}>Read the story</Text>
+                  <Text style={[styles.readMore, { color: theme.accent }]}>{tx('auto.stories.readTheStory', 'Read the story')}</Text>
                   <ExternalLink size={12} color={theme.accent} strokeWidth={2} />
                 </View>
               </View>

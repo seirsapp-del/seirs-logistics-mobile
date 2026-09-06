@@ -36,6 +36,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { driversApi, deliveriesApi, mapsApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 type Req = {
   id: string;
@@ -213,7 +214,7 @@ export default function ParcelRequestsScreen() {
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Requests</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.parcelRequests.requests', 'Requests')}</Text>
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
             {total === 0 ? 'Nothing waiting' : `${total} waiting on you`}
           </Text>
@@ -231,7 +232,7 @@ export default function ParcelRequestsScreen() {
         {!loading && trips.length === 0 && (
           <View style={styles.empty}>
             <Package size={40} color={theme.textThird} strokeWidth={1.5} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips taking requests</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.parcelRequests.noTripsTakingRequests', 'No trips taking requests')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
               Declare an intercity trip with seats or packages on, and people going
               your way can ask to ride or to have theirs carried.
@@ -242,7 +243,7 @@ export default function ParcelRequestsScreen() {
         {!loading && trips.length > 0 && total === 0 && (
           <View style={styles.empty}>
             <Package size={40} color={theme.textThird} strokeWidth={1.5} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>Nobody has asked yet</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.parcelRequests.nobodyHasAskedYet', 'Nobody has asked yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
               Seat and parcel requests show up here. Nothing is charged until you
               accept, so you can say no without costing anybody money.
@@ -297,12 +298,12 @@ export default function ParcelRequestsScreen() {
                   </View>
                   <View style={styles.actions}>
                     <Pressable disabled={busy === r.id} onPress={() => answerSeat(r, false)} style={[styles.declineBtn, { borderColor: theme.border }]}>
-                      <Text style={[styles.declineTxt, { color: theme.textSecond }]}>Decline</Text>
+                      <Text style={[styles.declineTxt, { color: theme.textSecond }]}>{tx('auto.parcelRequests.decline', 'Decline')}</Text>
                     </Pressable>
                     <Pressable disabled={busy === r.id} onPress={() => answerSeat(r, true)} style={[styles.acceptBtn, { backgroundColor: theme.primary }]}>
                       {busy === r.id
                         ? <ActivityIndicator color="#fff" size="small" />
-                        : <Text style={styles.acceptTxt}>Accept</Text>}
+                        : <Text style={styles.acceptTxt}>{tx('auto.parcelRequests.accept', 'Accept')}</Text>}
                     </Pressable>
                   </View>
                 </View>
@@ -366,14 +367,14 @@ export default function ParcelRequestsScreen() {
                           onPress={() => answer(r, 'decline')}
                           style={[styles.declineBtn, { borderColor: theme.border }]}
                         >
-                          <Text style={[styles.declineTxt, { color: theme.textSecond }]}>Decline</Text>
+                          <Text style={[styles.declineTxt, { color: theme.textSecond }]}>{tx('auto.parcelRequests.decline', 'Decline')}</Text>
                         </Pressable>
                         <Pressable
                           disabled={busy === r.id}
                           onPress={() => { setCountering(r); setCounterAddr(''); setCounterNote(''); }}
                           style={[styles.counterBtn, { borderColor: theme.primary }]}
                         >
-                          <Text style={[styles.counterTxt, { color: theme.primary }]}>Offer another spot</Text>
+                          <Text style={[styles.counterTxt, { color: theme.primary }]}>{tx('auto.parcelRequests.offerAnotherSpot', 'Offer another spot')}</Text>
                         </Pressable>
                         <Pressable
                           disabled={busy === r.id}
@@ -382,7 +383,7 @@ export default function ParcelRequestsScreen() {
                         >
                           {busy === r.id
                             ? <ActivityIndicator color="#fff" size="small" />
-                            : <Text style={styles.acceptTxt}>Accept</Text>}
+                            : <Text style={styles.acceptTxt}>{tx('auto.parcelRequests.accept', 'Accept')}</Text>}
                         </Pressable>
                       </View>
                     )}
@@ -403,7 +404,7 @@ export default function ParcelRequestsScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.sheetTitle, { color: theme.text }]}>Offer another drop-off</Text>
+            <Text style={[styles.sheetTitle, { color: theme.text }]}>{tx('auto.parcelRequests.offerAnotherDropOff', 'Offer another drop-off')}</Text>
             <Text style={[styles.sheetSub, { color: theme.textSecond }]}>
               Name a place on your route you can actually reach. The sender sees
               it with a fresh price and can accept or say no. Nothing is charged
@@ -428,7 +429,7 @@ export default function ParcelRequestsScreen() {
 
             <View style={styles.sheetActions}>
               <Pressable onPress={() => setCountering(null)} style={[styles.declineBtn, { borderColor: theme.border, flex: 1 }]}>
-                <Text style={[styles.declineTxt, { color: theme.textSecond }]}>Cancel</Text>
+                <Text style={[styles.declineTxt, { color: theme.textSecond }]}>{tx('auto.parcelRequests.cancel', 'Cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={sendCounter}
@@ -437,7 +438,7 @@ export default function ParcelRequestsScreen() {
               >
                 {geocoding
                   ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={styles.acceptTxt}>Send offer</Text>}
+                  : <Text style={styles.acceptTxt}>{tx('auto.parcelRequests.sendOffer', 'Send offer')}</Text>}
               </Pressable>
             </View>
           </View>

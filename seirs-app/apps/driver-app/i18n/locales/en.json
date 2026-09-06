@@ -326,5 +326,351 @@
     "threadEmpty": "This thread is empty.",
     "closedNote": "This ticket is closed. Open a new one if you still need help.",
     "hoursHint": "Support hours: 6am–10pm WAT. Messages sent outside those hours get a reply once we open at 6am."
+  },
+  "auto": {
+    "driverRegister": {
+      "createDriverAccount": "Create driver account",
+      "startDeliveringWithSeirsToday": "Start delivering with Seirs today",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "emailAddress": "Email address",
+      "phoneNumber": "Phone number",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "vehicleType": "Vehicle type",
+      "termsOfService": "Terms of Service",
+      "privacyPolicy": "Privacy Policy",
+      "createDriverAccount2": "Create Driver Account",
+      "alreadyHaveAnAccount": "Already have an account?",
+      "signIn": "Sign In"
+    },
+    "forgotPassword": {
+      "checkYourInbox": "Check your inbox",
+      "backToSignIn": "Back to Sign In",
+      "forgotPassword": "Forgot password?",
+      "emailAddress": "Email address",
+      "sendResetLink": "Send Reset Link",
+      "rememberYourPassword": "Remember your password?",
+      "signIn": "Sign In"
+    },
+    "login": {
+      "welcomeBack": "Welcome back",
+      "signInToContinue": "Sign in to continue",
+      "emailAddress": "Email address",
+      "password": "Password",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "signIn": "Sign In",
+      "donTHaveAnAccount": "Don't have an account?",
+      "signUp": "Sign Up"
+    },
+    "onboarding": {
+      "becomeADriver": "Become a Driver"
+    },
+    "verifyOtp": {
+      "checkYourEmail": "Check your email",
+      "verifyEmail": "Verify Email"
+    },
+    "earnings": {
+      "earnings": "Earnings",
+      "withdraw": "Withdraw",
+      "bankAccounts": "Bank Accounts",
+      "myWeeklyGoal": "My Weekly Goal",
+      "setYourWeeklyGoal": "Set your weekly goal",
+      "cancel": "Cancel",
+      "last7Days": "Last 7 days",
+      "recentTransactions": "Recent Transactions",
+      "seeAll": "See all",
+      "noTransactionsYet": "No transactions yet."
+    },
+    "history": {
+      "myTrips": "My Trips",
+      "noTripsYet": "No trips yet",
+      "completeDeliveriesToSeeThem": "Complete deliveries to see them here."
+    },
+    "index": {
+      "poolTripActive": "Pool trip active",
+      "demandHotspots": "Demand Hotspots",
+      "openMap": "Open map",
+      "goOnlineToSeeDemand": "Go online to see demand around you",
+      "doneToday": "Done today",
+      "rating": "Rating",
+      "requests": "Requests",
+      "declareAnIntercityTrip": "Declare an intercity trip",
+      "availableJobs": "Available Jobs",
+      "youReOffline": "You're offline",
+      "goOnlineToStartReceiving": "Go online to start receiving job requests.",
+      "noJobsNearbyStayOnline": "No jobs nearby. Stay online: new requests come in frequently.",
+      "youEarn": "You earn"
+    },
+    "profile": {
+      "profile": "Profile",
+      "idVerified": "ID Verified",
+      "addYourPhoto": "Add your photo",
+      "withdrawableBalance": "Withdrawable Balance",
+      "withdraw": "Withdraw",
+      "seirsDriverV100": "Seirs Driver v1.0.0",
+      "signOut": "Sign Out",
+      "yourSeirsId": "Your SEIRS ID"
+    },
+    "active": {
+      "deliveryNotFound": "Delivery not found",
+      "goBack": "Go Back",
+      "activeDelivery": "Active Delivery",
+      "yourMapStopsWhenYour": "Your map stops when your screen locks",
+      "turnOn": "Turn on",
+      "openDirectionsInGoogleMaps": "Open directions in Google Maps",
+      "deliveryRoute": "Delivery Route",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "customer": "Customer",
+      "notAtTheDropOff": "Not at the drop-off. Message them.",
+      "passenger": "Passenger",
+      "receiver": "Receiver",
+      "callThemWhenYouArrive": "Call them when you arrive.",
+      "proofOfDelivery": "Proof of Delivery",
+      "retakePhoto": "Retake Photo",
+      "takeProofPhoto": "Take Proof Photo",
+      "progress": "Progress",
+      "whoAcceptedIt": "Who accepted it?",
+      "cancel": "Cancel",
+      "confirmDelivered": "Confirm Delivered"
+    },
+    "addBank": {
+      "payoutBankAccount": "Payout Bank Account",
+      "currentPayoutAccount": "Current payout account",
+      "changeUnderReview": "Change under review",
+      "accountNumber": "Account Number",
+      "accountName": "Account Name",
+      "selectBank": "Select Bank"
+    },
+    "changePassword": {
+      "changePassword": "Change Password",
+      "changePassword2": "Change password"
+    },
+    "codeOfConduct": {
+      "driverCodeOfConduct": "Driver Code of Conduct"
+    },
+    "deleteAccount": {
+      "deleteAccount": "Delete Account",
+      "permanentAfter30Days": "Permanent after 30 days",
+      "readyToDelete": "Ready to delete",
+      "noActiveDeliveriesWalletIs": "No active deliveries, wallet is empty.",
+      "whatGetsDeleted": "What gets deleted",
+      "whatStays": "What stays"
+    },
+    "id": {
+      "optimised": "Optimised",
+      "earning": "Earning",
+      "distance": "Distance",
+      "pickup": "Pickup",
+      "navigateToPickup": "Navigate to pickup",
+      "navigate": "Navigate",
+      "photoAndDeliver": "Photo and deliver",
+      "dropoff": "Dropoff",
+      "navigateToDropoff": "Navigate to dropoff",
+      "editTrip": "Edit trip",
+      "takePassengers": "Take passengers",
+      "carryPackages": "Carry packages",
+      "saveChanges": "Save changes",
+      "jobNotFound": "Job not found",
+      "goBack": "Go Back",
+      "jobDetails": "Job Details",
+      "estimatedEarnings": "Estimated Earnings",
+      "yourShareAfterTheSeirs": "Your share after the SEIRS service fee",
+      "openFullRouteInGoogle": "Open full route in Google Maps",
+      "fragile": "Fragile",
+      "continueThisJob": "Continue this job",
+      "goBack2": "Go back",
+      "transactionDetails": "Transaction Details",
+      "deliveryEarnings": "Delivery earnings",
+      "viewTripDetails": "View Trip Details"
+    },
+    "documents": {
+      "documents": "Documents",
+      "allYourDocumentsOnePlace": "All your documents, one place",
+      "close": "Close"
+    },
+    "editProfile": {
+      "editProfile": "Edit Profile",
+      "tapToChangePhoto": "Tap to change photo",
+      "saveChanges": "Save changes",
+      "changePassword": "Change password"
+    },
+    "hotspots": {
+      "demandHotspots": "Demand Hotspots",
+      "noLocationYet": "No location yet",
+      "ordersInTheLastHours": "Orders in the last hours"
+    },
+    "interstate": {
+      "declareIntercityTrip": "Declare Intercity Trip",
+      "takeInterstateWork": "Take interstate work",
+      "cancel": "Cancel",
+      "earnExtraOnLongHaul": "Earn extra on long-haul trips",
+      "youEarnPerSeat": "You earn per seat",
+      "howMuchWeightCanYou": "How much weight can you take above your existing load.",
+      "carryPackages": "Carry packages",
+      "carryPassengers": "Carry passengers",
+      "declareTrip": "Declare trip"
+    },
+    "lastOrder": {
+      "lastOrderMode": "Last Order Mode",
+      "windDownForTheDay": "Wind down for the day",
+      "whatHappensWhenYouWind": "What happens when you wind down"
+    },
+    "multiLeg": {
+      "activePoolTrip": "Active Pool Trip",
+      "noActiveLegs": "No active legs",
+      "openDelivery": "Open delivery",
+      "howPoolingWorks": "How pooling works:"
+    },
+    "notifications": {
+      "notifications": "Notifications",
+      "markAllRead": "Mark all read",
+      "noNotifications": "No notifications",
+      "dismiss": "Dismiss"
+    },
+    "parcelRequests": {
+      "requests": "Requests",
+      "noTripsTakingRequests": "No trips taking requests",
+      "nobodyHasAskedYet": "Nobody has asked yet",
+      "decline": "Decline",
+      "accept": "Accept",
+      "offerAnotherSpot": "Offer another spot",
+      "offerAnotherDropOff": "Offer another drop-off",
+      "cancel": "Cancel",
+      "sendOffer": "Send offer"
+    },
+    "ratings": {
+      "myRatings": "My Ratings",
+      "ratingBelowMinimumThreshold": "Rating below minimum threshold",
+      "breakdown": "Breakdown",
+      "recentReviews": "Recent Reviews",
+      "tipsToImproveYourRating": "Tips to improve your rating"
+    },
+    "scanPackage": {
+      "verifyThePackage": "Verify the package",
+      "packageVerified": "Package verified",
+      "wrongPackage": "Wrong package"
+    },
+    "schedule": {
+      "schedule": "Schedule",
+      "upcomingJobs": "Upcoming Jobs",
+      "noScheduledJobsYet": "No scheduled jobs yet",
+      "myWorkingHours": "My Working Hours",
+      "dayOff": "Day off"
+    },
+    "seirsId": {
+      "mySeirsId": "My SEIRS ID",
+      "howHandoffVerificationWorks": "How handoff verification works",
+      "whereYouLlUseIt": "Where you'll use it",
+      "keepThisCodePrivate": "Keep this code private"
+    },
+    "signature": {
+      "verifyRecipient": "Verify Recipient",
+      "nationalIdLicenceVoterCard": "National ID, licence, voter card, NIN slip, or passport",
+      "recipientShowsAppQrSpeaks": "Recipient shows app QR, speaks their name, you type to verify",
+      "idType": "ID Type",
+      "idNumber": "ID Number",
+      "emailOtp": "Email OTP",
+      "resendOtp": "Resend OTP",
+      "handoffPhoto": "Handoff photo",
+      "retake": "Retake",
+      "completeHandoff": "Complete handoff"
+    },
+    "sos": {
+      "sosEmergency": "SOS Emergency",
+      "cancelSos": "Cancel SOS",
+      "quickDial": "Quick Dial",
+      "whatIsHappening": "What is happening?",
+      "sendToOps": "Send to ops"
+    },
+    "statement": {
+      "earningsStatement": "Earnings Statement",
+      "runningTotal": "Running total"
+    },
+    "statusBroadcast": {
+      "statusBroadcast": "Status Broadcast"
+    },
+    "storeHandoff": {
+      "wrongParcel": "Wrong parcel",
+      "rescan": "Rescan",
+      "parcel": "Parcel",
+      "signedBy": "Signed by",
+      "backToTheJob": "Back to the job"
+    },
+    "ticketId": {
+      "tapToOpen": "Tap to open"
+    },
+    "trunkCheck": {
+      "trunkCheck": "Trunk Check",
+      "confirmRemainingPackages": "Confirm remaining packages",
+      "retake": "Retake",
+      "tapToCaptureTrunk": "Tap to capture trunk"
+    },
+    "vehicle": {
+      "kycVerification": "KYC Verification",
+      "changeUnderReview": "Change under review",
+      "submitted": "Submitted",
+      "vehicle": "Vehicle",
+      "owner": "Owner",
+      "lastRequestWasNotApproved": "Last request was not approved",
+      "vehicleType": "Vehicle type",
+      "vehicleInformation": "Vehicle information",
+      "photosOfTheVehicle": "Photos of the vehicle",
+      "papers": "Papers",
+      "stillNeeded": "Still needed",
+      "submitForReview": "Submit for review"
+    },
+    "withdrawal": {
+      "withdrawalSent": "Withdrawal Sent!",
+      "withdrawEarnings": "Withdraw Earnings",
+      "withdrawalsPaused": "Withdrawals paused",
+      "availableToWithdraw": "Available to withdraw",
+      "amount": "Amount",
+      "amountExceedsAvailableBalance": "Amount exceeds available balance",
+      "destination": "Destination"
+    },
+    "NotFound": {
+      "screenNotFound": "Screen not found",
+      "goToHome": "Go to home"
+    },
+    "resetPassword": {
+      "invalidLink": "Invalid Link",
+      "backToSignIn": "Back to Sign In",
+      "passwordReset": "Password Reset",
+      "signIn": "Sign In",
+      "setNewPassword": "Set new password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "resetPassword": "Reset Password"
+    },
+    "CorridorCard": {
+      "onYourWay": "On your way",
+      "headingSomewhere": "Heading somewhere?"
+    },
+    "IdentityDocuments": {
+      "aboutYou": "About you",
+      "checkingWhatIsOnFile": "Checking what is on file...",
+      "optional": "Optional"
+    },
+    "InsurancePartners": {
+      "doYouNeedInsurance": "Do you need insurance?"
+    },
+    "PackageCodeCapture": {
+      "allowCamera": "Allow camera"
+    },
+    "SocialSignIn": {
+      "continueWithGoogle": "Continue with Google",
+      "signInWithApple": "Sign in with Apple"
+    },
+    "StatePicker": {
+      "selectState": "Select State"
+    },
+    "VehicleOwnershipForm": {
+      "whoOwnsThisVehicle": "Who owns this vehicle?",
+      "ownerSignsHere": "Owner signs here",
+      "stillNeeded": "Still needed"
+    }
   }
 }

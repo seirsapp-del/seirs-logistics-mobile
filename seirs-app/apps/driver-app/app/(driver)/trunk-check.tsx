@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { uploadApi } from '@/services/api';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §2.16: anti-theft trunk inventory check. Whenever a passenger
 // or recipient exits the vehicle while there are still other packages
@@ -95,7 +96,7 @@ export default function TrunkCheckScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Trunk Check</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.trunkCheck.trunkCheck', 'Trunk Check')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -104,7 +105,7 @@ export default function TrunkCheckScreen() {
         <View style={styles.warnBanner}>
           <AlertTriangle size={20} color="#D97706" />
           <View style={{ flex: 1 }}>
-            <Text style={styles.warnTitle}>Confirm remaining packages</Text>
+            <Text style={styles.warnTitle}>{tx('auto.trunkCheck.confirmRemainingPackages', 'Confirm remaining packages')}</Text>
             <Text style={styles.warnSub}>
               {remaining > 0
                 ? `${remaining} other package${remaining === 1 ? ' is' : 's are'} still in your trunk. Take a photo confirming everything is intact before continuing.`
@@ -118,13 +119,13 @@ export default function TrunkCheckScreen() {
             <Image source={{ uri: photoUri }} style={styles.preview} />
             <Pressable onPress={pickPhoto} style={[styles.secondaryBtn, { borderColor: theme.border }]}>
               <Camera size={14} color={theme.text} />
-              <Text style={[styles.secondaryBtnText, { color: theme.text }]}>Retake</Text>
+              <Text style={[styles.secondaryBtnText, { color: theme.text }]}>{tx('auto.trunkCheck.retake', 'Retake')}</Text>
             </Pressable>
           </View>
         ) : (
           <Pressable onPress={pickPhoto} style={[styles.photoBox, { borderColor: theme.primary }]}>
             <Camera size={36} color={theme.primary} />
-            <Text style={[styles.photoTitle, { color: theme.text }]}>Tap to capture trunk</Text>
+            <Text style={[styles.photoTitle, { color: theme.text }]}>{tx('auto.trunkCheck.tapToCaptureTrunk', 'Tap to capture trunk')}</Text>
             <Text style={[styles.photoHint, { color: theme.textSecond }]}>
               Frame the inside of the trunk so all remaining packages are visible.
             </Text>

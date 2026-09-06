@@ -20,6 +20,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { notificationsApi } from '@/services/api';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 interface Notif {
   id:    string;
   type:  string;
@@ -138,11 +139,11 @@ export default function BusinessNotificationsScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Back">
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Notifications</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{tx('auto.notifications.notifications', 'Notifications')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           {unreadCount > 0 && (
             <Pressable onPress={markAllRead} hitSlop={8}>
-              <Text style={[styles.markAll, { color: theme.primary }]}>Mark all read</Text>
+              <Text style={[styles.markAll, { color: theme.primary }]}>{tx('auto.notifications.markAllRead', 'Mark all read')}</Text>
             </Pressable>
           )}
           {notifs.length > 0 && (
@@ -166,7 +167,7 @@ export default function BusinessNotificationsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <Icon name="BellOff" size={44} color={theme.textSecond} />
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>No notifications</Text>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.notifications.noNotifications', 'No notifications')}</Text>
               <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
                 Delivery updates and SEIRS announcements will appear here.
               </Text>
@@ -180,7 +181,7 @@ export default function BusinessNotificationsScreen() {
                 renderRightActions={() => (
                   <Pressable style={styles.dismissAction} onPress={() => dismissOne(item.id)}>
                     <Icon name="Trash2" size={18} color="#fff" />
-                    <Text style={styles.dismissText}>Dismiss</Text>
+                    <Text style={styles.dismissText}>{tx('auto.notifications.dismiss', 'Dismiss')}</Text>
                   </Pressable>
                 )}
               >

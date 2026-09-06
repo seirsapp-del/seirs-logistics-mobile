@@ -11,6 +11,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { paymentsApi, deliveriesApi, loyaltyApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §"Confirmed Decisions": COD removed. Everything routes through
 // Flutterwave's hosted checkout (card, bank transfer, USSD live there;
@@ -205,7 +206,7 @@ export default function PaymentScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={[styles.backText, { color: theme.primary }]}>← Back</Text>
           </Pressable>
-          <Text style={[styles.title, { color: theme.text }]}>Payment</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.deliveryId.payment', 'Payment')}</Text>
         </View>
 
         {/* Amount card: one number, the same figure as the trip card.
@@ -213,9 +214,9 @@ export default function PaymentScreen() {
             the old whole-naira rule was reversed so the arithmetic
             reconciles wherever a customer checks it. */}
         <View style={[styles.amountCard, { backgroundColor: theme.primary }]}>
-          <Text style={styles.amountLabel}>Amount to pay</Text>
+          <Text style={styles.amountLabel}>{tx('auto.deliveryId.amountToPay', 'Amount to pay')}</Text>
           <Text style={styles.amount}>{naira(displayPrice)}</Text>
-          <Text style={styles.amountNote}>Card processing is added at checkout.</Text>
+          <Text style={styles.amountNote}>{tx('auto.deliveryId.cardProcessingIsAddedAt', 'Card processing is added at checkout.')}</Text>
         </View>
 
         {/* What this pays for: same card language as the Review step. */}
@@ -236,7 +237,7 @@ export default function PaymentScreen() {
               noticed.
             */}
             <View style={styles.sumHead}>
-              <Text style={[styles.sumTitle, { color: theme.text, marginBottom: 0 }]}>Order Summary</Text>
+              <Text style={[styles.sumTitle, { color: theme.text, marginBottom: 0 }]}>{tx('auto.deliveryId.orderSummary', 'Order Summary')}</Text>
               {!alreadyPaid && (
                 <Pressable
                   onPress={() => router.push({ pathname: '/(customer)/edit-booking/[id]', params: { id: String(deliveryId) } } as any)}
@@ -253,7 +254,7 @@ export default function PaymentScreen() {
               </View>
             ))}
             <View style={[styles.sumRow, { borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 8, marginTop: 4 }]}>
-              <Text style={[styles.sumLabel, { color: theme.textThird }]}>Total</Text>
+              <Text style={[styles.sumLabel, { color: theme.textThird }]}>{tx('auto.deliveryId.total', 'Total')}</Text>
               <Text style={[styles.sumTotal, { color: theme.text }]}>{naira(displayPrice)}</Text>
             </View>
           </View>
@@ -262,7 +263,7 @@ export default function PaymentScreen() {
         {canUsePoints && points !== null && (
           <View style={[styles.sumCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.sumRow}>
-              <Text style={[styles.sumTotal, { color: theme.text }]}>Use your points</Text>
+              <Text style={[styles.sumTotal, { color: theme.text }]}>{tx('auto.deliveryId.useYourPoints', 'Use your points')}</Text>
               <Text style={[styles.sumValue, { color: theme.textSecond }]}>
                 {points.toLocaleString()} points
               </Text>
@@ -345,7 +346,7 @@ export default function PaymentScreen() {
         <View style={[styles.escrowBox, { backgroundColor: theme.surfaceSecond }]}>
           <View style={styles.escrowTitleRow}>
             <ShieldCheck size={18} color={theme.text} strokeWidth={1.5} />
-            <Text style={[styles.escrowTitle, { color: theme.text }]}>Payment Protection</Text>
+            <Text style={[styles.escrowTitle, { color: theme.text }]}>{tx('auto.deliveryId.paymentProtection', 'Payment Protection')}</Text>
           </View>
           <Text style={[styles.escrowDesc, { color: theme.textSecond }]}>
             Your payment is held by SEIRS and only released to the driver after delivery is
@@ -361,7 +362,7 @@ export default function PaymentScreen() {
               style={[styles.payBtn, { backgroundColor: theme.primary }]}
               onPress={navigateToTracking}
             >
-              <Text style={styles.payBtnText}>Track this delivery</Text>
+              <Text style={styles.payBtnText}>{tx('auto.deliveryId.trackThisDelivery', 'Track this delivery')}</Text>
             </Pressable>
           ) : (
             <Pressable

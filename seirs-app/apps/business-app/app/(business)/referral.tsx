@@ -12,6 +12,7 @@ import { Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/them
 import { useAuth } from '@/context/AuthContext';
 import { loyaltyApi } from '@/services/api';
 import { WEB_BASE } from '@/constants/config';
+import { tx } from '@/i18n/tx';
 
 /**
  * Refer & Earn, for business accounts.
@@ -81,7 +82,7 @@ export default function BusinessReferralScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Icon name="ArrowLeft" size={22} color={colors.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Refer & Earn</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{tx('auto.referral.referEarn', 'Refer & Earn')}</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -103,7 +104,7 @@ export default function BusinessReferralScreen() {
           <View style={styles.heroIcon}>
             <Icon name="Gift" size={34} color="#fff" />
           </View>
-          <Text style={styles.heroTitle}>Invite a business, earn Rewards</Text>
+          <Text style={styles.heroTitle}>{tx('auto.referral.inviteABusinessEarnRewards', 'Invite a business, earn Rewards')}</Text>
           <Text style={styles.heroSub}>
             You earn 200 SEIRS points every time a business signs up with your code and
             completes their first paid delivery.
@@ -125,7 +126,7 @@ export default function BusinessReferralScreen() {
           </View>
           <Pressable onPress={share} style={[styles.shareBtn, { borderColor: colors.primary }]}>
             <Icon name="Share2" size={16} color={colors.primary} />
-            <Text style={[styles.shareText, { color: colors.primary }]}>Share invite link</Text>
+            <Text style={[styles.shareText, { color: colors.primary }]}>{tx('auto.referral.shareInviteLink', 'Share invite link')}</Text>
           </Pressable>
         </View>
 
@@ -146,7 +147,7 @@ export default function BusinessReferralScreen() {
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>How it works</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{tx('auto.referral.howItWorks', 'How it works')}</Text>
           {[
             'Share your code with another business',
             'They sign up and complete their first delivery',
@@ -161,13 +162,13 @@ export default function BusinessReferralScreen() {
           ))}
         </View>
 
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Referral history</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.referral.referralHistory', 'Referral history')}</Text>
         {loading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />
         ) : rows.length === 0 ? (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center', gap: 8 }]}>
             <Icon name="Users" size={28} color={colors.textThird} />
-            <Text style={[styles.cardTitle, { color: colors.text }]}>No referrals yet</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{tx('auto.referral.noReferralsYet', 'No referrals yet')}</Text>
             <Text style={[styles.emptySub, { color: colors.textSecond }]}>
               Share your code. When they sign up and complete their first delivery, you both
               start earning points.

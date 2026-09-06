@@ -14,6 +14,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §2.14: quick three-button status broadcast. One tap posts a
 // status the customer sees on their tracking screen.
@@ -80,7 +81,7 @@ This needs a connection. Try again once you have signal.`,
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Status Broadcast</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.statusBroadcast.statusBroadcast', 'Status Broadcast')}</Text>
         <View style={{ width: 36 }} />
       </View>
 

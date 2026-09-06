@@ -19,6 +19,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { identityApi, uploadApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §1.17: driver door-to-door handoff signature. Two methods:
 // physical ID + email OTP, or SEIRS ID + typed-name signature. Mirrors
@@ -147,7 +148,7 @@ export default function DriverSignatureScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Verify Recipient</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.signature.verifyRecipient', 'Verify Recipient')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -165,7 +166,7 @@ export default function DriverSignatureScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.methodTitle, { color: theme.text }]}>Physical ID + Email OTP</Text>
-              <Text style={[styles.methodSub,   { color: theme.textSecond }]}>National ID, licence, voter card, NIN slip, or passport</Text>
+              <Text style={[styles.methodSub,   { color: theme.textSecond }]}>{tx('auto.signature.nationalIdLicenceVoterCard', 'National ID, licence, voter card, NIN slip, or passport')}</Text>
             </View>
           </Pressable>
           <Pressable
@@ -177,14 +178,14 @@ export default function DriverSignatureScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.methodTitle, { color: theme.text }]}>SEIRS ID + Typed Signature</Text>
-              <Text style={[styles.methodSub,   { color: theme.textSecond }]}>Recipient shows app QR, speaks their name, you type to verify</Text>
+              <Text style={[styles.methodSub,   { color: theme.textSecond }]}>{tx('auto.signature.recipientShowsAppQrSpeaks', 'Recipient shows app QR, speaks their name, you type to verify')}</Text>
             </View>
           </Pressable>
 
           {/* Method-specific fields */}
           {method === 'physical_id' ? (
             <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>ID Type</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>{tx('auto.signature.idType', 'ID Type')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 4 }} contentContainerStyle={{ gap: 6 }}>
                 {ID_TYPES.map(t => (
                   <Pressable
@@ -197,7 +198,7 @@ export default function DriverSignatureScreen() {
                 ))}
               </ScrollView>
 
-              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: 8 }]}>ID Number</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: 8 }]}>{tx('auto.signature.idNumber', 'ID Number')}</Text>
               <TextInput
                 value={idNumber}
                 onChangeText={setIdNumber}
@@ -207,7 +208,7 @@ export default function DriverSignatureScreen() {
                 style={[styles.input, { color: theme.text, borderColor: theme.border }]}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: 8 }]}>Email OTP</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: 8 }]}>{tx('auto.signature.emailOtp', 'Email OTP')}</Text>
               {!otpSent ? (
                 <Pressable onPress={requestOtp} disabled={loading} style={[styles.secondaryBtn, { borderColor: theme.primary }]}>
                   <Mail size={14} color={theme.primary} />
@@ -226,7 +227,7 @@ export default function DriverSignatureScreen() {
                     maxLength={6}
                     style={[styles.input, { color: theme.text, borderColor: theme.border, fontSize: 22, textAlign: 'center', letterSpacing: 6, fontWeight: '700' as any }]}
                   />
-                  <Pressable onPress={requestOtp}><Text style={{ color: theme.primary, fontSize: FontSize.xs, marginTop: 4 }}>Resend OTP</Text></Pressable>
+                  <Pressable onPress={requestOtp}><Text style={{ color: theme.primary, fontSize: FontSize.xs, marginTop: 4 }}>{tx('auto.signature.resendOtp', 'Resend OTP')}</Text></Pressable>
                 </>
               )}
             </View>
@@ -265,13 +266,13 @@ export default function DriverSignatureScreen() {
 
           {/* Photo */}
           <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.fieldLabel, { color: theme.text }]}>Handoff photo</Text>
+            <Text style={[styles.fieldLabel, { color: theme.text }]}>{tx('auto.signature.handoffPhoto', 'Handoff photo')}</Text>
             {photoUri ? (
               <View style={{ gap: 8 }}>
                 <Image source={{ uri: photoUri }} style={styles.preview} />
                 <Pressable onPress={pickPhoto} style={[styles.secondaryBtn, { borderColor: theme.border }]}>
                   <Camera size={14} color={theme.text} />
-                  <Text style={[styles.secondaryBtnText, { color: theme.text }]}>Retake</Text>
+                  <Text style={[styles.secondaryBtnText, { color: theme.text }]}>{tx('auto.signature.retake', 'Retake')}</Text>
                 </Pressable>
               </View>
             ) : (
@@ -296,7 +297,7 @@ export default function DriverSignatureScreen() {
             onPress={submit}
             style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Complete handoff</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{tx('auto.signature.completeHandoff', 'Complete handoff')}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

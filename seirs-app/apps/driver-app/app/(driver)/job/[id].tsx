@@ -16,6 +16,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { deliveriesApi, feesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { useAuth } from '@/context/AuthContext';
+import { tx } from '@/i18n/tx';
 
 const URGENCY_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
   instant:   { label: 'Instant',   color: '#EF4444', Icon: Zap  },
@@ -276,9 +277,9 @@ export default function JobDetailScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
         <Package size={48} color={theme.textThird} strokeWidth={1.5} />
-        <Text style={[styles.notFoundText, { color: theme.textSecond }]}>Job not found</Text>
+        <Text style={[styles.notFoundText, { color: theme.textSecond }]}>{tx('auto.id.jobNotFound', 'Job not found')}</Text>
         <Pressable style={[styles.backLink, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
-          <Text style={styles.backLinkText}>Go Back</Text>
+          <Text style={styles.backLinkText}>{tx('auto.id.goBack', 'Go Back')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -439,7 +440,7 @@ export default function JobDetailScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} strokeWidth={1.75} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Job Details</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.id.jobDetails', 'Job Details')}</Text>
         <View style={[styles.urgBadge, { backgroundColor: urg.color + '18' }]}>
           <urg.Icon size={13} color={urg.color} strokeWidth={1.75} />
           <Text style={[styles.urgText, { color: urg.color }]}>{urg.label}</Text>
@@ -474,12 +475,12 @@ export default function JobDetailScreen() {
         {/* Fare card. Stays the single biggest thing on the screen: a rider
             decides on money first, then distance, then where from. */}
         <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-          <Text style={[styles.fareLabel, { color: theme.textSecond }]}>Estimated Earnings</Text>
+          <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{tx('auto.id.estimatedEarnings', 'Estimated Earnings')}</Text>
           <Text style={[styles.fareAmount, { color: theme.primary }]}>{naira(job.driverEarnings ?? job.price ?? 0)}</Text>
           {/* D-4.5: the rate used to be hardcoded as "After 30% Seirs
               commission" and would go stale the day the rate moves. The
               exact fee is already itemised per trip in earnings history. */}
-          <Text style={[styles.fareNote, { color: theme.textThird }]}>Your share after the SEIRS service fee</Text>
+          <Text style={[styles.fareNote, { color: theme.textThird }]}>{tx('auto.id.yourShareAfterTheSeirs', 'Your share after the SEIRS service fee')}</Text>
         </View>
 
         {/* A ride is a person: say so before the driver accepts. */}
@@ -589,7 +590,7 @@ export default function JobDetailScreen() {
               onPress={openFullRoute}
             >
               <ExternalLink size={16} color={theme.primary} strokeWidth={2} />
-              <Text style={[styles.mapsBtnText, { color: theme.primary }]}>Open full route in Google Maps</Text>
+              <Text style={[styles.mapsBtnText, { color: theme.primary }]}>{tx('auto.id.openFullRouteInGoogle', 'Open full route in Google Maps')}</Text>
             </Pressable>
           )}
 
@@ -663,7 +664,7 @@ export default function JobDetailScreen() {
                   {job.isFragile && (
                     <View style={[styles.chip, { backgroundColor: '#EF444418' }]}>
                       <AlertTriangle size={11} color="#EF4444" strokeWidth={2} />
-                      <Text style={[styles.chipText, { color: '#EF4444' }]}>Fragile</Text>
+                      <Text style={[styles.chipText, { color: '#EF4444' }]}>{tx('auto.id.fragile', 'Fragile')}</Text>
                     </View>
                   )}
                 </View>
@@ -749,7 +750,7 @@ export default function JobDetailScreen() {
             onPress={() => router.replace({ pathname: '/(driver)/active', params: { id: job.id } } as any)}
           >
             <Navigation size={20} color="#fff" strokeWidth={1.75} />
-            <Text style={styles.acceptText}>Continue this job</Text>
+            <Text style={styles.acceptText}>{tx('auto.id.continueThisJob', 'Continue this job')}</Text>
           </Pressable>
         ) : jobState === 'closed' ? (
           <View style={[styles.stateNote, { backgroundColor: theme.surfaceSecond }]}>

@@ -21,6 +21,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { driversApi, mapsApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 interface Props {
   driver: any;
@@ -92,7 +93,7 @@ export function CorridorCard({ driver, onChanged }: Props) {
       <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.primary }, Shadows.sm]}>
         <View style={styles.headRow}>
           <Navigation size={16} color={theme.primary} strokeWidth={1.75} />
-          <Text style={[styles.title, { color: theme.text }]}>On your way</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.CorridorCard.onYourWay', 'On your way')}</Text>
           <Pressable onPress={end} hitSlop={8} disabled={busy} style={styles.endBtn}>
             {busy
               ? <ActivityIndicator size="small" color={theme.textSecond} />
@@ -116,7 +117,7 @@ export function CorridorCard({ driver, onChanged }: Props) {
     <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
       <View style={styles.headRow}>
         <Navigation size={16} color={theme.primary} strokeWidth={1.75} />
-        <Text style={[styles.title, { color: theme.text }]}>Heading somewhere?</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.CorridorCard.headingSomewhere', 'Heading somewhere?')}</Text>
       </View>
       <Text style={[styles.sub, { color: theme.textSecond }]}>
         Tell us where you&apos;re going and packages along your way find you.

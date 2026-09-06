@@ -326,5 +326,22 @@
     "threadEmpty": "Kò sí ìfiránṣẹ́ níbí.",
     "closedNote": "A ti pa ìwé ẹ̀bẹ̀ yìí. Ṣí tuntun bí o bá ṣì nílò ìrànlọ́wọ́.",
     "hoursHint": "Àkókò ìrànlọ́wọ́: 6 àárọ̀–10 alẹ́ WAT. Àwọn ìfiránṣẹ́ tí a rán níta àkókò yẹn yóò gba ìdáhùn ní kété tí a bá ṣí ní 6 àárọ̀."
+  },
+  "auto": {
+    "index": {
+      "poolTripActive": "Ìrìnàjò àjọpín ń lọ",
+      "demandHotspots": "Ibi tí ìbéèrè pọ̀",
+      "openMap": "Ṣí máàpù",
+      "goOnlineToSeeDemand": "Wá sórí ayélujára láti rí ìbéèrè ní àyíká rẹ",
+      "doneToday": "Tí a ṣe lónìí",
+      "rating": "Ìwọ̀n",
+      "requests": "Àwọn ìbéèrè",
+      "declareAnIntercityTrip": "Kéde ìrìnàjò láàrín ìlú",
+      "availableJobs": "Àwọn iṣẹ́ tó wà",
+      "youReOffline": "O kò sí lórí ayélujára",
+      "goOnlineToStartReceiving": "Wá sórí ayélujára láti bẹ̀rẹ̀ sí í gba ìbéèrè iṣẹ́.",
+      "noJobsNearbyStayOnline": "Kò sí iṣẹ́ nítòsí. Dúró lórí ayélujára: ìbéèrè tuntun ń wọlé nígbà gbogbo.",
+      "youEarn": "O ń jèrè"
+    }
   }
 }

@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 const RESEND_COOLDOWN = 60;
 
@@ -110,7 +111,7 @@ export default function VerifyOtpScreen() {
           <View style={[styles.iconWrap, { backgroundColor: theme.primary + '18' }]}>
             <Mail size={32} color={theme.primary} strokeWidth={1.5} />
           </View>
-          <Text style={[styles.title, { color: theme.text }]}>Check your email</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.verifyOtp.checkYourEmail', 'Check your email')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
             We sent a 6-digit code to{'\n'}
             <Text style={{ color: theme.primary, fontWeight: FontWeight.semibold as any }}>{maskedEmail}</Text>
@@ -167,7 +168,7 @@ export default function VerifyOtpScreen() {
             {loading ? <ActivityIndicator color="#fff" /> : (
               <View style={styles.btnRow}>
                 <CheckCircle size={20} color="#fff" strokeWidth={1.5} />
-                <Text style={styles.verifyText}>Verify Email</Text>
+                <Text style={styles.verifyText}>{tx('auto.verifyOtp.verifyEmail', 'Verify Email')}</Text>
               </View>
             )}
           </Pressable>

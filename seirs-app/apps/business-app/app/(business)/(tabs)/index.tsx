@@ -13,6 +13,7 @@ import { businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { tint, statusTint } from '@/constants/tint';
+import { tx } from '@/i18n/tx';
 
 export default function BusinessDashboard() {
   const router   = useRouter();
@@ -98,14 +99,14 @@ export default function BusinessDashboard() {
             onPress={() => router.push('/(business)/stories' as any)}
           >
             <Icon name="FileText" size={14} color={colors.textSecond} />
-            <Text style={[styles.chipText, { color: colors.textSecond }]}>Stories</Text>
+            <Text style={[styles.chipText, { color: colors.textSecond }]}>{tx('auto.index.stories', 'Stories')}</Text>
           </Pressable>
           <Pressable
             style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => router.push('/(business)/notifications' as any)}
           >
             <Icon name="Bell" size={14} color={colors.textSecond} />
-            <Text style={[styles.chipText, { color: colors.textSecond }]}>Alerts</Text>
+            <Text style={[styles.chipText, { color: colors.textSecond }]}>{tx('auto.index.alerts', 'Alerts')}</Text>
           </Pressable>
         </ScrollView>
 
@@ -114,7 +115,7 @@ export default function BusinessDashboard() {
             <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
           ) : (
             <>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.index.quickActions', 'Quick Actions')}</Text>
               <View style={styles.actions}>
                 <ActionCard icon="Package"         label="Send a Package" sub="One or many packages, one payment"
                   onPress={() => router.push('/(business)/send-package' as any)} primary />
@@ -159,21 +160,21 @@ export default function BusinessDashboard() {
               </View>
 
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Deliveries</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.index.recentDeliveries', 'Recent Deliveries')}</Text>
                 <Pressable onPress={() => router.push('/(business)/(tabs)/deliveries' as any)}>
-                  <Text style={[styles.viewAll, { color: colors.accent }]}>View all</Text>
+                  <Text style={[styles.viewAll, { color: colors.accent }]}>{tx('auto.index.viewAll', 'View all')}</Text>
                 </Pressable>
               </View>
 
               {(data?.recentDeliveries ?? []).length === 0 ? (
                 <View style={styles.emptyBox}>
                   <Icon name="Package" size={32} color={colors.textThird} />
-                  <Text style={[styles.emptyText, { color: colors.textThird }]}>No deliveries yet</Text>
+                  <Text style={[styles.emptyText, { color: colors.textThird }]}>{tx('auto.index.noDeliveriesYet', 'No deliveries yet')}</Text>
                   <Pressable
                     style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
                     onPress={() => router.push('/(business)/send-package' as any)}
                   >
-                    <Text style={styles.emptyBtnText}>Create your first delivery</Text>
+                    <Text style={styles.emptyBtnText}>{tx('auto.index.createYourFirstDelivery', 'Create your first delivery')}</Text>
                   </Pressable>
                 </View>
               ) : (

@@ -30,6 +30,7 @@ import { StatePicker } from '@/components/StatePicker';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 interface ApplicationStatus {
   storeId:    string;
@@ -221,7 +222,7 @@ export default function ApplyPartnerScreen() {
           <View style={[styles.statusBadge, { backgroundColor: '#FFFBEB' }]}>
             <Icon name="Clock" size={20} color="#D97706" />
           </View>
-          <Text style={[styles.statusTitle, { color: colors.text }]}>Application under review</Text>
+          <Text style={[styles.statusTitle, { color: colors.text }]}>{tx('auto.applyPartner.applicationUnderReview', 'Application under review')}</Text>
           <Text style={[styles.statusBody, { color: colors.textSecond }]}>
             SEIRS is reviewing your KYC documents for <Text style={[styles.bold, { color: colors.text }]}>{existing.storeName}</Text>.
             Reviews take up to 3 business days. We&apos;ll send an email when you&apos;re approved.
@@ -268,7 +269,7 @@ export default function ApplyPartnerScreen() {
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
 
-        <Text style={[styles.heading, { color: colors.text }]}>Apply to be a Partner Store</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>{tx('auto.applyPartner.applyToBeAPartner', 'Apply to be a Partner Store')}</Text>
         <Text style={[styles.sub, { color: colors.textSecond }]}>
           Operate a SEIRS collection point. Earn a fee on every package, weekly payouts.
           We&apos;ll review your KYC docs within 3 business days.
@@ -281,13 +282,13 @@ export default function ApplyPartnerScreen() {
           }]}>
             <Icon name="AlertCircle" size={16} color="#DC2626" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.errorTitle}>Previous application rejected</Text>
+              <Text style={styles.errorTitle}>{tx('auto.applyPartner.previousApplicationRejected', 'Previous application rejected')}</Text>
               <Text style={styles.errorText}>{existing.reviewNote}</Text>
             </View>
           </View>
         )}
 
-        <Text style={[styles.label, { color: colors.textSecond }]}>Store Name</Text>
+        <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.applyPartner.storeName', 'Store Name')}</Text>
         <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TextInput
             style={[styles.input, { color: colors.text }]}
@@ -331,7 +332,7 @@ export default function ApplyPartnerScreen() {
           />
         </View>
 
-        <Text style={[styles.label, { color: colors.textSecond }]}>Phone Number</Text>
+        <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.applyPartner.phoneNumber', 'Phone Number')}</Text>
         <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TextInput
             style={[styles.input, { color: colors.text }]}
@@ -343,7 +344,7 @@ export default function ApplyPartnerScreen() {
           />
         </View>
 
-        <Text style={[styles.label, { color: colors.textSecond }]}>Max Package Capacity</Text>
+        <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.applyPartner.maxPackageCapacity', 'Max Package Capacity')}</Text>
         <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TextInput
             style={[styles.input, { color: colors.text }]}
@@ -355,7 +356,7 @@ export default function ApplyPartnerScreen() {
           />
         </View>
 
-        <Text style={[styles.section, { color: colors.text }]}>KYC Documents</Text>
+        <Text style={[styles.section, { color: colors.text }]}>{tx('auto.applyPartner.kycDocuments', 'KYC Documents')}</Text>
 
         {/* Camera only. See captureStorefront for why the gallery is
             refused here and allowed for everything below it. */}
@@ -394,7 +395,7 @@ export default function ApplyPartnerScreen() {
           {submitting
             ? <ActivityIndicator color="#fff" />
             : <>
-                <Text style={styles.btnText}>Submit Application</Text>
+                <Text style={styles.btnText}>{tx('auto.applyPartner.submitApplication', 'Submit Application')}</Text>
                 <Icon name="ArrowRight" size={18} color="#fff" />
               </>}
         </Pressable>
@@ -416,7 +417,7 @@ function PhotoSlot({ label, uri, onPick, hint }: {
         ) : (
           <View style={styles.photoEmpty}>
             <Icon name="Camera" size={28} color={colors.textThird} />
-            <Text style={[styles.photoEmptyText, { color: colors.textSecond }]}>Tap to upload</Text>
+            <Text style={[styles.photoEmptyText, { color: colors.textSecond }]}>{tx('auto.applyPartner.tapToUpload', 'Tap to upload')}</Text>
           </View>
         )}
       </Pressable>

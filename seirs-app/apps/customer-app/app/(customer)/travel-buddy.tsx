@@ -21,6 +21,7 @@ import { showDialog, type DialogAction } from '@/components/SeirsDialog';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 import { CitySearchField } from '@/components/CitySearchField';
 import { Calendar as RNCalendar } from 'react-native-calendars';
+import { tx } from '@/i18n/tx';
 
 
 /**
@@ -454,7 +455,7 @@ export default function TravelBuddyScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Travel Buddy</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.travelBuddy.travelBuddy', 'Travel Buddy')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -582,7 +583,7 @@ export default function TravelBuddyScreen() {
         </View>
 
         <Pressable style={[styles.searchBtn, { backgroundColor: theme.primary }]} onPress={search} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.searchBtnText}>Find trips</Text>}
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.searchBtnText}>{tx('auto.travelBuddy.findTrips', 'Find trips')}</Text>}
         </Pressable>
 
         {/* Corridors, until a search has been run. They fill a screen that
@@ -860,7 +861,7 @@ export default function TravelBuddyScreen() {
                 >
                   {booking === trip.id
                     ? <ActivityIndicator color="#fff" size="small" />
-                    : <Text style={styles.actionBtnText}>Book a seat</Text>}
+                    : <Text style={styles.actionBtnText}>{tx('auto.travelBuddy.bookASeat', 'Book a seat')}</Text>}
                 </Pressable>
               )}
               {/*
@@ -893,7 +894,7 @@ export default function TravelBuddyScreen() {
                     },
                   } as any)}
                 >
-                  <Text style={[styles.actionBtnText, { color: theme.primary }]}>Send a parcel</Text>
+                  <Text style={[styles.actionBtnText, { color: theme.primary }]}>{tx('auto.travelBuddy.sendAParcel', 'Send a parcel')}</Text>
                 </Pressable>
               )}
             </View>

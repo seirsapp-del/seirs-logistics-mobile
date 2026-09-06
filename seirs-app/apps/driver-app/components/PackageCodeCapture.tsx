@@ -22,6 +22,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 // Guarded camera require (live find 2026-08-11): a top-level
 // `import from 'expo-camera'` crashes the ENTIRE app bundle with
@@ -139,7 +140,7 @@ export function PackageCodeCapture({
                 style={[styles.permBtn, { backgroundColor: theme.primary }]}
                 onPress={requestPermission}
               >
-                <Text style={styles.permBtnText}>Allow camera</Text>
+                <Text style={styles.permBtnText}>{tx('auto.PackageCodeCapture.allowCamera', 'Allow camera')}</Text>
               </Pressable>
             )}
             <Text style={styles.scanFallbackHint}>

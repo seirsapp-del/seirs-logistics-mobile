@@ -53,6 +53,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { businessApi } from '@/services/api';
 import { trackUrl } from '@/constants/config';
+import { tx } from '@/i18n/tx';
 
 /**
  * The ticket is deliberately the same paper white in both themes.
@@ -201,7 +202,7 @@ export default function BusinessPackageQrScreen() {
       <Pressable onPress={() => router.back()} hitSlop={10} style={[styles.backBtn, { backgroundColor: colors.surfaceSecond }]}>
         <Icon name="ArrowLeft" size={20} color={colors.text} />
       </Pressable>
-      <Text style={[styles.headerTitle, { color: colors.text }]}>Package QR</Text>
+      <Text style={[styles.headerTitle, { color: colors.text }]}>{tx('auto.packageQr.packageQr', 'Package QR')}</Text>
       <View style={{ width: 36 }} />
     </View>
   );
@@ -364,7 +365,7 @@ export default function BusinessPackageQrScreen() {
             ]}
           >
             <Icon name="Share2" size={17} color={colors.textOnPrimary} />
-            <Text style={[styles.actionText, { color: colors.textOnPrimary }]}>Send code</Text>
+            <Text style={[styles.actionText, { color: colors.textOnPrimary }]}>{tx('auto.packageQr.sendCode', 'Send code')}</Text>
           </Pressable>
         </View>
 

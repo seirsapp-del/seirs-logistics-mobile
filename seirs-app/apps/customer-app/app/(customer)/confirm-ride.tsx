@@ -31,6 +31,7 @@ import { useAuth } from '@/context/AuthContext';
 import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { TERMS_URL } from '@/constants/config';
+import { tx } from '@/i18n/tx';
 
 const VEHICLE_LABEL: Record<string, string> = {
   okada: 'Okada', keke: 'Keke', car: 'Car', danfo: 'Danfo',
@@ -199,7 +200,7 @@ export default function ConfirmRideScreen() {
         <BottomSheetScrollView contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
           {/* Order Summary: the ride's Review card, business language. */}
           <View style={[styles.sumCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.sumTitle, { color: theme.text }]}>Order Summary</Text>
+            <Text style={[styles.sumTitle, { color: theme.text }]}>{tx('auto.confirmRide.orderSummary', 'Order Summary')}</Text>
             {summaryRows.map(([lbl, val]) => (
               <View key={lbl} style={[styles.sumRow, { borderBottomColor: theme.border }]}>
                 <Text style={[styles.sumLabel, { color: theme.textSecond }]}>{lbl}</Text>

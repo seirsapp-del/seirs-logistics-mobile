@@ -14,6 +14,7 @@ import { naira, nairaAmount } from '@/utils/money';
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
+import { tx } from '@/i18n/tx';
 // My Trips rebuilt as the business Deliveries screen, exactly (founder
 // 2026-08-22: "the exact same as deliveries on the business app, that's
 // what I wanted"). Layout, rail, card and style values are copied from
@@ -299,7 +300,7 @@ export default function HistoryScreen() {
                 hitSlop={8}
                 style={[styles.payLink, { borderColor: theme.primary }]}
               >
-                <Text style={[styles.payLinkText, { color: theme.primary }]}>Track live</Text>
+                <Text style={[styles.payLinkText, { color: theme.primary }]}>{tx('auto.history.trackLive', 'Track live')}</Text>
               </Pressable>
             )}
             {canRate && (
@@ -308,7 +309,7 @@ export default function HistoryScreen() {
                 hitSlop={8}
                 style={[styles.payLink, { borderColor: '#FFBE0B' }]}
               >
-                <Text style={[styles.payLinkText, { color: '#FFBE0B' }]}>Rate this trip</Text>
+                <Text style={[styles.payLinkText, { color: '#FFBE0B' }]}>{tx('auto.history.rateThisTrip', 'Rate this trip')}</Text>
               </Pressable>
             )}
             {isCancellable && (

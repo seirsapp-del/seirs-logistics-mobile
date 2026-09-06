@@ -37,6 +37,7 @@ import { specialRequestsApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
 import { type PickedAddress } from '@/components/AddressPicker';
+import { tx } from '@/i18n/tx';
 
 /**
  * The kinds of job that actually turn up, in the sender's words rather
@@ -149,7 +150,7 @@ export default function SpecialRequestScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Get a quote</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.specialRequest.getAQuote', 'Get a quote')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -304,7 +305,7 @@ export default function SpecialRequestScreen() {
         >
           {busy
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.submitText}>Send for a quote</Text>}
+            : <Text style={styles.submitText}>{tx('auto.specialRequest.sendForAQuote', 'Send for a quote')}</Text>}
         </Pressable>
         <Text style={[styles.note, { color: theme.textThird, textAlign: 'center' }]}>
           Nothing is charged now. We will call you, then send a full breakdown.

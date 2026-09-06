@@ -2,6 +2,7 @@ import { Link, Stack } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 export default function NotFoundScreen() {
   const cs    = useColorScheme();
@@ -12,8 +13,8 @@ export default function NotFoundScreen() {
       <Stack.Screen options={{ title: 'Not Found', headerShown: false }} />
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <Text style={[styles.code, { color: theme.textThird }]}>404</Text>
-        <Text style={[styles.title, { color: theme.text }]}>Screen not found</Text>
-        <Link href="/" style={[styles.link, { color: theme.primary }]}>Go to home</Link>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.NotFound.screenNotFound', 'Screen not found')}</Text>
+        <Link href="/" style={[styles.link, { color: theme.primary }]}>{tx('auto.NotFound.goToHome', 'Go to home')}</Link>
       </View>
     </>
   );

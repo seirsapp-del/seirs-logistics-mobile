@@ -16,6 +16,7 @@ import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §2.11: driver wind-down toggle. When enabled, the matching
 // service stops auto-assigning new jobs while the driver finishes the
@@ -112,7 +113,7 @@ export default function LastOrderScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Last Order Mode</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.lastOrder.lastOrderMode', 'Last Order Mode')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -121,7 +122,7 @@ export default function LastOrderScreen() {
         {/* Hero */}
         <View style={[styles.hero, { backgroundColor: theme.primary }]}>
           <MoonStar size={28} color="#fff" />
-          <Text style={styles.heroTitle}>Wind down for the day</Text>
+          <Text style={styles.heroTitle}>{tx('auto.lastOrder.windDownForTheDay', 'Wind down for the day')}</Text>
           <Text style={styles.heroSub}>
             Tell the dispatcher you&apos;re done after your current jobs. Cleanly stop accepting new orders without going offline mid-trip.
           </Text>
@@ -194,7 +195,7 @@ export default function LastOrderScreen() {
 
             {/* How it works */}
             <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={[styles.howTitle, { color: theme.text }]}>What happens when you wind down</Text>
+              <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.lastOrder.whatHappensWhenYouWind', 'What happens when you wind down')}</Text>
               {[
                 'Dispatcher stops sending you new job offers',
                 'Active jobs continue normally: complete them at your pace',

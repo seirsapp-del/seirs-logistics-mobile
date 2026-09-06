@@ -354,5 +354,31 @@
     "support": "Ìrànlọ́wọ́",
     "seirsIdTap": "SEIRS ID · TẸ FÚN QR",
     "qrHint": "Fi èyí hàn ní ilé-ìtajà alábàáṣiṣẹ́pọ̀ àti nígbà ìfilọ́wọ́."
+  },
+  "auto": {
+    "index": {
+      "stories": "Àwọn Ìtàn",
+      "alerts": "Ìkìlọ̀",
+      "quickActions": "Àwọn Iṣẹ́ Kíákíá",
+      "recentDeliveries": "Àwọn Ìfijíṣẹ́ Tuntun",
+      "viewAll": "Wo gbogbo rẹ̀",
+      "noDeliveriesYet": "Kò sí ìfijíṣẹ́ síbẹ̀",
+      "createYourFirstDelivery": "Ṣẹ̀dá ìfijíṣẹ́ àkọ́kọ́ rẹ",
+      "partnerStore": "Ṣọ́ọ̀bù Alábàáṣiṣẹ́pọ̀",
+      "backToBusiness": "Padà sí iṣòwò",
+      "storeCapacity": "Àyè Ṣọ́ọ̀bù",
+      "thisWeekSEarnings": "Owó ọ̀sẹ̀ yìí",
+      "payoutEveryMonday": "Ìsanwó ní gbogbo Mọ́ńdé",
+      "receiveDropOff": "Gba ẹrù tí wọ́n mú wá",
+      "senderWalkingInToDrop": "Olùfiránṣẹ́ ń mú ẹrù wá sí ṣọ́ọ̀bù rẹ",
+      "releaseToRecipient": "Fún olùgbà",
+      "scanAPackageCode": "Ṣàyẹ̀wò kóòdù ẹrù",
+      "markAPackageCollectedBy": "Fi hàn pé a ti gba ẹrù nípa títẹ̀ tàbí ṣíṣàyẹ̀wò kóòdù rẹ̀",
+      "capacity": "Àyè",
+      "storageFees": "Owó ìpamọ́",
+      "sponsored": "Ìpolówó",
+      "recentPackages": "Àwọn ẹrù tuntun",
+      "noPackagesInStoreYet": "Kò sí ẹrù nínú ṣọ́ọ̀bù síbẹ̀"
+    }
   }
 }

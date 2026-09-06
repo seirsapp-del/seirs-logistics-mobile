@@ -33,6 +33,7 @@ import { SOCKET_URL } from '@/constants/config';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
+import { tx } from '@/i18n/tx';
 
 const URGENCY_COLOR: Record<string, string> = {
   economy:  '#16A34A',
@@ -425,7 +426,7 @@ export default function DriverHomeScreen() {
                 <Text style={styles.poolBadgeText}>{activeJobs.length}/{poolCap}</Text>
               </View>
               <View>
-                <Text style={[styles.poolBannerTitle, { color: theme.text }]}>Pool trip active</Text>
+                <Text style={[styles.poolBannerTitle, { color: theme.text }]}>{tx('auto.index.poolTripActive', 'Pool trip active')}</Text>
                 <Text style={[styles.poolBannerSub, { color: theme.textSecond }]}>
                   Tap to view all {activeJobs.length} legs
                 </Text>
@@ -498,9 +499,9 @@ export default function DriverHomeScreen() {
           <View style={styles.bigMapHead}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <MapPin size={16} color="#EF4444" strokeWidth={1.75} />
-              <Text style={[styles.bigMapTitle, { color: theme.text }]}>Demand Hotspots</Text>
+              <Text style={[styles.bigMapTitle, { color: theme.text }]}>{tx('auto.index.demandHotspots', 'Demand Hotspots')}</Text>
             </View>
-            <Text style={[styles.bigMapCta, { color: theme.primary }]}>Open map</Text>
+            <Text style={[styles.bigMapCta, { color: theme.primary }]}>{tx('auto.index.openMap', 'Open map')}</Text>
           </View>
           <View style={[styles.bigMapBox, { backgroundColor: theme.surfaceSecond }]}>
             {driverData ? (
@@ -538,7 +539,7 @@ export default function DriverHomeScreen() {
               </MapView>
             ) : (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={[styles.heatmapPlaceholder, { color: theme.textThird }]}>Go online to see demand around you</Text>
+                <Text style={[styles.heatmapPlaceholder, { color: theme.textThird }]}>{tx('auto.index.goOnlineToSeeDemand', 'Go online to see demand around you')}</Text>
               </View>
             )}
           </View>
@@ -558,7 +559,7 @@ export default function DriverHomeScreen() {
             <View style={styles.widgetIcon}>
               <CheckCircle2 size={18} color={theme.primary} strokeWidth={1.75} />
             </View>
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Done today</Text>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{tx('auto.index.doneToday', 'Done today')}</Text>
             <Text style={[styles.widgetValue, { color: theme.text }]}>{doneToday}</Text>
             <Text style={[styles.widgetSub, { color: theme.textThird }]} numberOfLines={1}>
               {doneToday === 1 ? 'job completed' : 'jobs completed'}
@@ -574,7 +575,7 @@ export default function DriverHomeScreen() {
             <View style={styles.widgetIcon}>
               <Star size={18} color="#FFBE0B" strokeWidth={1.75} />
             </View>
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Rating</Text>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{tx('auto.index.rating', 'Rating')}</Text>
             {/* "New" rather than 0.0: a dash does not frighten a driver who
                 simply has not been rated yet. */}
             <Text style={[styles.widgetValue, { color: ratingCount > 0 && (ratingAvg ?? 0) < 3.5 ? '#EF4444' : theme.text }]}>
@@ -594,7 +595,7 @@ export default function DriverHomeScreen() {
             <View style={styles.widgetIcon}>
               <Users size={18} color={seatReqs > 0 ? theme.primary : theme.textThird} strokeWidth={1.75} />
             </View>
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Requests</Text>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{tx('auto.index.requests', 'Requests')}</Text>
             <Text style={[styles.widgetValue, { color: seatReqs > 0 ? theme.primary : theme.text }]}>{seatReqs}</Text>
             <Text style={[styles.widgetSub, { color: theme.textThird }]} numberOfLines={1}>
               {seatReqs > 0 ? 'waiting on you' : 'for your trips'}
@@ -618,7 +619,7 @@ export default function DriverHomeScreen() {
             <Navigation size={20} color={theme.primary} strokeWidth={1.75} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.interTitle, { color: theme.text }]}>Declare an intercity trip</Text>
+            <Text style={[styles.interTitle, { color: theme.text }]}>{tx('auto.index.declareAnIntercityTrip', 'Declare an intercity trip')}</Text>
             <Text style={[styles.interSub, { color: theme.textThird }]} numberOfLines={1}>
               Sell spare seats and boot space
             </Text>
@@ -629,7 +630,7 @@ export default function DriverHomeScreen() {
         {/* ── Available jobs ────────────────────────────────────────────── */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Available Jobs</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.index.availableJobs', 'Available Jobs')}</Text>
             {isOnline && (
               <View style={[styles.liveDot]}>
                 <View style={[styles.livePulse, { backgroundColor: '#16A34A' }]} />
@@ -641,8 +642,8 @@ export default function DriverHomeScreen() {
           {!isOnline ? (
             <View style={[styles.offlineBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <WifiOff size={32} color={theme.textThird} strokeWidth={1.5} />
-              <Text style={[styles.offlineTitle, { color: theme.text }]}>You're offline</Text>
-              <Text style={[styles.offlineSub, { color: theme.textSecond }]}>Go online to start receiving job requests.</Text>
+              <Text style={[styles.offlineTitle, { color: theme.text }]}>{tx('auto.index.youReOffline', 'You\'re offline')}</Text>
+              <Text style={[styles.offlineSub, { color: theme.textSecond }]}>{tx('auto.index.goOnlineToStartReceiving', 'Go online to start receiving job requests.')}</Text>
             </View>
           ) : loading ? (
             <ActivityIndicator color={theme.primary} style={{ marginTop: Spacing.lg }} />
@@ -669,7 +670,7 @@ export default function DriverHomeScreen() {
           ) : pendingJobs.length === 0 ? (
             <View style={[styles.emptyBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Package size={32} color={theme.textThird} strokeWidth={1.5} />
-              <Text style={[styles.emptyText, { color: theme.textSecond }]}>No jobs nearby. Stay online: new requests come in frequently.</Text>
+              <Text style={[styles.emptyText, { color: theme.textSecond }]}>{tx('auto.index.noJobsNearbyStayOnline', 'No jobs nearby. Stay online: new requests come in frequently.')}</Text>
             </View>
           ) : (
             pendingJobs.map(job => (
@@ -726,7 +727,7 @@ export default function DriverHomeScreen() {
                   )}
                 </View>
                 <View style={styles.jobRight}>
-                  <Text style={[styles.earnLabel, { color: theme.textThird }]}>You earn</Text>
+                  <Text style={[styles.earnLabel, { color: theme.textThird }]}>{tx('auto.index.youEarn', 'You earn')}</Text>
                   <Text style={[styles.jobFare, { color: theme.primary }]}>{naira(job.youEarnNgn ?? job.driverEarnings ?? 0)}</Text>
                   {/*
                     Two distances, named. This showed one unlabelled number

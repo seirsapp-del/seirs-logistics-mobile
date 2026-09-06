@@ -37,6 +37,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { deliveriesApi, configApi, driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
+import { tx } from '@/i18n/tx';
 
 /* The same input filters the Send wizard uses. Typed on a phone, a
    decimal field will happily take "3Chidinma" unless something stops
@@ -258,7 +259,7 @@ export default function EditBooking() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Edit booking</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.id.editBooking', 'Edit booking')}</Text>
         <View style={styles.backBtn} />
       </View>
 
@@ -422,7 +423,7 @@ export default function EditBooking() {
           >
             {saving
               ? <ActivityIndicator color="#fff" size="small" />
-              : (<><Save size={18} color="#fff" /><Text style={styles.saveText}>Save changes</Text></>)}
+              : (<><Save size={18} color="#fff" /><Text style={styles.saveText}>{tx('auto.id.saveChanges', 'Save changes')}</Text></>)}
           </Pressable>
 
         </ScrollView>

@@ -24,6 +24,7 @@ import { pickDocument, canAttachFiles } from '@/utils/documentPicker';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { userVerificationApi, uploadApi, type IdentityDocType } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 /**
  * Customer identity verification. Optional trust-tier upgrade.
@@ -203,7 +204,7 @@ export default function VerifyIdentityScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Verify Identity</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.verifyIdentity.verifyIdentity', 'Verify Identity')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -223,7 +224,7 @@ export default function VerifyIdentityScreen() {
             <>
               {/* Benefits card: always show */}
               <View style={[styles.benefitsCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                <Text style={[styles.benefitsTitle, { color: theme.text }]}>Why verify?</Text>
+                <Text style={[styles.benefitsTitle, { color: theme.text }]}>{tx('auto.verifyIdentity.whyVerify', 'Why verify?')}</Text>
                 {/* Was a five-item tick list. Four of the five were not true:
                     nothing keyed higher limits, insurance or support priority
                     to identityVerifiedAt, and the interstate gate exists but
@@ -250,7 +251,7 @@ export default function VerifyIdentityScreen() {
                 <View style={{ backgroundColor: theme.error + (isDark ? '22' : '14'), borderColor: theme.error + '40', borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 6 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <XCircle size={16} color={theme.error} />
-                    <Text style={{ color: theme.error, fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Previous submission rejected</Text>
+                    <Text style={{ color: theme.error, fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>{tx('auto.verifyIdentity.previousSubmissionRejected', 'Previous submission rejected')}</Text>
                   </View>
                   <Text style={{ color: theme.text, fontSize: FontSize.xs, lineHeight: 18 }}>{status.latest.rejectionReason}</Text>
                   <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginTop: 2 }}>
@@ -264,7 +265,7 @@ export default function VerifyIdentityScreen() {
                 <View style={{ backgroundColor: theme.error + (isDark ? '22' : '14'), borderColor: theme.error + '40', borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 6 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <XCircle size={16} color={theme.error} />
-                    <Text style={{ color: theme.error, fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Verification revoked</Text>
+                    <Text style={{ color: theme.error, fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>{tx('auto.verifyIdentity.verificationRevoked', 'Verification revoked')}</Text>
                   </View>
                   {status?.latest?.revokedReason ? (
                     <Text style={{ color: theme.text, fontSize: FontSize.xs, lineHeight: 18 }}>{status.latest.revokedReason}</Text>
@@ -284,7 +285,7 @@ export default function VerifyIdentityScreen() {
                 <View style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 6 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Clock size={16} color="#92400E" />
-                    <Text style={{ color: '#92400E', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Your ID has expired</Text>
+                    <Text style={{ color: '#92400E', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>{tx('auto.verifyIdentity.yourIdHasExpired', 'Your ID has expired')}</Text>
                   </View>
                   <Text style={{ color: '#92400E', fontSize: FontSize.xs, lineHeight: 18 }}>
                     Verified status has been paused. Submit a current, unexpired ID below to restore it.
@@ -392,7 +393,7 @@ export default function VerifyIdentityScreen() {
                     {submitting ? <ActivityIndicator color="#fff" /> : (
                       <>
                         <ShieldCheck size={16} color="#fff" />
-                        <Text style={styles.primaryBtnText}>Submit for review</Text>
+                        <Text style={styles.primaryBtnText}>{tx('auto.verifyIdentity.submitForReview', 'Submit for review')}</Text>
                       </>
                     )}
                   </Pressable>
@@ -467,7 +468,7 @@ function VerifiedCard({ theme, verifiedAt, docType }: any) {
       <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#16A34A', alignItems: 'center', justifyContent: 'center' }}>
         <ShieldCheck size={28} color="#fff" />
       </View>
-      <Text style={{ color: '#14532D', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>You’re verified</Text>
+      <Text style={{ color: '#14532D', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>{tx('auto.verifyIdentity.youReVerified', 'You’re verified')}</Text>
       <Text style={{ color: '#14532D', fontSize: FontSize.sm, textAlign: 'center' }}>
         Verified on {new Date(verifiedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })} using your {label}.
       </Text>
@@ -485,7 +486,7 @@ function PendingCard({ theme, submittedAt }: any) {
       <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#F59E0B', alignItems: 'center', justifyContent: 'center' }}>
         <Clock size={28} color="#fff" />
       </View>
-      <Text style={{ color: '#92400E', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>Under review</Text>
+      <Text style={{ color: '#92400E', fontWeight: FontWeight.bold, fontSize: FontSize.lg }}>{tx('auto.verifyIdentity.underReview', 'Under review')}</Text>
       <Text style={{ color: '#92400E', fontSize: FontSize.sm, textAlign: 'center' }}>
         Submitted {hoursAgo === 0 ? 'just now' : `${hoursAgo} hour${hoursAgo === 1 ? '' : 's'} ago`}. Reviews take up to 3 business days.
       </Text>
@@ -512,7 +513,7 @@ function UploadRow({ theme, url, busy, hint, onPress }: any) {
           {pdf ? (
             <View style={{ width: '100%', height: 220, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.surface }}>
               <FileText size={38} color={theme.primary} />
-              <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>PDF attached</Text>
+              <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>{tx('auto.verifyIdentity.pdfAttached', 'PDF attached')}</Text>
             </View>
           ) : (
             <Image source={{ uri: url }} style={{ width: '100%', height: 220 }} resizeMode="cover" />
@@ -522,7 +523,7 @@ function UploadRow({ theme, url, busy, hint, onPress }: any) {
             style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 4 }}
           >
             <RefreshCw size={12} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>Replace</Text>
+            <Text style={{ color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>{tx('auto.verifyIdentity.replace', 'Replace')}</Text>
           </Pressable>
         </View>
       ) : (

@@ -28,6 +28,7 @@ import { partnerApi, statementsApi } from '@/services/api';
 import type { PartnerStatement } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { naira as nairaFmt } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 type PresetKey = 'this_month' | 'last_month' | 'last_2_months' | 'last_90';
 
@@ -140,7 +141,7 @@ export default function PartnerStatementScreen() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={22} color={colors.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Statement</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{tx('auto.statement.statement', 'Statement')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -206,7 +207,7 @@ export default function PartnerStatementScreen() {
                 </View>
               ))}
               <View style={[styles.runningRow, { borderTopColor: colors.border, backgroundColor: colors.surfaceSecond }]}>
-                <Text style={[styles.runningLabel, { color: colors.textSecond }]}>Running total</Text>
+                <Text style={[styles.runningLabel, { color: colors.textSecond }]}>{tx('auto.statement.runningTotal', 'Running total')}</Text>
                 <Text style={[styles.runningValue, { color: colors.text }]}>
                   {nairaFmt(paid[paid.length - 1]?.runningPaidNgn ?? 0)}
                 </Text>

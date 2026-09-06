@@ -19,6 +19,7 @@ import { deliveriesApi, loyaltyApi, promotionsApi, usersApi } from '@/services/a
 
 import { alertDialog } from '@/components/SeirsDialog';
 import { savePdf } from '@seirs/shared/utils/dataExport';
+import { tx } from '@/i18n/tx';
 
 // The marketing site is the single home for FAQ and the legal documents:
 // it is edited without shipping a release, and it teaches people SEIRS
@@ -322,7 +323,7 @@ export default function ProfileScreen() {
                 {(user as any)?.identityVerifiedAt && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#16A34A18', borderColor: '#16A34A40', borderWidth: 1, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 }}>
                     <Ionicons name="shield-checkmark" size={11} color={isDark ? '#86EFAC' : '#14532D'} />
-                    <Text style={{ color: isDark ? '#86EFAC' : '#14532D', fontSize: 10, fontWeight: '700', letterSpacing: 0.3 }}>Verified</Text>
+                    <Text style={{ color: isDark ? '#86EFAC' : '#14532D', fontSize: 10, fontWeight: '700', letterSpacing: 0.3 }}>{tx('auto.profile.verified', 'Verified')}</Text>
                   </View>
                 )}
               </View>
@@ -482,7 +483,7 @@ export default function ProfileScreen() {
             onPress={() => { /* absorb tap so modal doesn't close when tapping card */ }}
             style={{ backgroundColor: theme.surface, borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center', gap: Spacing.md, width: '100%', maxWidth: 340 }}
           >
-            <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}>Your SEIRS ID</Text>
+            <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}>{tx('auto.profile.yourSeirsId', 'Your SEIRS ID')}</Text>
             <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, textAlign: 'center' }}>
               Show this to a driver or support agent to identify yourself. No personal info is encoded, just your unique account handle.
             </Text>

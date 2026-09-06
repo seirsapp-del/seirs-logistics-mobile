@@ -29,6 +29,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { useAuth } from '@/context/AuthContext';
 import { supportApi, uploadApi, type SupportThreadDTO } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 export default function DriverSupportThreadScreen() {
   const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
@@ -192,7 +193,7 @@ export default function DriverSupportThreadScreen() {
                         <Text style={[styles.docName, { color: theme.text }]} numberOfLines={1}>
                           {decodeURIComponent((attachedUrl!.split('/').pop() ?? 'Document').split('?')[0])}
                         </Text>
-                        <Text style={[styles.docHint, { color: theme.textThird }]}>Tap to open</Text>
+                        <Text style={[styles.docHint, { color: theme.textThird }]}>{tx('auto.ticketId.tapToOpen', 'Tap to open')}</Text>
                       </View>
                     </Pressable>
                   ) : (

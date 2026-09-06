@@ -18,6 +18,7 @@ import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword } from '@seirs/shared';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function ChangePasswordScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Change Password</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.changePassword.changePassword', 'Change Password')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -87,7 +88,7 @@ export default function ChangePasswordScreen() {
             onPress={handleSubmit}
             style={[styles.primaryBtn, { backgroundColor: (current && next && confirm) ? theme.primary : theme.surfaceSecond }]}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Change password</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{tx('auto.changePassword.changePassword2', 'Change password')}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

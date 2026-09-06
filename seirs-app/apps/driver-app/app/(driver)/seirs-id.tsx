@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §1.17: driver presents this screen at handoff so the partner
 // staff or recipient can scan the QR (or read the alphanumeric backup
@@ -49,7 +50,7 @@ export default function SeirsIdScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} strokeWidth={1.75} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>My SEIRS ID</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.seirsId.mySeirsId', 'My SEIRS ID')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -92,7 +93,7 @@ export default function SeirsIdScreen() {
 
         {/* How it works */}
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.howTitle, { color: theme.text }]}>How handoff verification works</Text>
+          <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.seirsId.howHandoffVerificationWorks', 'How handoff verification works')}</Text>
           {[
             { step: '1', text: 'Partner staff scans the QR (or types the code) at pickup.' },
             { step: '2', text: 'They see your registered name on their screen.' },
@@ -107,7 +108,7 @@ export default function SeirsIdScreen() {
         {/* Where a driver actually uses it (founder 2026-08-22: each
             app explains ITS OWN uses, like the customer screen). */}
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.howTitle, { color: theme.text }]}>Where you'll use it</Text>
+          <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.seirsId.whereYouLlUseIt', 'Where you\'ll use it')}</Text>
           {[
             'Collecting from a partner counter: staff scan this before releasing packages to you.',
             'At a pickup, the sender can scan it to confirm you are the driver SEIRS assigned.',
@@ -136,7 +137,7 @@ export default function SeirsIdScreen() {
         >
           <View style={styles.alertRow}>
             <AlertTriangle size={16} color="#92400E" strokeWidth={1.75} />
-            <Text style={styles.alertText}>Keep this code private</Text>
+            <Text style={styles.alertText}>{tx('auto.seirsId.keepThisCodePrivate', 'Keep this code private')}</Text>
           </View>
         </Pressable>
       </ScrollView>

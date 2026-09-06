@@ -15,6 +15,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { deliveriesApi, dropoffApi, identityApi } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §1.17: recipient-side handoff identity surface. Used when the
 // customer is collecting a package (door delivery from driver, or pickup
@@ -217,7 +218,7 @@ export default function RecipientIdScreen() {
 
         {/* How it works */}
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border, marginTop: Spacing.md }]}>
-          <Text style={[styles.howTitle, { color: theme.text }]}>Two ways to verify</Text>
+          <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.recipientId.twoWaysToVerify', 'Two ways to verify')}</Text>
 
           <View style={styles.howSection}>
             <Text style={[styles.howMethod, { color: theme.primary }]}>1. Physical ID + Email Code</Text>

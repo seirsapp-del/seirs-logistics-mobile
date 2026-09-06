@@ -10,6 +10,7 @@ import { TERMS_URL } from '@/constants/config';
 import { tint } from '@/constants/tint';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 /**
  * Recurring runs.
@@ -148,7 +149,7 @@ export default function RecurringScreen() {
         <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.surfaceSecond }]}>
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>Recurring Deliveries</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{tx('auto.recurring.recurringDeliveries', 'Recurring Deliveries')}</Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -160,7 +161,7 @@ export default function RecurringScreen() {
           <View style={styles.heroIcon}>
             <Icon name="Repeat" size={20} color="#fff" />
           </View>
-          <Text style={styles.heroTitle}>Repeat a run without repeating the typing</Text>
+          <Text style={styles.heroTitle}>{tx('auto.recurring.repeatARunWithoutRepeating', 'Repeat a run without repeating the typing')}</Text>
           <Text style={styles.heroSub}>
             Pick a past delivery and a schedule. {leadWords(leadMin)[0].toUpperCase() + leadWords(leadMin).slice(1)} before
             each pickup we create the run at that day's price, mark it Awaiting payment and tell you. You pay through
@@ -180,7 +181,7 @@ export default function RecurringScreen() {
         ) : templates.length === 0 ? (
           <View style={styles.empty}>
             <Icon name="Calendar" size={36} color={colors.textThird} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No schedules yet</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{tx('auto.recurring.noSchedulesYet', 'No schedules yet')}</Text>
             <Text style={[styles.emptySub, { color: colors.textSecond }]}>
               Start from any past delivery. Monday refills, month-end runs, the daily drop to a client.
             </Text>
@@ -203,7 +204,7 @@ export default function RecurringScreen() {
                         Next run {fmtNext(t.nextRunAt)} · we ask you to pay from {fmtTime(askAt)}
                       </Text>
                     ) : (
-                      <Text style={[styles.templateMeta, { color: colors.textThird }]}>Paused</Text>
+                      <Text style={[styles.templateMeta, { color: colors.textThird }]}>{tx('auto.recurring.paused', 'Paused')}</Text>
                     )}
                     <Text style={[styles.templateMeta, { color: colors.textThird }]}>
                       {t.fireCount} run{t.fireCount === 1 ? '' : 's'} created so far
@@ -222,7 +223,7 @@ export default function RecurringScreen() {
                 </View>
                 <Pressable onPress={() => remove(t)} style={styles.deleteRow}>
                   <Icon name="Trash2" size={13} color="#DC2626" />
-                  <Text style={styles.deleteText}>Delete schedule</Text>
+                  <Text style={styles.deleteText}>{tx('auto.recurring.deleteSchedule', 'Delete schedule')}</Text>
                 </Pressable>
               </View>
             );
@@ -234,7 +235,7 @@ export default function RecurringScreen() {
           onPress={() => setShowCreate(true)}
         >
           <Icon name="Plus" size={16} color={colors.accent} />
-          <Text style={[styles.addBtnText, { color: colors.accent }]}>New schedule from a past delivery</Text>
+          <Text style={[styles.addBtnText, { color: colors.accent }]}>{tx('auto.recurring.newScheduleFromAPast', 'New schedule from a past delivery')}</Text>
         </Pressable>
       </ScrollView>
 
@@ -362,7 +363,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={[styles.header, { paddingTop: 16, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <Pressable onPress={onClose} hitSlop={8}><Icon name="X" size={22} color={colors.text} /></Pressable>
-          <Text style={[styles.title, { color: colors.text }]}>New schedule</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{tx('auto.recurring.newSchedule', 'New schedule')}</Text>
           <View style={{ width: 22 }} />
         </View>
 
@@ -506,7 +507,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
             </View>
             <Text style={[styles.agreeText, { color: colors.text }]}>
               I agree to the SEIRS Terms of Service. Each run is priced on the day and I pay it before pickup.{' '}
-              <Text onPress={() => Linking.openURL(TERMS_URL).catch(() => {})} style={{ color: colors.primary, fontWeight: '600' }}>Read them</Text>
+              <Text onPress={() => Linking.openURL(TERMS_URL).catch(() => {})} style={{ color: colors.primary, fontWeight: '600' }}>{tx('auto.recurring.readThem', 'Read them')}</Text>
             </Text>
           </Pressable>
         </ScrollView>
@@ -521,7 +522,7 @@ function CreateTemplateModal({ visible, leadMin, onClose, onCreated }: {
             {saving ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Icon name="Check" size={16} color="#fff" />
-                <Text style={styles.submitText}>Save schedule</Text>
+                <Text style={styles.submitText}>{tx('auto.recurring.saveSchedule', 'Save schedule')}</Text>
               </>
             )}
           </Pressable>

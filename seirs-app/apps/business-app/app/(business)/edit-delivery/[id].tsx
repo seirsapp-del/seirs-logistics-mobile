@@ -30,6 +30,7 @@ import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { businessApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 const onlyDigits = (v: string) => v.replace(/[^0-9+]/g, '');
 const onlyName   = (v: string) => v.replace(/[^\p{L} .'\-]/gu, '');
@@ -133,7 +134,7 @@ export default function EditDelivery() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Icon name="ArrowLeft" size={22} color={colors.text} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>Edit order</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{tx('auto.id.editOrder', 'Edit order')}</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -160,7 +161,7 @@ export default function EditDelivery() {
               />
 
               <View style={styles.field}>
-                <Text style={[styles.label, { color: colors.textSecond }]}>Receiver name</Text>
+                <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.id.receiverName', 'Receiver name')}</Text>
                 <TextInput
                   value={name}
                   onChangeText={v => setName(onlyName(v))}
@@ -171,7 +172,7 @@ export default function EditDelivery() {
               </View>
 
               <View style={styles.field}>
-                <Text style={[styles.label, { color: colors.textSecond }]}>Receiver phone</Text>
+                <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.id.receiverPhone', 'Receiver phone')}</Text>
                 <TextInput
                   value={phone}
                   onChangeText={v => setPhone(onlyDigits(v))}
@@ -185,7 +186,7 @@ export default function EditDelivery() {
           )}
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: colors.textSecond }]}>Instructions for the driver</Text>
+            <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.id.instructionsForTheDriver', 'Instructions for the driver')}</Text>
             <TextInput
               value={instructions}
               onChangeText={setInstructions}
@@ -205,7 +206,7 @@ export default function EditDelivery() {
           >
             {saving
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={styles.saveText}>Save changes</Text>}
+              : <Text style={styles.saveText}>{tx('auto.id.saveChanges', 'Save changes')}</Text>}
           </Pressable>
 
         </ScrollView>

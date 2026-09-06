@@ -26,6 +26,7 @@ import { driversApi, earningsApi, notificationsApi, usersApi } from '@/services/
 import { naira, nairaShort } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { savePdf } from '@seirs/shared/utils/dataExport';
+import { tx } from '@/i18n/tx';
 
 // The marketing site is the single home for FAQ and the legal documents:
 // it is edited without shipping a release, and it teaches people SEIRS
@@ -271,7 +272,7 @@ export default function DriverProfileScreen() {
         <View style={styles.pageHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <HamburgerButton />
-            <Text style={[styles.pageTitle, { color: theme.text }]}>Profile</Text>
+            <Text style={[styles.pageTitle, { color: theme.text }]}>{tx('auto.profile.profile', 'Profile')}</Text>
           </View>
           <Pressable
             style={[styles.notifBtn, { backgroundColor: theme.surfaceSecond }]}
@@ -317,7 +318,7 @@ export default function DriverProfileScreen() {
                 {(user as any)?.identityVerifiedAt && (
                   <View style={[styles.approvedBadge, { backgroundColor: '#22C55E18' }]}>
                     <Ionicons name="shield-checkmark" size={11} color="#22C55E" />
-                    <Text style={[styles.approvedText, { color: '#22C55E' }]}>ID Verified</Text>
+                    <Text style={[styles.approvedText, { color: '#22C55E' }]}>{tx('auto.profile.idVerified', 'ID Verified')}</Text>
                   </View>
                 )}
               </View>
@@ -336,7 +337,7 @@ export default function DriverProfileScreen() {
             >
               <Ionicons name="camera-outline" size={18} color="#B45309" />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.photoPromptTitle, { color: theme.text }]}>Add your photo</Text>
+                <Text style={[styles.photoPromptTitle, { color: theme.text }]}>{tx('auto.profile.addYourPhoto', 'Add your photo')}</Text>
                 <Text style={[styles.photoPromptBody, { color: theme.textSecond }]}>
                   Customers check your face before handing over a package. A clear photo gets you accepted faster.
                 </Text>
@@ -390,12 +391,12 @@ export default function DriverProfileScreen() {
           onPress={() => router.push('/(driver)/withdrawal')}
         >
           <View>
-            <Text style={[styles.balLabel, { color: theme.textSecond }]}>Withdrawable Balance</Text>
+            <Text style={[styles.balLabel, { color: theme.textSecond }]}>{tx('auto.profile.withdrawableBalance', 'Withdrawable Balance')}</Text>
             <Text style={[styles.balAmount, { color: theme.text }]}>{naira(available)}</Text>
           </View>
           <View style={[styles.withdrawQuick, { backgroundColor: theme.primary }]}>
             <Ionicons name="arrow-up-circle-outline" size={16} color="#fff" />
-            <Text style={styles.withdrawQuickText}>Withdraw</Text>
+            <Text style={styles.withdrawQuickText}>{tx('auto.profile.withdraw', 'Withdraw')}</Text>
           </View>
         </Pressable>
 
@@ -443,14 +444,14 @@ export default function DriverProfileScreen() {
           </View>
         ))}
 
-        <Text style={[styles.version, { color: theme.textThird }]}>Seirs Driver v1.0.0</Text>
+        <Text style={[styles.version, { color: theme.textThird }]}>{tx('auto.profile.seirsDriverV100', 'Seirs Driver v1.0.0')}</Text>
 
         <Pressable
           style={[styles.logoutBtn, { backgroundColor: theme.error + '12', borderColor: theme.error + '30' }]}
           onPress={handleLogout}
         >
           <Ionicons name="log-out-outline" size={20} color={theme.error} />
-          <Text style={[styles.logoutText, { color: theme.error }]}>Sign Out</Text>
+          <Text style={[styles.logoutText, { color: theme.error }]}>{tx('auto.profile.signOut', 'Sign Out')}</Text>
         </Pressable>
 
         <View style={{ height: Spacing.xl }} />
@@ -472,7 +473,7 @@ export default function DriverProfileScreen() {
             onPress={() => { /* absorb tap so modal doesn't close when tapping card */ }}
             style={{ backgroundColor: theme.surface, borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center', gap: Spacing.md, width: '100%', maxWidth: 340 }}
           >
-            <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}>Your SEIRS ID</Text>
+            <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}>{tx('auto.profile.yourSeirsId', 'Your SEIRS ID')}</Text>
             <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, textAlign: 'center' }}>
               Show this to a customer at handoff to prove you are the assigned driver.
             </Text>

@@ -11,6 +11,7 @@ import { Icon } from '@/components/Icon';
 import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 /**
  * Brought in line with the customer app (founder direction 2026-09-01).
@@ -213,7 +214,7 @@ export default function OnboardingScreen() {
           style={[styles.primaryBtn, { backgroundColor: '#0F2B4C' }]}
           onPress={() => router.push('/(auth)/register' as any)}
         >
-          <Text style={styles.primaryBtnText}>Create an Account</Text>
+          <Text style={styles.primaryBtnText}>{tx('auto.onboarding.createAnAccount', 'Create an Account')}</Text>
           <Icon name="ChevronRight" size={18} color="#FFFFFF" strokeWidth={2.5} />
         </Pressable>
 

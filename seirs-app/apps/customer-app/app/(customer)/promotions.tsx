@@ -12,6 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { promotionsApi, type PromoDTO } from '@/services/api';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 // Render the discount value as a chip label per promo type.
 function promoLabel(p: PromoDTO): string {
@@ -97,7 +98,7 @@ export default function PromotionsScreen() {
                 <Text style={styles.bannerTitle}>{t('promotions2.bannerTitle')}</Text>
                 <Text style={styles.bannerDesc}>{t('promotions2.bannerDesc')}</Text>
                 <Pressable style={styles.bannerBtn} onPress={() => router.push('/(customer)/promo')}>
-                  <Text style={styles.bannerBtnText}>Apply Code</Text>
+                  <Text style={styles.bannerBtnText}>{tx('auto.promotions.applyCode', 'Apply Code')}</Text>
                   <Ionicons name="arrow-forward" size={14} color="#3A7BD5" />
                 </Pressable>
               </View>

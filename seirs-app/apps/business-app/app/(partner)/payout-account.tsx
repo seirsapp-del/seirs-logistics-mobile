@@ -28,6 +28,7 @@ import { Icon } from '@/components/Icon';
 import { partnerApi, paymentsApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 type Bank = { id: string; name: string; code: string };
 
@@ -110,7 +111,7 @@ export default function PayoutAccountScreen() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={22} color={colors.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Payout account</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{tx('auto.payoutAccount.payoutAccount', 'Payout account')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -178,7 +179,7 @@ export default function PayoutAccountScreen() {
                 {current?.hasAccount ? 'NEW ACCOUNT' : 'ADD YOUR ACCOUNT'}
               </Text>
 
-              <Text style={[styles.fieldLabel, { color: colors.textSecond }]}>Your bank</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSecond }]}>{tx('auto.payoutAccount.yourBank', 'Your bank')}</Text>
               {bank ? (
                 <Pressable
                   onPress={() => { setBank(null); setQuery(''); }}
@@ -252,7 +253,7 @@ export default function PayoutAccountScreen() {
 
               {current?.hasAccount && (
                 <Pressable onPress={() => { setEditing(false); setBank(null); setNumber(''); }} style={styles.cancel}>
-                  <Text style={[styles.cancelText, { color: colors.textSecond }]}>Cancel</Text>
+                  <Text style={[styles.cancelText, { color: colors.textSecond }]}>{tx('auto.payoutAccount.cancel', 'Cancel')}</Text>
                 </Pressable>
               )}
             </View>

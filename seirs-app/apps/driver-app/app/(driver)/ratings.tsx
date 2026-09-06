@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { driversApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 const RATING_THRESHOLD = 3.5;
 
@@ -72,7 +73,7 @@ export default function DriverRatingsScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} strokeWidth={1.75} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>My Ratings</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.ratings.myRatings', 'My Ratings')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -83,7 +84,7 @@ export default function DriverRatingsScreen() {
           <View style={[styles.warnBanner, { backgroundColor: '#EF444415', borderColor: '#EF444440' }]}>
             <AlertTriangle size={20} color="#EF4444" strokeWidth={1.75} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.warnTitle, { color: '#EF4444' }]}>Rating below minimum threshold</Text>
+              <Text style={[styles.warnTitle, { color: '#EF4444' }]}>{tx('auto.ratings.ratingBelowMinimumThreshold', 'Rating below minimum threshold')}</Text>
               <Text style={[styles.warnBody, { color: theme.textSecond }]}>
                 Your average ({average.toFixed(1)}) is below {RATING_THRESHOLD}. Sustained low ratings may result in
                 account review. See tips below to improve.
@@ -112,7 +113,7 @@ export default function DriverRatingsScreen() {
 
         {/* Breakdown */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Breakdown</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.ratings.breakdown', 'Breakdown')}</Text>
           {breakdown.map(row => (
             <View key={row.stars} style={styles.barRow}>
               <View style={styles.barStarLabel}>
@@ -128,7 +129,7 @@ export default function DriverRatingsScreen() {
         </View>
 
         {/* Recent reviews */}
-        {recent.length > 0 && <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Reviews</Text>}
+        {recent.length > 0 && <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.ratings.recentReviews', 'Recent Reviews')}</Text>}
         {recent.map(r => (
           <View key={r.id} style={[styles.reviewCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
             <View style={styles.reviewTop}>
@@ -162,7 +163,7 @@ export default function DriverRatingsScreen() {
         }]}>
           <Lightbulb size={20} color={theme.primary} strokeWidth={1.75} />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.tipsTitle, { color: theme.text }]}>Tips to improve your rating</Text>
+            <Text style={[styles.tipsTitle, { color: theme.text }]}>{tx('auto.ratings.tipsToImproveYourRating', 'Tips to improve your rating')}</Text>
             {TIPS.map(t => (
               <View key={t} style={styles.tipRow}>
                 <CheckCircle size={14} color="#16A34A" strokeWidth={1.75} />

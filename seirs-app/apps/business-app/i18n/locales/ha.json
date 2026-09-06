@@ -354,5 +354,31 @@
     "support": "Tallafi",
     "seirsIdTap": "SEIRS ID · DANNA DON QR",
     "qrHint": "Nuna wannan a kantunan abokan haɗin gwiwa da lokacin mikawa."
+  },
+  "auto": {
+    "index": {
+      "stories": "Labarai",
+      "alerts": "Sanarwa",
+      "quickActions": "Ayyuka masu sauri",
+      "recentDeliveries": "Isarwar kwanan nan",
+      "viewAll": "Duba duka",
+      "noDeliveriesYet": "Babu isarwa tukuna",
+      "createYourFirstDelivery": "Ƙirƙiri isarwarka ta farko",
+      "partnerStore": "Shagon abokin hulɗa",
+      "backToBusiness": "Koma ga kasuwanci",
+      "storeCapacity": "Ƙarfin shago",
+      "thisWeekSEarnings": "Kuɗin shigar wannan mako",
+      "payoutEveryMonday": "Ana biya kowace Litinin",
+      "receiveDropOff": "Karɓi kaya",
+      "senderWalkingInToDrop": "Mai aikawa yana zuwa ajiye kaya a shagonka",
+      "releaseToRecipient": "Mika wa mai karɓa",
+      "scanAPackageCode": "Duba lambar kaya",
+      "markAPackageCollectedBy": "Nuna an karɓi kaya ta buga ko duba lambarsa",
+      "capacity": "Ƙarfi",
+      "storageFees": "Kuɗin ajiya",
+      "sponsored": "Tallace",
+      "recentPackages": "Kayan kwanan nan",
+      "noPackagesInStoreYet": "Babu kaya a shago tukuna"
+    }
   }
 }

@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useColors, useTheme } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 type DayId = typeof DAYS[number];
 
@@ -206,15 +207,15 @@ export default function PartnerSettingsScreen() {
         backgroundColor: colors.surface,
         borderBottomColor: colors.border,
       }]}>
-        <Text style={[styles.heading, { color: colors.text }]}>Store Settings</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>{tx('auto.settings.storeSettings', 'Store Settings')}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
 
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Store Information</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>{tx('auto.settings.storeInformation', 'Store Information')}</Text>
 
-          <Text style={[styles.label, { color: colors.textSecond }]}>Store Name</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.settings.storeName', 'Store Name')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             value={settings.storeName}
@@ -239,7 +240,7 @@ export default function PartnerSettingsScreen() {
             onPress={() => setNameAsk(true)}
           >
             <Icon name="MessageSquare" size={16} color={colors.primary} strokeWidth={1.75} />
-            <Text style={[styles.moveBtnText, { color: colors.primary }]}>Ask to change the shop name</Text>
+            <Text style={[styles.moveBtnText, { color: colors.primary }]}>{tx('auto.settings.askToChangeTheShop', 'Ask to change the shop name')}</Text>
           </Pressable>
 
           {/* The address is READ-ONLY, and moving is a request.
@@ -257,7 +258,7 @@ export default function PartnerSettingsScreen() {
               vehicle change works: a request, reviewed by a person, with
               the new photos attached, and the live address untouched until
               it is approved. */}
-          <Text style={[styles.label, { color: colors.textSecond }]}>Store Address</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.settings.storeAddress', 'Store Address')}</Text>
           <View style={[styles.readonlyBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <Text style={[styles.readonlyText, { color: colors.text }]}>
               {settings.storeAddress || 'No address on file'}
@@ -268,7 +269,7 @@ export default function PartnerSettingsScreen() {
             onPress={() => router.push('/(partner)/move' as any)}
           >
             <Icon name="MapPin" size={16} color={colors.primary} strokeWidth={1.75} />
-            <Text style={[styles.moveBtnText, { color: colors.primary }]}>Moving to a new shop?</Text>
+            <Text style={[styles.moveBtnText, { color: colors.primary }]}>{tx('auto.settings.movingToANewShop', 'Moving to a new shop?')}</Text>
           </Pressable>
           {/* Says what actually happens, which it did not.
 
@@ -289,7 +290,7 @@ export default function PartnerSettingsScreen() {
             handing back anything you are already holding.
           </Text>
 
-          <Text style={[styles.label, { color: colors.textSecond }]}>Phone Number</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>{tx('auto.settings.phoneNumber', 'Phone Number')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             value={settings.phone}
@@ -329,7 +330,7 @@ export default function PartnerSettingsScreen() {
             of asking: a partner who shuts quietly while holding somebody
             else's package is the failure this exists to catch. */}
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Opening Hours</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>{tx('auto.settings.openingHours', 'Opening Hours')}</Text>
 
           {!hours ? (
             <>
@@ -352,7 +353,7 @@ export default function PartnerSettingsScreen() {
                 ])) as Record<DayId, DaySchedule>)}
               >
                 <Icon name="Clock" size={16} color={colors.primary} strokeWidth={1.75} />
-                <Text style={[styles.setHoursBtnText, { color: colors.primary }]}>Set your opening hours</Text>
+                <Text style={[styles.setHoursBtnText, { color: colors.primary }]}>{tx('auto.settings.setYourOpeningHours', 'Set your opening hours')}</Text>
               </Pressable>
             </>
           ) : (
@@ -392,7 +393,7 @@ export default function PartnerSettingsScreen() {
                       </Pressable>
                     </View>
                   ) : (
-                    <Text style={[styles.closedText, { color: colors.textThird }]}>Closed</Text>
+                    <Text style={[styles.closedText, { color: colors.textThird }]}>{tx('auto.settings.closed', 'Closed')}</Text>
                   )}
                 </View>
               ))}
@@ -416,13 +417,13 @@ export default function PartnerSettingsScreen() {
               style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={(e) => e.stopPropagation()}
             >
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Ask to change the shop name</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{tx('auto.settings.askToChangeTheShop', 'Ask to change the shop name')}</Text>
               <Text style={[styles.hoursHint, { color: colors.textSecond, marginTop: 0 }]}>
                 Our team checks it first, so customers keep seeing the name we approved. Nothing
                 changes until they say so.
               </Text>
 
-              <Text style={[styles.label, { color: colors.textSecond, marginTop: 12 }]}>New name</Text>
+              <Text style={[styles.label, { color: colors.textSecond, marginTop: 12 }]}>{tx('auto.settings.newName', 'New name')}</Text>
               <TextInput
                 style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                 value={wantedName}
@@ -431,7 +432,7 @@ export default function PartnerSettingsScreen() {
                 placeholderTextColor={colors.textThird}
               />
 
-              <Text style={[styles.label, { color: colors.textSecond, marginTop: 10 }]}>Why is it changing?</Text>
+              <Text style={[styles.label, { color: colors.textSecond, marginTop: 10 }]}>{tx('auto.settings.whyIsItChanging', 'Why is it changing?')}</Text>
               <TextInput
                 style={[styles.input, styles.multiline, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                 value={whyName}
@@ -504,10 +505,10 @@ export default function PartnerSettingsScreen() {
             them. The notify* fields stay on StoreSettings so the saved
             record round-trips unchanged. */}
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Notifications</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>{tx('auto.settings.notifications', 'Notifications')}</Text>
           <View style={[styles.notifRow, { borderTopColor: colors.border }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.notifLabel, { color: colors.text }]}>Every store alert is on</Text>
+              <Text style={[styles.notifLabel, { color: colors.text }]}>{tx('auto.settings.everyStoreAlertIsOn', 'Every store alert is on')}</Text>
               <Text style={[styles.notifSub, { color: colors.textThird }]}>
                 Package arrivals, pickups and payouts all reach you. There is nothing to switch off yet.
               </Text>
@@ -516,7 +517,7 @@ export default function PartnerSettingsScreen() {
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Account</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>{tx('auto.settings.account', 'Account')}</Text>
           {/**
             * The SHOP, not the shopkeeper (founder, 2026-09-03).
             *
@@ -579,7 +580,7 @@ export default function PartnerSettingsScreen() {
             onPress={() => router.push('/(partner)/payout-account' as any)}
           >
             <Icon name="Banknote" size={16} color={colors.textSecond} />
-            <Text style={[styles.linkRowText, { color: colors.text }]}>Payout account</Text>
+            <Text style={[styles.linkRowText, { color: colors.text }]}>{tx('auto.settings.payoutAccount', 'Payout account')}</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
           {/* The statement lives here as well as on Payout History
@@ -591,7 +592,7 @@ export default function PartnerSettingsScreen() {
             onPress={() => router.push('/(partner)/statement' as any)}
           >
             <Icon name="Receipt" size={16} color={colors.textSecond} />
-            <Text style={[styles.linkRowText, { color: colors.text }]}>Statement</Text>
+            <Text style={[styles.linkRowText, { color: colors.text }]}>{tx('auto.settings.statement', 'Statement')}</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
           {/* Two rows, because these were one row meaning two things.
@@ -613,7 +614,7 @@ export default function PartnerSettingsScreen() {
             onPress={() => router.push('/(partner)/documents' as any)}
           >
             <Icon name="FileText" size={16} color={colors.textSecond} />
-            <Text style={[styles.linkRowText, { color: colors.text }]}>Documents</Text>
+            <Text style={[styles.linkRowText, { color: colors.text }]}>{tx('auto.settings.documents', 'Documents')}</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
           <Pressable
@@ -621,7 +622,7 @@ export default function PartnerSettingsScreen() {
             onPress={() => router.push('/(partner)/verification' as any)}
           >
             <Icon name="ShieldCheck" size={16} color={colors.textSecond} />
-            <Text style={[styles.linkRowText, { color: colors.text }]}>Store verification</Text>
+            <Text style={[styles.linkRowText, { color: colors.text }]}>{tx('auto.settings.storeVerification', 'Store verification')}</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
           <Pressable
@@ -629,7 +630,7 @@ export default function PartnerSettingsScreen() {
             onPress={() => router.push('/(partner)/language' as any)}
           >
             <Icon name="Globe" size={16} color={colors.textSecond} />
-            <Text style={[styles.linkRowText, { color: colors.text }]}>Language</Text>
+            <Text style={[styles.linkRowText, { color: colors.text }]}>{tx('auto.settings.language', 'Language')}</Text>
             <Icon name="ChevronRight" size={16} color={colors.textThird} />
           </Pressable>
         </View>
@@ -641,7 +642,7 @@ export default function PartnerSettingsScreen() {
         >
           {saving
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.saveBtnText}>Save Changes</Text>}
+            : <Text style={styles.saveBtnText}>{tx('auto.settings.saveChanges', 'Save Changes')}</Text>}
         </Pressable>
 
         {/* Sign out sits under Save Changes rather than inside the account
@@ -656,7 +657,7 @@ export default function PartnerSettingsScreen() {
           onPress={logout}
         >
           <Icon name="LogOut" size={16} color={colors.error} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>Sign Out</Text>
+          <Text style={[styles.logoutText, { color: colors.error }]}>{tx('auto.settings.signOut', 'Sign Out')}</Text>
         </Pressable>
 
         <ClosingSection storeId={user?.partnerStoreId ?? ''} />
@@ -830,7 +831,7 @@ function ClosingSection({ storeId }: { storeId: string }) {
 
   return (
     <View style={styles.closingSection}>
-      <Text style={styles.closingTitle}>Close This Store</Text>
+      <Text style={styles.closingTitle}>{tx('auto.settings.closeThisStore', 'Close This Store')}</Text>
       <Text style={styles.closingSub}>
         Permanently shut down this partner store. You cannot close while packages are still in your custody.
       </Text>

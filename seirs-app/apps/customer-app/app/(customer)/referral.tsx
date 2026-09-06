@@ -14,6 +14,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { loyaltyApi, type ReferralHistoryItem } from '@/services/api';
 import { referralUrl } from '@/constants/config';
+import { tx } from '@/i18n/tx';
 
 // Universal/web fallback link: when the receiver doesn't have the app,
 // the page on seirs.co/r/<code> can show download links and forward
@@ -99,7 +100,7 @@ export default function ReferralScreen() {
           <View style={styles.heroIcon}>
             <Ionicons name="gift" size={36} color="#fff" />
           </View>
-          <Text style={styles.heroTitle}>Invite friends, earn Rewards</Text>
+          <Text style={styles.heroTitle}>{tx('auto.referral.inviteFriendsEarnRewards', 'Invite friends, earn Rewards')}</Text>
           <Text style={styles.heroDesc}>
             You earn {REFERRAL_POINTS} SEIRS Rewards points every time a friend signs up with your code
             and completes their first paid delivery.
@@ -142,7 +143,7 @@ export default function ReferralScreen() {
 
         {/* How it works */}
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.howTitle, { color: theme.text }]}>How it works</Text>
+          <Text style={[styles.howTitle, { color: theme.text }]}>{tx('auto.referral.howItWorks', 'How it works')}</Text>
           {[
             { step: '1', text: 'Share your referral code with friends' },
             { step: '2', text: 'Friend signs up and completes their first delivery' },
@@ -158,7 +159,7 @@ export default function ReferralScreen() {
         </View>
 
         {/* Referral history */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Referral History</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.referral.referralHistory', 'Referral History')}</Text>
 
         {loading ? (
           <View style={{ padding: Spacing.lg, alignItems: 'center' }}>
@@ -167,7 +168,7 @@ export default function ReferralScreen() {
         ) : history.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Ionicons name="people-outline" size={32} color={theme.textThird} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No referrals yet</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.referral.noReferralsYet', 'No referrals yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
               Share your code with a friend. When they sign up and complete their first delivery,
               you both start earning points.
@@ -191,7 +192,7 @@ export default function ReferralScreen() {
                 <Text style={styles.refEarned}>+{(ref.bonusPoints ?? 0).toLocaleString()} pts</Text>
               ) : (
                 <View style={[styles.pendingBadge, { backgroundColor: '#FEF9C3', borderColor: '#FDE68A' }]}>
-                  <Text style={styles.pendingBadgeText}>Pending</Text>
+                  <Text style={styles.pendingBadgeText}>{tx('auto.referral.pending', 'Pending')}</Text>
                 </View>
               )}
             </View>

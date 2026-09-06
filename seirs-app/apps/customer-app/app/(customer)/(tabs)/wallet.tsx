@@ -15,6 +15,7 @@ import {
   Package, Award, ArrowRight,
 } from 'lucide-react-native';
 import { HamburgerButton } from '@/components/HamburgerButton';
+import { tx } from '@/i18n/tx';
 
 /**
  * Rewards tab hub.
@@ -355,7 +356,7 @@ export default function WalletScreen() {
           >
             <View style={styles.heroTopRow}>
               <View>
-                <Text style={styles.balanceLabel}>Total rewards</Text>
+                <Text style={styles.balanceLabel}>{tx('auto.wallet.totalRewards', 'Total rewards')}</Text>
                 <Text style={styles.balanceAmount}>{balance.toLocaleString()}</Text>
                 <Text style={styles.balancePts}>points</Text>
               </View>
@@ -374,11 +375,11 @@ export default function WalletScreen() {
                 <View style={styles.cardActionIcon}>
                   <Gift size={20} color="#FFCE3A" strokeWidth={2} />
                 </View>
-                <Text style={styles.cardActionLabel}>Redeem</Text>
+                <Text style={styles.cardActionLabel}>{tx('auto.wallet.redeem', 'Redeem')}</Text>
               </Pressable>
               <Pressable style={styles.cardActionBtn} onPress={() => router.push('/(customer)/referral' as any)}>
                 <View style={styles.cardActionIcon}><Plus size={20} color="#fff" strokeWidth={2} /></View>
-                <Text style={styles.cardActionLabel}>Earn more</Text>
+                <Text style={styles.cardActionLabel}>{tx('auto.wallet.earnMore', 'Earn more')}</Text>
               </Pressable>
             </View>
           </LinearGradient>
@@ -428,7 +429,7 @@ export default function WalletScreen() {
         {/* Achievements strip */}
         <View style={[styles.section, { paddingHorizontal: Spacing.md }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Achievements</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.wallet.achievements', 'Achievements')}</Text>
             <Text style={[styles.sectionCount, { color: theme.textSecond }]}>
               {earnedCount} of {achievements.length}
             </Text>
@@ -497,7 +498,7 @@ export default function WalletScreen() {
         {/* 1. Am I earning? */}
         <View style={[styles.panel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.panelHead}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Points earned</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.wallet.pointsEarned', 'Points earned')}</Text>
             <View style={[styles.toggle, { borderColor: theme.border }]}>
               {([7, 30] as const).map(n => (
                 <Pressable
@@ -546,7 +547,7 @@ export default function WalletScreen() {
           {range === 30 && (
             <View style={styles.axisRow}>
               <Text style={[styles.barLabel, { color: theme.textThird }]}>{chart.from}</Text>
-              <Text style={[styles.barLabel, { color: theme.textThird }]}>Today</Text>
+              <Text style={[styles.barLabel, { color: theme.textThird }]}>{tx('auto.wallet.today', 'Today')}</Text>
             </View>
           )}
         </View>
@@ -554,10 +555,10 @@ export default function WalletScreen() {
         {/* 2. What have I earned? */}
         <View style={[styles.panel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.panelHead}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent points</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.wallet.recentPoints', 'Recent points')}</Text>
             {history.length > 6 && (
               <Pressable onPress={() => router.push('/(customer)/rewards' as any)} hitSlop={6}>
-                <Text style={[styles.linkText, { color: theme.primary }]}>View all</Text>
+                <Text style={[styles.linkText, { color: theme.primary }]}>{tx('auto.wallet.viewAll', 'View all')}</Text>
               </Pressable>
             )}
           </View>
@@ -595,7 +596,7 @@ export default function WalletScreen() {
 
         {/* 3. What is any of it for? */}
         <View style={[styles.panel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>What your points are for</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.wallet.whatYourPointsAreFor', 'What your points are for')}</Text>
 
           {POINT_USES.map((u, i) => {
             const ready = balance >= u.cost;
@@ -629,7 +630,7 @@ export default function WalletScreen() {
             onPress={() => router.push('/(customer)/rewards' as any)}
             style={[styles.useCta, { borderColor: theme.primary }]}
           >
-            <Text style={[styles.useCtaText, { color: theme.primary }]}>Redeem points</Text>
+            <Text style={[styles.useCtaText, { color: theme.primary }]}>{tx('auto.wallet.redeemPoints', 'Redeem points')}</Text>
             <ArrowRight size={16} color={theme.primary} strokeWidth={2.2} />
           </Pressable>
         </View>
@@ -638,12 +639,12 @@ export default function WalletScreen() {
         {balance === 0 && deliveredCount === 0 && streak === 0 && !promo && (
           <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Zap size={28} color={theme.primary} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>Start earning</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.wallet.startEarning', 'Start earning')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
               Book your first delivery to unlock achievements and start earning SEIRS Rewards points.
             </Text>
             <Pressable onPress={() => router.push('/(customer)/send' as any)} style={[styles.emptyCta, { backgroundColor: theme.primary }]}>
-              <Text style={styles.emptyCtaText}>Book a delivery</Text>
+              <Text style={styles.emptyCtaText}>{tx('auto.wallet.bookADelivery', 'Book a delivery')}</Text>
             </Pressable>
           </View>
         )}

@@ -46,6 +46,7 @@ import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import {
   VehicleOwnershipForm, ownershipProblems, EMPTY_OWNERSHIP, type OwnershipValue,
 } from '@/components/VehicleOwnershipForm';
+import { tx } from '@/i18n/tx';
 
 /**
  * Canonical backend taxonomy, with the names Nigerians actually use.
@@ -364,7 +365,7 @@ export default function VehicleScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>KYC Verification</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.vehicle.kycVerification', 'KYC Verification')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -414,20 +415,20 @@ export default function VehicleScreen() {
               <View style={[styles.pendingCard, { backgroundColor: isDark ? '#D9770622' : '#FFFBEB', borderColor: theme.warning }]}>
                 <View style={styles.pendingHead}>
                   <Ionicons name="hourglass-outline" size={20} color={theme.warning} />
-                  <Text style={[styles.pendingTitle, { color: theme.warning }]}>Change under review</Text>
+                  <Text style={[styles.pendingTitle, { color: theme.warning }]}>{tx('auto.vehicle.changeUnderReview', 'Change under review')}</Text>
                 </View>
                 <Text style={[styles.pendingText, { color: theme.textSecond }]}>
                   Our team has your submission. You keep working with your current vehicle
                   until it is approved, and you will hear back through your support messages.
                 </Text>
                 <View style={[styles.pendingRow, { borderTopColor: theme.border }]}>
-                  <Text style={[styles.pendingKey, { color: theme.textThird }]}>Submitted</Text>
+                  <Text style={[styles.pendingKey, { color: theme.textThird }]}>{tx('auto.vehicle.submitted', 'Submitted')}</Text>
                   <Text style={[styles.pendingVal, { color: theme.text }]}>
                     {new Date(pending.createdAt).toLocaleDateString()}
                   </Text>
                 </View>
                 <View style={[styles.pendingRow, { borderTopColor: theme.border }]}>
-                  <Text style={[styles.pendingKey, { color: theme.textThird }]}>Vehicle</Text>
+                  <Text style={[styles.pendingKey, { color: theme.textThird }]}>{tx('auto.vehicle.vehicle', 'Vehicle')}</Text>
                   <Text style={[styles.pendingVal, { color: theme.text }]}>
                     {[
                       VEHICLE_TYPES.find(v => v.id === pending.vehicleType)?.label ?? pending.vehicleType,
@@ -436,7 +437,7 @@ export default function VehicleScreen() {
                   </Text>
                 </View>
                 <View style={[styles.pendingRow, { borderTopColor: theme.border }]}>
-                  <Text style={[styles.pendingKey, { color: theme.textThird }]}>Owner</Text>
+                  <Text style={[styles.pendingKey, { color: theme.textThird }]}>{tx('auto.vehicle.owner', 'Owner')}</Text>
                   <Text style={[styles.pendingVal, { color: theme.text }]}>
                     {pending.ownership === 'third_party' ? (pending.ownerName ?? 'Someone else') : 'You'}
                   </Text>
@@ -488,7 +489,7 @@ export default function VehicleScreen() {
                   <View style={[styles.rejectCard, { backgroundColor: theme.surface, borderColor: theme.error }]}>
                     <View style={styles.pendingHead}>
                       <Ionicons name="close-circle-outline" size={20} color={theme.error} />
-                      <Text style={[styles.pendingTitle, { color: theme.error }]}>Last request was not approved</Text>
+                      <Text style={[styles.pendingTitle, { color: theme.error }]}>{tx('auto.vehicle.lastRequestWasNotApproved', 'Last request was not approved')}</Text>
                     </View>
                     {faultedLabels.length > 0 ? (
                       <Text style={[styles.pendingText, { color: theme.textSecond }]}>
@@ -529,7 +530,7 @@ export default function VehicleScreen() {
 
                 {/* Vehicle type */}
                 <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-                  <Text style={[styles.cardTitle, { color: theme.text }]}>Vehicle type</Text>
+                  <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.vehicle.vehicleType', 'Vehicle type')}</Text>
                   <View style={styles.typeGrid}>
                     {VEHICLE_TYPES.map(t => {
                       const active = type === t.id;
@@ -559,7 +560,7 @@ export default function VehicleScreen() {
 
                 {/* Vehicle information */}
                 <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-                  <Text style={[styles.cardTitle, { color: theme.text }]}>Vehicle information</Text>
+                  <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.vehicle.vehicleInformation', 'Vehicle information')}</Text>
                   {([
                     { label: 'Plate number', value: plate,  set: setPlate,  placeholder: 'e.g. LND 423 GH', cap: 'characters' as const },
                     { label: 'Make',         value: make,   set: setMake,   placeholder: 'e.g. Bajaj',      cap: 'words' as const },
@@ -584,7 +585,7 @@ export default function VehicleScreen() {
 
                 {/* Photos of the vehicle */}
                 <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-                  <Text style={[styles.cardTitle, { color: theme.text }]}>Photos of the vehicle</Text>
+                  <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.vehicle.photosOfTheVehicle', 'Photos of the vehicle')}</Text>
                   <Text style={[styles.cardHint, { color: theme.textSecond }]}>
                     Fresh photos of the vehicle you are registering now, not the old one.
                   </Text>
@@ -606,7 +607,7 @@ export default function VehicleScreen() {
 
                 {/* Papers */}
                 <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-                  <Text style={[styles.cardTitle, { color: theme.text }]}>Papers</Text>
+                  <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.vehicle.papers', 'Papers')}</Text>
                   {PAPERS.map(p => (
                     <View key={p.key} style={{ gap: 6 }}>
                       <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{p.label}</Text>
@@ -653,7 +654,7 @@ export default function VehicleScreen() {
 
                 {problems.length > 0 && (
                   <View style={[styles.problems, { borderColor: theme.warning, backgroundColor: isDark ? '#D9770622' : '#FFFBEB' }]}>
-                    <Text style={[styles.problemsTitle, { color: theme.warning }]}>Still needed</Text>
+                    <Text style={[styles.problemsTitle, { color: theme.warning }]}>{tx('auto.vehicle.stillNeeded', 'Still needed')}</Text>
                     {problems.map(p => (
                       <Text key={p} style={[styles.problemLine, { color: theme.textSecond }]}>{'•'}  {p}</Text>
                     ))}
@@ -678,7 +679,7 @@ export default function VehicleScreen() {
               >
                 {saving
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={[styles.saveBtnText, { color: canSubmit ? '#fff' : theme.textThird }]}>Submit for review</Text>}
+                  : <Text style={[styles.saveBtnText, { color: canSubmit ? '#fff' : theme.textThird }]}>{tx('auto.vehicle.submitForReview', 'Submit for review')}</Text>}
               </Pressable>
             </View>
           )}

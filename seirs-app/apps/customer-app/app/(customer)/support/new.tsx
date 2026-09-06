@@ -38,6 +38,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Avatar } from '@/components/ui/Avatar';
 import { supportApi, deliveriesApi, type TicketTopic } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 const TOPICS: { key: TicketTopic; label: string; icon: any; hint: string }[] = [
   { key: 'delivery', label: 'Delivery issue',      icon: Package,         hint: 'Package late, missing, damaged, wrong address' },
@@ -174,7 +175,7 @@ export default function NewSupportTicketScreen() {
                     <View style={styles.avatarOverlap}><Avatar name="Musa Ibrahim"     size={28} /></View>
                     <View style={styles.avatarOverlap}><Avatar name="Femi Adegoke"     size={28} /></View>
                   </View>
-                  <Text style={[styles.teamText, { color: theme.textSecond }]}>Our support team is standing by</Text>
+                  <Text style={[styles.teamText, { color: theme.textSecond }]}>{tx('auto.new.ourSupportTeamIsStanding', 'Our support team is standing by')}</Text>
                 </View>
               </View>
 
@@ -233,13 +234,13 @@ export default function NewSupportTicketScreen() {
                     })()}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.topicRecapLabel, { color: theme.textSecond }]}>Topic</Text>
+                    <Text style={[styles.topicRecapLabel, { color: theme.textSecond }]}>{tx('auto.new.topic', 'Topic')}</Text>
                     <Text style={[styles.topicRecapText,  { color: theme.text }]}>
                       {TOPICS.find(t => t.key === topic)?.label}
                     </Text>
                   </View>
                   <Pressable onPress={() => setStep('topic')} hitSlop={10}>
-                    <Text style={[styles.changeLink, { color: theme.primary }]}>Change</Text>
+                    <Text style={[styles.changeLink, { color: theme.primary }]}>{tx('auto.new.change', 'Change')}</Text>
                   </Pressable>
                 </View>
               )}
@@ -270,7 +271,7 @@ export default function NewSupportTicketScreen() {
                   ) : showPicker ? (
                     <View style={[styles.pickerList, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                       {recent.length === 0 ? (
-                        <Text style={[styles.pickerEmpty, { color: theme.textSecond }]}>No recent deliveries found.</Text>
+                        <Text style={[styles.pickerEmpty, { color: theme.textSecond }]}>{tx('auto.new.noRecentDeliveriesFound', 'No recent deliveries found.')}</Text>
                       ) : recent.map(d => (
                         <Pressable
                           key={d.id}
@@ -288,7 +289,7 @@ export default function NewSupportTicketScreen() {
                         </Pressable>
                       ))}
                       <Pressable onPress={() => setShowPicker(false)} style={styles.pickerCancel}>
-                        <Text style={[styles.pickerCancelText, { color: theme.textSecond }]}>Cancel</Text>
+                        <Text style={[styles.pickerCancelText, { color: theme.textSecond }]}>{tx('auto.new.cancel', 'Cancel')}</Text>
                       </Pressable>
                     </View>
                   ) : (
@@ -297,14 +298,14 @@ export default function NewSupportTicketScreen() {
                       style={[styles.attachBtn, { borderColor: theme.border, backgroundColor: theme.surface }]}
                     >
                       <Package size={16} color={theme.textSecond} />
-                      <Text style={[styles.attachBtnText, { color: theme.textSecond }]}>Attach a delivery</Text>
+                      <Text style={[styles.attachBtnText, { color: theme.textSecond }]}>{tx('auto.new.attachADelivery', 'Attach a delivery')}</Text>
                     </Pressable>
                   )}
                 </View>
               )}
 
               <View>
-                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Subject</Text>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{tx('auto.new.subject', 'Subject')}</Text>
                 <TextInput
                   value={subject}
                   onChangeText={setSubject}
@@ -317,7 +318,7 @@ export default function NewSupportTicketScreen() {
               </View>
 
               <View>
-                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Describe what happened</Text>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{tx('auto.new.describeWhatHappened', 'Describe what happened')}</Text>
                 <TextInput
                   value={firstMessage}
                   onChangeText={setFirstMessage}
@@ -342,7 +343,7 @@ export default function NewSupportTicketScreen() {
                   ? <ActivityIndicator color="#fff" />
                   : (
                     <>
-                      <Text style={styles.submitText}>Send to support</Text>
+                      <Text style={styles.submitText}>{tx('auto.new.sendToSupport', 'Send to support')}</Text>
                       <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
                     </>
                   )}

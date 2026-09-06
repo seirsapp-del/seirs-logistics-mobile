@@ -33,6 +33,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 /**
  * Every half hour of the day, matching the declare form.
@@ -146,7 +147,7 @@ export default function EditTrip() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <ArrowLeft size={22} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Edit trip</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.id.editTrip', 'Edit trip')}</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -227,7 +228,7 @@ export default function EditTrip() {
         {/* Passengers */}
         <View style={[styles.rowBetween, { marginTop: Spacing.sm }]}>
           <View style={styles.flex}>
-            <Text style={[styles.rowTitle, { color: theme.text }]}>Take passengers</Text>
+            <Text style={[styles.rowTitle, { color: theme.text }]}>{tx('auto.id.takePassengers', 'Take passengers')}</Text>
             {frozen && takesPax && (
               <Text style={[styles.rowNote, { color: theme.textThird }]}>
                 Cannot be turned off with seats already booked.
@@ -259,7 +260,7 @@ export default function EditTrip() {
 
         {/* Packages */}
         <View style={styles.rowBetween}>
-          <Text style={[styles.rowTitle, { color: theme.text }]}>Carry packages</Text>
+          <Text style={[styles.rowTitle, { color: theme.text }]}>{tx('auto.id.carryPackages', 'Carry packages')}</Text>
           <Switch value={takesPkg} onValueChange={setTakesPkg} trackColor={{ true: theme.primary }} />
         </View>
         {takesPkg && (
@@ -288,7 +289,7 @@ export default function EditTrip() {
         >
           {saving
             ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.saveText}>Save changes</Text>}
+            : <Text style={styles.saveText}>{tx('auto.id.saveChanges', 'Save changes')}</Text>}
         </Pressable>
 
       </ScrollView>

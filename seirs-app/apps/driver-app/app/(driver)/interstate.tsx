@@ -27,6 +27,7 @@ import { derivePlace } from '@seirs/shared/models/cities';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 import { vehicleLabel } from '@seirs/shared/models/vehicles';
+import { tx } from '@/i18n/tx';
 
 // Spec V8 §2.18: driver declares an upcoming intercity trip
 // (Lagos → Ibadan, etc.). System surfaces matching packages along
@@ -992,7 +993,7 @@ export default function InterstateScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Declare Intercity Trip</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.interstate.declareIntercityTrip', 'Declare Intercity Trip')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -1022,7 +1023,7 @@ export default function InterstateScreen() {
           <View style={[styles.prefCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.prefTitle, { color: theme.text }]}>Take interstate work</Text>
+                <Text style={[styles.prefTitle, { color: theme.text }]}>{tx('auto.interstate.takeInterstateWork', 'Take interstate work')}</Text>
                 <Text style={[styles.prefSub, { color: theme.textSecond }]}>
                   {acceptsInterstate
                     ? 'Runs that leave your state can be offered to you.'
@@ -1128,7 +1129,7 @@ export default function InterstateScreen() {
                         <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: '700' }}>Edit</Text>
                       </Pressable>
                       <Pressable onPress={() => cancelTrip(tr)} hitSlop={8}>
-                        <Text style={{ color: '#DC2626', fontSize: FontSize.sm, fontWeight: '700' }}>Cancel</Text>
+                        <Text style={{ color: '#DC2626', fontSize: FontSize.sm, fontWeight: '700' }}>{tx('auto.interstate.cancel', 'Cancel')}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -1140,7 +1141,7 @@ export default function InterstateScreen() {
           <View style={[styles.intro, { backgroundColor: theme.primary + '12' }]}>
             <Truck size={20} color={theme.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.introTitle, { color: theme.text }]}>Earn extra on long-haul trips</Text>
+              <Text style={[styles.introTitle, { color: theme.text }]}>{tx('auto.interstate.earnExtraOnLongHaul', 'Earn extra on long-haul trips')}</Text>
               {/* Was "matching packages along your route will be auto-offered",
                   which describes a feed that does not exist: packages get a
                   ranking bonus, seats get a real booking. Passengers were not
@@ -1312,7 +1313,7 @@ export default function InterstateScreen() {
                     borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 10, gap: 4,
                   }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ color: theme.textSecond, fontSize: FontSize.sm }}>You earn per seat</Text>
+                      <Text style={{ color: theme.textSecond, fontSize: FontSize.sm }}>{tx('auto.interstate.youEarnPerSeat', 'You earn per seat')}</Text>
                       <Text style={{ color: theme.text, fontSize: FontSize.base, fontWeight: '700' }}>
                         {naira(riderPerSeat)}
                       </Text>
@@ -1495,7 +1496,7 @@ export default function InterstateScreen() {
               placeholderTextColor={theme.textThird}
               style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
             />
-            <Text style={[styles.helper, { color: theme.textThird }]}>How much weight can you take above your existing load.</Text>
+            <Text style={[styles.helper, { color: theme.textThird }]}>{tx('auto.interstate.howMuchWeightCanYou', 'How much weight can you take above your existing load.')}</Text>
           </View>
 
           {/* ── Travel Buddy: what this trip sells ─────────────────── */}
@@ -1509,7 +1510,7 @@ export default function InterstateScreen() {
           >
             <Truck size={18} color={takePackages ? theme.primary : theme.textSecond} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>Carry packages</Text>
+              <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>{tx('auto.interstate.carryPackages', 'Carry packages')}</Text>
               {/* Said "Uses your spare kg above", which reads as a capacity
                   filter. Nothing filters on it: spareCapacityKg is shown to
                   people browsing your trip and to ops, and the matcher never
@@ -1537,7 +1538,7 @@ export default function InterstateScreen() {
           >
             <MapPin size={18} color={takePassengers ? theme.primary : theme.textSecond} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>Carry passengers</Text>
+              <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>{tx('auto.interstate.carryPassengers', 'Carry passengers')}</Text>
               <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
                 {seatCap === 0
                   ? `A ${vehicleLabel(vehicleType)} is not a passenger class on SEIRS. Packages only on this run.`
@@ -1601,7 +1602,7 @@ export default function InterstateScreen() {
             onPress={submit}
             style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
           >
-            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Declare trip</Text>}
+            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{tx('auto.interstate.declareTrip', 'Declare trip')}</Text>}
           </Pressable>
 
           {/* Said "You can decline any individual offer". A package boosted

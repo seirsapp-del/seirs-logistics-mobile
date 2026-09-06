@@ -36,6 +36,7 @@ import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { specialRequestsApi } from '@/services/api';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
+import { tx } from '@/i18n/tx';
 
 /**
  * The kinds of load that actually turn up on the business side. "Something
@@ -151,7 +152,7 @@ export default function BusinessSpecialRequest() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Get a quote</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.specialRequest.getAQuote', 'Get a quote')}</Text>
         <View style={{ width: 20 }} />
       </View>
 
@@ -301,7 +302,7 @@ export default function BusinessSpecialRequest() {
           disabled={!ready || busy}
           style={[styles.submit, { backgroundColor: ready && !busy ? theme.primary : theme.border }]}
         >
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitTxt}>Send for a quote</Text>}
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitTxt}>{tx('auto.specialRequest.sendForAQuote', 'Send for a quote')}</Text>}
         </Pressable>
         <Text style={[styles.note, { color: theme.textThird, textAlign: 'center' }]}>
           Nothing is charged now. We will call you, then send a full breakdown.

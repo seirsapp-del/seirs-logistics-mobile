@@ -27,6 +27,7 @@ import { driversApi, uploadApi } from '@/services/api';
 import { canAttachFiles, pickDocument } from '@/utils/documentPicker';
 import { alertDialog } from '@/components/SeirsDialog';
 import type { SeirsSheetSpec } from '@/components/SeirsSheet';
+import { tx } from '@/i18n/tx';
 
 type DocStatus = 'not_uploaded' | 'uploaded' | 'verified' | 'rejected' | 'expired' | 'needs_replacing';
 
@@ -263,7 +264,7 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
 
   return (
     <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-      <Text style={[styles.cardTitle, { color: theme.text }]}>About you</Text>
+      <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.IdentityDocuments.aboutYou', 'About you')}</Text>
       <Text style={[styles.cardHint, { color: theme.textSecond }]}>
         Asked once. These do not change when you change vehicle, so you will not be asked for them again.
       </Text>
@@ -271,12 +272,12 @@ export function IdentityDocuments({ onSheet }: { onSheet: (s: SeirsSheetSpec) =>
       {loading ? (
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color={theme.primary} />
-          <Text style={[styles.cardHint, { color: theme.textThird }]}>Checking what is on file...</Text>
+          <Text style={[styles.cardHint, { color: theme.textThird }]}>{tx('auto.IdentityDocuments.checkingWhatIsOnFile', 'Checking what is on file...')}</Text>
         </View>
       ) : (
         <View style={{ gap: Spacing.sm }}>
           {docs.filter(d => d.required).map(row)}
-          <Text style={[styles.subLabel, { color: theme.textThird }]}>Optional</Text>
+          <Text style={[styles.subLabel, { color: theme.textThird }]}>{tx('auto.IdentityDocuments.optional', 'Optional')}</Text>
           {docs.filter(d => !d.required).map(row)}
         </View>
       )}

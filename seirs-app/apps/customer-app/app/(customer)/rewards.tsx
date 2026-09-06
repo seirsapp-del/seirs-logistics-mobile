@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { loyaltyApi, deliveriesApi, type LoyaltyTier } from '@/services/api';
 import { showDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Tier thresholds MUST mirror the backend (loyalty.service.ts:TIER_THRESHOLDS).
 // Keep in sync manually. The tier chip shown to the user is otherwise a lie.
@@ -287,7 +288,7 @@ export default function RewardsScreen() {
         >
           <View style={styles.heroTop}>
             <View>
-              <Text style={styles.heroLabel}>Your points</Text>
+              <Text style={styles.heroLabel}>{tx('auto.rewards.yourPoints', 'Your points')}</Text>
               <Text style={styles.heroPoints}>{loading ? '-' : points.toLocaleString()}</Text>
               <Text style={styles.heroSub}>Earn {currentTier.multiplier}× multiplier at {currentTier.name}</Text>
             </View>
@@ -337,7 +338,7 @@ export default function RewardsScreen() {
         */}
         <View style={[styles.weekCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <View style={styles.weekHead}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Last 7 days</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>{tx('auto.rewards.last7Days', 'Last 7 days')}</Text>
             <Text style={[styles.weekEarned, { color: theme.primary }]}>
               {week.earned > 0 ? `+${week.earned.toLocaleString()} pts` : 'No points yet'}
             </Text>
@@ -372,7 +373,7 @@ export default function RewardsScreen() {
         </View>
 
         {/* Redeem rewards: sorted cheapest first so users see something achievable */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Redeem your points</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.rewards.redeemYourPoints', 'Redeem your points')}</Text>
         {REDEMPTIONS.map(r => {
           // A reward that delivers nothing cannot be redeemable, however
           // many points the customer has. See Redemption.live.
@@ -409,7 +410,7 @@ export default function RewardsScreen() {
                 <ActivityIndicator color={theme.primary} />
               ) : canRedeem ? (
                 <View style={[styles.redeemBtn, { backgroundColor: theme.primary }]}>
-                  <Text style={styles.redeemBtnText}>Redeem</Text>
+                  <Text style={styles.redeemBtnText}>{tx('auto.rewards.redeem', 'Redeem')}</Text>
                 </View>
               ) : points < r.cost ? (
                 <Text style={[styles.needMore, { color: theme.textThird }]}>
@@ -430,7 +431,7 @@ export default function RewardsScreen() {
 
         {/* Tier ladder with per-tier multipliers made explicit */}
         <View style={[styles.tiersCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-          <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: Spacing.sm }]}>Membership tiers</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: Spacing.sm }]}>{tx('auto.rewards.membershipTiers', 'Membership tiers')}</Text>
           {TIERS.map((tier, i) => {
             const isActive = tier.key === currentTier.key;
             const reached  = points >= tier.min;
@@ -456,7 +457,7 @@ export default function RewardsScreen() {
                 </View>
                 {isActive ? (
                   <View style={[styles.currentBadge, { backgroundColor: theme.primary }]}>
-                    <Text style={styles.currentBadgeText}>Current</Text>
+                    <Text style={styles.currentBadgeText}>{tx('auto.rewards.current', 'Current')}</Text>
                   </View>
                 ) : reached ? (
                   <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
@@ -475,7 +476,7 @@ export default function RewardsScreen() {
           deliveries look identical.
         */}
         <View style={styles.activityHead}>
-          <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>Recent activity</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>{tx('auto.rewards.recentActivity', 'Recent activity')}</Text>
           {history.length > 8 && (
             <Text style={[styles.activityCount, { color: theme.textThird }]}>
               Last 8 of {history.length.toLocaleString()}
@@ -487,7 +488,7 @@ export default function RewardsScreen() {
         ) : history.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Ionicons name="star-outline" size={28} color={theme.textThird} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No activity yet</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.rewards.noActivityYet', 'No activity yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.textSecond }]}>
               Complete a delivery to start earning points.
             </Text>
@@ -527,7 +528,7 @@ export default function RewardsScreen() {
           IS the information, so it leads each line instead.
         */}
         <View style={[styles.earnCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.earnTitle, { color: theme.text }]}>How to earn</Text>
+          <Text style={[styles.earnTitle, { color: theme.text }]}>{tx('auto.rewards.howToEarn', 'How to earn')}</Text>
           {[
             { pts: '10 pts',  text: 'per ₦1,000 spent on a delivery' },
             { pts: '+5 pts',  text: 'bonus when you pay by bank transfer' },

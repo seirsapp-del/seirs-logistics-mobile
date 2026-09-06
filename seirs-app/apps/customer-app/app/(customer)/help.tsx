@@ -17,6 +17,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { HELP_FAQS } from '@/constants/mockData';
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 
 // Labels resolved via t() at render so language switches reflect live.
 // Chips map to the FAQ topic tags directly (audit 2026-08-10: the old
@@ -139,7 +140,7 @@ export default function HelpScreen() {
         {filteredFaqs.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.surface }]}>
             <Ionicons name="search-outline" size={36} color={theme.textThird} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No results found</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{tx('auto.help.noResultsFound', 'No results found')}</Text>
             <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
               Try a different search term or browse by topic.
             </Text>
@@ -173,8 +174,8 @@ export default function HelpScreen() {
         >
           <Ionicons name="flag-outline" size={18} color="#EF4444" />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.reportTitle, { color: '#EF4444' }]}>Report a Trip Issue</Text>
-            <Text style={[styles.reportSub, { color: theme.textSecond }]}>Lost item, driver complaint, overcharge</Text>
+            <Text style={[styles.reportTitle, { color: '#EF4444' }]}>{tx('auto.help.reportATripIssue', 'Report a Trip Issue')}</Text>
+            <Text style={[styles.reportSub, { color: theme.textSecond }]}>{tx('auto.help.lostItemDriverComplaintOvercharge', 'Lost item, driver complaint, overcharge')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color="#EF4444" />
         </Pressable>

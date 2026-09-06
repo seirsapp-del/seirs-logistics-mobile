@@ -22,6 +22,7 @@ import { businessApi, paymentsApi, partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 
 type Segment = 'rewards' | 'earnings';
@@ -292,7 +293,7 @@ export default function WalletScreen() {
             <>
               <View style={styles.balTop}>
                 <View>
-                  <Text style={styles.heroLabel}>Total rewards</Text>
+                  <Text style={styles.heroLabel}>{tx('auto.wallet.totalRewards', 'Total rewards')}</Text>
                   <View style={styles.pointsRow}>
                     <Text style={styles.heroBig}>{points.toLocaleString()}</Text>
                     <Text style={styles.heroUnit}>points</Text>
@@ -316,17 +317,17 @@ export default function WalletScreen() {
                     attaches to a booking that exists and is not yet paid. */}
                 <Pressable style={styles.balAction} onPress={() => router.push('/(business)/rewards' as any)}>
                   <View style={styles.balActionIcon}><Icon name="Gift" size={20} color="#FFCE3A" /></View>
-                  <Text style={styles.balActionLabel}>Redeem</Text>
+                  <Text style={styles.balActionLabel}>{tx('auto.wallet.redeem', 'Redeem')}</Text>
                 </Pressable>
                 <Pressable style={styles.balAction} onPress={() => router.push('/(business)/referral' as any)}>
                   <View style={styles.balActionIcon}><Icon name="Plus" size={20} color="#fff" /></View>
-                  <Text style={styles.balActionLabel}>Earn more</Text>
+                  <Text style={styles.balActionLabel}>{tx('auto.wallet.earnMore', 'Earn more')}</Text>
                 </Pressable>
               </View>
             </>
           ) : (
             <View style={styles.heroBody}>
-              <Text style={styles.heroLabel}>SEIRS owes your store</Text>
+              <Text style={styles.heroLabel}>{tx('auto.wallet.seirsOwesYourStore', 'SEIRS owes your store')}</Text>
               <Text style={styles.heroBig}>{naira(pendingOwed)}</Text>
               <Text style={styles.heroNote}>
                 Paid out so far: {naira(paidOut)} · settled weekly to your business bank account.
@@ -351,7 +352,7 @@ export default function WalletScreen() {
               >
                 <Icon name="Store" size={18} color={colors.primary} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.teaserTitle, { color: colors.primary }]}>Earn with SEIRS</Text>
+                  <Text style={[styles.teaserTitle, { color: colors.primary }]}>{tx('auto.wallet.earnWithSeirs', 'Earn with SEIRS')}</Text>
                   <Text style={[styles.teaserSub, { color: colors.textSecond }]}>
                     Partner stores hold packages at their counter and get weekly payouts.
                   </Text>
@@ -410,7 +411,7 @@ export default function WalletScreen() {
               {range === 30 && (
                 <View style={styles.axisRow}>
                   <Text style={[styles.weekLabel, { color: colors.textThird }]}>{chart.from}</Text>
-                  <Text style={[styles.weekLabel, { color: colors.textThird }]}>Today</Text>
+                  <Text style={[styles.weekLabel, { color: colors.textThird }]}>{tx('auto.wallet.today', 'Today')}</Text>
                 </View>
               )}
               <Text style={[styles.weekFoot, { color: colors.textSecond }]}>
@@ -439,7 +440,7 @@ export default function WalletScreen() {
                 above it. The server now writes a ledger entry per award, so
                 the list can say what was earned, when, and why.
               */}
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent points</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.wallet.recentPoints', 'Recent points')}</Text>
               {loading ? (
                 <ActivityIndicator color={colors.accent} />
               ) : history.length === 0 ? (
@@ -511,7 +512,7 @@ export default function WalletScreen() {
           </>
         ) : (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Payouts</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{tx('auto.wallet.payouts', 'Payouts')}</Text>
             {loading ? (
               <ActivityIndicator color={colors.accent} />
             ) : payouts.length === 0 ? (

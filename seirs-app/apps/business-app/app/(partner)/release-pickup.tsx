@@ -11,6 +11,7 @@ import { partnerApi, identityApi, uploadApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
 import { alertDialog } from '@/components/SeirsDialog';
+import { tx } from '@/i18n/tx';
 // Spec V8 §3 / §4.8: partner staff releases a package to the recipient
 // after identity verification. Two methods supported per Spec V8 §1.17:
 //   - PHYSICAL_ID + email OTP (primary path for recipients with ID)
@@ -235,12 +236,12 @@ export default function ReleasePickupScreen() {
     return (
       <View style={[styles.centered, { paddingTop: insets.top }]}>
         <Icon name="Camera" size={48} color="#D1D5DB" />
-        <Text style={styles.permTitle}>Camera Access Required</Text>
+        <Text style={styles.permTitle}>{tx('auto.releasePickup.cameraAccessRequired', 'Camera Access Required')}</Text>
         <Pressable style={styles.primaryBtn} onPress={requestPermission}>
-          <Text style={styles.primaryBtnText}>Grant Camera Permission</Text>
+          <Text style={styles.primaryBtnText}>{tx('auto.releasePickup.grantCameraPermission', 'Grant Camera Permission')}</Text>
         </Pressable>
         <Pressable onPress={() => setScanning(false)}>
-          <Text style={styles.linkText}>Use manual code entry instead</Text>
+          <Text style={styles.linkText}>{tx('auto.releasePickup.useManualCodeEntryInstead', 'Use manual code entry instead')}</Text>
         </Pressable>
       </View>
     );
@@ -261,7 +262,7 @@ export default function ReleasePickupScreen() {
           <Pressable style={styles.closeBtn} onPress={() => router.back()}>
             <Icon name="X" size={22} color="#fff" />
           </Pressable>
-          <Text style={styles.overlayTitle}>Release Package</Text>
+          <Text style={styles.overlayTitle}>{tx('auto.releasePickup.releasePackage', 'Release Package')}</Text>
         </View>
 
         {scanning && !loading && (
@@ -272,16 +273,16 @@ export default function ReleasePickupScreen() {
               <View style={[styles.corner, styles.cornerBL]} />
               <View style={[styles.corner, styles.cornerBR]} />
             </View>
-            <Text style={styles.finderHint}>Scan the package label</Text>
+            <Text style={styles.finderHint}>{tx('auto.releasePickup.scanThePackageLabel', 'Scan the package label')}</Text>
             <Pressable onPress={() => setScanning(false)} style={styles.secondaryBtn}>
-              <Text style={styles.secondaryBtnText}>Enter code manually</Text>
+              <Text style={styles.secondaryBtnText}>{tx('auto.releasePickup.enterCodeManually', 'Enter code manually')}</Text>
             </Pressable>
           </View>
         )}
 
         {!scanning && (
           <View style={[styles.manualSheet, { paddingBottom: insets.bottom + 24 }]}>
-            <Text style={styles.sheetTitle}>Enter package code</Text>
+            <Text style={styles.sheetTitle}>{tx('auto.releasePickup.enterPackageCode', 'Enter package code')}</Text>
             <TextInput
               autoCapitalize="characters"
               autoFocus
@@ -294,14 +295,14 @@ export default function ReleasePickupScreen() {
             {error !== '' && <Text style={styles.errorText}>{error}</Text>}
             <View style={styles.row}>
               <Pressable style={styles.cancelBtn} onPress={() => { setScanning(true); setError(''); }}>
-                <Text style={styles.cancelBtnText}>Back to scan</Text>
+                <Text style={styles.cancelBtnText}>{tx('auto.releasePickup.backToScan', 'Back to scan')}</Text>
               </Pressable>
               <Pressable
                 style={styles.primaryBtn}
                 onPress={() => lookupCode(manualCode.trim().toUpperCase())}
                 disabled={loading || !manualCode.trim()}
               >
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Look up</Text>}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{tx('auto.releasePickup.lookUp', 'Look up')}</Text>}
               </Pressable>
             </View>
           </View>
@@ -325,7 +326,7 @@ export default function ReleasePickupScreen() {
           <Pressable onPress={reset} style={styles.backBtn}>
             <Icon name="ArrowLeft" size={20} color={colors.text} />
           </Pressable>
-          <Text style={styles.formTitle}>Verify Recipient</Text>
+          <Text style={styles.formTitle}>{tx('auto.releasePickup.verifyRecipient', 'Verify Recipient')}</Text>
           <View style={{ width: 32 }} />
         </View>
 
@@ -340,13 +341,13 @@ export default function ReleasePickupScreen() {
           {dropoff.declaredValueNgn >= 50000 && (
             <View style={styles.warnBadge}>
               <Icon name="AlertCircle" size={14} color="#92400E" />
-              <Text style={styles.warnText}>High-value package: ID photo required at handoff</Text>
+              <Text style={styles.warnText}>{tx('auto.releasePickup.highValuePackageIdPhoto', 'High-value package: ID photo required at handoff')}</Text>
             </View>
           )}
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.fieldLabel}>Verification method</Text>
+          <Text style={styles.fieldLabel}>{tx('auto.releasePickup.verificationMethod', 'Verification method')}</Text>
 
           <Pressable
             style={[styles.methodCard, method === 'physical_id' && styles.methodCardActive]}
@@ -376,7 +377,7 @@ export default function ReleasePickupScreen() {
         </View>
 
         <Pressable style={styles.primaryBtnLarge} onPress={() => setStep('verify')}>
-          <Text style={styles.primaryBtnText}>Continue</Text>
+          <Text style={styles.primaryBtnText}>{tx('auto.releasePickup.continue', 'Continue')}</Text>
         </Pressable>
       </ScrollView>
     );
@@ -391,13 +392,13 @@ export default function ReleasePickupScreen() {
             <Pressable onPress={() => setStep('method')} style={styles.backBtn}>
               <Icon name="ArrowLeft" size={20} color={colors.text} />
             </Pressable>
-            <Text style={styles.formTitle}>Confirm Identity</Text>
+            <Text style={styles.formTitle}>{tx('auto.releasePickup.confirmIdentity', 'Confirm Identity')}</Text>
             <View style={{ width: 32 }} />
           </View>
 
           {method === 'physical_id' ? (
             <View style={styles.card}>
-              <Text style={styles.fieldLabel}>ID Type</Text>
+              <Text style={styles.fieldLabel}>{tx('auto.releasePickup.idType', 'ID Type')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }} contentContainerStyle={{ gap: 8 }}>
                 {ID_TYPES.map(t => (
                   <Pressable
@@ -410,7 +411,7 @@ export default function ReleasePickupScreen() {
                 ))}
               </ScrollView>
 
-              <Text style={styles.fieldLabel}>ID Number</Text>
+              <Text style={styles.fieldLabel}>{tx('auto.releasePickup.idNumber', 'ID Number')}</Text>
               <TextInput
                 value={idNumber}
                 onChangeText={setIdNumber}
@@ -419,11 +420,11 @@ export default function ReleasePickupScreen() {
                 autoCapitalize="characters"
                 style={styles.input}
               />
-              <Text style={styles.helperText}>Only the last 4 digits are stored for audit.</Text>
+              <Text style={styles.helperText}>{tx('auto.releasePickup.onlyTheLast4Digits', 'Only the last 4 digits are stored for audit.')}</Text>
 
               <View style={styles.divider} />
 
-              <Text style={styles.fieldLabel}>Email OTP</Text>
+              <Text style={styles.fieldLabel}>{tx('auto.releasePickup.emailOtp', 'Email OTP')}</Text>
               {!otpSent ? (
                 <Pressable style={styles.secondaryBtn} onPress={requestOtp} disabled={loading}>
                   {loading
@@ -444,7 +445,7 @@ export default function ReleasePickupScreen() {
                     style={[styles.input, { fontSize: 24, textAlign: 'center', letterSpacing: 6, fontWeight: '700' }]}
                   />
                   <Pressable onPress={requestOtp}>
-                    <Text style={styles.linkText}>Resend OTP</Text>
+                    <Text style={styles.linkText}>{tx('auto.releasePickup.resendOtp', 'Resend OTP')}</Text>
                   </Pressable>
                 </>
               )}
@@ -461,14 +462,14 @@ export default function ReleasePickupScreen() {
                 autoCapitalize="characters"
                 style={styles.input}
               />
-              <Text style={styles.helperText}>Scan their app QR or have them read the code aloud.</Text>
+              <Text style={styles.helperText}>{tx('auto.releasePickup.scanTheirAppQrOr', 'Scan their app QR or have them read the code aloud.')}</Text>
 
               {expectedName && (
                 <>
                   <View style={styles.divider} />
                   <Text style={styles.cardLabel}>EXPECTED NAME ON FILE</Text>
                   <Text style={styles.cardValue}>{expectedName}</Text>
-                  <Text style={styles.helperText}>Ask the recipient to speak their full name. Type EXACTLY what they say below.</Text>
+                  <Text style={styles.helperText}>{tx('auto.releasePickup.askTheRecipientToSpeak', 'Ask the recipient to speak their full name. Type EXACTLY what they say below.')}</Text>
 
                   <Text style={styles.fieldLabel}>Recipient&apos;s typed name (signature)</Text>
                   <TextInput
@@ -485,12 +486,12 @@ export default function ReleasePickupScreen() {
           )}
 
           <View style={styles.card}>
-            <Text style={styles.fieldLabel}>Collection photo</Text>
+            <Text style={styles.fieldLabel}>{tx('auto.releasePickup.collectionPhoto', 'Collection photo')}</Text>
             {photoUri ? (
               <View style={{ gap: 12 }}>
                 <Image source={{ uri: photoUri }} style={styles.preview} />
                 <Pressable onPress={pickPhoto} style={styles.secondaryBtn}>
-                  <Text style={styles.secondaryBtnText}>Retake photo</Text>
+                  <Text style={styles.secondaryBtnText}>{tx('auto.releasePickup.retakePhoto', 'Retake photo')}</Text>
                 </Pressable>
               </View>
             ) : (
@@ -504,7 +505,7 @@ export default function ReleasePickupScreen() {
           {error !== '' && <Text style={styles.errorText}>{error}</Text>}
 
           <Pressable style={styles.primaryBtnLarge} onPress={submit} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Release package</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{tx('auto.releasePickup.releasePackage2', 'Release package')}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

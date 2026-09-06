@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { promotionsApi, type PromoDTO } from '@/services/api';
 import { useSendDraftStore } from '@/store/useSendDraftStore';
 import { naira } from '@/utils/money';
+import { tx } from '@/i18n/tx';
 
 const describePromo = (p: PromoDTO) => {
   if (p.description) return p.description;
@@ -111,7 +112,7 @@ export default function PromoScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Promo Code</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{tx('auto.promo.promoCode', 'Promo Code')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -154,7 +155,7 @@ export default function PromoScreen() {
               {/* Deliberately does NOT say "redeemed" or name a discount
                   amount. The code is held on the draft and redeemed once,
                   at booking, against the real subtotal. */}
-              <Text style={styles.successText}>Code saved. It goes with your next booking.</Text>
+              <Text style={styles.successText}>{tx('auto.promo.codeSavedItGoesWith', 'Code saved. It goes with your next booking.')}</Text>
             </View>
           ) : null}
           {applied ? (
@@ -175,7 +176,7 @@ export default function PromoScreen() {
         </View>
 
         {/* Available promos */}
-        <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Available Promos</Text>
+        <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{tx('auto.promo.availablePromos', 'Available Promos')}</Text>
 
         {listLoading && promos.length === 0 ? (
           <ActivityIndicator color={theme.primary} style={{ marginVertical: 24 }} />
@@ -185,8 +186,8 @@ export default function PromoScreen() {
               <Ionicons name="ticket-outline" size={22} color={theme.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.promoLabel, { color: theme.text }]}>No active promos</Text>
-              <Text style={[styles.promoDesc, { color: theme.textSecond }]}>Check back soon: new offers go live regularly.</Text>
+              <Text style={[styles.promoLabel, { color: theme.text }]}>{tx('auto.promo.noActivePromos', 'No active promos')}</Text>
+              <Text style={[styles.promoDesc, { color: theme.textSecond }]}>{tx('auto.promo.checkBackSoonNewOffers', 'Check back soon: new offers go live regularly.')}</Text>
             </View>
           </View>
         ) : promos.map(promo => (

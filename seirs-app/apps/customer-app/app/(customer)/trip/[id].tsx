@@ -35,6 +35,7 @@ import { naira } from '@/utils/money';
 import { showDialog } from '@/components/SeirsDialog';
 import { VEHICLE_LABEL } from '@seirs/shared/models/vehicles';
 import { collectUrl } from '@/constants/config';
+import { tx } from '@/i18n/tx';
 
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
@@ -138,9 +139,9 @@ export default function TripDetailsScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={styles.center}>
-          <Text style={{ color: colors.textSecond }}>Could not load this trip.</Text>
+          <Text style={{ color: colors.textSecond }}>{tx('auto.id.couldNotLoadThisTrip', 'Could not load this trip.')}</Text>
           <Pressable onPress={() => router.back()} style={{ marginTop: 12 }}>
-            <Text style={{ color: colors.primary, fontWeight: '700' }}>Go back</Text>
+            <Text style={{ color: colors.primary, fontWeight: '700' }}>{tx('auto.id.goBack', 'Go back')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -318,7 +319,7 @@ export default function TripDetailsScreen() {
           {!!d.tripId && !!meetUrl && (
             <Pressable onPress={() => Linking.openURL(meetUrl).catch(() => {})} style={styles.meetLink} hitSlop={6}>
               <Icon name="Navigation" size={14} color={colors.primary} />
-              <Text style={[styles.meetLinkTxt, { color: colors.primary }]}>Open in Google Maps</Text>
+              <Text style={[styles.meetLinkTxt, { color: colors.primary }]}>{tx('auto.id.openInGoogleMaps', 'Open in Google Maps')}</Text>
             </Pressable>
           )}
           {d.pickedUpAt && (
@@ -633,7 +634,7 @@ export default function TripDetailsScreen() {
                   style={[styles.qrRow, { borderColor: colors.primary }]}
                 >
                   <Icon name="QrCode" size={16} color={colors.primary} />
-                  <Text style={[styles.codeBtnText, { color: colors.primary }]}>Show package QR</Text>
+                  <Text style={[styles.codeBtnText, { color: colors.primary }]}>{tx('auto.id.showPackageQr', 'Show package QR')}</Text>
                 </Pressable>
               )}
             </View>
@@ -716,7 +717,7 @@ export default function TripDetailsScreen() {
             } as any)}
             style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}
           >
-            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>Book again</Text>
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>{tx('auto.id.bookAgain', 'Book again')}</Text>
             <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
               Same route, priced fresh
             </Text>

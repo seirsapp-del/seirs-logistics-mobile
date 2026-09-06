@@ -10,6 +10,7 @@ import { authApi } from '@/services/api';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
 import { validatePassword } from '@seirs/shared';
+import { tx } from '@/i18n/tx';
 
 // Handles the deep link seirsbusiness://reset-password?token=xxx from
 // the password-reset email. Root-level (outside the auth group) so the
@@ -66,13 +67,13 @@ export default function ResetPasswordScreen() {
       <>
         <View style={styles.centerWrap}>
           <Icon name="AlertCircle" size={56} color={theme.warning ?? '#D97706'} />
-          <Text style={[styles.heading, { color: theme.text, textAlign: 'center' }]}>Invalid Link</Text>
+          <Text style={[styles.heading, { color: theme.text, textAlign: 'center' }]}>{tx('auto.resetPassword.invalidLink', 'Invalid Link')}</Text>
           <Text style={[styles.desc, { color: theme.textSecond }]}>
             This reset link is missing or invalid. Please request a new password reset from the sign-in screen.
           </Text>
         </View>
         <Pressable style={[styles.btn, { backgroundColor: theme.primary }]} onPress={() => router.replace('/(auth)/login')}>
-          <Text style={[styles.btnText, { color: theme.textOnPrimary }]}>Back to Sign In</Text>
+          <Text style={[styles.btnText, { color: theme.textOnPrimary }]}>{tx('auto.resetPassword.backToSignIn', 'Back to Sign In')}</Text>
         </Pressable>
       </>,
     );
@@ -83,13 +84,13 @@ export default function ResetPasswordScreen() {
       <>
         <View style={styles.centerWrap}>
           <Icon name="CheckCircle2" size={56} color="#16A34A" />
-          <Text style={[styles.heading, { color: theme.text, textAlign: 'center' }]}>Password Updated</Text>
+          <Text style={[styles.heading, { color: theme.text, textAlign: 'center' }]}>{tx('auto.resetPassword.passwordUpdated', 'Password Updated')}</Text>
           <Text style={[styles.desc, { color: theme.textSecond }]}>
             Your password has been changed. Sign in with the new password to continue.
           </Text>
         </View>
         <Pressable style={[styles.btn, { backgroundColor: theme.primary }]} onPress={() => router.replace('/(auth)/login')}>
-          <Text style={[styles.btnText, { color: theme.textOnPrimary }]}>Sign In</Text>
+          <Text style={[styles.btnText, { color: theme.textOnPrimary }]}>{tx('auto.resetPassword.signIn', 'Sign In')}</Text>
         </Pressable>
       </>,
     );
@@ -97,7 +98,7 @@ export default function ResetPasswordScreen() {
 
   return body(
     <>
-      <Text style={[styles.heading, { color: theme.text }]}>Choose a new password</Text>
+      <Text style={[styles.heading, { color: theme.text }]}>{tx('auto.resetPassword.chooseANewPassword', 'Choose a new password')}</Text>
       <Text style={[styles.desc, { color: theme.textSecond, textAlign: 'left', marginBottom: 20 }]}>
         Minimum 8 characters with at least one letter and one number.
       </Text>
@@ -109,7 +110,7 @@ export default function ResetPasswordScreen() {
         </View>
       )}
 
-      <Text style={[styles.label, { color: theme.textSecond }]}>New password</Text>
+      <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.resetPassword.newPassword', 'New password')}</Text>
       <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <Icon name="Lock" size={16} color={theme.textThird} />
         <TextInput
@@ -126,7 +127,7 @@ export default function ResetPasswordScreen() {
         </Pressable>
       </View>
 
-      <Text style={[styles.label, { color: theme.textSecond }]}>Confirm password</Text>
+      <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.resetPassword.confirmPassword', 'Confirm password')}</Text>
       <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <Icon name="Lock" size={16} color={theme.textThird} />
         <TextInput
@@ -147,7 +148,7 @@ export default function ResetPasswordScreen() {
       >
         {loading
           ? <ActivityIndicator color={theme.textOnPrimary} />
-          : <Text style={[styles.btnText, { color: theme.textOnPrimary }]}>Update Password</Text>
+          : <Text style={[styles.btnText, { color: theme.textOnPrimary }]}>{tx('auto.resetPassword.updatePassword', 'Update Password')}</Text>
         }
       </Pressable>
     </>,

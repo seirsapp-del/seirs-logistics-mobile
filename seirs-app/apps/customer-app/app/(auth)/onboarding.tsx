@@ -14,6 +14,7 @@ import {
   Package, MapPin, Truck, Users, ShoppingBag, Store,
   ChevronRight,
 } from 'lucide-react-native';
+import { tx } from '@/i18n/tx';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -177,7 +178,7 @@ export default function OnboardingScreen() {
           style={[styles.primaryBtn, { backgroundColor: '#0F2B4C' }]}
           onPress={() => router.push('/(auth)/register' as any)}
         >
-          <Text style={styles.primaryBtnText}>Create an Account</Text>
+          <Text style={styles.primaryBtnText}>{tx('auto.onboarding.createAnAccount', 'Create an Account')}</Text>
           <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
         </Pressable>
 

@@ -11,6 +11,7 @@ import { authApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { tx } from '@/i18n/tx';
 
 const OTP_LENGTH      = 6;
 const RESEND_COOLDOWN = 60;
@@ -143,12 +144,12 @@ export default function VerifyOtpScreen() {
             <Icon name="Mail" size={36} color={theme.accent} />
           </View>
 
-          <Text style={[styles.title, { color: theme.text }]}>Verify your email</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.verifyOtp.verifyYourEmail', 'Verify your email')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
             We sent a 6-digit code to{'\n'}
             <Text style={{ color: theme.text, fontWeight: FontWeight.semibold as any }}>{maskedEmail}</Text>
           </Text>
-          <Text style={[styles.expiry, { color: theme.textThird }]}>Code expires in 15 minutes.</Text>
+          <Text style={[styles.expiry, { color: theme.textThird }]}>{tx('auto.verifyOtp.codeExpiresIn15Minutes', 'Code expires in 15 minutes.')}</Text>
         </View>
 
         {/* OTP inputs */}
@@ -202,7 +203,7 @@ export default function VerifyOtpScreen() {
           >
             {loading
               ? <ActivityIndicator color={theme.textOnPrimary} />
-              : <Text style={[styles.submitText, { color: theme.textOnPrimary }]}>Verify Email</Text>}
+              : <Text style={[styles.submitText, { color: theme.textOnPrimary }]}>{tx('auto.verifyOtp.verifyEmail', 'Verify Email')}</Text>}
           </Pressable>
 
           {/* Resend */}

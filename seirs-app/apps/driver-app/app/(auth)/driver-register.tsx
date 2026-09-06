@@ -24,6 +24,7 @@ import { StatePicker } from '@/components/StatePicker';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { validatePassword } from '@seirs/shared';
 import { isValidNigerianMobile, toE164Ng, toNationalInput, NG_PHONE_HINT } from '@/constants/phone';
+import { tx } from '@/i18n/tx';
 
 type VehicleType = 'bicycle' | 'motorcycle' | 'tricycle' | 'car' | 'van' | 'truck_small' | 'truck_large';
 
@@ -202,8 +203,8 @@ export default function DriverRegisterScreen() {
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
             <Text style={[styles.brandSub, { color: theme.textThird }]}>DRIVER</Text>
           </View>
-          <Text style={[styles.title, { color: theme.text }]}>Create driver account</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecond }]}>Start delivering with Seirs today</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{tx('auto.driverRegister.createDriverAccount', 'Create driver account')}</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecond }]}>{tx('auto.driverRegister.startDeliveringWithSeirsToday', 'Start delivering with Seirs today')}</Text>
         </View>
 
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
@@ -221,7 +222,7 @@ export default function DriverRegisterScreen() {
               "Oluwaseyifunmi" showed as "luwaseyifunmi" and the user could
               not see what they had typed (founder, 2026-09-01). */}
           <View style={styles.field} onLayout={(e) => rememberY('firstName', e.nativeEvent.layout.y)}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>First name<Text style={{ color: theme.textThird }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.driverRegister.firstName', 'First name')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <User size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
               <TextInput
@@ -252,7 +253,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field} onLayout={(e) => rememberY('lastName', e.nativeEvent.layout.y)}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Last name<Text style={{ color: theme.textThird }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.driverRegister.lastName', 'Last name')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
@@ -266,7 +267,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field} onLayout={(e) => rememberY('email', e.nativeEvent.layout.y)}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Email address<Text style={{ color: theme.textThird }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.driverRegister.emailAddress', 'Email address')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Mail size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
               <TextInput
@@ -282,7 +283,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field} onLayout={(e) => rememberY('phone', e.nativeEvent.layout.y)}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Phone number<Text style={{ color: theme.textThird }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.driverRegister.phoneNumber', 'Phone number')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
                 <Phone size={14} color={theme.textThird} strokeWidth={1.5} />
@@ -330,7 +331,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field} onLayout={(e) => rememberY('password', e.nativeEvent.layout.y)}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Password<Text style={{ color: theme.textThird }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.driverRegister.password', 'Password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="At least 8 characters"
               placeholderTextColor={theme.textThird}
@@ -342,7 +343,7 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field} onLayout={(e) => rememberY('confirm', e.nativeEvent.layout.y)}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm password<Text style={{ color: theme.textThird }}> *</Text></Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{tx('auto.driverRegister.confirmPassword', 'Confirm password')}<Text style={{ color: theme.textThird }}> *</Text></Text>
             <PasswordInput
               placeholder="Re-enter password"
               placeholderTextColor={theme.textThird}
@@ -356,7 +357,7 @@ export default function DriverRegisterScreen() {
 
         {/* Vehicle selector */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Vehicle type<Text style={{ color: theme.textThird }}> *</Text></Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{tx('auto.driverRegister.vehicleType', 'Vehicle type')}<Text style={{ color: theme.textThird }}> *</Text></Text>
         </View>
         <View style={styles.vehicleGrid}>
           {VEHICLES.map(v => {
@@ -398,12 +399,12 @@ export default function DriverRegisterScreen() {
                 <Text
                   style={[styles.linkText, { color: theme.primary }]}
                   onPress={() => Linking.openURL(TERMS_URL)}
-                >Terms of Service</Text>
+                >{tx('auto.driverRegister.termsOfService', 'Terms of Service')}</Text>
                 {' '}(including the Driver Code of Conduct) and{' '}
                 <Text
                   style={[styles.linkText, { color: theme.primary }]}
                   onPress={() => Linking.openURL(PRIVACY_URL)}
-                >Privacy Policy</Text>
+                >{tx('auto.driverRegister.privacyPolicy', 'Privacy Policy')}</Text>
               </Text>
             }
           />
@@ -415,7 +416,7 @@ export default function DriverRegisterScreen() {
           disabled={!canSubmit}
         >
           {loading ? <ActivityIndicator color="#fff" /> : (
-            <Text style={styles.submitText}>Create Driver Account</Text>
+            <Text style={styles.submitText}>{tx('auto.driverRegister.createDriverAccount2', 'Create Driver Account')}</Text>
           )}
         </Pressable>
 
@@ -426,9 +427,9 @@ export default function DriverRegisterScreen() {
         )}
 
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>Already have an account?</Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>{tx('auto.driverRegister.alreadyHaveAnAccount', 'Already have an account?')}</Text>
           <Pressable onPress={() => router.push('/(auth)/login')}>
-            <Text style={[styles.footerLink, { color: theme.primary }]}> Sign In</Text>
+            <Text style={[styles.footerLink, { color: theme.primary }]}> {tx('auto.driverRegister.signIn', 'Sign In')}</Text>
           </Pressable>
         </View>
       </ScrollView>

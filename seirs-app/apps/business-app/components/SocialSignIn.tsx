@@ -34,6 +34,7 @@ import { requireOptionalNativeModule } from 'expo-modules-core';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { getGoogleIdToken, isGoogleConfigured, GoogleCancelled } from '@/lib/googleAuth';
 import { authApi } from '@/services/api';
+import { tx } from '@/i18n/tx';
 
 /** Apple's glyph, drawn rather than shipped as an asset. */
 function AppleGlyph({ size = 18, color = '#FFFFFF' }: { size?: number; color?: string }) {
@@ -149,7 +150,7 @@ export function SocialSignIn({ role, onSignedIn, onError, theme, disabled }: Pro
             : (
               <>
                 <GoogleIcon size={18} />
-                <Text style={styles.googleText}>Continue with Google</Text>
+                <Text style={styles.googleText}>{tx('auto.SocialSignIn.continueWithGoogle', 'Continue with Google')}</Text>
               </>
             )}
         </Pressable>
@@ -172,7 +173,7 @@ export function SocialSignIn({ role, onSignedIn, onError, theme, disabled }: Pro
             : (
               <>
                 <AppleGlyph size={18} />
-                <Text style={styles.appleText}>Sign in with Apple</Text>
+                <Text style={styles.appleText}>{tx('auto.SocialSignIn.signInWithApple', 'Sign in with Apple')}</Text>
               </>
             )}
         </Pressable>

@@ -326,5 +326,22 @@
     "threadEmpty": "Ozi adịghị ebe a.",
     "closedNote": "Emechiela tiketi a. Meghee nke ọhụrụ ma ọ bụrụ na ị ka chọrọ enyemaka.",
     "hoursHint": "Oge enyemaka: 6 nʼụtụtụ–10 nʼabalị WAT. Ozi ezigara nʼetiti oge ndị ọzọ ga-enweta nzaghachi ozugbo anyị meghere nʼelekere 6 nʼụtụtụ."
+  },
+  "auto": {
+    "index": {
+      "poolTripActive": "Njem nkekọrịta na-aga",
+      "demandHotspots": "Ebe ọchịchọ dị elu",
+      "openMap": "Mepee maapụ",
+      "goOnlineToSeeDemand": "Banye n’ịntanetị ka ị hụ ọchịchọ gburugburu gị",
+      "doneToday": "Emechara taa",
+      "rating": "Ọkwa",
+      "requests": "Arịrịọ",
+      "declareAnIntercityTrip": "Kwupụta njem n’etiti obodo",
+      "availableJobs": "Ọrụ ndị dị",
+      "youReOffline": "Ị nọghị n’ịntanetị",
+      "goOnlineToStartReceiving": "Banye n’ịntanetị ka ị malite ịnata arịrịọ ọrụ.",
+      "noJobsNearbyStayOnline": "Enweghị ọrụ nso. Nọrọ n’ịntanetị: arịrịọ ọhụrụ na-abata mgbe niile.",
+      "youEarn": "Ị na-enweta"
+    }
   }
 }
