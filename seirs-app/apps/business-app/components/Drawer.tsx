@@ -36,6 +36,10 @@ interface Props {
  *   home screen; this was the third door.
  * - "Settings" in the partner list was a TAB.
  *
+ * - "Drop at Partner Store", API Keys, API Usage and Webhook Log are gone
+ *   with their screens (founder, same day): counter drop-off is a step of
+ *   Send, and the developer platform is not something we can offer yet.
+ *
  * What arrived: Rewards and Invite a business (both screens existed and
  * were reachable only from the Wallet tab), Special Cargo (the quote
  * lane, findable until now only from the home card), and for a hybrid
@@ -83,7 +87,6 @@ export function Drawer({ visible, onClose }: Props) {
     you:     t('drawer.sectionYou',     { defaultValue: 'You' }),
     send:    t('drawer.sectionSend',    { defaultValue: 'Send & move' }),
     counter: t('drawer.sectionCounter', { defaultValue: 'Your counter' }),
-    dev:     t('drawer.sectionDev',     { defaultValue: 'Developers' }),
     help:    t('drawer.sectionHelp',    { defaultValue: 'Help' }),
   };
 
@@ -139,19 +142,17 @@ export function Drawer({ visible, onClose }: Props) {
       onPress: () => navigate('/(business)/trip-requests'), section: sec.send },
     { icon: 'Repeat',       label: t('drawer.recurring',     { defaultValue: 'Recurring Deliveries' }),
       onPress: () => navigate('/(business)/recurring'), section: sec.send },
-    /* A flow of its own, unlike the customer app's drop-at-store, which
-       is a STEP of Send and was rightly kept out of that drawer. Here a
-       trader books several packages onto a counter and walks out with a
-       QR per package. */
-    { icon: 'Store',        label: t('drawer.dropAtStore',   { defaultValue: 'Drop at Partner Store' }),
-      onPress: () => navigate('/(business)/drop-at-store'), section: sec.send },
-
-    { icon: 'Key',          label: t('drawer.apiKeys',       { defaultValue: 'API Keys' }),
-      onPress: () => navigate('/(business)/api-keys'), section: sec.dev },
-    { icon: 'BarChart3',    label: t('drawer.apiUsage',      { defaultValue: 'API Usage' }),
-      onPress: () => navigate('/(business)/api-usage'), section: sec.dev },
-    { icon: 'Activity',     label: t('drawer.webhookLog',    { defaultValue: 'Webhook Log' }),
-      onPress: () => navigate('/(business)/webhook-log'), section: sec.dev },
+    /*
+     * No "Drop at Partner Store" row, and no screen behind it any more
+     * (founder 2026-09-06): dropping at a counter is the second option on
+     * Send's Pickup step, with nearby counters suggested by distance and
+     * capacity. One Send flow people get used to, not a second door with
+     * its own form.
+     *
+     * No Developers section either. API keys, usage and the webhook log
+     * were rows to screens for a product we cannot offer yet; the screens
+     * and the backend routes are deleted with them, not hidden.
+     */
 
     ...helpItems,
   ];

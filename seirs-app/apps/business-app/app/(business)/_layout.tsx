@@ -10,7 +10,7 @@ import { useTheme } from '@/context/ThemeContext';
  *     (tabs)/
  *       _layout.tsx      <- Tabs (Dashboard, Deliveries, Send, Wallet, Team)
  *     edit-profile.tsx   <- pushed onto the Stack
- *     api-keys.tsx       <- pushed onto the Stack
+ *     send-package.tsx   <- pushed onto the Stack
  *     ...all detail screens
  *
  * Mirrors customer-app + driver-app's Tabs-inside-Stack pattern so the

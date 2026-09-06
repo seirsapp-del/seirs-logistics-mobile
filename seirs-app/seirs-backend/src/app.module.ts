@@ -40,7 +40,6 @@ import { PartnerStoreModule } from './partner-store/partner-store.module';
 import { PoolingModule } from './pooling/pooling.module';
 import { MultiDropRoutingModule } from './multi-drop-routing/multi-drop-routing.module';
 import { OfflineSyncModule } from './offline-sync/offline-sync.module';
-import { DevPlatformModule } from './developer-platform/dev-platform.module';
 import { RolesModule } from './roles/roles.module';
 import { PricingModule } from './pricing/pricing.module';
 import { LoyaltyModule } from './loyalty/loyalty.module';
@@ -135,7 +134,9 @@ import { LaunchModule } from './launch/launch.module';
     PoolingModule,
     MultiDropRoutingModule,
     OfflineSyncModule,
-    DevPlatformModule,
+    // The developer platform (API keys, v1 API, webhooks) is deleted, not
+    // parked (founder 2026-09-06: "we can't offer that yet"). Its tables
+    // stay in the database until a migration drops them.
     RolesModule,
     PricingModule,
     LoyaltyModule,
