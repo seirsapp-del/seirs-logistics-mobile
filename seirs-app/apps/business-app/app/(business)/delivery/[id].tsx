@@ -21,7 +21,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Icon } from '@/components/Icon';
 import { useSeirsDialog } from '@/components/SeirsDialog';
 import { businessApi } from '@/services/api';
-import { deliveriesApi, paymentsApi } from '@/services/api';
+import { deliveriesApi, paymentsApi, feesApi } from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { collectUrl } from '@/constants/config';
@@ -90,6 +90,19 @@ export default function DeliveryDetailScreen() {
    * list, and a Pay button that silently charges a card the sender
    * cannot see on the same screen is worse than one extra tap.
    */
+  /**
+   * What checkout will add on top, said before the tap (founder
+   * 2026-09-06: "they remove their own commission and we want the user
+   * to see it before committing"). Read from the two Fee Catalogue rows
+   * the payment path itself uses, so this line and the charge agree.
+   */
+  const [procPct,  setProcPct]  = useState<number | null>(null);
+  const [procFlat, setProcFlat] = useState<number>(0);
+  useEffect(() => {
+    feesApi.get('card_processing_pct').then((r: any) => { const v = Number(r?.value); if (Number.isFinite(v)) setProcPct(v); }).catch(() => {});
+    feesApi.get('card_processing_flat_ngn').then((r: any) => { const v = Number(r?.value); if (Number.isFinite(v)) setProcFlat(v); }).catch(() => {});
+  }, []);
+
   const openCheckout = async () => {
     if (!id) return;
     try {
@@ -435,8 +448,15 @@ export default function DeliveryDetailScreen() {
           {isUnpaid && (
             <>
               <Text style={{ color: colors.textSecond, fontSize: FontSize.xs, marginTop: 6, lineHeight: 17 }}>
-                This booking is saved but not paid for. A driver is matched once payment goes through.
+                {d.isRecurring
+                  ? 'This is a recurring run at today\'s price. It is not paid for and nothing is charged on its own: pay through checkout before pickup time and it goes out.'
+                  : 'This booking is saved but not paid for. A driver is matched once payment goes through.'}
               </Text>
+              {procPct !== null && (
+                <Text style={{ color: colors.textSecond, fontSize: FontSize.xs, marginTop: 4, lineHeight: 17 }}>
+                  Card processing of about {naira(Number(d.price) * procPct / 100 + procFlat)} ({procPct}%{procFlat ? ` + ${naira(procFlat)}` : ''}) is added at checkout, then your bank asks for its OTP.
+                </Text>
+              )}
 
               {/*
                 Points, spent here, where the money is.

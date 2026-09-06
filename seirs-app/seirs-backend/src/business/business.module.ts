@@ -21,6 +21,7 @@ import { Delivery } from '../deliveries/delivery.entity';
 import { DeliveryStop } from '../deliveries/delivery-stop.entity';
 import { DeliveriesModule } from '../deliveries/deliveries.module';
 import { DriversModule } from '../drivers/drivers.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -45,6 +46,9 @@ import { DriversModule } from '../drivers/drivers.module';
     PricingModule,
     RoutingModule,
     FeesModule,
+    // Recurring runs push "ready to pay" and "cancelled, unpaid" to the
+    // owner's phone (founder 2026-09-06).
+    NotificationsModule,
     // Business cancellation reuses the delivery transition so escrow
     // refunds and the rest of the side effects fire. forwardRef because
     // PricingModule already closes a cycle back to this module.

@@ -524,6 +524,21 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'admin_invite_expiry_minutes', name: 'Staff Invite Link Expiry (minutes)',
     description: 'Minutes a staff invitation or admin password-reset link stays valid. Short on purpose: this link opens the dashboard. 60 is the default.',
     category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 60 },
+  /**
+   * Recurring runs are never charged on their own (founder 2026-09-06:
+   * it must not look like a subscription, every payment goes through
+   * checkout with the bank's OTP, and fuel moves too often to commit to
+   * a price weeks ahead). Each run is created this many minutes before
+   * its pickup time, at that day's price, as Awaiting payment, and the
+   * owner is pushed to pay. Unpaid past the second window, the run is
+   * cancelled and they are told.
+   */
+  { key: 'recurring_notice_minutes', name: 'Recurring run: ask to pay this long before pickup (minutes)',
+    description: 'How many minutes before its pickup time a recurring run is created and priced, and the owner is notified to pay. The run is Awaiting payment until they do.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 60 },
+  { key: 'recurring_unpaid_cancel_minutes', name: 'Recurring run: cancel if unpaid this long after pickup time (minutes)',
+    description: 'A recurring run still unpaid this many minutes after its pickup time is cancelled and the owner is notified. 0 cancels at pickup time exactly.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 30 },
 
   /**
    * Ten, not sixty (founder 2026-09-04: "why not 10 minutes, much better").

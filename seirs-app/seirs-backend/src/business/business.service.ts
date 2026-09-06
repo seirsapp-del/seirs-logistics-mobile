@@ -21,6 +21,8 @@ import { PaymentsService } from '../payments/payments.service';
 import { RoutingService } from '../routing/routing.service';
 import { FeesService } from '../fees/fees.service';
 import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/notification.entity';
 import { DeliveriesService } from '../deliveries/deliveries.service';
 import { DriversService } from '../drivers/drivers.service';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
@@ -159,7 +161,20 @@ export class BusinessService {
      */
     @Optional() @Inject(forwardRef(() => DriversService))
     private driversService?: DriversService,
+    /** Recurring runs tell the owner to pay; optional so a wiring slip never blocks booking. */
+    @Optional() private notifications?: NotificationsService,
   ) {}
+
+  /** A push is never load-bearing: the run exists whether or not this lands. */
+  private push(userId: string | null | undefined, title: string, body: string, type: NotificationType, deliveryId?: string) {
+    if (!userId) return;
+    try {
+      const sent: any = this.notifications?.create?.(userId, title, body, type, deliveryId);
+      if (sent?.catch) sent.catch(() => {});
+    } catch (e: any) {
+      this.logger.warn(`business push failed: ${e?.message ?? e}`);
+    }
+  }
 
   // ── Spec V8 §4.2 - Recurring Delivery Templates ───────────────────────────
 
@@ -171,8 +186,13 @@ export class BusinessService {
     hour?: number;
     minute?: number;
     payload: any;
+    /** The owner ticked the "this is not a subscription, I pay each run" line. */
+    termsAccepted?: boolean;
   }) {
     if (!body.name?.trim()) throw new BadRequestException('Template name required.');
+    if (body.termsAccepted !== true) {
+      throw new BadRequestException('Please confirm you understand each run is priced on the day and paid by you before it goes out.');
+    }
     if (!Object.values(RecurringCadence).includes(body.cadence)) {
       throw new BadRequestException('Invalid cadence.');
     }
@@ -200,7 +220,7 @@ export class BusinessService {
       dayOfMonth: body.cadence === RecurringCadence.MONTHLY ? (body.dayOfMonth ?? 1) : null,
       hour,
       minute,
-      payload:    body.payload,
+      payload:    { ...body.payload, termsAcceptedAt: new Date().toISOString() },
       isActive:   true,
       nextRunAt:  this.computeNextRunAt({
         cadence: body.cadence, dayOfWeek: body.dayOfWeek, dayOfMonth: body.dayOfMonth, hour, minute,
@@ -275,34 +295,103 @@ export class BusinessService {
     return next;
   }
 
-  // Cron - every 5 minutes scan for due templates, fire each, schedule
-  // the next run. Failures bump errorCount + lastError so the owner
-  // can see them in the UI; we don't disable on a single failure.
+  /**
+   * Every 5 minutes: create the runs that are coming up, and cancel the
+   * ones nobody paid for.
+   *
+   * A recurring run is NOT charged on its own (founder 2026-09-06). Three
+   * reasons, in his words: it must never look like a subscription; every
+   * payment goes through checkout so the sender sees the processing cost
+   * before committing and the bank sends its OTP every time; and fuel
+   * moves too often to hold a price for weeks. So a run is created
+   * `recurring_notice_minutes` BEFORE its pickup time, priced by the
+   * normal booking path at that day's rate card, left as Awaiting
+   * payment, and the owner is pushed to pay. If it is still unpaid
+   * `recurring_unpaid_cancel_minutes` after pickup time it is cancelled
+   * and they are told. Both windows are Fee Catalogue rows.
+   */
   @Cron('*/5 * * * *')
   async runDueRecurringTemplates() {
+    const leadMin  = Number(await this.fees.getValueOr('recurring_notice_minutes', 60)) || 60;
+    const graceMin = Math.max(0, Number(await this.fees.getValueOr('recurring_unpaid_cancel_minutes', 30)) || 0);
+    const now = new Date();
+    const horizon = new Date(now.getTime() + leadMin * 60_000);
+
     const due = await this.recurringRepo
       .createQueryBuilder('t')
       .leftJoinAndSelect('t.owner', 'u')
       .where('t.isActive = true')
-      .andWhere('t.nextRunAt <= :now', { now: new Date() })
+      .andWhere('t.nextRunAt <= :horizon', { horizon })
       .getMany();
-    if (!due.length) return;
 
     for (const t of due) {
+      const pickupAt = new Date(t.nextRunAt);
       try {
-        await this.createDelivery(t.owner.id, t.payload as CreateMultiStopDeliveryDto);
+        const { termsAcceptedAt: _terms, ...payload } = (t.payload ?? {}) as any;
+        const delivery: any = await this.createDelivery(t.owner.id, {
+          ...(payload as CreateMultiStopDeliveryDto),
+          isRecurring: true,
+          // The run is for the scheduled hour, not for "now": the driver
+          // is matched for then, and the unpaid cancel below reads it.
+          scheduledAt: pickupAt.toISOString(),
+        });
         t.fireCount  += 1;
-        t.lastRunAt  = new Date();
+        t.lastRunAt  = now;
         t.lastError  = null;
+
+        const when = pickupAt.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' });
+        const amount = Number(delivery?.price ?? 0);
+        this.push(t.owner.id, `Ready to pay: ${t.name}`,
+          `Today's price is ₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} for pickup at ${when}. ` +
+          `Pay through checkout before then and it goes out; nothing is charged on its own.`,
+          NotificationType.STATUS_UPDATE, delivery?.id);
       } catch (e: any) {
         t.errorCount += 1;
         t.lastError  = (e?.message ?? 'unknown').slice(0, 300);
         this.logger.warn(`Recurring template ${t.id} failed: ${t.lastError}`);
       }
-      t.nextRunAt = this.computeNextRunAt(t, new Date());
+      // Always from the pickup instant, never from "now": firing an hour
+      // early must not pull every later run an hour earlier too.
+      t.nextRunAt = this.computeNextRunAt(t, new Date(pickupAt.getTime() + 60_000));
       await this.recurringRepo.save(t);
     }
-    this.logger.log(`Recurring templates fired: ${due.length}`);
+    if (due.length) this.logger.log(`Recurring runs created, awaiting payment: ${due.length}`);
+
+    await this.cancelUnpaidRecurringRuns(now, graceMin);
+  }
+
+  /**
+   * A recurring run nobody paid for does not go out, and does not sit in
+   * the list as Pending forever. Cancelled past the grace window, no
+   * fee (nothing was charged), and the owner is told why.
+   */
+  private async cancelUnpaidRecurringRuns(now: Date, graceMin: number) {
+    const cutoff = new Date(now.getTime() - graceMin * 60_000);
+    const stale = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .leftJoinAndSelect('d.customer', 'c')
+      .where('d."isRecurring" = true')
+      .andWhere('d.status = :st', { st: DeliveryStatus.PENDING })
+      .andWhere('d."paymentHeldAt" IS NULL')
+      .andWhere('d."scheduledAt" IS NOT NULL')
+      .andWhere('d."scheduledAt" <= :cutoff', { cutoff })
+      .take(100)
+      .getMany();
+    for (const d of stale) {
+      try {
+        await this.deliveriesRepo.update(d.id, {
+          status: DeliveryStatus.CANCELLED,
+          cancelledAt: now,
+          cancellationReason: 'Recurring run not paid before pickup time',
+        } as any);
+        this.push((d as any).customer?.id, 'Run cancelled, not paid',
+          `${d.trackingCode ?? 'Your recurring run'} was not paid before its pickup time, so it did not go out. Nothing was charged. The next run will be created on schedule.`,
+          NotificationType.STATUS_UPDATE, d.id);
+      } catch (e: any) {
+        this.logger.warn(`Could not cancel unpaid recurring run ${d.id}: ${e?.message ?? e}`);
+      }
+    }
+    if (stale.length) this.logger.log(`Recurring runs cancelled unpaid: ${stale.length}`);
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────

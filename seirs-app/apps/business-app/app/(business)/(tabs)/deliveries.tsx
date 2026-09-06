@@ -62,6 +62,9 @@ interface Delivery {
   isMultiStop?:    boolean;
   /** Set when the fare has actually been collected and escrowed. */
   paymentHeldAt?:  string | null;
+  /** A run created by a recurring template: paid by hand, every time. */
+  isRecurring?:    boolean;
+  scheduledAt?:    string | null;
 }
 
 export default function DeliveriesScreen() {
@@ -176,7 +179,11 @@ export default function DeliveriesScreen() {
    * full checkout one button away. No saved card = straight to checkout.
    */
   const handlePay = (item: Delivery) => {
-    if (!savedCard) { openCheckout(item); return; }
+    // A recurring run always takes the full checkout, never the one-tap
+    // token charge: the bank's OTP has to happen every time and the
+    // processing cost has to be seen before committing (founder
+    // 2026-09-06, "because of security reasons in Nigeria").
+    if (!savedCard || item.isRecurring) { openCheckout(item); return; }
     dialog.alert(
       `Pay ${naira(item.price)}`,
       `Charge ${String(savedCard.brand ?? 'card').toUpperCase()} •••• ${savedCard.last4}, or open the full checkout for another method?`,
@@ -263,6 +270,18 @@ export default function DeliveriesScreen() {
         {/* Actions get their own row. Vehicle, stops, date, price, Pay now
             and Cancel on ONE line ran Cancel into the screen edge and left
             the two buttons touching (founder 2026-08-19). */}
+        {/* A recurring run says what it is and when it must be paid by,
+            so Pending never reads as "something is being charged". */}
+        {item.isRecurring && isUnpaid && (
+          <View style={[styles.meta, { marginTop: 2 }]}>
+            <Icon name="Repeat" size={12} color={colors.primary} />
+            <Text style={[styles.metaText, { color: colors.primary, fontWeight: '600' }]}>
+              Recurring run · today's price · pay before {item.scheduledAt
+                ? new Date(item.scheduledAt).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
+                : 'pickup'} or it does not go out
+            </Text>
+          </View>
+        )}
         {(isUnpaid || isCancellable) && (
         <View style={styles.cardActions}>
           {isUnpaid && (
