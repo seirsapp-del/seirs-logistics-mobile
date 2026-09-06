@@ -231,7 +231,8 @@ export default function DeliveriesScreen() {
         {item.isRecurring && isUnpaid && (
           <View style={[styles.meta, { marginTop: 2 }]}>
             <Icon name="Repeat" size={12} color={colors.primary} />
-            <Text style={[styles.metaText, { color: colors.primary, fontWeight: '600' }]}>
+            {/* metaText capitalises vehicle names; this is a sentence. */}
+            <Text style={[styles.metaText, { color: colors.primary, fontWeight: '600', textTransform: 'none' }]}>
               Recurring run · today's price · pay before {(item.scheduledFor ?? item.scheduledAt)
                 ? new Date((item.scheduledFor ?? item.scheduledAt) as string).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
                 : 'pickup'} or it does not go out
